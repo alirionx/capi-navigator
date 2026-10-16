@@ -128,7 +128,7 @@ The browser calls only the backend (REST and server-sent events). The backend tr
 | Area | Technology | Note |
 | --- | --- | --- |
 | Language | TypeScript (strict) in Backend, Frontend and shared package | Recommended over JavaScript: typing the cluster model is the core of the app, and NestJS is TypeScript-first |
-| Backend | NestJS (current LTS), Node.js 22 LTS | One module per feature pack |
+| Backend | NestJS (current LTS), Node.js 24 LTS | One module per feature pack |
 | Kubernetes client | `@kubernetes/client-node` | Official client maintained by Kubernetes SIG API Machinery |
 | Validation | Zod, shared by backend and frontend | One schema source for types, form and API validation |
 | Persistence | None: Kubernetes API of the home cluster (CRDs, Secrets, ConfigMaps) | No database, like Rancher; see “State storage” below |
