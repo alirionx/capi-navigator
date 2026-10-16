@@ -629,7 +629,7 @@ These requirements apply to all feature packs and are checked in every pack.
 - **NF-06** MUST translate Kubernetes API errors into understandable messages with a hint for resolution; the original error stays expandable.
 - **NF-07** MUST be able to show every mutating action as a YAML preview beforehand (“What will be applied?”).
 - **NF-08** MUST explain every form field with short help (tooltip or hint text), including its default value.
-- **NF-09** SHOULD support English and German (vue-i18n), with English as default.
+- **NF-09** MUST route all UI texts through vue-i18n. The MVP ships English only; further languages (e.g. German) MAY be added later without code changes.
 - **NF-10** SHOULD support light and dark mode.
 
 ### Performance and robustness

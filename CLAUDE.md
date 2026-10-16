@@ -115,7 +115,7 @@ The backend uses `KUBECONFIG` for the home cluster in local development.
 
 ## Conventions
 
-- Code, comments, commit messages, UI strings and docs are in **English**. UI texts go through vue-i18n (English default, German second).
+- Code, comments, commit messages, UI strings and docs are in **English**. UI texts go through vue-i18n; the MVP ships English only (no German), further languages may follow later.
 - Requirement IDs (e.g. `FP5-F-09`, `NF-13`, `POS-02`) go into commit messages, test names and code comments where a piece of code implements a specific requirement.
 - Conventional commits: `feat(fp5): generate RKE2ControlPlane from cluster spec (FP5-F-01)`.
 - One NestJS module per domain, one Pinia store per domain.
