@@ -20,7 +20,7 @@ export const UsernameSchema = z
     'Lowercase letters, digits and "-" only; must start and end with a letter or digit',
   );
 
-export const PASSWORD_MIN_LENGTH = 12;
+export const PASSWORD_MIN_LENGTH = 8;
 export const PasswordSchema = z
   .string()
   .min(PASSWORD_MIN_LENGTH, `At least ${PASSWORD_MIN_LENGTH} characters`)

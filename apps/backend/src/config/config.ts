@@ -1,4 +1,5 @@
 import { hostname } from 'node:os';
+import { PASSWORD_MIN_LENGTH } from '@capi-navigator/shared';
 import { z } from 'zod';
 
 const bool = (defaultValue: 'true' | 'false') =>
@@ -25,7 +26,7 @@ const EnvSchema = z.object({
   POD_NAME: z.string().default(hostname()),
 
   /** FP1-F-02: password of the initial admin; alternatively the Secret capi-navigator-initial-admin. */
-  INITIAL_ADMIN_PASSWORD: z.string().min(12).optional(),
+  INITIAL_ADMIN_PASSWORD: z.string().min(PASSWORD_MIN_LENGTH).optional(),
   /** FP1-F-03: absolute session lifetime. */
   SESSION_TTL_HOURS: z.coerce.number().positive().default(8),
   /** FP1-F-03: Secure cookie flag. Browsers accept Secure cookies on http://localhost. */
