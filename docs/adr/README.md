@@ -8,3 +8,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0002](0002-cluster-scoped-provider-identities.md)          | Cluster-scoped provider identities                                               | accepted |
 | [0003](0003-aws-stock-images-without-secrets-manager.md)    | AWS user data without Secrets Manager on stock images                            | accepted |
 | [0004](0004-node-provider-id-and-openstack-cloud-config.md) | providerID from instance metadata; OpenStack cloud config via ClusterResourceSet | accepted |
+| [0005](0005-workload-kubeconfig-view-and-download.md)       | Showing and downloading workload cluster kubeconfigs                             | accepted |

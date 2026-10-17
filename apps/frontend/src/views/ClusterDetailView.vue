@@ -2,7 +2,9 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Condition, MachineStatus } from '@capi-navigator/shared';
+import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 
@@ -12,6 +14,8 @@ const { t } = useI18n();
 const connections = useConnectionsStore();
 const store = useClustersStore();
 const tab = ref('overview');
+const auth = useAuthStore();
+const showKubeconfig = ref(false);
 
 watch(
   () => [connections.activeName, props.namespace, props.name] as const,
@@ -83,6 +87,14 @@ const machineHeaders = computed(() => [
         >{{ t('clusters.external') }}</v-chip
       >
       <v-spacer />
+      <v-btn
+        v-if="s?.kubeconfigAvailable && auth.can('operator')"
+        variant="tonal"
+        prepend-icon="mdi-file-key-outline"
+        data-testid="show-kubeconfig"
+        @click="showKubeconfig = true"
+        >{{ t('kubeconfig.show') }}</v-btn
+      >
       <v-chip
         :color="store.live ? 'success' : 'grey'"
         variant="tonal"
@@ -298,5 +310,12 @@ const machineHeaders = computed(() => [
         </v-window-item>
       </v-window>
     </template>
+    <KubeconfigDialog
+      v-if="connections.activeName"
+      v-model="showKubeconfig"
+      :connection="connections.activeName"
+      :namespace="namespace"
+      :name="name"
+    />
   </v-container>
 </template>

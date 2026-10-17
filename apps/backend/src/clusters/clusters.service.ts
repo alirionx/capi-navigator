@@ -281,6 +281,33 @@ export class ClustersService {
     });
   }
 
+  /**
+   * Kubeconfig of a workload cluster from the CAPI Secret `<name>-kubeconfig` (FP6-F-04). The one
+   * deliberate exception to NF-01 (ADR-0005): only for operators, audited, never cached or logged.
+   */
+  async kubeconfig(connection: string, namespace: string, name: string): Promise<string> {
+    const kc = await this.clients.forConnection(connection);
+    if (!(await this.getCluster(kc, namespace, name))) {
+      throw new NotFoundException(`Cluster ${namespace}/${name} not found`);
+    }
+    let value: string | undefined;
+    try {
+      const secret = await kc
+        .makeApiClient(CoreV1Api)
+        .readNamespacedSecret({ name: `${name}-kubeconfig`, namespace });
+      value = secret.data?.value;
+    } catch (err) {
+      if (!isNotFound(err)) throw toHttpException(err, 'Read the kubeconfig Secret');
+    }
+    if (!value) {
+      throw new NotFoundException({
+        message: `The kubeconfig of ${namespace}/${name} is not available yet`,
+        hint: 'CAPI creates it once the control plane is initialized.',
+      });
+    }
+    return Buffer.from(value, 'base64').toString('utf8');
+  }
+
   // ---- helpers ----
 
   private async plan(

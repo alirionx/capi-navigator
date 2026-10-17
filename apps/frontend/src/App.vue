@@ -161,29 +161,37 @@ async function signOut(): Promise<void> {
   --app-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 .v-application,
-.v-application .text-h1,
-.v-application .text-h2,
-.v-application .text-h3,
-.v-application .text-h4,
-.v-application .text-h5,
-.v-application .text-h6,
-.v-application .text-subtitle-1,
-.v-application .text-subtitle-2,
-.v-application .text-body-1,
-.v-application .text-body-2,
-.v-application .text-caption,
-.v-application .text-button {
+.v-overlay-container,
+:is(.v-application, .v-overlay-container) .text-h1,
+:is(.v-application, .v-overlay-container) .text-h2,
+:is(.v-application, .v-overlay-container) .text-h3,
+:is(.v-application, .v-overlay-container) .text-h4,
+:is(.v-application, .v-overlay-container) .text-h5,
+:is(.v-application, .v-overlay-container) .text-h6,
+:is(.v-application, .v-overlay-container) .text-subtitle-1,
+:is(.v-application, .v-overlay-container) .text-subtitle-2,
+:is(.v-application, .v-overlay-container) .text-body-1,
+:is(.v-application, .v-overlay-container) .text-body-2,
+:is(.v-application, .v-overlay-container) .text-caption,
+:is(.v-application, .v-overlay-container) .text-button {
   font-family: var(--app-font) !important;
   letter-spacing: normal !important;
 }
 /* Vuetify 3 tracks out buttons, chips and messages; the shared style uses normal spacing. */
-.v-application .v-btn,
-.v-application .v-chip,
-.v-application .v-messages,
-.v-application .v-field,
-.v-application .v-label,
-.v-application .v-list-item-title,
-.v-application .v-stepper-item {
+:is(.v-application, .v-overlay-container) .v-btn,
+:is(.v-application, .v-overlay-container) .v-chip,
+:is(.v-application, .v-overlay-container) .v-messages,
+:is(.v-application, .v-overlay-container) .v-field,
+:is(.v-application, .v-overlay-container) .v-label,
+:is(.v-application, .v-overlay-container) .v-list-item-title,
+:is(.v-application, .v-overlay-container) .v-stepper-item,
+:is(.v-application, .v-overlay-container) .v-card-title,
+:is(.v-application, .v-overlay-container) .v-card-subtitle,
+:is(.v-application, .v-overlay-container) .v-card-text,
+:is(.v-application, .v-overlay-container) .v-alert,
+:is(.v-application, .v-overlay-container) .v-alert-title,
+:is(.v-application, .v-overlay-container) .v-list-item-subtitle,
+:is(.v-application, .v-overlay-container) .v-tab {
   letter-spacing: normal !important;
 }
 /* Links in the accent color. */
@@ -198,11 +206,14 @@ async function signOut(): Promise<void> {
   line-height: 1.2;
 }
 /* Windows (stepper, tabs) clip overflow; leave room for the floating labels of outlined fields. */
-.v-application .v-window-item {
+:is(.v-application, .v-overlay-container) .v-window-item {
   padding-top: 8px;
 }
 /* Make the track of switches that are off visible on dark surfaces. */
-.v-application .v-switch .v-selection-control:not(.v-selection-control--dirty) .v-switch__track {
+:is(.v-application, .v-overlay-container)
+  .v-switch
+  .v-selection-control:not(.v-selection-control--dirty)
+  .v-switch__track {
   opacity: 1;
   background: rgb(var(--v-theme-surface-variant));
   box-shadow: inset 0 0 0 1px rgba(var(--v-border-color), 0.35);

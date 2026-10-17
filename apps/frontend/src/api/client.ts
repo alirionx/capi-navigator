@@ -74,6 +74,30 @@ export async function api<T extends z.ZodType>(
   return schema.parse(await res.json());
 }
 
+/** Request a plain-text endpoint (e.g. a kubeconfig, ADR-0005); never cached by the browser. */
+export async function apiText(path: string): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      headers: { Accept: 'text/plain' },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (err) {
+    throw new ApiError(
+      0,
+      'The backend is not reachable',
+      'Check that the backend is running and the network connection works.',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+  if (!res.ok) {
+    if (res.status === 401) unauthorizedHandler?.();
+    throw await toApiError(res);
+  }
+  return res.text();
+}
+
 /** Request an endpoint without a response body (204). */
 export async function apiVoid(method: Method, path: string, body?: unknown): Promise<void> {
   await call(method, path, body);

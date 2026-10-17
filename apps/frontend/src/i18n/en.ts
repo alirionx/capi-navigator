@@ -41,6 +41,13 @@ export const en = {
     yes: 'Yes',
     no: 'No',
     back: 'Back',
+    close: 'Close',
+  },
+  kubeconfig: {
+    show: 'Kubeconfig',
+    title: 'Kubeconfig of {name}',
+    warning:
+      'This file grants admin access to the cluster. Keep it safe and do not share your screen while it is shown. Viewing and downloading are recorded in the audit log.',
   },
   yaml: {
     copy: 'Copy',
