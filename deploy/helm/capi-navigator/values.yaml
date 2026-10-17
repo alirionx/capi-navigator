@@ -10,3 +10,13 @@ service:
   port: 80
 
 resources: {}
+
+auth:
+  # FP1-F-03: absolute session lifetime in hours.
+  sessionTtlHours: 8
+  # FP1-F-02: the initial admin password is read from the Secret capi-navigator-initial-admin
+  # (key "password") in the release namespace. If it does not exist, a random password is
+  # generated into that Secret on first start.
+
+audit:
+  retentionDays: 90

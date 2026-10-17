@@ -17,6 +17,7 @@ spec:
         app.kubernetes.io/name: capi-navigator
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      serviceAccountName: {{ .Release.Name }}
       securityContext:
         runAsNonRoot: true
       containers:
@@ -26,6 +27,13 @@ spec:
           env:
             - name: NAVIGATOR_NAMESPACE
               value: {{ .Release.Namespace }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef: { fieldPath: metadata.name }
+            - name: SESSION_TTL_HOURS
+              value: {{ .Values.auth.sessionTtlHours | quote }}
+            - name: AUDIT_RETENTION_DAYS
+              value: {{ .Values.audit.retentionDays | quote }}
           ports:
             - name: http
               containerPort: 3000
