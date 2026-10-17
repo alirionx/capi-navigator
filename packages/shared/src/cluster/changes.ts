@@ -208,6 +208,8 @@ export const SpecChangeSchema = z.discriminatedUnion('type', [
     settings: RolloutSettingsSchema,
   }),
   z.object({ type: z.literal('upgrade'), version: z.string().min(1) }),
+  /** FP7-F-19: no change; regenerate and compare, apply to take changes made outside back. */
+  z.object({ type: z.literal('reapply') }),
 ]);
 export type SpecChange = z.infer<typeof SpecChangeSchema>;
 export type SpecChangeInput = z.input<typeof SpecChangeSchema>;
@@ -249,6 +251,8 @@ function updateGroup(spec: ClusterSpec, group: string, fn: (g: Group) => Group):
 export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date): ClusterSpec {
   let next: ClusterSpec;
   switch (change.type) {
+    case 'reapply':
+      return spec;
     case 'scale':
       return scalePool(spec, change.pool, change.replicas);
     case 'labels':

@@ -16,6 +16,7 @@ import ChangeDialog from '../ChangeDialog.vue';
 import ErrorAlert from '../ErrorAlert.vue';
 import CustomizationEditor from '../wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../wizard/MachineGroupEditor.vue';
+import { newerImage } from './newer-image.js';
 
 /**
  * Day-2 configuration of a managed cluster (FP-7): every change updates the stored spec and is
@@ -42,10 +43,36 @@ async function load(): Promise<void> {
   error.value = null;
   try {
     spec.value = await clusters.getSpec(props.connection, props.namespace, props.name);
+    void checkDrift();
+    void loadLists();
   } catch (err) {
     error.value = err;
   }
 }
+
+// ---- drift (FP7-F-19): regenerate from the spec and compare with the cluster ----
+const drift = ref<{ checking: boolean; objects: string[]; fields: string[] } | null>(null);
+async function checkDrift(): Promise<void> {
+  drift.value = { checking: true, objects: [], fields: [] };
+  try {
+    const p = await clusters.changePreview(props.connection, props.namespace, props.name, {
+      type: 'reapply',
+    });
+    drift.value = {
+      checking: false,
+      objects: p.diffs.map((d) => `${d.kind} ${d.name}`),
+      fields: p.drift.map(
+        (d) => `${d.kind} ${d.name}: ${d.fields.join(', ')} (${d.managers.join(', ')})`,
+      ),
+    };
+  } catch {
+    drift.value = null;
+  }
+}
+
+/** FP7-F-12: newer image of the same OS for a group. */
+const suggestion = (g: Group) =>
+  newerImage(g.image ?? spec.value?.infrastructure.image, images.value);
 watch(() => [props.connection, props.namespace, props.name], load, { immediate: true });
 
 /** Selection lists of the cluster's credentials (flavors / instance types, images, volume types). */
@@ -109,6 +136,7 @@ const rolloutRunning = computed(
 
 // ---- the change dialog ----
 type Mode =
+  | 'reapply'
   | 'cpScale'
   | 'scale'
   | 'addPool'
@@ -156,6 +184,9 @@ function start(m: Mode, groupId = '', g?: Group): void {
   target.value = groupId;
   const s = spec.value!;
   switch (m) {
+    case 'reapply':
+      form.value = emptyForm();
+      break;
     case 'cpScale':
       form.value = { ...emptyForm(), replicas: s.topology.controlPlane.replicas, ack: false };
       break;
@@ -222,6 +253,8 @@ const upgradeTargets = computed(() => {
 const change = computed<SpecChangeInput | null>(() => {
   const f = form.value;
   switch (mode.value) {
+    case 'reapply':
+      return { type: 'reapply' };
     case 'cpScale':
       return { type: 'scaleControlPlane', replicas: f.replicas as 1 | 3 | 5 };
     case 'scale':
@@ -305,6 +338,12 @@ const apply = async (takeOver: boolean) => {
   emit('changed');
 };
 
+/** Opens the size & image dialog with the suggested newer image. */
+function useNewerImage(groupId: string, g: Group, image: string): void {
+  start('machine', groupId, g);
+  form.value.group.image = image;
+}
+
 const rolloutOf = (g: Group) =>
   ('rollout' in g && g.rollout ? g.rollout : spec.value!.rollout) as Record<string, unknown>;
 const custSummary = (g: Group) => {
@@ -358,6 +397,50 @@ const provider = computed(() =>
         </v-card-text>
       </v-card>
 
+      <!-- Drift (FP7-F-19) -->
+      <v-card border class="mb-4" data-testid="day2-drift">
+        <v-card-item :title="t('day2.drift')">
+          <template #append>
+            <v-chip
+              v-if="drift"
+              size="small"
+              variant="tonal"
+              :color="
+                drift.checking
+                  ? 'grey'
+                  : drift.objects.length || drift.fields.length
+                    ? 'warning'
+                    : 'success'
+              "
+              data-testid="day2-drift-state"
+              >{{
+                drift.checking
+                  ? t('day2.driftChecking')
+                  : drift.objects.length || drift.fields.length
+                    ? t('day2.driftFound', { n: drift.objects.length })
+                    : t('day2.noDrift')
+              }}</v-chip
+            >
+            <v-btn
+              size="small"
+              variant="tonal"
+              class="ml-2"
+              prepend-icon="mdi-backup-restore"
+              data-testid="day2-reapply"
+              @click="start('reapply')"
+              >{{ t('day2.reapply') }}</v-btn
+            >
+          </template>
+        </v-card-item>
+        <v-card-text
+          v-if="drift && !drift.checking && (drift.objects.length || drift.fields.length)"
+        >
+          <div class="text-body-2 mb-1">{{ t('day2.driftExplain') }}</div>
+          <div v-for="o in drift.fields" :key="o" class="text-caption font-monospace">{{ o }}</div>
+          <div v-for="o in drift.objects" :key="o" class="text-caption">{{ o }}</div>
+        </v-card-text>
+      </v-card>
+
       <!-- Groups -->
       <v-row>
         <v-col v-for="g in groups" :key="g.id" cols="12" md="6">
@@ -399,6 +482,23 @@ const provider = computed(() =>
                   </tr>
                 </tbody>
               </v-table>
+              <v-alert
+                v-if="suggestion(g.group)"
+                type="info"
+                variant="tonal"
+                density="compact"
+                class="mb-3"
+                :data-testid="`day2-newer-image-${g.id}`"
+              >
+                {{ t('day2.newerImage', { name: suggestion(g.group)!.label }) }}
+                <v-btn
+                  size="small"
+                  variant="text"
+                  class="ml-1"
+                  @click="useNewerImage(g.id, g.group, suggestion(g.group)!.value)"
+                  >{{ t('day2.useImage') }}</v-btn
+                >
+              </v-alert>
               <div class="d-flex flex-wrap ga-2">
                 <v-btn
                   v-if="!g.pool && spec.topology.mode === 'standard'"
@@ -476,7 +576,10 @@ const provider = computed(() =>
       >
 
       <ChangeDialog v-model="open" :title="title" :valid="valid" :preview="preview" :apply="apply">
-        <template v-if="mode === 'cpScale'">
+        <v-alert v-if="mode === 'reapply'" type="info" variant="tonal">{{
+          t('day2.reapplyExplain')
+        }}</v-alert>
+        <template v-else-if="mode === 'cpScale'">
           <v-btn-toggle v-model="form.replicas" mandatory variant="outlined" density="comfortable">
             <v-btn :value="1">1</v-btn><v-btn :value="3">3</v-btn><v-btn :value="5">5</v-btn>
           </v-btn-toggle>
