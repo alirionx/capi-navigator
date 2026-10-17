@@ -249,7 +249,7 @@ async function loadLookup(c: Credential): Promise<void> {
                 </div>
                 <v-alert
                   v-if="item.lastTest.message"
-                  :type="item.lastTest.ok ? 'warning' : 'error'"
+                  :type="testState(item).key === 'failed' ? 'error' : 'warning'"
                   variant="tonal"
                   density="comfortable"
                   class="mb-2"
