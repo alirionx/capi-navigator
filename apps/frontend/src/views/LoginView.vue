@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
+import AppLogo from '../components/AppLogo.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { useAuthStore } from '../stores/auth.js';
 
@@ -39,9 +40,14 @@ async function submit(): Promise<void> {
 
 <template>
   <v-container class="fill-height d-flex align-center justify-center">
-    <v-card width="400" elevation="4">
-      <v-card-title class="text-h5 pt-6 px-6">{{ t('app.title') }}</v-card-title>
-      <v-card-subtitle class="px-6">{{ t('login.title') }}</v-card-subtitle>
+    <v-card width="400" border>
+      <div class="d-flex align-center ga-3 pt-6 px-6">
+        <AppLogo :size="42" />
+        <div>
+          <div class="brand-title">{{ t('app.title') }}</div>
+          <div class="text-body-2 text-medium-emphasis">{{ t('login.title') }}</div>
+        </div>
+      </div>
       <v-form class="pa-6" @submit.prevent="submit">
         <v-text-field
           v-model="username"
@@ -76,3 +82,11 @@ async function submit(): Promise<void> {
     </v-card>
   </v-container>
 </template>
+
+<style scoped>
+.brand-title {
+  font-weight: 800;
+  font-size: 1.3rem;
+  line-height: 1.1;
+}
+</style>

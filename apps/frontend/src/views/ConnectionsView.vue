@@ -98,8 +98,8 @@ const missingRequired = (c: Connection) =>
   <v-container>
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
-        <h1 class="text-h4">{{ t('connections.title') }}</h1>
-        <p class="text-medium-emphasis">{{ t('connections.subtitle') }}</p>
+        <h1 class="page-title">{{ t('connections.title') }}</h1>
+        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('connections.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-menu v-if="isAdmin">
@@ -149,124 +149,129 @@ const missingRequired = (c: Connection) =>
       </div>
     </v-alert>
 
-    <v-data-table
-      v-else
-      v-model:expanded="expanded"
-      :headers="headers"
-      :items="store.connections"
-      :loading="store.loading"
-      item-value="name"
-      show-expand
-      data-testid="connections-table"
-    >
-      <template #[`item.name`]="{ item }">
-        <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
-        <div v-if="item.displayName" class="text-caption text-medium-emphasis">{{ item.name }}</div>
-      </template>
-      <template #[`item.authType`]="{ item }">
-        {{ t(`connections.auth.${item.authType}`) }}
-        <div v-if="item.context" class="text-caption text-medium-emphasis">{{ item.context }}</div>
-      </template>
-      <template #[`item.server`]="{ item }">
-        <span class="text-caption font-monospace">{{ item.server }}</span>
-      </template>
-      <template #[`item.status`]="{ item }">
-        <ConnectionStatusChip :connection="item" />
-      </template>
-      <template #[`item.version`]="{ item }">{{ item.status.kubernetesVersion ?? '–' }}</template>
-      <template #[`item.lastChecked`]="{ item }">
-        <span class="text-caption">
-          {{ item.status.lastCheckedAt ? d(new Date(item.status.lastCheckedAt), 'short') : '–' }}
-        </span>
-      </template>
-      <template #[`item.actions`]="{ item }">
-        <div v-if="isAdmin" class="text-no-wrap">
-          <v-btn
-            icon="mdi-connection"
-            variant="text"
-            size="small"
-            :title="t('connections.test')"
-            :aria-label="t('connections.test')"
-            :loading="testing === item.name"
-            data-testid="test-connection"
-            @click="test(item)"
-          />
-          <v-btn
-            icon="mdi-pencil"
-            variant="text"
-            size="small"
-            :title="t('connections.edit')"
-            :aria-label="t('connections.edit')"
-            @click="open('edit', item)"
-          />
-          <v-btn
-            icon="mdi-delete"
-            variant="text"
-            size="small"
-            color="error"
-            :title="t('common.delete')"
-            :aria-label="t('common.delete')"
-            @click="open('delete', item)"
-          />
-        </div>
-      </template>
-      <template #expanded-row="{ columns, item }">
-        <tr>
-          <td :colspan="columns.length" class="py-4">
-            <v-alert
-              v-if="item.status.message"
-              :type="item.status.phase === 'Reachable' ? 'warning' : 'error'"
-              variant="tonal"
-              density="comfortable"
-              class="mb-3"
-            >
-              <div class="font-weight-medium">{{ item.status.message }}</div>
-              <div v-if="item.status.hint" class="text-body-2">{{ item.status.hint }}</div>
-              <details v-if="item.status.details" class="text-caption mt-1">
-                <summary>{{ t('errors.details') }}</summary>
-                <pre class="details">{{ item.status.details }}</pre>
-              </details>
-            </v-alert>
-            <div v-if="item.status.permissions?.length">
-              <div class="text-subtitle-2 mb-1">
-                {{ t('connections.permissions') }}
-                <span class="text-medium-emphasis">
-                  ({{ t('connections.missingRequired', { n: missingRequired(item) }) }})
-                </span>
+    <v-card v-else border class="table-card">
+      <v-data-table
+        v-model:expanded="expanded"
+        :headers="headers"
+        :items="store.connections"
+        :loading="store.loading"
+        item-value="name"
+        show-expand
+        data-testid="connections-table"
+      >
+        <template #[`item.name`]="{ item }">
+          <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
+          <div v-if="item.displayName" class="text-caption text-medium-emphasis">
+            {{ item.name }}
+          </div>
+        </template>
+        <template #[`item.authType`]="{ item }">
+          {{ t(`connections.auth.${item.authType}`) }}
+          <div v-if="item.context" class="text-caption text-medium-emphasis">
+            {{ item.context }}
+          </div>
+        </template>
+        <template #[`item.server`]="{ item }">
+          <span class="text-caption font-monospace">{{ item.server }}</span>
+        </template>
+        <template #[`item.status`]="{ item }">
+          <ConnectionStatusChip :connection="item" />
+        </template>
+        <template #[`item.version`]="{ item }">{{ item.status.kubernetesVersion ?? '–' }}</template>
+        <template #[`item.lastChecked`]="{ item }">
+          <span class="text-caption">
+            {{ item.status.lastCheckedAt ? d(new Date(item.status.lastCheckedAt), 'short') : '–' }}
+          </span>
+        </template>
+        <template #[`item.actions`]="{ item }">
+          <div v-if="isAdmin" class="text-no-wrap">
+            <v-btn
+              icon="mdi-connection"
+              variant="text"
+              size="small"
+              :title="t('connections.test')"
+              :aria-label="t('connections.test')"
+              :loading="testing === item.name"
+              data-testid="test-connection"
+              @click="test(item)"
+            />
+            <v-btn
+              icon="mdi-pencil"
+              variant="text"
+              size="small"
+              :title="t('connections.edit')"
+              :aria-label="t('connections.edit')"
+              @click="open('edit', item)"
+            />
+            <v-btn
+              icon="mdi-delete"
+              variant="text"
+              size="small"
+              color="error"
+              :title="t('common.delete')"
+              :aria-label="t('common.delete')"
+              @click="open('delete', item)"
+            />
+          </div>
+        </template>
+        <template #expanded-row="{ columns, item }">
+          <tr>
+            <td :colspan="columns.length" class="py-4">
+              <v-alert
+                v-if="item.status.message"
+                :type="item.status.phase === 'Reachable' ? 'warning' : 'error'"
+                variant="tonal"
+                density="comfortable"
+                class="mb-3"
+              >
+                <div class="font-weight-medium">{{ item.status.message }}</div>
+                <div v-if="item.status.hint" class="text-body-2">{{ item.status.hint }}</div>
+                <details v-if="item.status.details" class="text-caption mt-1">
+                  <summary>{{ t('errors.details') }}</summary>
+                  <pre class="details">{{ item.status.details }}</pre>
+                </details>
+              </v-alert>
+              <div v-if="item.status.permissions?.length">
+                <div class="text-subtitle-2 mb-1">
+                  {{ t('connections.permissions') }}
+                  <span class="text-medium-emphasis">
+                    ({{ t('connections.missingRequired', { n: missingRequired(item) }) }})
+                  </span>
+                </div>
+                <v-table density="compact">
+                  <tbody>
+                    <tr
+                      v-for="p in item.status.permissions"
+                      :key="`${p.group}/${p.resource}/${p.verb}`"
+                    >
+                      <td style="width: 32px">
+                        <v-icon
+                          :icon="p.allowed ? 'mdi-check' : 'mdi-close'"
+                          :color="
+                            p.allowed ? 'success' : p.level === 'required' ? 'error' : 'warning'
+                          "
+                          size="small"
+                        />
+                      </td>
+                      <td class="font-monospace text-caption">
+                        {{ p.verb }} {{ p.group ? `${p.resource}.${p.group}` : p.resource }}
+                      </td>
+                      <td class="text-caption">{{ p.purpose }}</td>
+                      <td class="text-caption text-medium-emphasis">
+                        {{ t(`connections.level.${p.level}`) }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </v-table>
               </div>
-              <v-table density="compact">
-                <tbody>
-                  <tr
-                    v-for="p in item.status.permissions"
-                    :key="`${p.group}/${p.resource}/${p.verb}`"
-                  >
-                    <td style="width: 32px">
-                      <v-icon
-                        :icon="p.allowed ? 'mdi-check' : 'mdi-close'"
-                        :color="
-                          p.allowed ? 'success' : p.level === 'required' ? 'error' : 'warning'
-                        "
-                        size="small"
-                      />
-                    </td>
-                    <td class="font-monospace text-caption">
-                      {{ p.verb }} {{ p.group ? `${p.resource}.${p.group}` : p.resource }}
-                    </td>
-                    <td class="text-caption">{{ p.purpose }}</td>
-                    <td class="text-caption text-medium-emphasis">
-                      {{ t(`connections.level.${p.level}`) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </div>
-            <div v-else-if="!item.status.message" class="text-medium-emphasis">
-              {{ t('connections.notTested') }}
-            </div>
-          </td>
-        </tr>
-      </template>
-    </v-data-table>
+              <div v-else-if="!item.status.message" class="text-medium-emphasis">
+                {{ t('connections.notTested') }}
+              </div>
+            </td>
+          </tr>
+        </template>
+      </v-data-table>
+    </v-card>
 
     <v-dialog :model-value="dialog === 'edit'" max-width="640" @update:model-value="dialog = null">
       <ConnectionDialog

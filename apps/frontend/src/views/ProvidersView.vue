@@ -131,8 +131,8 @@ const displayName = (p: InstalledProvider) =>
   <v-container>
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
-        <h1 class="text-h4">{{ t('providers.title') }}</h1>
-        <p class="text-medium-emphasis">{{ t('providers.subtitle') }}</p>
+        <h1 class="page-title">{{ t('providers.title') }}</h1>
+        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('providers.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-chip
@@ -171,7 +171,7 @@ const displayName = (p: InstalledProvider) =>
             cols="12"
             md="4"
           >
-            <v-card variant="outlined" class="fill-height">
+            <v-card border class="fill-height">
               <v-card-item>
                 <template #prepend>
                   <v-icon
@@ -223,104 +223,106 @@ const displayName = (p: InstalledProvider) =>
         <!-- Installed providers (FP3-F-08) -->
         <h2 class="text-h6 mb-2">{{ t('providers.installed') }}</h2>
         <ErrorAlert v-if="actionError && !dialog" :error="actionError" class="mb-2" />
-        <v-data-table
-          v-model:expanded="expanded"
-          :headers="headers"
-          :items="providers"
-          :item-value="rowKey"
-          show-expand
-          :no-data-text="t('providers.noneInstalled')"
-          density="comfortable"
-          class="mb-6"
-          data-testid="providers-table"
-          hide-default-footer
-          :items-per-page="-1"
-        >
-          <template #[`item.name`]="{ item }">
-            <div class="font-weight-medium">{{ displayName(item) }}</div>
-            <div class="text-caption text-medium-emphasis">{{ item.name }}</div>
-          </template>
-          <template #[`item.kind`]="{ item }">{{ t(`providers.kinds.${item.kind}`) }}</template>
-          <template #[`item.version`]="{ item }">
-            {{ item.installedVersion ?? '–' }}
-            <span
-              v-if="item.version && item.version !== item.installedVersion"
-              class="text-caption text-medium-emphasis"
-            >
-              → {{ item.version }}
-            </span>
-          </template>
-          <template #[`item.phase`]="{ item }">
-            <v-chip :color="phaseColor(item.phase)" size="small" variant="tonal">
-              <v-progress-circular
-                v-if="item.phase === 'Installing' || item.phase === 'Upgrading'"
-                size="12"
-                width="2"
-                indeterminate
-                class="mr-1"
-              />
-              {{ t(`providers.phase.${item.phase}`) }}
-            </v-chip>
-          </template>
-          <template #[`item.actions`]="{ item }">
-            <div v-if="isAdmin" class="text-no-wrap">
-              <v-btn
-                icon="mdi-arrow-up-bold-circle-outline"
-                variant="text"
-                size="small"
-                :title="t('providers.upgrade')"
-                :aria-label="t('providers.upgrade')"
-                :disabled="!item.catalogId"
-                @click="dialog = { kind: 'upgrade', provider: item }"
-              />
-              <v-btn
-                icon="mdi-delete"
-                variant="text"
-                size="small"
-                color="error"
-                :title="t('providers.remove')"
-                :aria-label="t('providers.remove')"
-                @click="openRemove(item)"
-              />
-            </div>
-          </template>
-          <template #expanded-row="{ columns, item }">
-            <tr>
-              <td :colspan="columns.length" class="py-3">
-                <div class="text-subtitle-2 mb-1">{{ t('providers.conditions') }}</div>
-                <v-table density="compact">
-                  <tbody>
-                    <tr v-for="c in item.conditions" :key="c.type">
-                      <td style="width: 32px">
-                        <v-icon
-                          :icon="c.status === 'True' ? 'mdi-check' : 'mdi-alert-circle-outline'"
-                          :color="c.status === 'True' ? 'success' : 'warning'"
-                          size="small"
-                        />
-                      </td>
-                      <td class="font-monospace text-caption">{{ c.type }}</td>
-                      <td class="text-caption">{{ c.reason }}</td>
-                      <td class="text-caption">{{ c.message }}</td>
-                    </tr>
-                    <tr v-if="item.conditions.length === 0">
-                      <td class="text-caption text-medium-emphasis">
-                        {{ t('providers.noConditions') }}
-                      </td>
-                    </tr>
-                  </tbody>
-                </v-table>
-                <div v-if="item.featureGates" class="text-caption mt-2">
-                  {{ t('providers.featureGates') }}:
-                  <span class="font-monospace">{{
-                    Object.entries(item.featureGates)
-                      .map(([k, v]) => `${k}=${v}`)
-                      .join(', ')
-                  }}</span>
-                </div>
-              </td>
-            </tr>
-          </template>
-        </v-data-table>
+        <v-card border class="table-card">
+          <v-data-table
+            v-model:expanded="expanded"
+            :headers="headers"
+            :items="providers"
+            :item-value="rowKey"
+            show-expand
+            :no-data-text="t('providers.noneInstalled')"
+            density="comfortable"
+            class="mb-6"
+            data-testid="providers-table"
+            hide-default-footer
+            :items-per-page="-1"
+          >
+            <template #[`item.name`]="{ item }">
+              <div class="font-weight-medium">{{ displayName(item) }}</div>
+              <div class="text-caption text-medium-emphasis">{{ item.name }}</div>
+            </template>
+            <template #[`item.kind`]="{ item }">{{ t(`providers.kinds.${item.kind}`) }}</template>
+            <template #[`item.version`]="{ item }">
+              {{ item.installedVersion ?? '–' }}
+              <span
+                v-if="item.version && item.version !== item.installedVersion"
+                class="text-caption text-medium-emphasis"
+              >
+                → {{ item.version }}
+              </span>
+            </template>
+            <template #[`item.phase`]="{ item }">
+              <v-chip :color="phaseColor(item.phase)" size="small" variant="tonal">
+                <v-progress-circular
+                  v-if="item.phase === 'Installing' || item.phase === 'Upgrading'"
+                  size="12"
+                  width="2"
+                  indeterminate
+                  class="mr-1"
+                />
+                {{ t(`providers.phase.${item.phase}`) }}
+              </v-chip>
+            </template>
+            <template #[`item.actions`]="{ item }">
+              <div v-if="isAdmin" class="text-no-wrap">
+                <v-btn
+                  icon="mdi-arrow-up-bold-circle-outline"
+                  variant="text"
+                  size="small"
+                  :title="t('providers.upgrade')"
+                  :aria-label="t('providers.upgrade')"
+                  :disabled="!item.catalogId"
+                  @click="dialog = { kind: 'upgrade', provider: item }"
+                />
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  size="small"
+                  color="error"
+                  :title="t('providers.remove')"
+                  :aria-label="t('providers.remove')"
+                  @click="openRemove(item)"
+                />
+              </div>
+            </template>
+            <template #expanded-row="{ columns, item }">
+              <tr>
+                <td :colspan="columns.length" class="py-3">
+                  <div class="text-subtitle-2 mb-1">{{ t('providers.conditions') }}</div>
+                  <v-table density="compact">
+                    <tbody>
+                      <tr v-for="c in item.conditions" :key="c.type">
+                        <td style="width: 32px">
+                          <v-icon
+                            :icon="c.status === 'True' ? 'mdi-check' : 'mdi-alert-circle-outline'"
+                            :color="c.status === 'True' ? 'success' : 'warning'"
+                            size="small"
+                          />
+                        </td>
+                        <td class="font-monospace text-caption">{{ c.type }}</td>
+                        <td class="text-caption">{{ c.reason }}</td>
+                        <td class="text-caption">{{ c.message }}</td>
+                      </tr>
+                      <tr v-if="item.conditions.length === 0">
+                        <td class="text-caption text-medium-emphasis">
+                          {{ t('providers.noConditions') }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                  <div v-if="item.featureGates" class="text-caption mt-2">
+                    {{ t('providers.featureGates') }}:
+                    <span class="font-monospace">{{
+                      Object.entries(item.featureGates)
+                        .map(([k, v]) => `${k}=${v}`)
+                        .join(', ')
+                    }}</span>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </v-data-table>
+        </v-card>
 
         <!-- Catalog (FP3-F-05, FP3-F-06) -->
         <h2 class="text-h6 mb-2">{{ t('providers.catalog') }}</h2>
@@ -331,7 +333,7 @@ const displayName = (p: InstalledProvider) =>
           <v-row dense>
             <v-col v-for="entry in group.entries" :key="entry.id" cols="12" sm="6" lg="4">
               <v-card
-                variant="outlined"
+                border
                 class="fill-height d-flex flex-column"
                 :data-testid="`catalog-${entry.id}`"
               >

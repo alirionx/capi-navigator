@@ -351,7 +351,7 @@ const canPreview = computed(() => issues.value.length === 0);
 
 <template>
   <v-container>
-    <h1 class="text-h4 mb-1">{{ t('wizard.title') }}</h1>
+    <h1 class="page-title">{{ t('wizard.title') }}</h1>
     <p class="text-medium-emphasis mb-4">{{ t('wizard.subtitle') }}</p>
 
     <v-alert v-if="!connections.active" type="info" variant="tonal">{{
@@ -471,7 +471,7 @@ const canPreview = computed(() => issues.value.length === 0);
           <v-radio :label="t('wizard.modeStandard')" value="standard" />
           <v-radio :label="t('wizard.modeAio')" value="all-in-one" data-testid="mode-aio" />
         </v-radio-group>
-        <v-card variant="outlined" class="mt-4 pa-4">
+        <v-card border class="mt-4 pa-4">
           <div class="d-flex align-center mb-2">
             <div class="text-subtitle-1">{{ t('wizard.controlPlane') }}</div>
             <v-spacer />
@@ -498,7 +498,7 @@ const canPreview = computed(() => issues.value.length === 0);
           />
         </v-card>
         <template v-if="draft.mode === 'standard'">
-          <v-card v-for="(pool, i) in draft.pools" :key="i" variant="outlined" class="mt-4 pa-4">
+          <v-card v-for="(pool, i) in draft.pools" :key="i" border class="mt-4 pa-4">
             <div class="d-flex flex-wrap ga-3 align-start mb-2">
               <v-text-field
                 v-model="pool.name"

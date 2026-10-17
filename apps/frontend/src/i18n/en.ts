@@ -2,7 +2,11 @@
 export const en = {
   app: {
     title: 'CAPI Navigator',
+    subtitle: 'Cluster API web UI',
     toggleTheme: 'Toggle light/dark theme',
+    lightMode: 'Light mode',
+    darkMode: 'Dark mode',
+    mainNavigation: 'Main navigation',
     userMenu: 'User menu',
     signedInAs: 'Signed in as {username}',
     changePassword: 'Change password',
@@ -15,6 +19,11 @@ export const en = {
     credentials: 'Credentials',
     clusters: 'Clusters',
     users: 'Users',
+    groups: {
+      overview: 'Workload clusters',
+      management: 'Management',
+      administration: 'Administration',
+    },
   },
   roles: {
     viewer: 'Viewer',

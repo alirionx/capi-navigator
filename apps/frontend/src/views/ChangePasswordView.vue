@@ -49,8 +49,8 @@ async function submit(): Promise<void> {
 
 <template>
   <v-container class="d-flex justify-center">
-    <v-card width="480" class="mt-8">
-      <v-card-title class="text-h5 pt-6 px-6">{{ t('changePassword.title') }}</v-card-title>
+    <v-card width="480" class="mt-8" border>
+      <v-card-title class="page-title pt-6 px-6">{{ t('changePassword.title') }}</v-card-title>
       <v-card-text>
         <v-alert v-if="forced" type="info" variant="tonal" class="mb-4">
           {{ t('changePassword.required') }}

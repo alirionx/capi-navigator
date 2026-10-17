@@ -13,10 +13,10 @@ onMounted(() => {
 
 <template>
   <v-container>
-    <h1 class="text-h4 mb-1">{{ t('home.title') }}</h1>
+    <h1 class="page-title">{{ t('home.title') }}</h1>
     <p class="text-medium-emphasis mb-6">{{ t('home.subtitle') }}</p>
 
-    <v-card max-width="520" variant="outlined">
+    <v-card max-width="520" border>
       <v-list>
         <v-list-item data-testid="backend-status">
           <template #prepend>

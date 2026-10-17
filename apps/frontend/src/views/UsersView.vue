@@ -101,8 +101,8 @@ async function confirm(): Promise<void> {
   <v-container>
     <div class="d-flex align-center mb-4">
       <div>
-        <h1 class="text-h4">{{ t('users.title') }}</h1>
-        <p class="text-medium-emphasis">{{ t('users.subtitle') }}</p>
+        <h1 class="page-title">{{ t('users.title') }}</h1>
+        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('users.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-btn color="primary" prepend-icon="mdi-account-plus" @click="open('create')">
@@ -112,62 +112,64 @@ async function confirm(): Promise<void> {
 
     <ErrorAlert v-if="loadError" :error="loadError" class="mb-4" />
 
-    <v-data-table
-      :headers="headers"
-      :items="store.users"
-      :loading="store.loading"
-      item-value="username"
-      :no-data-text="t('users.empty')"
-      data-testid="users-table"
-    >
-      <template #[`item.username`]="{ item }">
-        {{ item.username }}
-        <v-chip v-if="isSelf(item)" size="x-small" class="ml-1">{{ t('users.you') }}</v-chip>
-      </template>
-      <template #[`item.role`]="{ item }">{{ t(`roles.${item.role}`) }}</template>
-      <template #[`item.status`]="{ item }">
-        <v-chip
-          size="small"
-          :color="item.disabled ? 'error' : 'success'"
-          variant="tonal"
-          class="mr-1"
-        >
-          {{ item.disabled ? t('users.disabled') : t('users.enabled') }}
-        </v-chip>
-        <v-chip v-if="item.mustChangePassword" size="small" color="warning" variant="tonal">
-          {{ t('users.mustChange') }}
-        </v-chip>
-      </template>
-      <template #[`item.actions`]="{ item }">
-        <v-btn
-          icon="mdi-pencil"
-          variant="text"
-          size="small"
-          :title="t('users.edit')"
-          :aria-label="t('users.edit')"
-          :disabled="isSelf(item)"
-          @click="open('edit', item)"
-        />
-        <v-btn
-          icon="mdi-lock-reset"
-          variant="text"
-          size="small"
-          :title="t('users.resetPassword')"
-          :aria-label="t('users.resetPassword')"
-          @click="open('reset', item)"
-        />
-        <v-btn
-          icon="mdi-delete"
-          variant="text"
-          size="small"
-          color="error"
-          :title="t('common.delete')"
-          :aria-label="t('common.delete')"
-          :disabled="isSelf(item)"
-          @click="open('delete', item)"
-        />
-      </template>
-    </v-data-table>
+    <v-card border class="table-card">
+      <v-data-table
+        :headers="headers"
+        :items="store.users"
+        :loading="store.loading"
+        item-value="username"
+        :no-data-text="t('users.empty')"
+        data-testid="users-table"
+      >
+        <template #[`item.username`]="{ item }">
+          {{ item.username }}
+          <v-chip v-if="isSelf(item)" size="x-small" class="ml-1">{{ t('users.you') }}</v-chip>
+        </template>
+        <template #[`item.role`]="{ item }">{{ t(`roles.${item.role}`) }}</template>
+        <template #[`item.status`]="{ item }">
+          <v-chip
+            size="small"
+            :color="item.disabled ? 'error' : 'success'"
+            variant="tonal"
+            class="mr-1"
+          >
+            {{ item.disabled ? t('users.disabled') : t('users.enabled') }}
+          </v-chip>
+          <v-chip v-if="item.mustChangePassword" size="small" color="warning" variant="tonal">
+            {{ t('users.mustChange') }}
+          </v-chip>
+        </template>
+        <template #[`item.actions`]="{ item }">
+          <v-btn
+            icon="mdi-pencil"
+            variant="text"
+            size="small"
+            :title="t('users.edit')"
+            :aria-label="t('users.edit')"
+            :disabled="isSelf(item)"
+            @click="open('edit', item)"
+          />
+          <v-btn
+            icon="mdi-lock-reset"
+            variant="text"
+            size="small"
+            :title="t('users.resetPassword')"
+            :aria-label="t('users.resetPassword')"
+            @click="open('reset', item)"
+          />
+          <v-btn
+            icon="mdi-delete"
+            variant="text"
+            size="small"
+            color="error"
+            :title="t('common.delete')"
+            :aria-label="t('common.delete')"
+            :disabled="isSelf(item)"
+            @click="open('delete', item)"
+          />
+        </template>
+      </v-data-table>
+    </v-card>
 
     <v-dialog :model-value="dialog !== null" max-width="520" @update:model-value="dialog = null">
       <v-card v-if="dialog">
