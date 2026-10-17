@@ -4,6 +4,9 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { onUnauthorized } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
 import ChangePasswordView from '../views/ChangePasswordView.vue';
+import ClusterDetailView from '../views/ClusterDetailView.vue';
+import ClustersView from '../views/ClustersView.vue';
+import ClusterWizardView from '../views/ClusterWizardView.vue';
 import ConnectionsView from '../views/ConnectionsView.vue';
 import CredentialsView from '../views/CredentialsView.vue';
 import HomeView from '../views/HomeView.vue';
@@ -36,6 +39,25 @@ export const routes: RouteRecordRaw[] = [
     name: 'home',
     component: HomeView,
     meta: { minRole: 'viewer', titleKey: 'nav.home', icon: 'mdi-home' },
+  },
+  {
+    path: '/clusters',
+    name: 'clusters',
+    component: ClustersView,
+    meta: { minRole: 'viewer', titleKey: 'nav.clusters', icon: 'mdi-server-network' },
+  },
+  {
+    path: '/clusters/new',
+    name: 'cluster-new',
+    component: ClusterWizardView,
+    meta: { minRole: 'operator' },
+  },
+  {
+    path: '/clusters/:namespace/:name',
+    name: 'cluster',
+    component: ClusterDetailView,
+    props: true,
+    meta: { minRole: 'viewer' },
   },
   {
     path: '/connections',
