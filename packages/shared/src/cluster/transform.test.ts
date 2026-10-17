@@ -207,3 +207,18 @@ describe('spec validation (acceptance FP-5)', () => {
     ).toMatch(/CIDR/);
   });
 });
+
+describe('AWS specifics', () => {
+  it('sets an empty sshKeyName without key pair, since CAPA defaults it to "default"', () => {
+    const spec = aws();
+    delete (spec.infrastructure as { sshKeyName?: string }).sshKeyName;
+    const objects = transform(ClusterSpecSchema.parse(spec), ctx);
+    const cluster = objects.find((o) => o.kind === 'AWSCluster')!;
+    expect((cluster.spec as { sshKeyName?: string }).sshKeyName).toBe('');
+    for (const t of objects.filter((o) => o.kind === 'AWSMachineTemplate')) {
+      expect(
+        (t.spec as { template: { spec: { sshKeyName?: string } } }).template.spec.sshKeyName,
+      ).toBe('');
+    }
+  });
+});

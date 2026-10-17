@@ -40,6 +40,8 @@ export const ADDON_PRESETS: AddonPreset[] = [
       'cluster:\n  name: {{ .Cluster.metadata.name }}\n',
       // RKE2 has no /etc/kubernetes/pki; the config is read from the Secret.
       'extraVolumes: []\nextraVolumeMounts: []\n',
+      // The CCM runs before cluster DNS works (nodes are still uninitialized): use the node's DNS.
+      'dnsPolicy: Default\n',
     ].join(''),
   },
   {
