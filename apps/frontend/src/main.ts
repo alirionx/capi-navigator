@@ -5,9 +5,11 @@ import { createAppI18n } from './i18n/index.js';
 import { createAppVuetify } from './plugins/vuetify.js';
 import { createAppRouter } from './router/index.js';
 
+const pinia = createPinia();
+
 createApp(App)
-  .use(createPinia())
-  .use(createAppRouter())
+  .use(pinia)
+  .use(createAppRouter(pinia))
   .use(createAppI18n())
   .use(createAppVuetify())
   .mount('#app');
