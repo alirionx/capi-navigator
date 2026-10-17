@@ -5,6 +5,7 @@ import type { Condition, MachineStatus } from '@capi-navigator/shared';
 import { isReservedLabel } from '@capi-navigator/shared';
 import { useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
+import ImageLabel from '../components/ImageLabel.vue';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
@@ -300,6 +301,54 @@ const machineHeaders = computed(() => [
             </v-col>
           </v-row>
 
+          <!-- Infrastructure (FP6-F-02): what the cluster is built from -->
+          <v-card v-if="s.infraSummary" border class="mt-4" data-testid="infra-summary">
+            <v-card-item :title="t('infra.title')" :subtitle="t('infra.subtitle')" />
+            <v-card-text>
+              <div class="d-flex flex-wrap ga-6 mb-4">
+                <div v-for="f in s.infraSummary.facts" :key="f.label">
+                  <div class="text-caption text-medium-emphasis">{{ f.label }}</div>
+                  <div class="text-body-2 font-monospace">{{ f.value }}</div>
+                </div>
+              </div>
+              <v-table density="comfortable">
+                <thead>
+                  <tr>
+                    <th>{{ t('infra.group') }}</th>
+                    <th>{{ t('infra.nodes') }}</th>
+                    <th>{{ t('infra.size') }}</th>
+                    <th>{{ t('infra.image') }}</th>
+                    <th>{{ t('infra.rootDisk') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="g in s.infraSummary.groups" :key="g.name">
+                    <td class="font-weight-medium">{{ g.name }}</td>
+                    <td>{{ g.replicas }}</td>
+                    <td>{{ g.size ?? '–' }}</td>
+                    <td class="py-2" style="max-width: 26rem">
+                      <ImageLabel
+                        v-if="g.image"
+                        :id="g.image.id"
+                        :name="g.image.name"
+                        :not-found="g.image.notFound"
+                      />
+                      <span v-else>–</span>
+                    </td>
+                    <td>
+                      <template v-if="g.rootVolumeGB"
+                        >{{ g.rootVolumeGB }} GB{{
+                          g.rootVolumeType ? ` · ${g.rootVolumeType}` : ''
+                        }}</template
+                      >
+                      <span v-else class="text-medium-emphasis">{{ t('infra.localDisk') }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </v-table>
+            </v-card-text>
+          </v-card>
+
           <v-alert
             v-for="c in failing(s.conditions)"
             :key="c.type"
@@ -341,11 +390,18 @@ const machineHeaders = computed(() => [
               </template>
               <template #[`item.size`]="{ item }">{{ item.size ?? '–' }}</template>
               <template #[`item.image`]="{ item }">
-                <span class="text-caption font-monospace" :title="item.image">{{
-                  item.image && item.image.length > 20
-                    ? item.image.slice(0, 8) + '…' + item.image.slice(-4)
-                    : (item.image ?? '–')
-                }}</span>
+                <span
+                  v-if="item.image"
+                  :title="item.image"
+                  :class="item.imageName ? '' : 'font-monospace text-caption'"
+                  >{{
+                    item.imageName ??
+                    (item.image.length > 20
+                      ? item.image.slice(0, 8) + '…' + item.image.slice(-4)
+                      : item.image)
+                  }}</span
+                >
+                <span v-else>–</span>
               </template>
               <template #[`item.rootVolumeGB`]="{ item }">{{
                 item.rootVolumeGB ? `${item.rootVolumeGB} GB` : '–'
@@ -362,6 +418,10 @@ const machineHeaders = computed(() => [
               <template #expanded-row="{ columns, item }">
                 <tr>
                   <td :colspan="columns.length" class="py-3">
+                    <div v-if="item.image" class="mb-3" style="max-width: 32rem">
+                      <div class="text-subtitle-2 mb-1">{{ t('infra.image') }}</div>
+                      <ImageLabel :id="item.image" :name="item.imageName" dense />
+                    </div>
                     <div class="text-subtitle-2 mb-2">{{ t('clusters.conditions') }}</div>
                     <v-table density="compact">
                       <tbody>

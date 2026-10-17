@@ -105,13 +105,22 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
 
   machineDetails(s) {
     const ami = s.ami as { id?: string } | undefined;
-    const root = s.rootVolume as { size?: number } | undefined;
+    const root = s.rootVolume as { size?: number; type?: string } | undefined;
     return compact({
       size: typeof s.instanceType === 'string' ? s.instanceType : undefined,
       image: ami?.id,
       rootVolumeGB: root?.size,
+      rootVolumeType: root?.type,
     });
   },
+
+  infraFacts: (infra) => [
+    { label: 'Region', value: infra.region },
+    { label: 'VPC network', value: infra.network.vpcCidr },
+    { label: 'Availability zones', value: String(infra.network.availabilityZoneCount) },
+    { label: 'API server', value: 'Network load balancer' },
+    ...(infra.sshKeyName ? [{ label: 'SSH key pair', value: infra.sshKeyName }] : []),
+  ],
 
   addonLabels(spec) {
     return {

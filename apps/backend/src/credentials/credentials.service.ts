@@ -272,6 +272,25 @@ export class CredentialsService {
     }
   }
 
+  /** Image names by ID for the cluster detail view (read-only); unknown IDs are left out. */
+  async imageNames(
+    connection: string,
+    provider: string,
+    name: string,
+    ids: string[],
+    region?: string,
+  ): Promise<Record<string, string>> {
+    const plugin = this.plugin(provider);
+    const kc = await this.clients.forConnection(connection);
+    const current = await this.read(kc, plugin, name);
+    return plugin.imageNames(
+      decode(current.secret),
+      parseSummary(current.secret),
+      ids,
+      region ? { region } : {},
+    );
+  }
+
   /**
    * For the cluster wizard (FP-5): the stored credential with its decoded Secret data. Only for
    * use inside the backend (cloud config of the OpenStack CCM); never returned to clients.

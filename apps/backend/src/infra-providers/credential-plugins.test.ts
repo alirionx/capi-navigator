@@ -134,6 +134,7 @@ function fakeOpenStack(opts: { authStatus?: number; noOctavia?: boolean } = {}):
       ],
     },
     'https://api.example/compute/os-keypairs': { keypairs: [{ keypair: { name: 'my-keys' } }] },
+    'https://api.example/image/v2/images/img-1': { id: 'img-1', name: 'Ubuntu 24.04' },
     'https://api.example/volumev3/types': {
       volume_types: [
         { id: 'vt-2', name: 'ssd', description: 'Fast' },
@@ -220,6 +221,10 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
     expect(await labels('keyPairs')).toEqual(['my-keys']);
     // FP5-F-19: root disk volume types.
     expect(await labels('volumeTypes')).toEqual(['hdd', 'ssd']);
+    // FP6-F-02: image names by ID; unknown IDs are left out.
+    expect(await plugin.imageNames(data, summary, ['img-1', 'img-x'])).toEqual({
+      'img-1': 'Ubuntu 24.04',
+    });
   });
 });
 
@@ -271,6 +276,11 @@ function fakeAws(
               NextToken: 'n',
             };
       case 'DescribeImagesCommand':
+        if (cmd.input.ImageIds) {
+          const id = (cmd.input.ImageIds as string[])[0];
+          if (id !== 'ami-new') throw err('InvalidAMIID.NotFound');
+          return { Images: [{ ImageId: id, Name: 'ubuntu-noble-24.04-amd64-server-20261001' }] };
+        }
         if ((cmd.input.Owners as string[])[0] !== '099720109477') return { Images: [] };
         return {
           Images: [
@@ -365,5 +375,13 @@ describe('AWS plugin (FP4-F-07..10)', () => {
     expect(await values('instanceTypes')).toEqual(['t3.medium', 'm5.large']);
     expect((await values('images')).slice(0, 2)).toEqual(['ami-new', 'ami-old']);
     expect(await values('keyPairs')).toEqual(['ops']);
+  });
+
+  it('resolves AMI names by ID and leaves unknown AMIs out (FP6-F-02)', async () => {
+    const plugin = new AwsCredentialPlugin(() => fakeAws());
+    const { data, summary } = plugin.normalize(input);
+    expect(await plugin.imageNames(data, summary, ['ami-new', 'ami-gone'], {})).toEqual({
+      'ami-new': 'ubuntu-noble-24.04-amd64-server-20261001',
+    });
   });
 });

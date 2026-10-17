@@ -1,5 +1,7 @@
 import type { ProviderKind } from '../catalog/providers.js';
-import type { ClusterSummary } from './api.js';
+import type { ClusterSummary, InfraSummary } from './api.js';
+import type { ClusterSpec, MachineGroup } from './spec.js';
+import { INFRA_PLUGINS } from './transform.js';
 
 /** Labels that make CAAPH roll out add-ons to a cluster (FP5-F-09; FP-8 adds user charts). */
 const ADDON_LABELS = ['capi-navigator.io/ccm', 'capi-navigator.io/csi'];
@@ -27,4 +29,38 @@ export function clustersUsing(
     default:
       return [];
   }
+}
+
+/**
+ * Infrastructure card of the detail view (FP6-F-02): facts and machine groups with their effective
+ * size, image and root disk, computed with the same plugin functions as the transformation.
+ * Image names are added by the backend.
+ */
+export function infraSummary(spec: ClusterSpec): InfraSummary {
+  const plugin = INFRA_PLUGINS[spec.infrastructure.provider];
+  const group = (
+    name: string,
+    role: 'control-plane' | 'worker',
+    replicas: number,
+    g: MachineGroup,
+  ): InfraSummary['groups'][number] => {
+    const d = plugin.machineDetails(plugin.machineTemplateSpec(spec, spec.infrastructure, g, role));
+    return {
+      name,
+      role,
+      replicas,
+      ...(d.size ? { size: d.size } : {}),
+      ...(d.image ? { image: { id: d.image } } : {}),
+      ...(d.rootVolumeGB ? { rootVolumeGB: d.rootVolumeGB } : {}),
+      ...(d.rootVolumeType ? { rootVolumeType: d.rootVolumeType } : {}),
+    };
+  };
+  const cp = spec.topology.controlPlane;
+  return {
+    facts: plugin.infraFacts(spec.infrastructure),
+    groups: [
+      group('control plane', 'control-plane', cp.replicas, cp),
+      ...spec.topology.workerPools.map((p) => group(p.name, 'worker', p.replicas, p)),
+    ],
+  };
 }

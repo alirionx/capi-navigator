@@ -49,6 +49,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   resources: { infraClusterPlural: string; machineKind: string; machinePlural: string };
   /** Size, image and root disk of a running machine from its infra machine spec (FP6-F-02). */
   machineDetails(infraMachineSpec: Record<string, unknown>): MachineDetails;
+  /** Facts for the infrastructure card of the detail view (region, network, …), from the spec. */
+  infraFacts(infra: T): { label: string; value: string }[];
   /** Labels on the Cluster that select the CCM/CSI presets (FP5-F-09, FP5-F-17). */
   addonLabels(spec: ClusterSpec): Record<string, string>;
   /** Extra objects, e.g. the ClusterResourceSet that delivers the OpenStack cloud config. */
@@ -60,6 +62,7 @@ export interface MachineDetails {
   size?: string;
   image?: string;
   rootVolumeGB?: number;
+  rootVolumeType?: string;
 }
 
 /** Kubernetes distribution (section 5, `BootstrapFlavorPlugin`): RKE2 in FP-5. */
