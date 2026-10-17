@@ -340,9 +340,9 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] `pnpm install && pnpm dev` starts backend and frontend; the start page shows “Backend: OK”.
-- [ ] `pnpm test` and `pnpm lint` run without errors.
-- [ ] `docker build` produces a working image.
+- [x] `pnpm install && pnpm dev` starts backend and frontend; the start page shows “Backend: OK”.
+- [x] `pnpm test` and `pnpm lint` run without errors.
+- [x] `docker build` produces a working image.
 
 ### FP-1: Authentication and authorization
 
