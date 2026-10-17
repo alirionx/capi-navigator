@@ -336,9 +336,18 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
         }
         case 'keyPairs': {
           const res = (await ec2.send(new DescribeKeyPairsCommand({}))) as {
-            KeyPairs?: { KeyName?: string }[];
+            KeyPairs?: { KeyName?: string; KeyFingerprint?: string; KeyType?: string }[];
           };
-          return (res.KeyPairs ?? []).map((k) => ({ value: k.KeyName!, label: k.KeyName! }));
+          // The fingerprint (public) helps to pick the key pair that matches a local key.
+          return (res.KeyPairs ?? []).map((k) => ({
+            value: k.KeyName!,
+            label: k.KeyName!,
+            details: Object.fromEntries(
+              Object.entries({ fingerprint: k.KeyFingerprint, type: k.KeyType }).filter(
+                (e): e is [string, string] => typeof e[1] === 'string',
+              ),
+            ),
+          }));
         }
         default:
           throw new CredentialInputError(`Unknown selection list "${kind}" for AWS`);

@@ -56,8 +56,13 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
     };
   };
   const cp = spec.topology.controlPlane;
+  const infra = spec.infrastructure;
   return {
-    facts: plugin.infraFacts(spec.infrastructure),
+    provider: infra.provider,
+    credentialRef: infra.credentialRef,
+    ...('region' in infra ? { region: infra.region } : {}),
+    ...(infra.sshKeyName ? { sshKeyName: infra.sshKeyName } : {}),
+    facts: plugin.infraFacts(infra),
     groups: [
       group('control plane', 'control-plane', cp.replicas, cp),
       ...spec.topology.workerPools.map((p) => group(p.name, 'worker', p.replicas, p)),

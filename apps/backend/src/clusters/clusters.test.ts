@@ -189,7 +189,14 @@ describe('status mapping (US-07)', () => {
         {
           metadata: { name: 'w1', labels: { 'capi-navigator.io/pool': 'default' } },
           spec: { providerID: 'openstack:///x' },
-          status: { phase: 'Running', nodeRef: { name: 'n1' } },
+          status: {
+            phase: 'Running',
+            nodeRef: { name: 'n1' },
+            addresses: [
+              { type: 'Hostname', address: 'n1' },
+              { type: 'InternalIP', address: '10.6.0.12' },
+            ],
+          },
         },
         {
           metadata: { name: 'cp1', labels: { 'cluster.x-k8s.io/control-plane': '' } },
@@ -210,6 +217,7 @@ describe('status mapping (US-07)', () => {
     expect(
       status.machines.map((m) => `${m.role}:${m.name}:${m.phase}:${m.nodeName ?? ''}`),
     ).toEqual(['control-plane:cp1:Provisioning:', 'worker:w1:Running:n1']);
+    expect(status.machines.find((m) => m.name === 'w1')?.internalIP).toBe('10.6.0.12');
   });
 
   it('adds size, image and root disk from the infra machine and the deployment (FP6-F-02)', () => {

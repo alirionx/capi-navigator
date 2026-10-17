@@ -110,6 +110,37 @@ export const en = {
     rootDisk: 'Root disk',
     localDisk: 'local disk of the flavor',
   },
+  bastion: {
+    title: 'Bastion host',
+    enable: 'Bastion host for SSH access',
+    enableHint:
+      'A small jump host with a public IP; the nodes stay private and accept SSH only from it (ssh -J). Can be switched off later without rebuilding nodes. Maps to bastion in the infrastructure cluster. Default: off.',
+    needsKeyPair:
+      'The bastion needs an SSH key pair of the cloud: select one in the infrastructure step (it is also used on the nodes).',
+    openStackOpen:
+      'OpenStack (CAPO) opens SSH on the bastion to the whole internet; it cannot be restricted to your networks. Only key-based login works, but switch the bastion off when you no longer need it.',
+    size: { openstack: 'Bastion flavor', aws: 'Bastion instance type' },
+    sizeHintOs: 'A small flavor is enough. Required. Maps to bastion.spec.flavor.',
+    sizeHintAws: 'Optional; default: chosen by CAPA. Maps to bastion.instanceType.',
+    sizeLocked: 'Switch the bastion off first to change its size.',
+    cidrs: 'Allowed source networks',
+    cidrsHint:
+      'Networks allowed to connect via SSH, e.g. your public IP as 203.0.113.7/32. Maps to bastion.allowedCIDRBlocks.',
+    cidrsRequired: 'Add at least one network',
+    cidrInvalid: 'Use IPv4 networks like 203.0.113.7/32',
+    openWarning: '0.0.0.0/0 allows SSH from the whole internet.',
+    publicIP: 'Public IP',
+    privateIP: 'Private IP',
+    state: 'State',
+    off: 'Off',
+    manage: 'Bastion',
+    changeTitle: 'Bastion host',
+    sshCommand: 'SSH via bastion',
+    sshHint:
+      'Login user depends on the image (ubuntu, rocky, admin for Debian). Your private key must match the key pair.',
+    noIP: 'The node has no internal IP yet.',
+    waiting: 'Waiting for the bastion address…',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',

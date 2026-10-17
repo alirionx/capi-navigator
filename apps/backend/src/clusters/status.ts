@@ -144,6 +144,7 @@ export function toMachine(m: K8sObj, infraMachine?: K8sObj): MachineStatus {
     ...(m.spec?.version ? { version: String(m.spec.version) } : {}),
     ...(m.spec?.failureDomain ? { failureDomain: String(m.spec.failureDomain) } : {}),
     ...(labels[DEPLOYMENT_LABEL] ? { deployment: labels[DEPLOYMENT_LABEL] } : {}),
+    ...internalIP(m),
     ...details,
     ...(infraRef?.kind && infraRef.name
       ? {
@@ -271,3 +272,11 @@ export function toStatus(args: {
 }
 
 export { CLUSTER_NAME_LABEL };
+
+/** First InternalIP of a machine (target of `ssh -J` via the bastion, FP5-F-20). */
+function internalIP(m: K8sObj): { internalIP?: string } {
+  const addresses =
+    (m.status?.addresses as { type?: string; address?: string }[] | undefined) ?? [];
+  const ip = addresses.find((a) => a.type === 'InternalIP')?.address;
+  return ip ? { internalIP: ip } : {};
+}

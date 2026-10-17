@@ -66,7 +66,16 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
           loadBalancerType: 'nlb',
           ingressRules: [tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] })],
         },
-        bastion: { enabled: false },
+        // FP5-F-20: CAPA restricts SSH to the bastion to the allowed networks and lets the
+        // nodes accept SSH from the bastion.
+        bastion: infra.bastion?.enabled
+          ? compact({
+              enabled: true,
+              allowedCIDRBlocks: infra.bastion.allowedCidrs,
+              instanceType: infra.bastion.machineSize,
+              ami: infra.bastion.image,
+            })
+          : { enabled: false },
       }),
     };
   },
@@ -112,6 +121,12 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       rootVolumeGB: root?.size,
       rootVolumeType: root?.type,
     });
+  },
+
+  bastionStatus(st) {
+    const b = st.bastion as
+      { publicIp?: string; privateIp?: string; instanceState?: string } | undefined;
+    return compact({ publicIP: b?.publicIp, privateIP: b?.privateIp, state: b?.instanceState });
   },
 
   infraFacts: (infra) => [
