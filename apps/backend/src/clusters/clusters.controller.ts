@@ -14,6 +14,9 @@ import {
 } from '@nestjs/common';
 import {
   ClusterCreateRequestSchema,
+  DeleteRequestSchema,
+  type DeletePreview,
+  type DeletionStatus,
   LabelsRequestSchema,
   ScaleRequestSchema,
   scalePool,
@@ -30,11 +33,13 @@ import { Audit, Roles } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { LiveChannels } from '../kube/live-channels.js';
+import { ClusterDeletionService } from './cluster-deletion.service.js';
 import { ClustersService, listWatchPaths, namespaceWatchPaths } from './clusters.service.js';
 
 type CreateBody = z.output<typeof ClusterCreateRequestSchema>;
 type ScaleBody = z.output<typeof ScaleRequestSchema>;
 type LabelsBody = z.output<typeof LabelsRequestSchema>;
+type DeleteBody = z.output<typeof DeleteRequestSchema>;
 const HEARTBEAT_MS = 25_000;
 
 /** Live status of one cluster via watches (US-07, NF-11). Key: connection/namespace/name. */
@@ -86,6 +91,7 @@ export class ClustersController {
     private readonly clusters: ClustersService,
     private readonly events: ClusterEventsService,
     private readonly listEvents: ClusterListEventsService,
+    private readonly deletion: ClusterDeletionService,
   ) {}
 
   @Roles('viewer')
@@ -207,6 +213,33 @@ export class ClustersController {
       (s) => setLabels(s, body.labels),
       body.takeOver,
     );
+  }
+
+  // ---- deletion (FP6-F-06) ----
+
+  /** What a deletion removes, shown before confirming (hard rule 6). */
+  @Roles('operator')
+  @Get(':namespace/:name/delete-preview')
+  deletePreview(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<DeletePreview> {
+    return this.deletion.preview(connection, namespace, name);
+  }
+
+  /** Confirmed by typing the cluster name; cleanup inside the cluster first (default). */
+  @Roles('operator')
+  @Post(':namespace/:name/delete')
+  @HttpCode(202)
+  @Audit({ action: 'cluster.delete', ...AUDIT, targetParam: 'name' })
+  delete(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(DeleteRequestSchema)) body: DeleteBody,
+  ): Promise<DeletionStatus> {
+    return this.deletion.delete(connection, namespace, name, body);
   }
 
   /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */

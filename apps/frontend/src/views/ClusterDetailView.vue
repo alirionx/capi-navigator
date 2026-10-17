@@ -3,7 +3,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Condition, MachineStatus } from '@capi-navigator/shared';
 import { isReservedLabel } from '@capi-navigator/shared';
+import { useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
+import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import { useAuthStore } from '../stores/auth.js';
@@ -17,10 +19,21 @@ const connections = useConnectionsStore();
 const store = useClustersStore();
 const tab = ref('overview');
 const auth = useAuthStore();
+const router = useRouter();
 const showKubeconfig = ref(false);
+const deleteOpen = ref(false);
 
 // ---- spec changes (FP6-F-05, FP6-F-07): managed clusters, operators only ----
-const canChange = computed(() => auth.can('operator') && !!s.value?.summary.managed);
+const canChange = computed(
+  () => auth.can('operator') && !!s.value?.summary.managed && !s.value.summary.deletion,
+);
+/** Deleting again is possible when nothing runs or the cleanup timed out. */
+const canDelete = computed(
+  () =>
+    auth.can('operator') &&
+    !!s.value?.summary.managed &&
+    (!s.value.summary.deletion || s.value.summary.deletion.phase === 'cleanup-timeout'),
+);
 const conn = () => connections.activeName!;
 
 const scaling = ref<{ pool: string; current: number } | null>(null);
@@ -127,6 +140,15 @@ const machineHeaders = computed(() => [
       >
       <v-spacer />
       <v-btn
+        v-if="canDelete"
+        variant="tonal"
+        color="error"
+        prepend-icon="mdi-delete-outline"
+        data-testid="delete-cluster"
+        @click="deleteOpen = true"
+        >{{ t('deletion.action') }}</v-btn
+      >
+      <v-btn
         v-if="canChange"
         variant="tonal"
         prepend-icon="mdi-tag-multiple-outline"
@@ -155,6 +177,24 @@ const machineHeaders = computed(() => [
       store.statusError
     }}</v-alert>
     <v-progress-linear v-if="!s && !store.statusError" indeterminate />
+
+    <v-alert
+      v-if="s?.summary.deletion"
+      :type="s.summary.deletion.phase === 'cleanup-timeout' ? 'warning' : 'info'"
+      variant="tonal"
+      class="mb-4"
+      data-testid="deletion-status"
+    >
+      <div class="font-weight-medium">
+        {{ t(`deletion.phase.${s.summary.deletion.phase}`) }}
+      </div>
+      <div v-if="s.summary.deletion.message" class="text-body-2">
+        {{ s.summary.deletion.message }}
+      </div>
+      <div v-if="s.summary.deletion.phase === 'cleanup-timeout'" class="text-body-2 mt-1">
+        {{ t('deletion.timeoutHint') }}
+      </div>
+    </v-alert>
 
     <template v-if="s">
       <v-tabs v-model="tab" class="mb-4">
@@ -407,6 +447,14 @@ const machineHeaders = computed(() => [
         data-testid="labels-field"
       />
     </ChangeDialog>
+    <DeleteClusterDialog
+      v-if="connections.activeName"
+      v-model="deleteOpen"
+      :connection="connections.activeName"
+      :namespace="namespace"
+      :name="name"
+      @deleted="router.push({ name: 'clusters' })"
+    />
     <KubeconfigDialog
       v-if="connections.activeName"
       v-model="showKubeconfig"

@@ -28,6 +28,15 @@ export const ConditionSchema = z.object({
 export type Condition = z.infer<typeof ConditionSchema>;
 
 /** A workload cluster in the list (FP-5 status view; FP6-F-01 extends it). */
+/** Progress of a deletion, stored as annotation on the Cluster (stateless backend). */
+export const DELETION_ANNOTATION = 'capi-navigator.io/deletion';
+export const DeletionStatusSchema = z.object({
+  phase: z.enum(['cleanup', 'cleanup-timeout', 'deleting']),
+  startedAt: z.string(),
+  message: z.string().optional(),
+});
+export type DeletionStatus = z.infer<typeof DeletionStatusSchema>;
+
 export const ClusterSummarySchema = z.object({
   name: z.string(),
   namespace: z.string(),
@@ -42,6 +51,8 @@ export const ClusterSummarySchema = z.object({
   createdAt: z.string().optional(),
   /** Created by CAPI Navigator (has a stored spec). */
   managed: z.boolean(),
+  /** Deletion in progress through the app (FP6-F-06). */
+  deletion: DeletionStatusSchema.optional(),
 });
 export type ClusterSummary = z.infer<typeof ClusterSummarySchema>;
 export const ClusterListSchema = z.array(ClusterSummarySchema);
@@ -120,3 +131,28 @@ export const ClusterStatusSchema = z.object({
 export type ClusterStatus = z.infer<typeof ClusterStatusSchema>;
 
 export const EVENT_LIMIT = 50;
+
+// ---- deletion (FP6-F-06) ----
+
+export const DeleteRequestSchema = z.object({
+  /** Must equal the cluster name (FP6-F-06). */
+  confirmName: z.string(),
+  /** Remove workloads, LoadBalancer services and volumes inside the cluster first. */
+  cleanup: z.boolean().default(true),
+});
+export type DeleteRequest = z.input<typeof DeleteRequestSchema>;
+
+/** What a deletion removes (shown before confirming, hard rule 6). */
+export const DeletePreviewSchema = z.object({
+  managed: z.boolean(),
+  /** The workload cluster API answered; otherwise no cleanup is possible. */
+  workloadReachable: z.boolean(),
+  namespaces: z.array(z.string()),
+  loadBalancers: z.array(z.string()),
+  volumes: z.array(z.string()),
+  /** Volumes with reclaim policy Retain stay in the cloud. */
+  retainedVolumes: z.array(z.string()),
+  objects: z.array(z.object({ kind: z.string(), name: z.string() })),
+  warnings: z.array(z.string()),
+});
+export type DeletePreview = z.infer<typeof DeletePreviewSchema>;
