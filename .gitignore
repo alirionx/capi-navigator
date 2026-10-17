@@ -1,0 +1,26 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.vite/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Local environment and credentials – never commit these
+.env
+.env.*
+!.env.example
+.kube/
+*.kubeconfig
+kubeconfig*
+clouds.yaml
+clouds.yml
+*.pem
+*.key
+
+# Editors / OS
+.DS_Store
+.idea/
+*.log
