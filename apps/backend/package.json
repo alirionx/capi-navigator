@@ -1,0 +1,35 @@
+{
+  "name": "@capi-navigator/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json && concurrently -k -n tsc,node \"tsc -p tsconfig.build.json --watch --preserveWatchOutput\" \"node --watch --enable-source-maps dist/main.js\"",
+    "start": "node --enable-source-maps dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@capi-navigator/shared": "workspace:*",
+    "@kubernetes/client-node": "^2.0.0",
+    "@nestjs/common": "^12.1.3",
+    "@nestjs/core": "^12.1.3",
+    "@nestjs/platform-express": "^12.1.3",
+    "express": "^5.1.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^12.1.3",
+    "@swc/core": "^1.16.18",
+    "@types/express": "^5.0.0",
+    "@types/supertest": "^7.2.1",
+    "concurrently": "^10.0.6",
+    "supertest": "^7.3.1",
+    "unplugin-swc": "^2.0.0",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}
