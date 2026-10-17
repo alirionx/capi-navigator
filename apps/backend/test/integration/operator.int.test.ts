@@ -106,6 +106,14 @@ describe('FP-3 acceptance against kind', () => {
       name: 'home',
       credentials: { authType: 'in-cluster' },
     }).expect(201);
+    // This test installs and removes everything, so it only runs on a cluster without providers
+    // and without ORC; it must never touch what someone else installed.
+    const before = await state();
+    if (before.providers.length > 0 || before.prerequisites.orc.installed) {
+      throw new Error(
+        'The kind cluster already has providers or ORC. The FP-3 test needs a clean cluster: pnpm kind:down && pnpm kind:up',
+      );
+    }
   }, 2 * MIN);
 
   afterAll(async () => {

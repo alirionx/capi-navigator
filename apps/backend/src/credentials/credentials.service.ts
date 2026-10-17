@@ -1,0 +1,545 @@
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  CoreV1Api,
+  CustomObjectsApi,
+  PatchStrategy,
+  setHeaderOptions,
+  type KubeConfig,
+  type KubernetesObject,
+  type V1Secret,
+} from '@kubernetes/client-node';
+import {
+  AWS_IDENTITY,
+  catalogEntry,
+  CredentialSummarySchema,
+  CredentialTestResultSchema,
+  MANAGED_BY_LABEL,
+  MANAGED_BY_VALUE,
+  OPENSTACK_IDENTITY,
+  type CloudsYamlInfo,
+  type CreateCredentialRequest,
+  type Credential,
+  type CredentialProvider,
+  type CredentialSummary,
+  type LookupKind,
+  type LookupResponse,
+  type ManifestPreview,
+  type UpdateCredentialRequest,
+} from '@capi-navigator/shared';
+import { stringify } from 'yaml';
+import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
+import { serverSideApply } from '../kube/apply.js';
+import { isNotFound, toHttpException } from '../kube/errors.js';
+import { listProviders } from '../operator/providers.js';
+import {
+  CredentialInputError,
+  type CredentialPlugin,
+} from '../infra-providers/credential-plugin.js';
+import {
+  cloudsYamlInfo,
+  OpenStackCredentialError,
+} from '../infra-providers/openstack/clouds-yaml.js';
+
+export const CREDENTIAL_PLUGINS = Symbol('CREDENTIAL_PLUGINS');
+
+const LABEL_CREDENTIAL = 'capi-navigator.io/credential';
+const LABEL_PROVIDER = 'capi-navigator.io/credential-provider';
+const ANN_DISPLAY = 'capi-navigator.io/display-name';
+const ANN_SUMMARY = 'capi-navigator.io/summary';
+const ANN_TEST = 'capi-navigator.io/last-test';
+const MERGE_PATCH = setHeaderOptions('Content-Type', PatchStrategy.MergePatch);
+
+const IDENTITIES = { openstack: OPENSTACK_IDENTITY, aws: AWS_IDENTITY } as const;
+/** Infrastructure cluster kinds that reference identities (for the removal check). */
+const CLUSTER_KINDS = {
+  openstack: { plural: 'openstackclusters', version: 'v1beta2' },
+  aws: { plural: 'awsclusters', version: 'v1beta2' },
+} as const;
+
+export function credentialSecretName(name: string): string {
+  return `capi-navigator-credential-${name}`;
+}
+
+interface Stored {
+  secret: V1Secret;
+  identity?: Record<string, unknown>;
+}
+
+/**
+ * Infrastructure credentials on a management cluster (FP-4): one Secret in the provider namespace
+ * plus a cluster-scoped identity (ADR-0002). Secret values never leave the backend (FP4-F-06).
+ */
+@Injectable()
+export class CredentialsService {
+  private readonly plugins: Map<CredentialProvider, CredentialPlugin>;
+
+  constructor(
+    private readonly clients: ManagementClusterClients,
+    @Inject(CREDENTIAL_PLUGINS) plugins: CredentialPlugin[],
+  ) {
+    this.plugins = new Map(plugins.map((p) => [p.provider, p]));
+  }
+
+  cloudsYamlInfo(text: string): CloudsYamlInfo {
+    try {
+      return cloudsYamlInfo(text);
+    } catch (err) {
+      if (err instanceof OpenStackCredentialError)
+        throw inputError(new CredentialInputError(err.message, err.hint, 'openstack.cloudsYaml'));
+      throw err;
+    }
+  }
+
+  async list(connection: string): Promise<Credential[]> {
+    const kc = await this.clients.forConnection(connection);
+    return this.kube('List credentials', async () => {
+      const secrets = await kc
+        .makeApiClient(CoreV1Api)
+        .listSecretForAllNamespaces({ labelSelector: LABEL_PROVIDER });
+      const identities = new Map<string, Record<string, unknown>>();
+      for (const provider of this.plugins.keys()) {
+        for (const id of await this.listIdentities(kc, provider)) {
+          identities.set(`${provider}/${(id.metadata as { name: string }).name}`, id);
+        }
+      }
+      return secrets.items
+        .map((secret) => {
+          const provider = secret.metadata?.labels?.[LABEL_PROVIDER] as CredentialProvider;
+          const name = secret.metadata?.labels?.[LABEL_CREDENTIAL] ?? '';
+          if (!this.plugins.has(provider)) return undefined;
+          return this.toCredential(provider, {
+            secret,
+            identity: identities.get(`${provider}/${name}`),
+          });
+        })
+        .filter((c): c is Credential => !!c)
+        .sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
+    });
+  }
+
+  async get(connection: string, provider: string, name: string): Promise<Credential> {
+    const plugin = this.plugin(provider);
+    const kc = await this.clients.forConnection(connection);
+    return this.toCredential(plugin.provider, await this.read(kc, plugin, name));
+  }
+
+  /** FP-4, hard rule 6: what will be applied; Secret values are masked. */
+  async preview(connection: string, req: CreateCredentialRequest): Promise<ManifestPreview> {
+    const plugin = this.plugin(req.provider);
+    const kc = await this.clients.forConnection(connection);
+    const namespace = await this.providerNamespace(kc, plugin);
+    const { objects } = this.build(plugin, req, namespace);
+    return preview(objects);
+  }
+
+  async create(connection: string, req: CreateCredentialRequest): Promise<Credential> {
+    const plugin = this.plugin(req.provider);
+    const kc = await this.clients.forConnection(connection);
+    const namespace = await this.providerNamespace(kc, plugin);
+    const existing = await this.readSecret(kc, namespace, credentialSecretName(req.name));
+    if (existing) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Credential "${req.name}" already exists`,
+      });
+    }
+    const { objects, data, summary } = this.build(plugin, req, namespace);
+    await this.kube(`Store credential ${req.name}`, () => serverSideApply(kc, objects));
+    return this.runTest(kc, plugin, req.name, namespace, data, summary);
+  }
+
+  async update(
+    connection: string,
+    provider: string,
+    name: string,
+    req: UpdateCredentialRequest,
+  ): Promise<Credential> {
+    const plugin = this.plugin(provider);
+    const other = plugin.provider === 'aws' ? req.openstack : req.aws;
+    if (other)
+      throw new BadRequestException(`The credential "${name}" is a ${plugin.provider} credential`);
+    const kc = await this.clients.forConnection(connection);
+    const current = await this.read(kc, plugin, name);
+    const namespace = current.secret.metadata!.namespace!;
+    const input = plugin.provider === 'aws' ? req.aws : req.openstack;
+    const currentSummary = parseSummary(current.secret);
+    const allowed =
+      req.allowedNamespaces ??
+      (current.identity ? plugin.allowedNamespaces(current.identity) : ['default']);
+    const displayName =
+      req.displayName ?? current.secret.metadata?.annotations?.[ANN_DISPLAY] ?? '';
+
+    let data = decode(current.secret);
+    let summary = currentSummary;
+    if (input) {
+      const n = this.normalize(plugin, input);
+      data = n.data;
+      summary = n.summary;
+    }
+    const objects = this.objects(plugin, name, namespace, displayName, allowed, data, summary);
+    await this.kube(`Update credential ${name}`, () => serverSideApply(kc, objects));
+    return input
+      ? this.runTest(kc, plugin, name, namespace, data, summary)
+      : this.get(connection, plugin.provider, name);
+  }
+
+  async remove(connection: string, provider: string, name: string): Promise<void> {
+    const plugin = this.plugin(provider);
+    const kc = await this.clients.forConnection(connection);
+    const current = await this.read(kc, plugin, name);
+    const users = await this.clustersUsing(kc, plugin.provider, name);
+    if (users.length > 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `${users.length} workload cluster(s) still use credential "${name}"`,
+        hint: `Delete these clusters first: ${users.join(', ')}`,
+      });
+    }
+    const def = IDENTITIES[plugin.provider];
+    await this.kube(`Delete credential ${name}`, async () => {
+      await kc
+        .makeApiClient(CustomObjectsApi)
+        .deleteClusterCustomObject({
+          group: def.group,
+          version: def.version,
+          plural: def.plural,
+          name,
+        })
+        .catch((err: unknown) => {
+          if (!isNotFound(err)) throw err;
+        });
+      await kc.makeApiClient(CoreV1Api).deleteNamespacedSecret({
+        name: current.secret.metadata!.name!,
+        namespace: current.secret.metadata!.namespace!,
+      });
+    });
+  }
+
+  /** FP4-F-04, FP4-F-09: test and store the result on the Secret. */
+  async test(connection: string, provider: string, name: string): Promise<Credential> {
+    const plugin = this.plugin(provider);
+    const kc = await this.clients.forConnection(connection);
+    const current = await this.read(kc, plugin, name);
+    return this.runTest(
+      kc,
+      plugin,
+      name,
+      current.secret.metadata!.namespace!,
+      decode(current.secret),
+      parseSummary(current.secret),
+    );
+  }
+
+  /** FP4-F-05, FP4-F-10: selection lists for the cluster wizard. */
+  async lookup(
+    connection: string,
+    provider: string,
+    name: string,
+    kind: string,
+    region?: string,
+  ): Promise<LookupResponse> {
+    const plugin = this.plugin(provider);
+    if (!(plugin.lookupKinds as readonly string[]).includes(kind)) {
+      throw new NotFoundException(`Unknown selection list "${kind}" for ${plugin.provider}`);
+    }
+    const kc = await this.clients.forConnection(connection);
+    const current = await this.read(kc, plugin, name);
+    try {
+      const summary = parseSummary(current.secret);
+      const options = await plugin.lookup(
+        decode(current.secret),
+        summary,
+        kind as LookupKind,
+        region ? { region } : {},
+      );
+      const r = region ?? summary.region;
+      return { kind, ...(r ? { region: r } : {}), options };
+    } catch (err) {
+      if (err instanceof CredentialInputError) {
+        throw new HttpException(
+          { statusCode: 502, message: err.message, ...(err.hint ? { hint: err.hint } : {}) },
+          502,
+        );
+      }
+      throw err;
+    }
+  }
+
+  // ---- helpers ----
+
+  private plugin(provider: string): CredentialPlugin {
+    const plugin = this.plugins.get(provider as CredentialProvider);
+    if (!plugin) throw new NotFoundException(`Unknown provider "${provider}"`);
+    return plugin;
+  }
+
+  private normalize(plugin: CredentialPlugin, input: unknown) {
+    try {
+      return plugin.normalize(input);
+    } catch (err) {
+      if (err instanceof CredentialInputError) throw inputError(err);
+      throw err;
+    }
+  }
+
+  private build(plugin: CredentialPlugin, req: CreateCredentialRequest, namespace: string) {
+    const input = req.provider === 'aws' ? req.aws : req.openstack;
+    const { data, summary } = this.normalize(plugin, input);
+    const objects = this.objects(
+      plugin,
+      req.name,
+      namespace,
+      req.displayName ?? '',
+      req.allowedNamespaces ?? ['default'],
+      data,
+      summary,
+    );
+    return { objects, data, summary };
+  }
+
+  private objects(
+    plugin: CredentialPlugin,
+    name: string,
+    namespace: string,
+    displayName: string,
+    allowedNamespaces: string[],
+    data: Record<string, string>,
+    summary: CredentialSummary,
+  ): KubernetesObject[] {
+    const labels = {
+      [MANAGED_BY_LABEL]: MANAGED_BY_VALUE,
+      [LABEL_CREDENTIAL]: name,
+      [LABEL_PROVIDER]: plugin.provider,
+    };
+    const secretRef = { name: credentialSecretName(name), namespace };
+    const secret = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        ...secretRef,
+        labels,
+        annotations: { [ANN_DISPLAY]: displayName, [ANN_SUMMARY]: JSON.stringify(summary) },
+      },
+      type: 'Opaque',
+      data: Object.fromEntries(
+        Object.entries(data).map(([k, v]) => [k, Buffer.from(v, 'utf8').toString('base64')]),
+      ),
+    };
+    const identity = plugin.identity(name, secretRef, allowedNamespaces) as KubernetesObject;
+    identity.metadata = { ...identity.metadata, labels };
+    return [secret, identity];
+  }
+
+  private async runTest(
+    kc: KubeConfig,
+    plugin: CredentialPlugin,
+    name: string,
+    namespace: string,
+    data: Record<string, string>,
+    summary: CredentialSummary,
+  ): Promise<Credential> {
+    const result = await plugin.test(data, summary);
+    await this.kube('Store the test result', () =>
+      kc.makeApiClient(CoreV1Api).patchNamespacedSecret(
+        {
+          name: credentialSecretName(name),
+          namespace,
+          body: { metadata: { annotations: { [ANN_TEST]: JSON.stringify(result) } } },
+        },
+        MERGE_PATCH,
+      ),
+    );
+    return this.toCredential(plugin.provider, await this.read(kc, plugin, name));
+  }
+
+  /** The namespace of the installed infrastructure provider (FP-3), where Secrets live. */
+  private async providerNamespace(kc: KubeConfig, plugin: CredentialPlugin): Promise<string> {
+    const entry = catalogEntry(plugin.catalogId)!;
+    const providers = await this.kube('Read providers', () => listProviders(kc));
+    const installed = providers.find(
+      (p) => p.kind === entry.kind && p.metadata.name === entry.name,
+    );
+    if (!installed) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `${entry.displayName} is not installed on this management cluster`,
+        hint: 'Install it on the Providers page first.',
+      });
+    }
+    return installed.metadata.namespace;
+  }
+
+  private async read(kc: KubeConfig, plugin: CredentialPlugin, name: string): Promise<Stored> {
+    const secrets = await this.kube('Read credential', () =>
+      kc.makeApiClient(CoreV1Api).listSecretForAllNamespaces({
+        labelSelector: `${LABEL_PROVIDER}=${plugin.provider},${LABEL_CREDENTIAL}=${name}`,
+      }),
+    );
+    const secret = secrets.items[0];
+    if (!secret) throw new NotFoundException(`Credential "${name}" not found`);
+    const def = IDENTITIES[plugin.provider];
+    const identity = await kc
+      .makeApiClient(CustomObjectsApi)
+      .getClusterCustomObject({ group: def.group, version: def.version, plural: def.plural, name })
+      .then(
+        (o) => o as Record<string, unknown>,
+        (err: unknown) => {
+          if (isNotFound(err)) return undefined;
+          throw toHttpException(err, 'Read identity');
+        },
+      );
+    return { secret, ...(identity ? { identity } : {}) };
+  }
+
+  private async readSecret(
+    kc: KubeConfig,
+    namespace: string,
+    name: string,
+  ): Promise<V1Secret | undefined> {
+    try {
+      return await kc.makeApiClient(CoreV1Api).readNamespacedSecret({ name, namespace });
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw toHttpException(err, 'Read credential');
+    }
+  }
+
+  private async listIdentities(
+    kc: KubeConfig,
+    provider: CredentialProvider,
+  ): Promise<Record<string, unknown>[]> {
+    const def = IDENTITIES[provider];
+    try {
+      const res = (await kc.makeApiClient(CustomObjectsApi).listClusterCustomObject({
+        group: def.group,
+        version: def.version,
+        plural: def.plural,
+        labelSelector: LABEL_CREDENTIAL,
+      })) as { items: Record<string, unknown>[] };
+      return res.items;
+    } catch (err) {
+      if (isNotFound(err)) return []; // provider (CRD) not installed
+      throw err;
+    }
+  }
+
+  private async clustersUsing(
+    kc: KubeConfig,
+    provider: CredentialProvider,
+    name: string,
+  ): Promise<string[]> {
+    const def = CLUSTER_KINDS[provider];
+    try {
+      const res = (await kc.makeApiClient(CustomObjectsApi).listClusterCustomObject({
+        group: 'infrastructure.cluster.x-k8s.io',
+        version: def.version,
+        plural: def.plural,
+      })) as {
+        items: {
+          metadata: { name: string; namespace: string };
+          spec?: { identityRef?: { name?: string } };
+        }[];
+      };
+      return res.items
+        .filter((c) => c.spec?.identityRef?.name === name)
+        .map((c) => `${c.metadata.namespace}/${c.metadata.name}`);
+    } catch (err) {
+      if (isNotFound(err)) return [];
+      throw toHttpException(err, 'List workload clusters');
+    }
+  }
+
+  private toCredential(provider: CredentialProvider, { secret, identity }: Stored): Credential {
+    const plugin = this.plugin(provider);
+    const def = IDENTITIES[provider];
+    const ann = secret.metadata?.annotations ?? {};
+    const name = secret.metadata?.labels?.[LABEL_CREDENTIAL] ?? '';
+    const lastTest = parseJson(ann[ANN_TEST], CredentialTestResultSchema);
+    return {
+      name,
+      provider,
+      ...(ann[ANN_DISPLAY] ? { displayName: ann[ANN_DISPLAY] } : {}),
+      allowedNamespaces: identity ? plugin.allowedNamespaces(identity) : [],
+      summary: parseSummary(secret),
+      identity: { apiVersion: def.apiVersion, kind: def.kind, name },
+      secret: { name: secret.metadata!.name!, namespace: secret.metadata!.namespace! },
+      ...(secret.metadata?.creationTimestamp
+        ? { createdAt: new Date(secret.metadata.creationTimestamp).toISOString() }
+        : {}),
+      ...(lastTest ? { lastTest } : {}),
+    };
+  }
+
+  private async kube<T>(context: string, fn: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+      throw toHttpException(err, context);
+    }
+  }
+}
+
+function inputError(err: CredentialInputError): BadRequestException {
+  return new BadRequestException({
+    statusCode: 400,
+    message: err.message,
+    ...(err.hint ? { hint: err.hint } : {}),
+    ...(err.field ? { fieldErrors: { [err.field]: [err.message] } } : {}),
+  });
+}
+
+function decode(secret: V1Secret): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(secret.data ?? {}).map(([k, v]) => [
+      k,
+      Buffer.from(v, 'base64').toString('utf8'),
+    ]),
+  );
+}
+
+function parseJson<T>(
+  text: string | undefined,
+  schema: { safeParse(v: unknown): { success: boolean; data?: T } },
+): T | undefined {
+  if (!text) return undefined;
+  try {
+    const r = schema.safeParse(JSON.parse(text));
+    return r.success ? r.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseSummary(secret: V1Secret): CredentialSummary {
+  return parseJson(secret.metadata?.annotations?.[ANN_SUMMARY], CredentialSummarySchema) ?? {};
+}
+
+function preview(objects: KubernetesObject[]): ManifestPreview {
+  const masked = objects.map((o) =>
+    o.kind === 'Secret'
+      ? {
+          ...o,
+          data: Object.fromEntries(
+            Object.keys((o as { data?: object }).data ?? {}).map((k) => [k, '********']),
+          ),
+        }
+      : o,
+  );
+  return {
+    yaml: masked.map((o) => stringify(o, { lineWidth: 0 })).join('---\n'),
+    objects: objects.map((o) => ({
+      kind: o.kind ?? '',
+      name: o.metadata?.name ?? '',
+      ...(o.metadata?.namespace ? { namespace: o.metadata.namespace } : {}),
+    })),
+    warnings: [],
+  };
+}
