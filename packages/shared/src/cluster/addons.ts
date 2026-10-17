@@ -52,7 +52,7 @@ export const ADDON_PRESETS: AddonPreset[] = [
     version: '2.37.1',
     releaseNamespace: 'kube-system',
     valuesTemplate: [
-      'secret:\n  enabled: true\n  create: false\n  name: cloud-config\n',
+      'secret:\n  enabled: true\n  create: false\n  name: cloud-config\n  filename: cloud.conf\n',
       'storageClass:\n  enabled: true\n  delete:\n    isDefault: true\n    allowVolumeExpansion: true\n',
       'clusterID: {{ .Cluster.metadata.name }}\n',
     ].join(''),

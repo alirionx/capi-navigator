@@ -272,6 +272,35 @@ export class CredentialsService {
     }
   }
 
+  /**
+   * For the cluster wizard (FP-5): the stored credential with its decoded Secret data. Only for
+   * use inside the backend (cloud config of the OpenStack CCM); never returned to clients.
+   */
+  async resolve(
+    connection: string,
+    provider: string,
+    name: string,
+  ): Promise<{ credential: Credential; data: Record<string, string> }> {
+    const plugin = this.plugin(provider);
+    const kc = await this.clients.forConnection(connection);
+    const stored = await this.read(kc, plugin, name);
+    return { credential: this.toCredential(plugin.provider, stored), data: decode(stored.secret) };
+  }
+
+  /** Adds a namespace to the credential's allowed namespaces (ADR-0002). */
+  async allowNamespace(
+    connection: string,
+    provider: string,
+    name: string,
+    namespace: string,
+  ): Promise<Credential> {
+    const current = await this.get(connection, provider, name);
+    if (current.allowedNamespaces.includes(namespace)) return current;
+    return this.update(connection, provider, name, {
+      allowedNamespaces: [...current.allowedNamespaces, namespace],
+    });
+  }
+
   // ---- helpers ----
 
   private plugin(provider: string): CredentialPlugin {
