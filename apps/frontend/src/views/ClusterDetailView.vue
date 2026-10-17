@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Condition, MachineStatus } from '@capi-navigator/shared';
+import ResourceTree from '../components/ResourceTree.vue';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 
@@ -99,6 +100,7 @@ const machineHeaders = computed(() => [
     <template v-if="s">
       <v-tabs v-model="tab" class="mb-4">
         <v-tab value="overview">{{ t('clusters.overview') }}</v-tab>
+        <v-tab value="tree" data-testid="tab-tree">{{ t('clusters.tree') }}</v-tab>
         <v-tab value="machines">
           {{ t('clusters.machines') }}
           <v-chip size="x-small" class="ml-2" variant="tonal">{{ s.machines.length }}</v-chip>
@@ -181,6 +183,11 @@ const machineHeaders = computed(() => [
           >
             <strong>{{ c.type }}</strong> ({{ c.reason }}): {{ c.message }}
           </v-alert>
+        </v-window-item>
+
+        <!-- Resource tree (FP6-F-03) -->
+        <v-window-item value="tree">
+          <ResourceTree :status="s" />
         </v-window-item>
 
         <!-- Machines -->
