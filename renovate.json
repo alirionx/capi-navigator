@@ -1,0 +1,22 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "Vuetify 3 is required by docs/requirements.md; no major upgrade without a decision.",
+      "matchPackageNames": ["vuetify"],
+      "allowedVersions": "<4"
+    },
+    {
+      "description": "TypeScript is capped by typescript-eslint support, see docs/adr/0001.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1"
+    },
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "dev dependencies (non-major)"
+    }
+  ]
+}
