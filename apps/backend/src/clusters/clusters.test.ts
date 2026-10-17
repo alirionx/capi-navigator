@@ -1,6 +1,11 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import { ClusterSpecSchema, type Credential, type OperatorState } from '@capi-navigator/shared';
+import {
+  ClusterSpecSchema,
+  transform,
+  type Credential,
+  type OperatorState,
+} from '@capi-navigator/shared';
 import request from 'supertest';
 import { parse } from 'yaml';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -288,19 +293,38 @@ describe('status mapping (US-07)', () => {
 // ---- HTTP: preview and create with simulated management cluster ----
 
 const k8s = vi.hoisted(() => ({
-  applied: [] as { kinds: string[]; dryRun: boolean }[],
+  applied: [] as { kinds: string[]; dryRun: boolean; force?: boolean }[],
   namespaces: new Set<string>(),
   existingCluster: false,
+  /** Stored spec annotation of the existing cluster (FP-6 changes). */
+  storedSpec: undefined as string | undefined,
+  /** Live objects by "Kind/name" for change previews. */
+  live: new Map<string, unknown>(),
+  /** Simulated server-side apply conflicts by "Kind/name". */
+  conflicts: new Map<string, { managers: string[]; fields: string[] }>(),
 }));
-vi.mock('../kube/apply.js', () => ({
+vi.mock('../kube/apply.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../kube/apply.js')>()),
   serverSideApply: async (
     _kc: unknown,
     objects: { kind: string }[],
-    opts: { dryRun?: boolean } = {},
+    opts: { dryRun?: boolean; force?: boolean } = {},
   ) => {
-    k8s.applied.push({ kinds: objects.map((o) => o.kind), dryRun: !!opts.dryRun });
+    k8s.applied.push({
+      kinds: objects.map((o) => o.kind),
+      dryRun: !!opts.dryRun,
+      ...(opts.force ? { force: true } : {}),
+    });
     return objects;
   },
+  readLive: async (_kc: unknown, o: { kind: string; metadata: { name: string } }) =>
+    k8s.live.get(`${o.kind}/${o.metadata.name}`),
+  dryRunApply: async (_kc: unknown, o: { kind: string; metadata: { name: string } }) => ({
+    result: o,
+    ...(k8s.conflicts.has(`${o.kind}/${o.metadata.name}`)
+      ? { conflict: k8s.conflicts.get(`${o.kind}/${o.metadata.name}`) }
+      : {}),
+  }),
 }));
 const notFound = () => Object.assign(new Error('nf'), { code: 404 });
 const fakeKc = {
@@ -311,7 +335,17 @@ const fakeKc = {
     },
     getNamespacedCustomObject: async ({ plural, name }: { plural: string; name: string }) => {
       if (plural === 'clusters' && k8s.existingCluster) {
-        return { metadata: { name, namespace: 'team-a' }, spec: {}, status: { phase: 'Pending' } };
+        return {
+          metadata: {
+            name,
+            namespace: 'team-a',
+            ...(k8s.storedSpec
+              ? { annotations: { 'capi-navigator.io/cluster-spec': k8s.storedSpec } }
+              : {}),
+          },
+          spec: {},
+          status: { phase: 'Pending' },
+        };
       }
       throw notFound();
     },
@@ -570,5 +604,119 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
 
     k8s.existingCluster = false;
     await http().get(url).set('Cookie', operatorCookie).expect(404);
+  });
+
+  it('scales a pool: preview shows only changed objects, drift needs a take-over (FP6-F-05)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      addons: { cloudControllerManager: false, csiDriver: false },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    // Live state = what the app applied for the current spec.
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, o);
+    }
+    const url = '/api/connections/home/clusters/team-a/demo/scale';
+    const body = { pool: 'default', replicas: 3 };
+    await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', viewerCookie)
+      .send(body)
+      .expect(403);
+
+    const preview = await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send(body)
+      .expect(200);
+    expect(
+      preview.body.diffs.map((d: { kind: string; change: string }) => `${d.kind}:${d.change}`),
+    ).toEqual(['Cluster:update', 'MachineDeployment:update']);
+    const md = preview.body.diffs[1];
+    expect(md.before).toMatch(/replicas: 2/);
+    expect(md.after).toMatch(/replicas: 3/);
+
+    k8s.applied = [];
+    await http().post(url).set(CSRF).set('Cookie', operatorCookie).send(body).expect(200);
+    expect(k8s.applied.filter((a) => !a.dryRun)).toEqual([
+      { kinds: ['Cluster', 'MachineDeployment'], dryRun: false },
+    ]);
+
+    // Drift: someone scaled with kubectl; applying needs an explicit take-over.
+    k8s.conflicts.set('MachineDeployment/demo-default', {
+      managers: ['kubectl-scale'],
+      fields: ['.spec.replicas'],
+    });
+    const drifted = await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send(body)
+      .expect(200);
+    expect(drifted.body.drift).toEqual([
+      {
+        kind: 'MachineDeployment',
+        name: 'demo-default',
+        managers: ['kubectl-scale'],
+        fields: ['.spec.replicas'],
+        blocking: true,
+      },
+    ]);
+    await http().post(url).set(CSRF).set('Cookie', operatorCookie).send(body).expect(409);
+    k8s.applied = [];
+    await http()
+      .post(url)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ ...body, takeOver: true })
+      .expect(200);
+    expect(k8s.applied.filter((a) => !a.dryRun)[0]?.force).toBe(true);
+
+    const actions = fake.auditEvents.map((e) => e.spec.action);
+    expect(actions.filter((a) => a === 'cluster.scale')).toHaveLength(3);
+    expect(actions).not.toContain('cluster.scale.preview');
+
+    // Unknown pool and external clusters.
+    await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ pool: 'nope', replicas: 1 })
+      .expect(400);
+    k8s.storedSpec = undefined;
+    await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send(body)
+      .expect(409);
+    k8s.conflicts.clear();
+    k8s.live.clear();
+    k8s.existingCluster = false;
+  });
+
+  it('edits labels but refuses reserved prefixes (FP6-F-07)', async () => {
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(ClusterSpecSchema.parse(OS_SPEC));
+    const url = '/api/connections/home/clusters/team-a/demo/labels';
+    await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ labels: { 'capi-navigator.io/ccm': 'x' } })
+      .expect(400);
+    const res = await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ labels: { env: 'prod' } })
+      .expect(200);
+    const cluster = res.body.diffs.find((d: { kind: string }) => d.kind === 'Cluster');
+    expect(cluster.after).toMatch(/env: prod/);
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
   });
 });

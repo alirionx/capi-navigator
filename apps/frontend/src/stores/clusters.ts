@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import {
+  ClusterChangePreviewSchema,
   ClusterListSchema,
   ClusterPreviewSchema,
   ClusterStatusSchema,
   ClusterSummarySchema,
+  type ClusterChangePreview,
   type ClusterCreateRequest,
+  type LabelsRequest,
+  type ScaleRequest,
   type ClusterPreview,
   type ClusterStatus,
   type ClusterSummary,
@@ -116,6 +120,24 @@ export const useClustersStore = defineStore('clusters', () => {
   const create = (connection: string, req: ClusterCreateRequest): Promise<ClusterSummary> =>
     api('POST', base(connection), ClusterSummarySchema, req);
 
+  const clusterPath = (connection: string, namespace: string, name: string) =>
+    `${base(connection)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`;
+
+  /** Spec changes with preview (FP6-F-05, FP6-F-07; hard rules 4 and 6). */
+  const scalePreview = (c: string, ns: string, n: string, req: ScaleRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/scale/preview`, ClusterChangePreviewSchema, req);
+  const scale = (c: string, ns: string, n: string, req: ScaleRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/scale`, ClusterChangePreviewSchema, req);
+  const labelsPreview = (c: string, ns: string, n: string, req: LabelsRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/labels/preview`, ClusterChangePreviewSchema, req);
+  const setLabels = (
+    c: string,
+    ns: string,
+    n: string,
+    req: LabelsRequest,
+  ): Promise<ClusterChangePreview> =>
+    api('POST', `${clusterPath(c, ns, n)}/labels`, ClusterChangePreviewSchema, req);
+
   /** Live status of one cluster (US-07, FP6-F-02). */
   function watch(connection: string, namespace: string, name: string): void {
     unwatch();
@@ -151,6 +173,10 @@ export const useClustersStore = defineStore('clusters', () => {
     unwatchList,
     preview,
     create,
+    scalePreview,
+    scale,
+    labelsPreview,
+    setLabels,
     watch,
     unwatch,
   };

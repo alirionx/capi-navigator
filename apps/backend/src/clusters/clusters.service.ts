@@ -1,4 +1,10 @@
-import { ConflictException, HttpException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   CoreV1Api,
   CustomObjectsApi,
@@ -8,6 +14,13 @@ import {
 import {
   buildAddonPreset,
   catalogEntry,
+  CLUSTER_SPEC_ANNOTATION,
+  ClusterSpecSchema,
+  SpecChangeError,
+  stableStringify,
+  type ClusterChangePreview,
+  type Drift,
+  type ObjectDiff,
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
   MANAGED_BY_LABEL,
@@ -21,6 +34,7 @@ import {
   type ManifestObject,
 } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
+import { ZodError } from 'zod';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { CredentialsService } from '../credentials/credentials.service.js';
 import {
@@ -28,7 +42,7 @@ import {
   buildCloudConfigResourceSetSecret,
 } from '../infra-providers/openstack/cloud-config.js';
 import { readStoredCloud } from '../infra-providers/openstack/clouds-yaml.js';
-import { serverSideApply } from '../kube/apply.js';
+import { dryRunApply, normalizeForDiff, readLive, serverSideApply } from '../kube/apply.js';
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { OperatorService } from '../operator/operator.service.js';
@@ -306,6 +320,126 @@ export class ClustersService {
       });
     }
     return Buffer.from(value, 'base64').toString('utf8');
+  }
+
+  // ---- spec changes (FP6-F-05, FP6-F-07; hard rules 4 and 6) ----
+
+  /** The stored spec of a cluster created by the app; external clusters are read-only. */
+  async storedSpec(connection: string, namespace: string, name: string): Promise<ClusterSpec> {
+    const kc = await this.clients.forConnection(connection);
+    const cluster = await this.getCluster(kc, namespace, name);
+    if (!cluster) throw new NotFoundException(`Cluster ${namespace}/${name} not found`);
+    const raw = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
+    if (!raw) {
+      throw new ConflictException({
+        message: `Cluster ${namespace}/${name} was created outside CAPI Navigator`,
+        hint: 'Clusters without a stored cluster spec are shown read-only.',
+      });
+    }
+    const parsed = ClusterSpecSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success) {
+      throw new ConflictException({
+        message: `The stored cluster spec of ${namespace}/${name} is invalid`,
+        hint: 'It was probably edited outside the app; restore the annotation or recreate the cluster.',
+        details: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '),
+      });
+    }
+    return parsed.data;
+  }
+
+  /**
+   * Preview of a spec change: the manifests are regenerated and dry-run applied object by object;
+   * only objects that change are shown (and later applied). Fields owned by other managers are
+   * reported as drift (hard rule 4).
+   */
+  async changePreview(
+    connection: string,
+    namespace: string,
+    name: string,
+    mutate: (spec: ClusterSpec) => ClusterSpec,
+  ): Promise<ClusterChangePreview> {
+    const { preview } = await this.changePlan(connection, namespace, name, mutate);
+    return preview;
+  }
+
+  /** Applies only the changed objects; drift on them needs `takeOver` (hard rule 4). */
+  async applyChange(
+    connection: string,
+    namespace: string,
+    name: string,
+    mutate: (spec: ClusterSpec) => ClusterSpec,
+    takeOver: boolean,
+  ): Promise<ClusterChangePreview> {
+    const { preview, changed, kc } = await this.changePlan(connection, namespace, name, mutate);
+    if (preview.blockers.length > 0) {
+      throw new ConflictException({
+        message: 'The change cannot be applied',
+        hint: preview.blockers.join(' '),
+      });
+    }
+    if (preview.drift.some((d) => d.blocking) && !takeOver) {
+      throw new ConflictException({
+        message: 'Fields of this change were modified outside CAPI Navigator',
+        hint: 'Review the drift in the preview and confirm taking the fields over.',
+      });
+    }
+    await this.kube('Apply the change', () => serverSideApply(kc, changed, { force: takeOver }));
+    return preview;
+  }
+
+  private async changePlan(
+    connection: string,
+    namespace: string,
+    name: string,
+    mutate: (spec: ClusterSpec) => ClusterSpec,
+  ) {
+    const current = await this.storedSpec(connection, namespace, name);
+    let next: ClusterSpec;
+    try {
+      next = mutate(current);
+    } catch (err) {
+      if (err instanceof SpecChangeError || err instanceof ZodError) {
+        throw new BadRequestException({
+          message: err instanceof ZodError ? 'The change is not valid' : err.message,
+          ...(err instanceof ZodError
+            ? { details: err.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') }
+            : {}),
+        });
+      }
+      throw err;
+    }
+    const plan = await this.plan(connection, next, false);
+    const diffs: ObjectDiff[] = [];
+    const drift: Drift[] = [];
+    const changed: KubernetesObject[] = [];
+    await this.kube('Compare with the cluster (dry run)', async () => {
+      for (const obj of plan.objects) {
+        const live = await readLive(plan.kc, obj);
+        const { result, conflict } = await dryRunApply(plan.kc, obj);
+        const before = live ? normalizeForDiff(live) : undefined;
+        const after = normalizeForDiff(result);
+        const differs = !before || stableStringify(before) !== stableStringify(after);
+        const ref = { kind: obj.kind ?? '', name: obj.metadata?.name ?? '' };
+        if (conflict) drift.push({ ...ref, ...conflict, blocking: differs });
+        if (!differs) continue;
+        changed.push(obj);
+        diffs.push({
+          ...ref,
+          ...(obj.metadata?.namespace ? { namespace: obj.metadata.namespace } : {}),
+          change: live ? 'update' : 'create',
+          before: before ? stringify(before, { lineWidth: 0 }) : '',
+          after: stringify(after, { lineWidth: 0 }),
+        });
+      }
+    });
+    const warnings = [...plan.warnings];
+    for (const d of drift.filter((x) => !x.blocking)) {
+      warnings.push(
+        `${d.kind} ${d.name} was changed outside the app (${d.fields.join(', ') || 'fields'} by ${d.managers.join(', ')}); this change does not touch it.`,
+      );
+    }
+    const preview: ClusterChangePreview = { diffs, drift, warnings, blockers: plan.blockers };
+    return { preview, changed, kc: plan.kc };
   }
 
   // ---- helpers ----

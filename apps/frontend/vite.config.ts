@@ -16,6 +16,7 @@ export default defineConfig({
     include: [
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/yaml/register',
+      'monaco-editor/features/codicon/register',
     ],
   },
   build: { outDir: 'dist', emptyOutDir: true },
