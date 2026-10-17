@@ -204,6 +204,22 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
             .filter((z) => z.zoneState.available)
             .map((z) => ({ value: z.zoneName, label: z.zoneName }));
         }
+        case 'volumeTypes': {
+          // FP5-F-19: Cinder volume types for the root disk; older catalogs name it block-storage.
+          const service = session.catalog.some((s) => s.type === 'volumev3')
+            ? 'volumev3'
+            : 'block-storage';
+          const res = await getJson<{
+            volume_types: { id: string; name: string; description?: string | null }[];
+          }>(session, service, '/types', opts);
+          return res.volume_types
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((v) => ({
+              value: v.name,
+              label: v.name,
+              details: compact({ description: v.description ?? undefined }),
+            }));
+        }
         case 'keyPairs': {
           const res = await getJson<{ keypairs: { keypair: { name: string; type?: string } }[] }>(
             session,

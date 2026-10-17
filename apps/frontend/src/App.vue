@@ -197,6 +197,12 @@ async function signOut(): Promise<void> {
 .v-application .v-window-item {
   padding-top: 8px;
 }
+/* Make the track of switches that are off visible on dark surfaces. */
+.v-application .v-switch .v-selection-control:not(.v-selection-control--dirty) .v-switch__track {
+  opacity: 1;
+  background: rgb(var(--v-theme-surface-variant));
+  box-shadow: inset 0 0 0 1px rgba(var(--v-border-color), 0.35);
+}
 /* Tables and lists sit on a bordered card. */
 .table-card {
   overflow: hidden;

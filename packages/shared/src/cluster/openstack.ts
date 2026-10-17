@@ -67,8 +67,11 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       flavor: { filter: { name: group.machineSize } },
       image: { id: group.image ?? infra.image },
       sshKeyName: infra.sshKeyName,
-      // Flavors without local disk (e.g. Infomaniak "-disk0") boot from a Cinder volume.
-      rootVolume: group.rootVolumeSizeGB ? { sizeGiB: group.rootVolumeSizeGB } : undefined,
+      // FP5-F-19: boot from a Cinder volume instead of the flavor's local disk; required for
+      // flavors without local disk (e.g. Infomaniak "-disk0").
+      rootVolume: group.rootVolumeSizeGB
+        ? { sizeGiB: group.rootVolumeSizeGB, type: group.rootVolumeType }
+        : undefined,
     });
   },
 

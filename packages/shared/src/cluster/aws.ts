@@ -78,7 +78,8 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       // IAM instance profiles from clusterawsadm (FP4-F-09); also used by CCM and EBS CSI.
       iamInstanceProfile: `${role === 'control-plane' ? 'control-plane' : 'nodes'}${CAPA_IAM.suffix}`,
       sshKeyName: infra.sshKeyName ?? '',
-      rootVolume: { size: group.rootVolumeSizeGB ?? 50, type: 'gp3' },
+      // FP5-F-19: EBS root volume.
+      rootVolume: { size: group.rootVolumeSizeGB ?? 50, type: group.rootVolumeType ?? 'gp3' },
       // ADR-0003: stock AMIs lack the aws CLI for the Secrets Manager boothook.
       cloudInit: { insecureSkipSecretsManager: true },
       instanceMetadataOptions: {

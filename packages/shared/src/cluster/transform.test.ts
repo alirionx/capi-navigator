@@ -107,6 +107,42 @@ describe('transformation snapshots (FP5-F-01, NF-14)', () => {
   });
 });
 
+describe('root disks (FP5-F-19)', () => {
+  const templates = (input: ClusterSpecInput) =>
+    renderManifests(
+      transform(ClusterSpecSchema.parse(input), ctx).filter((o) =>
+        o.kind.endsWith('MachineTemplate'),
+      ),
+    );
+
+  it('OpenStack: Cinder root volume with type, also for flavors with local disk', () => {
+    const spec = openstack();
+    spec.topology.controlPlane.rootVolumeType = 'CEPH_1_perf1';
+    spec.topology.workerPools![0]!.rootVolumeSizeGB = 120;
+    spec.topology.workerPools![0]!.rootVolumeType = 'CEPH_1_perf1';
+    expect(templates(spec)).toMatchSnapshot();
+  });
+
+  it('AWS: EBS root volume with size and type', () => {
+    const spec = aws();
+    spec.topology.controlPlane.rootVolumeSizeGB = 80;
+    spec.topology.workerPools![0]!.rootVolumeSizeGB = 200;
+    spec.topology.workerPools![0]!.rootVolumeType = 'gp2';
+    expect(templates(spec)).toMatchSnapshot();
+  });
+
+  it('rejects a volume type without size on OpenStack and unknown EBS types', () => {
+    const os = openstack();
+    os.topology.workerPools![0]!.rootVolumeType = 'CEPH_1_perf1';
+    expect(ClusterSpecSchema.safeParse(os).error?.issues[0]?.path.join('.')).toBe(
+      'topology.workerPools.0.rootVolumeType',
+    );
+    const a = aws();
+    a.topology.controlPlane.rootVolumeType = 'st1';
+    expect(ClusterSpecSchema.safeParse(a).error?.issues[0]?.message).toMatch(/gp3, gp2/);
+  });
+});
+
 describe('transformation rules', () => {
   it('is deterministic: same input, byte-identical YAML (hard rule 3)', () => {
     expect(render(openstack())).toBe(render(openstack()));
