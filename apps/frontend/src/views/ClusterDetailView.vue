@@ -8,6 +8,7 @@ import ChangeDialog from '../components/ChangeDialog.vue';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
@@ -21,6 +22,7 @@ const tab = ref('overview');
 const auth = useAuthStore();
 const router = useRouter();
 const showKubeconfig = ref(false);
+const now = useNow();
 const deleteOpen = ref(false);
 
 // ---- spec changes (FP6-F-05, FP6-F-07): managed clusters, operators only ----
@@ -107,6 +109,7 @@ const machineHeaders = computed(() => [
   { title: t('clusters.rootDisk'), key: 'rootVolumeGB' },
   { title: t('clusters.node'), key: 'nodeName' },
   { title: 'providerID', key: 'providerID' },
+  { title: t('clusters.age'), key: 'createdAt' },
   { title: '', key: 'data-table-expand' },
 ]);
 </script>
@@ -127,6 +130,9 @@ const machineHeaders = computed(() => [
           <template v-if="s">
             · {{ s.summary.provider ?? '–' }} · {{ s.summary.flavor ?? '–' }}
             {{ s.summary.version ? '· ' + s.summary.version : '' }}
+            <span v-if="s.summary.createdAt" :title="formatCreated(s.summary.createdAt)">
+              · {{ t('clusters.age') }} {{ formatAge(s.summary.createdAt, now) }}</span
+            >
           </template>
         </p>
       </div>
@@ -228,7 +234,19 @@ const machineHeaders = computed(() => [
                   <v-chip :color="s.summary.ready ? 'success' : 'info'" variant="tonal">{{
                     s.summary.ready ? t('clusters.ready') : s.summary.phase
                   }}</v-chip>
-                  <div v-if="s.kubeconfigAvailable" class="text-caption mt-2">
+                  <div
+                    v-if="s.summary.createdAt"
+                    class="text-caption mt-2"
+                    data-testid="cluster-created"
+                  >
+                    {{
+                      t('clusters.created', {
+                        date: formatCreated(s.summary.createdAt),
+                        age: formatAge(s.summary.createdAt, now),
+                      })
+                    }}
+                  </div>
+                  <div v-if="s.kubeconfigAvailable" class="text-caption">
                     {{ t('clusters.kubeconfigReady') }}
                   </div>
                 </v-card-text>
@@ -333,6 +351,11 @@ const machineHeaders = computed(() => [
                 item.rootVolumeGB ? `${item.rootVolumeGB} GB` : '–'
               }}</template>
               <template #[`item.nodeName`]="{ item }">{{ item.nodeName ?? '–' }}</template>
+              <template #[`item.createdAt`]="{ item }">
+                <span :title="formatCreated(item.createdAt)">{{
+                  formatAge(item.createdAt, now)
+                }}</span>
+              </template>
               <template #[`item.providerID`]="{ item }">
                 <span class="text-caption font-monospace">{{ item.providerID ?? '–' }}</span>
               </template>
