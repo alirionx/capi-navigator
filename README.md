@@ -38,6 +38,13 @@ manifest there (`deploy/management-cluster/capi-navigator-access.yaml`, also dow
 UI) and connect with its service account **Token**. Kubeconfigs with exec plugins or file
 references are rejected for security reasons.
 
+### Install providers
+
+Under **Providers** (for the management cluster selected in the app bar) the app shows whether
+cert-manager, the CAPI Operator and ORC are ready, with install commands if not. Install ORC and
+then the providers from the catalog: every install or upgrade shows the generated YAML first and
+is applied only after confirmation. Status updates arrive live.
+
 ## Checks
 
 ```bash

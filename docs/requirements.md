@@ -436,12 +436,12 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] On a kind cluster with cert-manager and CAPI Operator, ORC, core, RKE2 bootstrap, RKE2 control plane, OpenStack and CAAPH can be installed via the UI.
-- [ ] The AWS infrastructure provider (CAPA) can be installed via the UI.
-- [ ] Installing CAPO without ORC is blocked with a hint to install ORC first.
-- [ ] All providers and ORC reach the Ready state and are shown as such.
-- [ ] A provider version upgrade via the UI is carried out by the operator.
-- [ ] Without an installed operator, the installation instructions appear instead of an error.
+- [x] On a kind cluster with cert-manager and CAPI Operator, ORC, core, RKE2 bootstrap, RKE2 control plane, OpenStack and CAAPH can be installed via the UI.
+- [x] The AWS infrastructure provider (CAPA) can be installed via the UI.
+- [x] Installing CAPO without ORC is blocked with a hint to install ORC first.
+- [x] All providers and ORC reach the Ready state and are shown as such.
+- [x] A provider version upgrade via the UI is carried out by the operator.
+- [x] Without an installed operator, the installation instructions appear instead of an error.
 
 ### FP-4: Infrastructure provider credentials (OpenStack, AWS)
 
