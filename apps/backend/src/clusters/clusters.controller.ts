@@ -13,6 +13,8 @@ import {
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import {
+  applySpecChange,
+  ChangeRequestSchema,
   BastionRequestSchema,
   setBastion,
   ClusterCreateRequestSchema,
@@ -24,6 +26,7 @@ import {
   scalePool,
   setLabels,
   type ClusterChangePreview,
+  type ClusterSpec,
   type ClusterPreview,
   type ClusterStatus,
   type ClusterSummary,
@@ -43,6 +46,7 @@ type ScaleBody = z.output<typeof ScaleRequestSchema>;
 type LabelsBody = z.output<typeof LabelsRequestSchema>;
 type DeleteBody = z.output<typeof DeleteRequestSchema>;
 type BastionBody = z.output<typeof BastionRequestSchema>;
+type ChangeBody = z.output<typeof ChangeRequestSchema>;
 const HEARTBEAT_MS = 25_000;
 
 /** Live status of one cluster via watches (US-07, NF-11). Key: connection/namespace/name. */
@@ -147,6 +151,64 @@ export class ClustersController {
   }
 
   // ---- spec changes: preview first, then apply (hard rule 6) ----
+
+  /** The stored cluster spec for day-2 forms (FP-7); operators only (node customization). */
+  @Roles('operator')
+  @Get(':namespace/:name/spec')
+  spec(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<ClusterSpec> {
+    return this.clusters.storedSpec(connection, namespace, name);
+  }
+
+  /** FP-7: every day-2 change of the stored spec (scale, pools, machines, upgrade, rebuild, …). */
+  @Roles('operator')
+  @Post(':namespace/:name/changes/preview')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.change.preview', skip: true })
+  changesPreview(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(ChangeRequestSchema)) body: ChangeBody,
+  ): Promise<ClusterChangePreview> {
+    const now = new Date();
+    return this.clusters.changePreview(
+      connection,
+      namespace,
+      name,
+      (s) => applySpecChange(s, body.change, now),
+      { upgrade: body.change.type === 'upgrade' },
+    );
+  }
+
+  @Roles('operator')
+  @Post(':namespace/:name/changes')
+  @HttpCode(200)
+  @Audit({
+    action: 'cluster.change',
+    actionSuffixFromBody: 'change.type',
+    ...AUDIT,
+    targetParam: 'name',
+  })
+  changes(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(ChangeRequestSchema)) body: ChangeBody,
+  ): Promise<ClusterChangePreview> {
+    const now = new Date();
+    return this.clusters.applyChange(
+      connection,
+      namespace,
+      name,
+      (s) => applySpecChange(s, body.change, now),
+      body.takeOver,
+      { upgrade: body.change.type === 'upgrade' },
+    );
+  }
 
   @Roles('operator')
   @Post(':namespace/:name/scale/preview')

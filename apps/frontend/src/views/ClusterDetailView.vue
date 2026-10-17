@@ -14,6 +14,7 @@ import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import ClusterResources from '../components/ClusterResources.vue';
+import ClusterConfiguration from '../components/day2/ClusterConfiguration.vue';
 import YamlButton from '../components/YamlButton.vue';
 import ClusterDashboard from '../components/dashboard/ClusterDashboard.vue';
 import { formatAge, formatCreated, useNow } from '../composables/age.js';
@@ -295,6 +296,7 @@ const machineHeaders = computed(() => [
           {{ t('clusters.machines') }}
           <v-chip size="x-small" class="ml-2" variant="tonal">{{ s.machines.length }}</v-chip>
         </v-tab>
+        <v-tab v-if="canChange" value="config" data-testid="tab-config">{{ t('day2.tab') }}</v-tab>
         <v-tab value="resources" data-testid="tab-resources">{{ t('yamlView.resources') }}</v-tab>
         <v-tab value="events" data-testid="tab-events">
           {{ t('clusters.events') }}
@@ -648,6 +650,17 @@ const machineHeaders = computed(() => [
               </template>
             </v-data-table>
           </v-card>
+        </v-window-item>
+
+        <!-- Day-2 configuration (FP-7): operators, managed clusters -->
+        <v-window-item value="config">
+          <ClusterConfiguration
+            v-if="tab === 'config' && connections.activeName && s"
+            :connection="connections.activeName"
+            :namespace="namespace"
+            :name="name"
+            :status="s"
+          />
         </v-window-item>
 
         <!-- Resources with live YAML (FP7-F-01) -->

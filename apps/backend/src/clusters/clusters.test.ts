@@ -310,6 +310,8 @@ const k8s = vi.hoisted(() => ({
   live: new Map<string, unknown>(),
   /** Simulated server-side apply conflicts by "Kind/name". */
   conflicts: new Map<string, { managers: string[]; fields: string[] }>(),
+  machines: [] as unknown[],
+  deleted: [] as string[],
 }));
 vi.mock('../kube/apply.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../kube/apply.js')>()),
@@ -324,6 +326,9 @@ vi.mock('../kube/apply.js', async (importOriginal) => ({
       ...(opts.force ? { force: true } : {}),
     });
     return objects;
+  },
+  deleteObjects: async (_kc: unknown, objects: { kind: string; metadata: { name: string } }[]) => {
+    k8s.deleted.push(...objects.map((o) => `${o.kind}/${o.metadata.name}`));
   },
   readLive: async (_kc: unknown, o: { kind: string; metadata: { name: string } }) =>
     k8s.live.get(`${o.kind}/${o.metadata.name}`),
@@ -358,6 +363,17 @@ const fakeKc = {
       throw notFound();
     },
     listClusterCustomObject: async () => ({ items: [] }),
+    // Live MachineDeployments (from the simulated live state) and machines (FP-7 pipeline).
+    listNamespacedCustomObject: async ({ plural }: { plural: string }) => ({
+      items:
+        plural === 'machinedeployments'
+          ? [...k8s.live.entries()]
+              .filter(([key]) => key.startsWith('MachineDeployment/'))
+              .map(([, o]) => o)
+          : plural === 'machines'
+            ? k8s.machines
+            : [],
+    }),
     readNamespacedSecret: async ({ name }: { name: string }) => {
       if (name === 'demo-kubeconfig') {
         return {
@@ -724,6 +740,101 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       .expect(200);
     const cluster = res.body.diffs.find((d: { kind: string }) => d.kind === 'Cluster');
     expect(cluster.after).toMatch(/env: prod/);
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
+  });
+
+  it('applies day-2 changes generically: rollout plan, pool removal, one rollout at a time (FP-7)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      addons: { cloudControllerManager: false, csiDriver: false },
+      topology: {
+        ...OS_SPEC.topology,
+        workerPools: [
+          { name: 'default', replicas: 2, machineSize: 'a4-ram8-disk50-perf1' },
+          { name: 'gpu', replicas: 1, machineSize: 'a8-ram32-disk80-perf1' },
+        ],
+      },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, {
+        ...o,
+        status: { upToDateReplicas: (o.spec as { replicas?: number }).replicas },
+      });
+    }
+    k8s.machines = [
+      {
+        metadata: { name: 'cp-1', labels: { 'cluster.x-k8s.io/control-plane': '' } },
+        status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] },
+      },
+      {
+        metadata: { name: 'w-1', labels: { 'cluster.x-k8s.io/deployment-name': 'demo-default' } },
+        status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] },
+      },
+      {
+        metadata: { name: 'g-1', labels: { 'cluster.x-k8s.io/deployment-name': 'demo-gpu' } },
+        status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] },
+      },
+    ];
+    const url = '/api/connections/home/clusters/team-a/demo/changes';
+    const post = (path: string, change: unknown) =>
+      http().post(path).set(CSRF).set('Cookie', operatorCookie).send({ change });
+
+    // Flavor change of a pool: new templates, the pool's machines are replaced.
+    const flavor = await post(`${url}/preview`, {
+      type: 'machine',
+      group: 'default',
+      machineSize: 'a8-ram16-disk50-perf1',
+    }).expect(200);
+    expect(flavor.body.rollouts).toEqual([
+      expect.objectContaining({
+        name: 'demo-default',
+        machines: ['w-1'],
+        action: 'replace',
+        strategy: 'maxSurge 1, maxUnavailable 0',
+      }),
+    ]);
+    expect(
+      flavor.body.diffs.map((d: { kind: string; change: string }) => `${d.kind}:${d.change}`),
+    ).toEqual(
+      expect.arrayContaining(['OpenStackMachineTemplate:create', 'MachineDeployment:update']),
+    );
+
+    // Upgrade: control plane first; workers later (automatic).
+    const up = await post(`${url}/preview`, { type: 'upgrade', version: 'v1.36.5+rke2r1' }).expect(
+      200,
+    );
+    expect(
+      up.body.rollouts.map((r: { name: string; action: string }) => `${r.name}:${r.action}`),
+    ).toEqual(['demo-control-plane:replace', 'demo-default:later', 'demo-gpu:later']);
+    await post(`${url}/preview`, { type: 'upgrade', version: 'v1.34.12+rke2r1' }).expect(400);
+
+    // Removing a pool deletes its MachineDeployment.
+    const rm = await post(`${url}/preview`, { type: 'removePool', pool: 'gpu' }).expect(200);
+    expect(rm.body.diffs).toContainEqual(
+      expect.objectContaining({ kind: 'MachineDeployment', name: 'demo-gpu', change: 'delete' }),
+    );
+    expect(rm.body.rollouts).toContainEqual(
+      expect.objectContaining({ name: 'demo-gpu', machines: ['g-1'], action: 'remove' }),
+    );
+    await post(url, { type: 'removePool', pool: 'gpu' }).expect(200);
+    expect(k8s.deleted).toContain('MachineDeployment/demo-gpu');
+    const actions = fake.auditEvents.map((e) => e.spec.action);
+    expect(actions).toContain('cluster.change.removePool');
+
+    // A running rollout blocks further machine changes.
+    k8s.live.set('MachineDeployment/demo-default', {
+      ...(k8s.live.get('MachineDeployment/demo-default') as object),
+      status: { upToDateReplicas: 1 },
+    });
+    const blocked = await post(`${url}/preview`, { type: 'rebuild', group: 'default' }).expect(200);
+    expect(blocked.body.blockers.join()).toMatch(/rollout is still running/);
+    await post(url, { type: 'rebuild', group: 'default' }).expect(409);
+
+    k8s.live.clear();
+    k8s.machines = [];
     k8s.storedSpec = undefined;
     k8s.existingCluster = false;
   });

@@ -80,7 +80,12 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     spec.topology.controlPlane,
     'control-plane',
   );
-  const cpTemplateName = `${spec.name}-cp-${shortHash(cpTemplateSpec)}`;
+  // A rebuild (FP7-F-11) changes the template name: RKE2ControlPlane has no rolloutAfter.
+  const cpRebuild =
+    spec.topology.controlPlane.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt;
+  const cpTemplateName = `${spec.name}-cp-${shortHash(
+    cpRebuild ? { spec: cpTemplateSpec, rebuild: cpRebuild } : cpTemplateSpec,
+  )}`;
   objects.push(machineTemplate(infra, spec, cpTemplateName, cpTemplateSpec, labels));
   objects.push(
     flavor.controlPlane({ spec, infra, machineTemplate: infraRef(cpTemplateName), labels }),
@@ -109,11 +114,15 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
           clusterName: spec.name,
           replicas: pool.replicas,
           rollout: {
+            // FP7-F-11: machines created before this time are replaced.
+            ...((pool.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt)
+              ? { after: pool.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt }
+              : {}),
             strategy: {
               type: 'RollingUpdate',
               rollingUpdate: {
-                maxSurge: spec.rollout.maxSurge,
-                maxUnavailable: spec.rollout.maxUnavailable,
+                maxSurge: pool.rollout?.maxSurge ?? spec.rollout.maxSurge,
+                maxUnavailable: pool.rollout?.maxUnavailable ?? spec.rollout.maxUnavailable,
               },
             },
           },
@@ -126,7 +135,8 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
             },
             spec: {
               clusterName: spec.name,
-              version: spec.kubernetes.version,
+              // FP7-F-08: workers follow the control plane only after it was upgraded.
+              version: spec.kubernetes.workerVersion ?? spec.kubernetes.version,
               bootstrap: {
                 configRef: {
                   apiGroup: flavor.bootstrapTemplate.apiGroup,
