@@ -155,8 +155,7 @@ export const en = {
     required: 'Required',
     lastTest: 'Last test',
     lastTestAt: 'Tested {at}',
-    ok: 'OK',
-    failed: 'Failed',
+    state: { ok: 'OK', setup: 'Setup needed', failed: 'Failed' },
     test: 'Test credentials',
     edit: 'Edit',
     empty:

@@ -37,6 +37,15 @@ async function reload(): Promise<void> {
 watch(() => connections.activeName, reload, { immediate: true });
 
 const key = (c: Credential) => `${c.provider}/${c.name}`;
+
+/** Valid credentials with missing one-time setup (e.g. CAPA IAM) are not "failed". */
+function testState(c: Credential): { key: 'ok' | 'setup' | 'failed'; color: string; icon: string } {
+  const r = c.lastTest;
+  if (r?.ok) return { key: 'ok', color: 'success', icon: 'mdi-check-circle' };
+  if (r?.fixCommand && r.checks[0]?.ok)
+    return { key: 'setup', color: 'warning', icon: 'mdi-wrench' };
+  return { key: 'failed', color: 'error', icon: 'mdi-alert-circle' };
+}
 const headers = computed(() => [
   { title: t('credentials.name'), key: 'name' },
   { title: t('credentials.provider'), key: 'provider' },
@@ -184,12 +193,12 @@ async function loadLookup(c: Credential): Promise<void> {
         <template #[`item.lastTest`]="{ item }">
           <v-chip
             v-if="item.lastTest"
-            :color="item.lastTest.ok ? 'success' : 'error'"
+            :color="testState(item).color"
             size="small"
             variant="tonal"
-            :prepend-icon="item.lastTest.ok ? 'mdi-check-circle' : 'mdi-alert-circle'"
+            :prepend-icon="testState(item).icon"
           >
-            {{ item.lastTest.ok ? t('credentials.ok') : t('credentials.failed') }}
+            {{ t(`credentials.state.${testState(item).key}`) }}
           </v-chip>
           <span v-else class="text-caption">–</span>
         </template>
