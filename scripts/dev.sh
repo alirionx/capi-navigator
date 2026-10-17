@@ -7,6 +7,13 @@ if [[ ! -f "${KIND_KUBECONFIG}" ]]; then
   printf '\033[1;33mWarning:\033[0m no kind cluster found; run "pnpm kind:up". The home cluster will show as not reachable.\n'
 fi
 
+# Optional local settings, e.g. INITIAL_ADMIN_PASSWORD (see .env.example).
+if [[ -f "${ROOT_DIR}/.env.local" ]]; then
+  set -a
+  source "${ROOT_DIR}/.env.local"
+  set +a
+fi
+
 export LOG_JSON="${LOG_JSON:-false}"
 
 cd "${ROOT_DIR}"

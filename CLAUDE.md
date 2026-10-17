@@ -28,8 +28,8 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | Pack | Content | Status |
 | --- | --- | --- |
 | FP-0 | Project scaffold | done |
-| FP-1 | Authentication and authorization (local users) | next |
-| FP-2 | Management cluster connections (kubeconfig, service account token) | open |
+| FP-1 | Authentication and authorization (local users) | done |
+| FP-2 | Management cluster connections (kubeconfig, service account token) | next |
 | FP-3 | CAPI Operator, ORC and provider management | open |
 | FP-4 | OpenStack credentials (`clouds.yaml`) | open |
 | FP-5 | Create workload clusters: OpenStack + RKE2 | open |
@@ -106,8 +106,10 @@ pnpm dev              # start backend and frontend in watch mode
 pnpm lint             # ESLint + Prettier check
 pnpm typecheck        # tsc --noEmit for all workspaces
 pnpm test             # Vitest (unit + snapshot)
+pnpm test:int         # Vitest integration tests against the kind cluster
 pnpm test:e2e         # Playwright
 pnpm kind:up          # local kind cluster as home + management cluster
+pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm crds:install     # install the app's CRDs into the current cluster
 ```
 

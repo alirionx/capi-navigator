@@ -359,11 +359,11 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] Unauthenticated calls to `/api/*` (except health and login) return 401.
-- [ ] A viewer receives 403 on mutating endpoints.
-- [ ] The initial admin can log in, change the password, and create a viewer and an operator.
-- [ ] After a backend restart, users and sessions still work (state only in the home cluster).
-- [ ] Every mutating action creates an `AuditEvent`.
+- [x] Unauthenticated calls to `/api/*` (except health and login) return 401.
+- [x] A viewer receives 403 on mutating endpoints.
+- [x] The initial admin can log in, change the password, and create a viewer and an operator.
+- [x] After a backend restart, users and sessions still work (state only in the home cluster).
+- [x] Every mutating action creates an `AuditEvent`.
 
 ### FP-2: Management cluster connections
 
