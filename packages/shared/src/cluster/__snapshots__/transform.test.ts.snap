@@ -1,5 +1,123 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`root disks (FP5-F-19) > AWS: EBS root volume with size and type 1`] = `
+"apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-cp-b3b4939e
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 80
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-default-1c5b03e0
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 200
+        type: gp2
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+"
+`;
+
+exports[`root disks (FP5-F-19) > OpenStack: Cinder root volume with type, also for flavors with local disk 1`] = `
+"apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-cp-49601250
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 50
+        type: CEPH_1_perf1
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-default-3fe08eb8
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 120
+        type: CEPH_1_perf1
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-gpu-dc53c27b
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a8-ram32-disk80-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+"
+`;
+
 exports[`transformation snapshots (FP5-F-01, NF-14) > AWS all-in-one 1`] = `
 "apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster

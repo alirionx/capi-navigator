@@ -339,7 +339,7 @@ export class ClustersService {
 
     if (spec.infrastructure.provider === 'aws') {
       warnings.push(
-        'AWS: node user data is not stored in Secrets Manager (stock images, ADR-0003); IMDSv2 is enforced.',
+        'AWS: node user data is not stored in Secrets Manager (stock images, ADR-0003); IMDSv2 with hop limit 2 lets pods read the user data (join token) and instance profile credentials.',
       );
     }
     const hasCustomization = [spec.topology.controlPlane, ...spec.topology.workerPools].some(

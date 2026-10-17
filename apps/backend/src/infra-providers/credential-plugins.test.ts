@@ -134,6 +134,12 @@ function fakeOpenStack(opts: { authStatus?: number; noOctavia?: boolean } = {}):
       ],
     },
     'https://api.example/compute/os-keypairs': { keypairs: [{ keypair: { name: 'my-keys' } }] },
+    'https://api.example/volumev3/types': {
+      volume_types: [
+        { id: 'vt-2', name: 'ssd', description: 'Fast' },
+        { id: 'vt-1', name: 'hdd', description: null },
+      ],
+    },
   };
   return async (url, init) => {
     if (url.endsWith('/v3/auth/tokens')) {
@@ -199,7 +205,7 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
     });
   });
 
-  it('lists images (paged), flavors, external networks, AZs and key pairs', async () => {
+  it('lists images (paged), flavors, external networks, AZs, key pairs and volume types', async () => {
     const plugin = new OpenStackCredentialPlugin(fakeOpenStack());
     const { data, summary } = plugin.normalize(input);
     const labels = async (kind: Parameters<typeof plugin.lookup>[2]) =>
@@ -212,6 +218,8 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
     expect(await labels('externalNetworks')).toEqual(['ext-floating1']);
     expect(await labels('availabilityZones')).toEqual(['az-1']);
     expect(await labels('keyPairs')).toEqual(['my-keys']);
+    // FP5-F-19: root disk volume types.
+    expect(await labels('volumeTypes')).toEqual(['hdd', 'ssd']);
   });
 });
 

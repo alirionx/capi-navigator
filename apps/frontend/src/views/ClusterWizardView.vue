@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   ADDON_PRESETS,
+  AWS_ROOT_VOLUME_TYPES,
   ClusterSpecSchema,
   distributionCatalog,
   type ClusterPreview,
@@ -47,6 +48,7 @@ type Group = {
   machineSize: string;
   image?: string;
   rootVolumeSizeGB?: number;
+  rootVolumeType?: string;
   customization: Custom;
 };
 
@@ -58,6 +60,8 @@ const draft = reactive({
   provider: 'openstack' as 'openstack' | 'aws',
   credential: '',
   mode: 'standard' as 'standard' | 'all-in-one',
+  /** FP5-F-19: mirror the control plane root disk to all worker pools. */
+  sameRootDisk: false,
   cp: {
     replicas: 1 as 1 | 3 | 5,
     machineSize: '',
@@ -112,10 +116,14 @@ const lists = reactive<Record<string, LookupOption[]>>({});
 const listLoading = ref(false);
 const listError = ref<unknown>(null);
 
-onMounted(async () => {
-  if (connections.activeName)
-    await credentialsStore.load(connections.activeName).catch(() => undefined);
-});
+// Load once the active connection is known (also after a direct page load).
+watch(
+  () => connections.activeName,
+  (name) => {
+    if (name) void credentialsStore.load(name).catch(() => undefined);
+  },
+  { immediate: true },
+);
 
 async function loadLists(): Promise<void> {
   const c = credential.value;
@@ -128,11 +136,20 @@ async function loadLists(): Promise<void> {
       ? ['flavors', 'images', 'externalNetworks', 'availabilityZones', 'keyPairs']
       : ['instanceTypes', 'images', 'keyPairs', 'regions'];
   try {
-    await Promise.all(
-      kinds.map(async (kind) => {
+    await Promise.all([
+      ...kinds.map(async (kind) => {
         lists[kind] = (await credentialsStore.lookup(c, kind, region)).options;
       }),
-    );
+      // Optional: clouds without Cinder simply offer no volume types.
+      ...(draft.provider === 'openstack'
+        ? [
+            credentialsStore
+              .lookup(c, 'volumeTypes')
+              .then((r) => (lists.volumeTypes = r.options))
+              .catch(() => (lists.volumeTypes = [])),
+          ]
+        : []),
+    ]);
     applyDefaults();
   } catch (err) {
     listError.value = err;
@@ -171,6 +188,10 @@ watch(
   () => draft.provider,
   () => (draft.credential = credentials.value[0]?.name ?? ''),
 );
+// Preselect the first credential once the list has loaded.
+watch(credentials, (list) => {
+  if (!list.some((c) => c.name === draft.credential)) draft.credential = list[0]?.name ?? '';
+});
 watch(
   () => draft.aws.region,
   (r, old) => {
@@ -191,6 +212,23 @@ const sizes = computed(
   () => lists[draft.provider === 'openstack' ? 'flavors' : 'instanceTypes'] ?? [],
 );
 const images = computed(() => lists.images ?? []);
+const volumeTypes = computed<LookupOption[]>(() =>
+  draft.provider === 'openstack'
+    ? (lists.volumeTypes ?? [])
+    : AWS_ROOT_VOLUME_TYPES.map((v) => ({ value: v, label: v })),
+);
+
+// FP5-F-19: "same root disk for all groups" mirrors the control plane settings.
+watch(
+  () => [draft.sameRootDisk, draft.cp.rootVolumeSizeGB, draft.cp.rootVolumeType] as const,
+  ([same, size, type]) => {
+    if (!same) return;
+    for (const p of draft.pools) {
+      p.rootVolumeSizeGB = size;
+      p.rootVolumeType = type;
+    }
+  },
+);
 
 // ---- spec from the draft ----
 function kv(list: string[]): Record<string, string> | undefined {
@@ -206,6 +244,9 @@ function group(g: Group) {
     machineSize: g.machineSize,
     ...(g.image ? { image: g.image } : {}),
     ...(g.rootVolumeSizeGB ? { rootVolumeSizeGB: Number(g.rootVolumeSizeGB) } : {}),
+    ...(g.rootVolumeType && (draft.provider === 'aws' || g.rootVolumeSizeGB)
+      ? { rootVolumeType: g.rootVolumeType }
+      : {}),
     ...(hasCustom ? { customization: c } : {}),
   };
 }
@@ -493,8 +534,18 @@ const canPreview = computed(() => issues.value.length === 0);
             :provider="draft.provider"
             :sizes="sizes"
             :images="images"
+            :volume-types="volumeTypes"
             :sizes-loading="listLoading"
             role="control-plane"
+          />
+          <v-switch
+            v-if="draft.mode === 'standard'"
+            v-model="draft.sameRootDisk"
+            :label="t('wizard.sameRootDisk')"
+            :hint="t('wizard.sameRootDiskHint')"
+            persistent-hint
+            class="mt-3"
+            data-testid="same-root-disk"
           />
         </v-card>
         <template v-if="draft.mode === 'standard'">
@@ -540,7 +591,9 @@ const canPreview = computed(() => issues.value.length === 0);
               :provider="draft.provider"
               :sizes="sizes"
               :images="images"
+              :volume-types="volumeTypes"
               :sizes-loading="listLoading"
+              :root-disk-locked="draft.sameRootDisk"
               role="worker"
             />
           </v-card>
@@ -553,6 +606,12 @@ const canPreview = computed(() => issues.value.length === 0);
                 name: `pool${draft.pools.length + 1}`,
                 replicas: 1,
                 machineSize: draft.pools[0]?.machineSize ?? '',
+                ...(draft.sameRootDisk
+                  ? {
+                      rootVolumeSizeGB: draft.cp.rootVolumeSizeGB,
+                      rootVolumeType: draft.cp.rootVolumeType,
+                    }
+                  : {}),
                 customization: emptyCustomization(),
                 nodeLabels: [],
               })

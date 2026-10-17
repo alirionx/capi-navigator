@@ -216,10 +216,22 @@ export const en = {
     machineSize: { openstack: 'Flavor', aws: 'Instance type' },
     machineSizeHint: 'Maps to {target} {field}.',
     rootVolume: 'Root disk',
-    rootVolumeHint: 'Size of the root volume. Default: {def} GB.',
+    rootVolumeHint:
+      'Size of the EBS root volume. Default: {def} GB. Maps to {target} rootVolume.size.',
+    rootVolumeLocal:
+      'Empty: the local disk of the flavor{size}. Set: boots from a Cinder volume of this size, deleted with the node. Maps to {target} rootVolume.sizeGiB.',
     rootVolumeNeeded:
-      'This flavor has no local disk: the node boots from a Cinder volume of this size.',
+      'This flavor has no local disk: the node boots from a Cinder volume of this size. Maps to {target} rootVolume.sizeGiB.',
     rootVolumeMin: 'At least 10 GB',
+    rootVolumeMax: 'At most 4000 GB',
+    rootVolumeType: 'Disk type',
+    rootVolumeTypeOpenStack:
+      'Cinder volume type. Default: the default type of the cloud. Needs a root disk size. Maps to rootVolume.type.',
+    rootVolumeTypeAws: 'EBS volume type. Default: gp3. Maps to rootVolume.type.',
+    rootDiskLocked: 'Taken from the control plane (same root disk for all groups).',
+    sameRootDisk: 'Same root disk for all groups',
+    sameRootDiskHint:
+      'Applies size and type of the control plane root disk to all worker pools. Default: off.',
     imageOverride: 'Image for this group',
     imageOverrideHint: 'Optional; default: the cluster image (Infrastructure step).',
     image: 'Image',

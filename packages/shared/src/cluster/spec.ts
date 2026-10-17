@@ -73,8 +73,13 @@ const MachineGroupFields = {
   machineSize: z.string().trim().min(1, 'Required').max(255),
   /** Overrides infrastructure.image for this group. */
   image: z.string().trim().max(255).optional(),
-  /** Root disk in GB; required for OpenStack flavors without local disk. */
+  /**
+   * Root disk in GB (FP5-F-19). OpenStack: boot from a Cinder volume of this size instead of the
+   * flavor's local disk; required for flavors without local disk. AWS: EBS root volume, default 50.
+   */
   rootVolumeSizeGB: z.int().min(10).max(4000).optional(),
+  /** Cinder volume type (OpenStack) or EBS volume type (AWS, default gp3) of the root disk. */
+  rootVolumeType: z.string().trim().min(1).max(255).optional(),
   customization: NodeCustomizationSchema.optional(),
 };
 
@@ -94,8 +99,14 @@ export type WorkerPool = z.infer<typeof WorkerPoolSchema>;
 export type ControlPlane = z.infer<typeof ControlPlaneSchema>;
 export type MachineGroup = Pick<
   WorkerPool,
-  'machineSize' | 'image' | 'rootVolumeSizeGB' | 'customization'
+  'machineSize' | 'image' | 'rootVolumeSizeGB' | 'rootVolumeType' | 'customization'
 >;
+
+/**
+ * EBS volume types that can boot an instance without extra settings. st1/sc1 cannot be root
+ * volumes; io1/io2 need provisioned IOPS (not offered yet).
+ */
+export const AWS_ROOT_VOLUME_TYPES = ['gp3', 'gp2'] as const;
 
 export const OpenStackInfraSchema = z.object({
   provider: z.literal('openstack'),
@@ -251,6 +262,23 @@ export const ClusterSpecSchema = z
 
     // Per-group image overrides must match the provider's ID format.
     const groups = [spec.topology.controlPlane, ...workerPools];
+    const groupPath = (i: number, field: string) =>
+      i === 0 ? ['topology', 'controlPlane', field] : ['topology', 'workerPools', i - 1, field];
+
+    // FP5-F-19: root disk type.
+    groups.forEach((g, i) => {
+      if (!g.rootVolumeType) return;
+      if (spec.infrastructure.provider === 'openstack' && !g.rootVolumeSizeGB) {
+        issue(groupPath(i, 'rootVolumeType'), 'A volume type needs a root disk size');
+      }
+      if (
+        spec.infrastructure.provider === 'aws' &&
+        !(AWS_ROOT_VOLUME_TYPES as readonly string[]).includes(g.rootVolumeType)
+      ) {
+        issue(groupPath(i, 'rootVolumeType'), `One of ${AWS_ROOT_VOLUME_TYPES.join(', ')}`);
+      }
+    });
+
     groups.forEach((g, i) => {
       if (!g.image) return;
       const ok =

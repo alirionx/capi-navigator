@@ -204,7 +204,14 @@ export const CredentialListSchema = z.array(CredentialSchema);
 
 /** Selection lists for the cluster wizard (FP4-F-05, FP4-F-10). */
 export const LOOKUP_KINDS = {
-  openstack: ['images', 'flavors', 'externalNetworks', 'availabilityZones', 'keyPairs'],
+  openstack: [
+    'images',
+    'flavors',
+    'externalNetworks',
+    'availabilityZones',
+    'keyPairs',
+    'volumeTypes',
+  ],
   aws: ['regions', 'availabilityZones', 'instanceTypes', 'images', 'keyPairs'],
 } as const;
 export type LookupKind =

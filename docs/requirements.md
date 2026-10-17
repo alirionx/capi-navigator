@@ -508,6 +508,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - **FP5-F-16** MUST create a dedicated VPC with subnets per AWS cluster (via `AWSCluster`) and install RKE2 via cloud-init on the official Canonical Ubuntu AMI; a prebuilt Kubernetes AMI must not be required.
 - **FP5-F-17** MUST roll out the AWS cloud controller manager and the AWS EBS CSI driver via preset `HelmChartProxy` resources when selected, analogous to FP5-F-09.
 - **FP5-F-18** MUST check that the AWS infrastructure provider is installed and ready, and that the selected credentials passed their test (FP-4), and otherwise point to FP-3 or FP-4.
+- **FP5-F-19** MUST make the root disk of every machine group configurable (size and, optionally, type), with an option to use the same root disk for all groups. OpenStack: without a size the node uses the flavor's local disk; with a size it boots from a Cinder volume (`rootVolume.sizeGiB`, `rootVolume.type` from the Cinder volume types of the cloud); flavors without local disk require a size. AWS: EBS root volume (`rootVolume.size`, default 50 GB; `rootVolume.type` gp3 or gp2, default gp3).
 
 **Acceptance criteria**
 
@@ -518,6 +519,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - [x] Invalid input (e.g. overlapping CIDRs) is reported in the wizard before anything is created.
 - [x] Snapshot tests cover the AWS transformation for the standard topology and all-in-one, with and without add-ons.
 - [x] A standard cluster is created on AWS from the official Ubuntu AMI and reaches the Provisioned state; with CCM and CSI, a `LoadBalancer` service gets an address and a PVC is bound to an EBS volume. Tests that create real AWS resources run only after explicit confirmation and delete everything afterwards.
+- [x] Root disk size and type are configurable per group and for all groups at once on OpenStack and AWS; snapshot tests cover a Cinder root volume with type on a flavor with local disk and an EBS root volume with gp2 (FP5-F-19).
 
 ### FP-6: Cluster lifecycle and visualization
 
