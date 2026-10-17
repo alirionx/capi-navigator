@@ -70,6 +70,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       CP_SELECTOR,
+      // The CCM must run before the pod network: it removes the "uninitialized" taint that Calico
+      // Typha does not tolerate. Host networking also reaches IMDS directly.
+      'hostNetworking: true\n',
       'args:\n  - --v=2\n  - --cloud-provider=aws\n  - --configure-cloud-routes=false\n',
     ].join(''),
   },

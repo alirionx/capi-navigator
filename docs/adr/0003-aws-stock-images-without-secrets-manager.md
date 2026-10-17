@@ -29,6 +29,8 @@ this trade-off.
   profile credentials. Restrict untrusted workloads with a network policy that blocks
   `169.254.169.254`, or use dedicated nodes for them.
 - The EBS CSI preset takes the region from the `AWSCluster` instead of IMDS.
+- The AWS CCM preset runs with host networking: it must start before the pod network, since
+  it removes the `uninitialized` taint that Calico Typha does not tolerate.
 - The join token is readable from the instance metadata on the node itself and via
   `ec2:DescribeInstanceAttribute`; restrict that IAM permission in the account.
 - Revisit if CAPA offers a secret delivery that does not need the `aws` CLI on the image, or if

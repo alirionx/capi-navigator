@@ -23,6 +23,7 @@ import { StoreModule } from '../store/store.module.js';
 import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { ClustersModule } from './clusters.module.js';
+import { onlyManagedByApp, presetUpToDate } from './clusters.service.js';
 import { toStatus, toSummary, type K8sObj } from './status.js';
 
 const OS_SPEC = {
@@ -96,6 +97,36 @@ describe('OpenStack cloud config (FP5-F-10, ADR-0004)', () => {
       metadata: { name: 'cloud-config', namespace: 'kube-system' },
       stringData: { 'cloud.conf': 'CONF', 'ca.crt': 'CA' },
     });
+  });
+});
+
+describe('add-on preset updates (FP5-F-09, FP5-F-17)', () => {
+  const desired = { spec: { chartName: 'aws-ccm', valuesTemplate: 'hostNetworking: true\n' } };
+  const field = (manager: string, keys: string[], subresource?: string) => ({
+    manager,
+    ...(subresource ? { subresource } : {}),
+    fieldsV1: Object.fromEntries(keys.map((k) => [k, {}])),
+  });
+
+  it('detects outdated presets and ignores fields added by CAAPH', () => {
+    expect(presetUpToDate({ spec: { ...desired.spec, options: { wait: true } } }, desired)).toBe(
+      true,
+    );
+    expect(presetUpToDate({ spec: { ...desired.spec, valuesTemplate: 'old\n' } }, desired)).toBe(
+      false,
+    );
+  });
+
+  it('updates only presets whose spec nobody else changed', () => {
+    const app = field('capi-navigator', ['f:metadata', 'f:spec']);
+    const caaph = field('manager', ['f:metadata']);
+    const status = field('manager', ['f:status'], 'status');
+    expect(onlyManagedByApp({ metadata: { managedFields: [app, caaph, status] } })).toBe(true);
+    expect(
+      onlyManagedByApp({
+        metadata: { managedFields: [app, field('kubectl-edit', ['f:spec'])] },
+      }),
+    ).toBe(false);
   });
 });
 
