@@ -1,0 +1,36 @@
+# Generated from packages/shared/src/management-access.ts by `pnpm crds:generate`. Do not edit.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: capi-navigator-access
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: capi-navigator
+  namespace: capi-navigator-access
+---
+# Long-lived token for the connection (FP2-F-01, auth type "token"). Read it with:
+#   kubectl -n capi-navigator-access get secret capi-navigator-token -o jsonpath='{.data.token}' | base64 -d
+#   kubectl -n capi-navigator-access get secret capi-navigator-token -o jsonpath='{.data.ca\.crt}' | base64 -d
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-navigator-token
+  namespace: capi-navigator-access
+  annotations:
+    kubernetes.io/service-account.name: capi-navigator
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: capi-navigator-cluster-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: capi-navigator
+    namespace: capi-navigator-access

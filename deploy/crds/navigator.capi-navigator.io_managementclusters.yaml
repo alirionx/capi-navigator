@@ -1,0 +1,122 @@
+# Generated from packages/shared/src/crds by `pnpm crds:generate`. Do not edit.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: managementclusters.navigator.capi-navigator.io
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+spec:
+  group: navigator.capi-navigator.io
+  names:
+    kind: ManagementCluster
+    listKind: ManagementClusterList
+    plural: managementclusters
+    singular: managementcluster
+    shortNames:
+      - mgmt
+    categories:
+      - capi-navigator
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: Auth
+          type: string
+          jsonPath: .spec.authType
+        - name: Server
+          type: string
+          jsonPath: .spec.server
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Version
+          type: string
+          jsonPath: .status.kubernetesVersion
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      subresources:
+        status: {}
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                authType:
+                  type: string
+                  enum:
+                    - kubeconfig
+                    - token
+                    - in-cluster
+                server:
+                  type: string
+                context:
+                  type: string
+                credentialsRevision:
+                  default: 0
+                  type: integer
+                  minimum: 0
+              required:
+                - authType
+            status:
+              type: object
+              properties:
+                phase:
+                  default: Unknown
+                  type: string
+                  enum:
+                    - Unknown
+                    - Reachable
+                    - Unreachable
+                    - Unauthorized
+                kubernetesVersion:
+                  type: string
+                lastCheckedAt:
+                  type: string
+                message:
+                  type: string
+                hint:
+                  type: string
+                details:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      group:
+                        type: string
+                      resource:
+                        type: string
+                      verb:
+                        type: string
+                      allowed:
+                        type: boolean
+                      level:
+                        type: string
+                        enum:
+                          - required
+                          - install
+                      purpose:
+                        type: string
+                    required:
+                      - group
+                      - resource
+                      - verb
+                      - allowed
+                      - level
+                      - purpose

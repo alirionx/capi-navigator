@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ALL_CRDS, buildCrd, NavigatorUserCrd } from './index.js';
+import { ALL_CRDS, buildCrd, ManagementClusterCrd, NavigatorUserCrd } from './index.js';
+import { ACCESS_MANIFEST_FILES } from '../manifest-files.js';
 import { crdFileName, renderCrd } from './render.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -10,6 +11,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 describe('CRD generation (STATE-02)', () => {
   it('generates the NavigatorUser schema from Zod', () => {
     expect(renderCrd(NavigatorUserCrd)).toMatchSnapshot();
+  });
+
+  it('generates a status subresource for the ManagementCluster', () => {
+    expect(renderCrd(ManagementClusterCrd)).toMatchSnapshot();
   });
 
   it('never emits keywords that structural schemas reject', () => {
@@ -29,4 +34,10 @@ describe('CRD generation (STATE-02)', () => {
       }
     },
   );
+
+  it('committed management cluster access manifests are up to date (FP2-F-07)', () => {
+    for (const [path, content] of Object.entries(ACCESS_MANIFEST_FILES)) {
+      expect(readFileSync(join(root, path), 'utf8')).toBe(content);
+    }
+  });
 });

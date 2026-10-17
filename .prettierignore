@@ -8,3 +8,4 @@ CLAUDE.md
 deploy/helm/**/templates/
 deploy/crds/
 deploy/helm/**/crds/
+deploy/management-cluster/

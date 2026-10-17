@@ -9,9 +9,12 @@ type JsonSchema = Record<string, unknown>;
  * Pure function: same input, same output.
  */
 export function buildCrd(def: CrdDefinition): Record<string, unknown> {
-  const spec = toStructuralSchema(
-    z.toJSONSchema(def.spec, { target: 'openapi-3.0', io: 'input', unrepresentable: 'throw' }),
-  );
+  const toSchema = (schema: z.ZodType) =>
+    toStructuralSchema(
+      z.toJSONSchema(schema, { target: 'openapi-3.0', io: 'input', unrepresentable: 'throw' }),
+    );
+  const spec = toSchema(def.spec);
+  const status = def.status ? toSchema(def.status) : undefined;
   return {
     apiVersion: 'apiextensions.k8s.io/v1',
     kind: 'CustomResourceDefinition',
@@ -36,6 +39,7 @@ export function buildCrd(def: CrdDefinition): Record<string, unknown> {
           served: true,
           storage: true,
           ...(def.printerColumns ? { additionalPrinterColumns: def.printerColumns } : {}),
+          ...(status ? { subresources: { status: {} } } : {}),
           schema: {
             openAPIV3Schema: {
               type: 'object',
@@ -45,6 +49,7 @@ export function buildCrd(def: CrdDefinition): Record<string, unknown> {
                 kind: { type: 'string' },
                 metadata: { type: 'object' },
                 spec,
+                ...(status ? { status } : {}),
               },
             },
           },
