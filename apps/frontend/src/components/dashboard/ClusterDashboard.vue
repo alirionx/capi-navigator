@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import YamlButton from '../YamlButton.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { DashboardSchema, type Dashboard, type ResourceUse } from '@capi-navigator/shared';
@@ -85,6 +86,26 @@ const statusColor = (s: string) => (s === 'ok' ? 'success' : s === 'degraded' ? 
 const phaseColor = (p: string) =>
   p === 'Running' || p === 'Succeeded' ? 'success' : p === 'Failed' ? 'error' : 'info';
 const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
+
+/** "View YAML" of an object inside the workload cluster (FP7-F-01, FP-18). */
+const API_VERSION: Record<string, string> = {
+  Node: 'v1',
+  Pod: 'v1',
+  Service: 'v1',
+  Deployment: 'apps/v1',
+  StatefulSet: 'apps/v1',
+  DaemonSet: 'apps/v1',
+  Job: 'batch/v1',
+  Ingress: 'networking.k8s.io/v1',
+  HTTPRoute: 'gateway.networking.k8s.io/v1',
+};
+const inCluster = (kind: string, name: string, namespace?: string) => ({
+  apiVersion: API_VERSION[kind] ?? 'v1',
+  kind,
+  name,
+  ...(namespace ? { namespace } : {}),
+  cluster: { namespace: props.namespace, name: props.name },
+});
 </script>
 
 <template>
@@ -171,6 +192,7 @@ const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
                 <v-chip size="x-small" variant="tonal" :color="n.ready ? 'success' : 'error'">{{
                   n.ready ? t('clusters.ready') : t('shell.notReady')
                 }}</v-chip>
+                <YamlButton :target="inCluster('Node', n.name)" />
                 <v-chip
                   v-if="n.unschedulable"
                   size="x-small"
@@ -215,6 +237,7 @@ const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
               <td>{{ p.restarts }}</td>
               <td class="text-caption">{{ p.node ?? '–' }}</td>
               <td class="text-caption">{{ p.message ?? '' }}</td>
+              <td><YamlButton :target="inCluster('Pod', p.name, p.namespace)" /></td>
             </tr>
           </tbody>
         </v-table>
@@ -265,6 +288,7 @@ const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
                     <v-chip size="x-small" variant="tonal" :color="statusColor(w.status)"
                       >{{ w.ready }}/{{ w.desired }}</v-chip
                     >
+                    <YamlButton :target="inCluster(w.kind, w.name, w.namespace)" />
                   </td>
                 </tr>
                 <tr v-if="!workloads.length">
@@ -297,6 +321,7 @@ const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
                       }}
                     </td>
                     <td class="text-caption">{{ s.ports.join(', ') }}</td>
+                    <td><YamlButton :target="inCluster('Service', s.name, s.namespace)" /></td>
                   </tr>
                   <tr v-if="!d.services.filter(inNs).length">
                     <td class="text-medium-emphasis">{{ t('dashboard.noExposed') }}</td>
@@ -320,6 +345,7 @@ const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
                     </td>
                     <td class="text-caption">→ {{ i.backends.join(', ') || '–' }}</td>
                     <td class="font-monospace text-caption">{{ i.addresses.join(', ') }}</td>
+                    <td><YamlButton :target="inCluster(i.kind, i.name, i.namespace)" /></td>
                   </tr>
                   <tr v-if="!d.ingresses.filter(inNs).length">
                     <td class="text-medium-emphasis">{{ t('dashboard.noIngresses') }}</td>

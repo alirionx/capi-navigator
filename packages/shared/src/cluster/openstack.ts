@@ -97,6 +97,7 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     infraClusterPlural: 'openstackclusters',
     machineKind: 'OpenStackMachine',
     machinePlural: 'openstackmachines',
+    machineTemplatePlural: 'openstackmachinetemplates',
   },
 
   machineDetails(s) {

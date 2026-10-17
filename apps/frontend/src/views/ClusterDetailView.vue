@@ -13,6 +13,8 @@ import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import ClusterResources from '../components/ClusterResources.vue';
+import YamlButton from '../components/YamlButton.vue';
 import ClusterDashboard from '../components/dashboard/ClusterDashboard.vue';
 import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
@@ -293,6 +295,7 @@ const machineHeaders = computed(() => [
           {{ t('clusters.machines') }}
           <v-chip size="x-small" class="ml-2" variant="tonal">{{ s.machines.length }}</v-chip>
         </v-tab>
+        <v-tab value="resources" data-testid="tab-resources">{{ t('yamlView.resources') }}</v-tab>
         <v-tab value="events" data-testid="tab-events">
           {{ t('clusters.events') }}
           <v-chip v-if="warnings" size="x-small" class="ml-2" color="warning" variant="tonal">{{
@@ -568,6 +571,14 @@ const machineHeaders = computed(() => [
               }}</template>
               <template #[`item.nodeName`]="{ item }">{{ item.nodeName ?? '–' }}</template>
               <template #[`item.shell`]="{ item }">
+                <YamlButton
+                  :target="{
+                    apiVersion: 'cluster.x-k8s.io/v1beta2',
+                    kind: 'Machine',
+                    namespace,
+                    name: item.name,
+                  }"
+                />
                 <v-btn
                   v-if="item.nodeName && auth.can('operator')"
                   size="small"
@@ -637,6 +648,16 @@ const machineHeaders = computed(() => [
               </template>
             </v-data-table>
           </v-card>
+        </v-window-item>
+
+        <!-- Resources with live YAML (FP7-F-01) -->
+        <v-window-item value="resources">
+          <ClusterResources
+            v-if="tab === 'resources' && connections.activeName"
+            :connection="connections.activeName"
+            :namespace="namespace"
+            :name="name"
+          />
         </v-window-item>
 
         <!-- Events -->

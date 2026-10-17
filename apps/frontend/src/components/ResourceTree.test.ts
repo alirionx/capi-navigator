@@ -1,4 +1,5 @@
 import { mount } from '@vue/test-utils';
+import { createPinia } from 'pinia';
 import { describe, expect, it } from 'vitest';
 import { createVuetify } from 'vuetify';
 import * as components from 'vuetify/components';
@@ -48,7 +49,7 @@ describe('ResourceTree (FP6-F-03)', () => {
   it('renders cluster, infrastructure, control plane, pools and machines with status colors', async () => {
     const w = mount(ResourceTree, {
       props: { status },
-      global: { plugins: [createAppI18n(), createVuetify({ components })] },
+      global: { plugins: [createPinia(), createAppI18n(), createVuetify({ components })] },
     });
     const nodes = w.findAll('.node');
     expect(nodes.map((n) => n.find('.name').text())).toEqual([

@@ -30,7 +30,8 @@ export class LiveChannels<T> {
     name: string,
     private readonly source: {
       kubeConfig(key: string): Promise<KubeConfig>;
-      paths(key: string): string[];
+      /** Watch paths; with `query` e.g. a fieldSelector for a single object. */
+      paths(key: string): (string | { path: string; query: Record<string, string> })[];
       compute(key: string): Promise<T>;
     },
   ) {
@@ -61,21 +62,30 @@ export class LiveChannels<T> {
     if (!channel) {
       channel = { subscribers: new Set(), aborts: [], stopped: false };
       this.channels.set(key, channel);
-      for (const path of this.source.paths(key)) void this.watch(key, channel, path);
+      for (const p of this.source.paths(key)) {
+        const { path, query } = typeof p === 'string' ? { path: p, query: {} } : p;
+        void this.watch(key, channel, path, query);
+      }
     }
     return channel;
   }
 
-  private async watch(key: string, channel: Channel<T>, path: string): Promise<void> {
+  private async watch(
+    key: string,
+    channel: Channel<T>,
+    path: string,
+    query: Record<string, string> = {},
+  ): Promise<void> {
     if (channel.stopped) return;
     const restart = () => {
-      if (!channel.stopped) setTimeout(() => void this.watch(key, channel, path), RESTART_MS);
+      if (!channel.stopped)
+        setTimeout(() => void this.watch(key, channel, path, query), RESTART_MS);
     };
     try {
       const kc = await this.source.kubeConfig(key);
       const abort = await new Watch(kc).watch(
         path,
-        { allowWatchBookmarks: false },
+        { allowWatchBookmarks: false, ...query },
         () => this.schedule(key, channel),
         (err?: unknown) => {
           // Missing CRDs end here too; retry until they exist.

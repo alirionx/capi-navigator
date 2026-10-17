@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import YamlButton from '../components/YamlButton.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -264,7 +265,15 @@ const displayName = (p: InstalledProvider) =>
               </v-chip>
             </template>
             <template #[`item.actions`]="{ item }">
-              <div v-if="isAdmin" class="text-no-wrap">
+              <YamlButton
+                :target="{
+                  apiVersion: 'operator.cluster.x-k8s.io/v1alpha2',
+                  kind: item.kind,
+                  namespace: item.namespace,
+                  name: item.name,
+                }"
+              />
+              <div v-if="isAdmin" class="text-no-wrap d-inline-flex">
                 <v-btn
                   icon="mdi-arrow-up-bold-circle-outline"
                   variant="text"

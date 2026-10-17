@@ -110,6 +110,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     infraClusterPlural: 'awsclusters',
     machineKind: 'AWSMachine',
     machinePlural: 'awsmachines',
+    machineTemplatePlural: 'awsmachinetemplates',
   },
 
   machineDetails(s) {
