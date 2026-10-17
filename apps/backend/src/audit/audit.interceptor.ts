@@ -30,17 +30,19 @@ export class AuditInterceptor implements NestInterceptor {
     if (ctx.getType() !== 'http' || !MUTATING.has(req.method)) return next.handle();
 
     const meta = this.reflector.get<AuditMetadata | undefined>(AUDIT_KEY, ctx.getHandler());
+    if (meta?.skip) return next.handle();
     const write = (outcome: 'success' | 'failure', message?: string) => {
-      const param = meta?.targetParam ? req.params[meta.targetParam] : undefined;
-      const targetName = typeof param === 'string' ? param : undefined;
-      const bodyName = meta?.targetParam ? bodyField(req.body, meta.targetParam) : undefined;
-      const name = targetName ?? bodyName;
+      const name = meta?.targetParam ? lookup(req, meta.targetParam) : undefined;
+      const managementCluster = meta?.managementClusterParam
+        ? lookup(req, meta.managementClusterParam)
+        : undefined;
       return this.audit.record({
         actor: req.principal?.username ?? req.auditActor ?? 'anonymous',
         action: meta?.action ?? `${req.method} ${routePath(req)}`,
         outcome,
         request: { method: req.method, path: req.path },
         ...(meta?.targetKind && name ? { target: { kind: meta.targetKind, name } } : {}),
+        ...(managementCluster ? { managementCluster } : {}),
         ...(message ? { message } : {}),
       });
     };
@@ -57,6 +59,13 @@ export class AuditInterceptor implements NestInterceptor {
 function routePath(req: Request): string {
   const route = (req as { route?: { path?: string } }).route;
   return route?.path ?? req.path;
+}
+
+/** Value of a route parameter, or else of a top-level body field. */
+function lookup(req: Request, key: string): string | undefined {
+  const param = req.params[key];
+  if (typeof param === 'string') return param;
+  return bodyField(req.body, key);
 }
 
 function bodyField(body: unknown, field: string): string | undefined {

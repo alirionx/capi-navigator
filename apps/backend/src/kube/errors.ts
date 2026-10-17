@@ -14,7 +14,7 @@ export const isNotFound = (err: unknown): boolean => kubeStatus(err) === 404;
 export const isConflict = (err: unknown): boolean => kubeStatus(err) === 409;
 
 /** Message of the Kubernetes `Status` object in an API error, if present. */
-function kubeMessage(err: unknown): string | undefined {
+export function kubeMessage(err: unknown): string | undefined {
   const body = (err as { body?: unknown }).body;
   if (typeof body === 'string') {
     try {

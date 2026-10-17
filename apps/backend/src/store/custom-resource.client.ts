@@ -83,6 +83,14 @@ export class CustomResourceClient<TSchema extends z.ZodType> {
     )) as NavigatorResource<z.infer<TSchema>>;
   }
 
+  /** JSON merge patch of the status subresource. */
+  async patchStatus(name: string, status: unknown): Promise<NavigatorResource<z.infer<TSchema>>> {
+    return (await this.api.patchNamespacedCustomObjectStatus(
+      { ...this.coords, name, body: { status }, fieldManager: FIELD_MANAGER },
+      MERGE_PATCH,
+    )) as NavigatorResource<z.infer<TSchema>>;
+  }
+
   async delete(name: string): Promise<void> {
     await this.api.deleteNamespacedCustomObject({ ...this.coords, name });
   }

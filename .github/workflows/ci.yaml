@@ -23,6 +23,7 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      - run: pnpm --filter @capi-navigator/backend test:coverage
 
   integration:
     # NF-16: integration tests against a kind cluster.

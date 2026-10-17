@@ -22,9 +22,13 @@ export const AllowPendingPasswordChange = () => SetMetadata(PASSWORD_CHANGE_PEND
 export interface AuditMetadata {
   /** Action identifier, e.g. "user.create". */
   action: string;
-  /** Kind of the target object; the name is taken from the route parameter `targetParam`. */
+  /** Kind of the target object; the name is taken from the route parameter or body field `targetParam`. */
   targetKind?: string;
   targetParam?: string;
+  /** Route parameter or body field naming the management cluster the action runs against. */
+  managementClusterParam?: string;
+  /** For POST endpoints that do not change anything (e.g. parsing input): no AuditEvent. */
+  skip?: boolean;
 }
 
 /** Names the audit action of a mutating endpoint (FP1-F-06). */

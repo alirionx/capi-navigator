@@ -1,4 +1,10 @@
-import type { AuditEventSpec, NavigatorResource, NavigatorUserSpec } from '@capi-navigator/shared';
+import type {
+  AuditEventSpec,
+  ManagementClusterSpec,
+  ManagementClusterStatus,
+  NavigatorResource,
+  NavigatorUserSpec,
+} from '@capi-navigator/shared';
 import type { StoreService } from '../store/store.service.js';
 
 const err = (code: number) => Object.assign(new Error(`HTTP ${code}`), { code });
@@ -9,6 +15,10 @@ export function createFakeStore() {
   const users = new Map<string, NavigatorResource<NavigatorUserSpec>>();
   const secrets = new Map<string, Record<string, string>>();
   const auditEvents: NavigatorResource<AuditEventSpec>[] = [];
+  const connections = new Map<
+    string,
+    NavigatorResource<ManagementClusterSpec, ManagementClusterStatus>
+  >();
 
   const store = {
     namespace: 'test',
@@ -65,6 +75,59 @@ export function createFakeStore() {
         secrets.delete(name);
       },
     },
+    connections: {
+      create: async (meta: { name: string }, spec: ManagementClusterSpec) => {
+        if (connections.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'ManagementCluster',
+          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          spec,
+        };
+        connections.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchSpec: async (name: string, spec: Record<string, unknown>) => {
+        const current = connections.get(name);
+        if (!current) throw err(404);
+        const merged: Record<string, unknown> = { ...current.spec };
+        for (const [k, v] of Object.entries(spec)) {
+          if (v === null) delete merged[k];
+          else merged[k] = v;
+        }
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          spec: merged as ManagementClusterSpec,
+        };
+        connections.set(name, updated);
+        return structuredClone(updated);
+      },
+      patchStatus: async (name: string, status: Record<string, unknown>) => {
+        const current = connections.get(name);
+        if (!current) throw err(404);
+        const merged = Object.fromEntries(
+          Object.entries({ ...current.status, ...status }).filter(([, v]) => v !== null),
+        ) as ManagementClusterStatus;
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          status: merged,
+        };
+        connections.set(name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!connections.delete(name)) throw err(404);
+      },
+    },
+    connectionCache: {
+      get: (name: string) => structuredClone(connections.get(name)),
+      list: () => [...connections.values()].map((c) => structuredClone(c)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
+    },
     auditEvents: {
       create: async (_meta: unknown, spec: AuditEventSpec) => {
         const obj = {
@@ -85,5 +148,5 @@ export function createFakeStore() {
     },
   };
 
-  return { store: store as unknown as StoreService, users, secrets, auditEvents };
+  return { store: store as unknown as StoreService, users, secrets, auditEvents, connections };
 }

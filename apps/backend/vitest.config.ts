@@ -9,5 +9,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // NF-15: at least 70 % line coverage in the backend.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/testing/**', 'src/main.ts'],
+      thresholds: { lines: 70 },
+    },
   },
 });

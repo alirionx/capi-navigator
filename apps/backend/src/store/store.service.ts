@@ -7,8 +7,10 @@ import {
 } from '@nestjs/common';
 import {
   AuditEventCrd,
+  ManagementClusterCrd,
   NavigatorUserCrd,
   type AuditEventSpecSchema,
+  type ManagementClusterSpecSchema,
   type NavigatorUserSpecSchema,
 } from '@capi-navigator/shared';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
@@ -28,6 +30,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly users: CustomResourceClient<typeof NavigatorUserSpecSchema>;
   readonly userCache: ResourceCache<typeof NavigatorUserSpecSchema>;
   readonly auditEvents: CustomResourceClient<typeof AuditEventSpecSchema>;
+  readonly connections: CustomResourceClient<typeof ManagementClusterSpecSchema>;
+  readonly connectionCache: ResourceCache<typeof ManagementClusterSpecSchema>;
   readonly secrets: SecretStore;
 
   constructor(kube: KubeClientFactory, @Inject(APP_CONFIG) config: AppConfig) {
@@ -36,6 +40,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.users = new CustomResourceClient(kc, ns, NavigatorUserCrd);
     this.userCache = new ResourceCache(kc, this.users);
     this.auditEvents = new CustomResourceClient(kc, ns, AuditEventCrd);
+    this.connections = new CustomResourceClient(kc, ns, ManagementClusterCrd);
+    this.connectionCache = new ResourceCache(kc, this.connections);
     this.secrets = new SecretStore(kc, ns);
   }
 
@@ -45,22 +51,22 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
 
   /** True once all informer caches are synced; used by the readiness probe (NF-20). */
   get ready(): boolean {
-    return this.userCache.isSynced;
+    return this.userCache.isSynced && this.connectionCache.isSynced;
   }
 
   async onModuleInit(): Promise<void> {
     try {
-      await this.userCache.start();
-      this.logger.log(`User cache synced (namespace ${this.namespace})`);
+      await Promise.all([this.userCache.start(), this.connectionCache.start()]);
+      this.logger.log(`Caches synced (namespace ${this.namespace})`);
     } catch (err) {
       this.logger.error(
-        `Cannot read NavigatorUsers in namespace ${this.namespace}. Are the CRDs installed (pnpm crds:install) and does the namespace exist? ${err instanceof Error ? err.message : ''}`,
+        `Cannot read the app's resources in namespace ${this.namespace}. Are the CRDs installed (pnpm crds:install) and does the namespace exist? ${err instanceof Error ? err.message : ''}`,
       );
       throw err;
     }
   }
 
   async onApplicationShutdown(): Promise<void> {
-    await this.userCache.stop();
+    await Promise.all([this.userCache.stop(), this.connectionCache.stop()]);
   }
 }

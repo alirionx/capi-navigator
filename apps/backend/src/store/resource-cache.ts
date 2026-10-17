@@ -94,7 +94,14 @@ export class ResourceCache<TSchema extends z.ZodType> {
     }
     const current = this.items.get(obj.metadata.name);
     if (current && isOlder(obj.metadata.resourceVersion, current.metadata.resourceVersion)) return;
-    this.items.set(obj.metadata.name, { ...obj, spec: parsed.data });
+    const statusSchema = this.client.def.status;
+    const status =
+      statusSchema && obj.status !== undefined ? statusSchema.safeParse(obj.status) : undefined;
+    this.items.set(obj.metadata.name, {
+      ...obj,
+      spec: parsed.data,
+      status: status?.success ? status.data : undefined,
+    });
   }
 
   /** Write-through after a successful delete by this process. */
