@@ -38,8 +38,8 @@ const headers = computed(() => [
   <v-container>
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
-        <h1 class="text-h4">{{ t('clusters.title') }}</h1>
-        <p class="text-medium-emphasis">{{ t('clusters.subtitle') }}</p>
+        <h1 class="page-title">{{ t('clusters.title') }}</h1>
+        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('clusters.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-btn icon="mdi-refresh" variant="text" :aria-label="t('home.refresh')" @click="reload" />
@@ -58,40 +58,43 @@ const headers = computed(() => [
     }}</v-alert>
     <template v-else>
       <ErrorAlert v-if="error" :error="error" class="mb-4" />
-      <v-data-table
-        :headers="headers"
-        :items="store.clusters"
-        :loading="store.loading"
-        :no-data-text="t('clusters.empty')"
-        data-testid="clusters-table"
-      >
-        <template #[`item.name`]="{ item }">
-          <router-link
-            :to="{ name: 'cluster', params: { namespace: item.namespace, name: item.name } }"
-            >{{ item.name }}</router-link
-          >
-        </template>
-        <template #[`item.provider`]="{ item }"
-          >{{ item.provider ?? '–' }} {{ item.flavor ? `· ${item.flavor}` : '' }}</template
+      <v-card border class="table-card">
+        <v-data-table
+          :headers="headers"
+          :items="store.clusters"
+          :loading="store.loading"
+          :no-data-text="t('clusters.empty')"
+          data-testid="clusters-table"
         >
-        <template #[`item.nodes`]="{ item }">
-          <span v-if="item.controlPlane"
-            >{{ item.controlPlane.ready }}/{{ item.controlPlane.replicas }} CP</span
+          <template #[`item.name`]="{ item }">
+            <router-link
+              :to="{ name: 'cluster', params: { namespace: item.namespace, name: item.name } }"
+              >{{ item.name }}</router-link
+            >
+          </template>
+          <template #[`item.provider`]="{ item }"
+            >{{ item.provider ?? '–' }} {{ item.flavor ? `· ${item.flavor}` : '' }}</template
           >
-          <span v-if="item.workers">
-            · {{ item.workers.ready }}/{{ item.workers.replicas }} {{ t('clusters.workers') }}</span
-          >
-        </template>
-        <template #[`item.phase`]="{ item }">
-          <v-chip
-            size="small"
-            variant="tonal"
-            :color="item.ready ? 'success' : item.phase === 'Failed' ? 'error' : 'info'"
-          >
-            {{ item.ready ? t('clusters.ready') : item.phase }}
-          </v-chip>
-        </template>
-      </v-data-table>
+          <template #[`item.nodes`]="{ item }">
+            <span v-if="item.controlPlane"
+              >{{ item.controlPlane.ready }}/{{ item.controlPlane.replicas }} CP</span
+            >
+            <span v-if="item.workers">
+              · {{ item.workers.ready }}/{{ item.workers.replicas }}
+              {{ t('clusters.workers') }}</span
+            >
+          </template>
+          <template #[`item.phase`]="{ item }">
+            <v-chip
+              size="small"
+              variant="tonal"
+              :color="item.ready ? 'success' : item.phase === 'Failed' ? 'error' : 'info'"
+            >
+              {{ item.ready ? t('clusters.ready') : item.phase }}
+            </v-chip>
+          </template>
+        </v-data-table>
+      </v-card>
     </template>
   </v-container>
 </template>

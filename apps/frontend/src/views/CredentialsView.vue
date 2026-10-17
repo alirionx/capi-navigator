@@ -120,8 +120,8 @@ async function loadLookup(c: Credential): Promise<void> {
   <v-container>
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
-        <h1 class="text-h4">{{ t('credentials.title') }}</h1>
-        <p class="text-medium-emphasis">{{ t('credentials.subtitle') }}</p>
+        <h1 class="page-title">{{ t('credentials.title') }}</h1>
+        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('credentials.subtitle') }}</p>
       </div>
       <v-spacer />
       <template v-if="isAdmin && connections.active">
@@ -153,184 +153,190 @@ async function loadLookup(c: Credential): Promise<void> {
       <ErrorAlert v-if="loadError" :error="loadError" class="mb-4" />
       <ErrorAlert v-if="actionError && !dialog" :error="actionError" class="mb-4" />
 
-      <v-data-table
-        v-model:expanded="expanded"
-        :headers="headers"
-        :items="store.credentials"
-        :item-value="key"
-        :loading="store.loading"
-        show-expand
-        :no-data-text="t('credentials.empty')"
-        data-testid="credentials-table"
-      >
-        <template #[`item.name`]="{ item }">
-          <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
-          <div class="text-caption text-medium-emphasis">
-            {{ item.identity.kind }}/{{ item.name }}
-          </div>
-        </template>
-        <template #[`item.provider`]="{ item }">{{
-          t(`credentials.providers.${item.provider}`)
-        }}</template>
-        <template #[`item.target`]="{ item }">
-          <div class="text-caption">
-            <template v-if="item.provider === 'openstack'">
-              {{ item.summary.authUrl }}<br />{{ t('credentials.regionLabel') }}:
-              {{ item.summary.region ?? '–' }} · {{ item.summary.authType }}
-            </template>
-            <template v-else>
-              {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
-                t('credentials.keyEnding', { suffix: item.summary.accessKeyIdSuffix })
-              }}
-            </template>
-          </div>
-        </template>
-        <template #[`item.allowedNamespaces`]="{ item }">
-          <v-chip v-for="ns in item.allowedNamespaces" :key="ns" size="x-small" class="mr-1">{{
-            ns
-          }}</v-chip>
-        </template>
-        <template #[`item.lastTest`]="{ item }">
-          <v-chip
-            v-if="item.lastTest"
-            :color="testState(item).color"
-            size="small"
-            variant="tonal"
-            :prepend-icon="testState(item).icon"
-          >
-            {{ t(`credentials.state.${testState(item).key}`) }}
-          </v-chip>
-          <span v-else class="text-caption">–</span>
-        </template>
-        <template #[`item.actions`]="{ item }">
-          <div v-if="isAdmin" class="text-no-wrap">
-            <v-btn
-              icon="mdi-connection"
-              variant="text"
+      <v-card border class="table-card">
+        <v-data-table
+          v-model:expanded="expanded"
+          :headers="headers"
+          :items="store.credentials"
+          :item-value="key"
+          :loading="store.loading"
+          show-expand
+          :no-data-text="t('credentials.empty')"
+          data-testid="credentials-table"
+        >
+          <template #[`item.name`]="{ item }">
+            <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
+            <div class="text-caption text-medium-emphasis">
+              {{ item.identity.kind }}/{{ item.name }}
+            </div>
+          </template>
+          <template #[`item.provider`]="{ item }">{{
+            t(`credentials.providers.${item.provider}`)
+          }}</template>
+          <template #[`item.target`]="{ item }">
+            <div class="text-caption">
+              <template v-if="item.provider === 'openstack'">
+                {{ item.summary.authUrl }}<br />{{ t('credentials.regionLabel') }}:
+                {{ item.summary.region ?? '–' }} · {{ item.summary.authType }}
+              </template>
+              <template v-else>
+                {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
+                  t('credentials.keyEnding', { suffix: item.summary.accessKeyIdSuffix })
+                }}
+              </template>
+            </div>
+          </template>
+          <template #[`item.allowedNamespaces`]="{ item }">
+            <v-chip v-for="ns in item.allowedNamespaces" :key="ns" size="x-small" class="mr-1">{{
+              ns
+            }}</v-chip>
+          </template>
+          <template #[`item.lastTest`]="{ item }">
+            <v-chip
+              v-if="item.lastTest"
+              :color="testState(item).color"
               size="small"
-              :title="t('credentials.test')"
-              :aria-label="t('credentials.test')"
-              :loading="testing === key(item)"
-              data-testid="test-credential"
-              @click="test(item)"
-            />
-            <v-btn
-              icon="mdi-pencil"
-              variant="text"
-              size="small"
-              :title="t('credentials.edit')"
-              :aria-label="t('credentials.edit')"
-              @click="dialog = { kind: 'edit', provider: item.provider, credential: item }"
-            />
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              size="small"
-              color="error"
-              :title="t('common.delete')"
-              :aria-label="t('common.delete')"
-              @click="dialog = { kind: 'delete', credential: item }"
-            />
-          </div>
-        </template>
-        <template #expanded-row="{ columns, item }">
-          <tr>
-            <td :colspan="columns.length" class="py-4">
-              <template v-if="item.lastTest">
-                <div class="text-subtitle-2 mb-1">
-                  {{
-                    t('credentials.lastTestAt', {
-                      at: d(new Date(item.lastTest.testedAt), 'short'),
-                    })
-                  }}
-                  <span v-if="item.lastTest.identity" class="text-medium-emphasis">
-                    · {{ item.lastTest.identity }}</span
+              variant="tonal"
+              :prepend-icon="testState(item).icon"
+            >
+              {{ t(`credentials.state.${testState(item).key}`) }}
+            </v-chip>
+            <span v-else class="text-caption">–</span>
+          </template>
+          <template #[`item.actions`]="{ item }">
+            <div v-if="isAdmin" class="text-no-wrap">
+              <v-btn
+                icon="mdi-connection"
+                variant="text"
+                size="small"
+                :title="t('credentials.test')"
+                :aria-label="t('credentials.test')"
+                :loading="testing === key(item)"
+                data-testid="test-credential"
+                @click="test(item)"
+              />
+              <v-btn
+                icon="mdi-pencil"
+                variant="text"
+                size="small"
+                :title="t('credentials.edit')"
+                :aria-label="t('credentials.edit')"
+                @click="dialog = { kind: 'edit', provider: item.provider, credential: item }"
+              />
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                size="small"
+                color="error"
+                :title="t('common.delete')"
+                :aria-label="t('common.delete')"
+                @click="dialog = { kind: 'delete', credential: item }"
+              />
+            </div>
+          </template>
+          <template #expanded-row="{ columns, item }">
+            <tr>
+              <td :colspan="columns.length" class="py-4">
+                <template v-if="item.lastTest">
+                  <div class="text-subtitle-2 mb-1">
+                    {{
+                      t('credentials.lastTestAt', {
+                        at: d(new Date(item.lastTest.testedAt), 'short'),
+                      })
+                    }}
+                    <span v-if="item.lastTest.identity" class="text-medium-emphasis">
+                      · {{ item.lastTest.identity }}</span
+                    >
+                  </div>
+                  <v-alert
+                    v-if="item.lastTest.message"
+                    :type="testState(item).key === 'failed' ? 'error' : 'warning'"
+                    variant="tonal"
+                    density="comfortable"
+                    class="mb-2"
+                  >
+                    <div class="font-weight-medium">{{ item.lastTest.message }}</div>
+                    <div v-if="item.lastTest.hint" class="text-body-2">
+                      {{ item.lastTest.hint }}
+                    </div>
+                    <pre
+                      v-if="item.lastTest.fixCommand"
+                      class="command mt-2"
+                      data-testid="fix-command"
+                      >{{ item.lastTest.fixCommand }}</pre>
+                    <details v-if="item.lastTest.details" class="text-caption mt-1">
+                      <summary>{{ t('errors.details') }}</summary>
+                      <pre class="command">{{ item.lastTest.details }}</pre>
+                    </details>
+                  </v-alert>
+                  <v-table density="compact" class="mb-3">
+                    <tbody>
+                      <tr v-for="c in item.lastTest.checks" :key="c.name">
+                        <td style="width: 32px">
+                          <v-icon
+                            :icon="c.ok ? 'mdi-check' : 'mdi-close'"
+                            :color="c.ok ? 'success' : 'error'"
+                            size="small"
+                          />
+                        </td>
+                        <td class="text-caption">{{ c.name }}</td>
+                        <td class="text-caption text-medium-emphasis">{{ c.message }}</td>
+                      </tr>
+                    </tbody>
+                  </v-table>
+                </template>
+
+                <div v-if="isOperator" class="d-flex align-center ga-2" style="max-width: 520px">
+                  <v-select
+                    v-model="lookupKind[key(item)]"
+                    :items="
+                      LOOKUP_KINDS[item.provider].map((k) => ({
+                        title: t(`credentials.lookups.${k}`),
+                        value: k,
+                      }))
+                    "
+                    :label="t('credentials.lookupLabel')"
+                    density="compact"
+                    hide-details
+                    :data-testid="`lookup-kind-${item.name}`"
+                  />
+                  <v-btn
+                    :loading="lookupLoading === key(item)"
+                    :disabled="!lookupKind[key(item)]"
+                    variant="tonal"
+                    @click="loadLookup(item)"
+                  >
+                    {{ t('credentials.lookupLoad') }}
+                  </v-btn>
+                </div>
+                <ErrorAlert
+                  v-if="lookupError[key(item)]"
+                  :error="lookupError[key(item)]"
+                  class="mt-2"
+                />
+                <div
+                  v-if="lookupResult[key(item)]"
+                  class="mt-2"
+                  :data-testid="`lookup-result-${item.name}`"
+                >
+                  <div class="text-caption mb-1">
+                    {{
+                      t('credentials.lookupCount', { n: lookupResult[key(item)]!.options.length })
+                    }}
+                  </div>
+                  <v-chip
+                    v-for="o in lookupResult[key(item)]!.options.slice(0, 30)"
+                    :key="o.value"
+                    size="small"
+                    class="mr-1 mb-1"
+                    >{{ o.label }}</v-chip
                   >
                 </div>
-                <v-alert
-                  v-if="item.lastTest.message"
-                  :type="testState(item).key === 'failed' ? 'error' : 'warning'"
-                  variant="tonal"
-                  density="comfortable"
-                  class="mb-2"
-                >
-                  <div class="font-weight-medium">{{ item.lastTest.message }}</div>
-                  <div v-if="item.lastTest.hint" class="text-body-2">{{ item.lastTest.hint }}</div>
-                  <pre
-                    v-if="item.lastTest.fixCommand"
-                    class="command mt-2"
-                    data-testid="fix-command"
-                    >{{ item.lastTest.fixCommand }}</pre>
-                  <details v-if="item.lastTest.details" class="text-caption mt-1">
-                    <summary>{{ t('errors.details') }}</summary>
-                    <pre class="command">{{ item.lastTest.details }}</pre>
-                  </details>
-                </v-alert>
-                <v-table density="compact" class="mb-3">
-                  <tbody>
-                    <tr v-for="c in item.lastTest.checks" :key="c.name">
-                      <td style="width: 32px">
-                        <v-icon
-                          :icon="c.ok ? 'mdi-check' : 'mdi-close'"
-                          :color="c.ok ? 'success' : 'error'"
-                          size="small"
-                        />
-                      </td>
-                      <td class="text-caption">{{ c.name }}</td>
-                      <td class="text-caption text-medium-emphasis">{{ c.message }}</td>
-                    </tr>
-                  </tbody>
-                </v-table>
-              </template>
-
-              <div v-if="isOperator" class="d-flex align-center ga-2" style="max-width: 520px">
-                <v-select
-                  v-model="lookupKind[key(item)]"
-                  :items="
-                    LOOKUP_KINDS[item.provider].map((k) => ({
-                      title: t(`credentials.lookups.${k}`),
-                      value: k,
-                    }))
-                  "
-                  :label="t('credentials.lookupLabel')"
-                  density="compact"
-                  hide-details
-                  :data-testid="`lookup-kind-${item.name}`"
-                />
-                <v-btn
-                  :loading="lookupLoading === key(item)"
-                  :disabled="!lookupKind[key(item)]"
-                  variant="tonal"
-                  @click="loadLookup(item)"
-                >
-                  {{ t('credentials.lookupLoad') }}
-                </v-btn>
-              </div>
-              <ErrorAlert
-                v-if="lookupError[key(item)]"
-                :error="lookupError[key(item)]"
-                class="mt-2"
-              />
-              <div
-                v-if="lookupResult[key(item)]"
-                class="mt-2"
-                :data-testid="`lookup-result-${item.name}`"
-              >
-                <div class="text-caption mb-1">
-                  {{ t('credentials.lookupCount', { n: lookupResult[key(item)]!.options.length }) }}
-                </div>
-                <v-chip
-                  v-for="o in lookupResult[key(item)]!.options.slice(0, 30)"
-                  :key="o.value"
-                  size="small"
-                  class="mr-1 mb-1"
-                  >{{ o.label }}</v-chip
-                >
-              </div>
-            </td>
-          </tr>
-        </template>
-      </v-data-table>
+              </td>
+            </tr>
+          </template>
+        </v-data-table>
+      </v-card>
     </template>
 
     <v-dialog

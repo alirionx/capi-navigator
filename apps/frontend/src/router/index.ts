@@ -23,6 +23,8 @@ declare module 'vue-router' {
     /** Navigation entry. */
     titleKey?: string;
     icon?: string;
+    /** Navigation section the entry is listed under. */
+    navGroup?: 'overview' | 'management' | 'administration';
   }
 }
 
@@ -38,13 +40,18 @@ export const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'home',
     component: HomeView,
-    meta: { minRole: 'viewer', titleKey: 'nav.home', icon: 'mdi-home' },
+    meta: { minRole: 'viewer', titleKey: 'nav.home', icon: 'mdi-home', navGroup: 'overview' },
   },
   {
     path: '/clusters',
     name: 'clusters',
     component: ClustersView,
-    meta: { minRole: 'viewer', titleKey: 'nav.clusters', icon: 'mdi-server-network' },
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.clusters',
+      icon: 'mdi-server-network',
+      navGroup: 'overview',
+    },
   },
   {
     path: '/clusters/new',
@@ -63,25 +70,45 @@ export const routes: RouteRecordRaw[] = [
     path: '/connections',
     name: 'connections',
     component: ConnectionsView,
-    meta: { minRole: 'viewer', titleKey: 'nav.connections', icon: 'mdi-lan-connect' },
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.connections',
+      icon: 'mdi-lan-connect',
+      navGroup: 'management',
+    },
   },
   {
     path: '/providers',
     name: 'providers',
     component: ProvidersView,
-    meta: { minRole: 'viewer', titleKey: 'nav.providers', icon: 'mdi-puzzle' },
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.providers',
+      icon: 'mdi-puzzle',
+      navGroup: 'management',
+    },
   },
   {
     path: '/credentials',
     name: 'credentials',
     component: CredentialsView,
-    meta: { minRole: 'viewer', titleKey: 'nav.credentials', icon: 'mdi-key-chain' },
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.credentials',
+      icon: 'mdi-key-chain',
+      navGroup: 'management',
+    },
   },
   {
     path: '/users',
     name: 'users',
     component: UsersView,
-    meta: { minRole: 'admin', titleKey: 'nav.users', icon: 'mdi-account-multiple' },
+    meta: {
+      minRole: 'admin',
+      titleKey: 'nav.users',
+      icon: 'mdi-account-multiple',
+      navGroup: 'administration',
+    },
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
