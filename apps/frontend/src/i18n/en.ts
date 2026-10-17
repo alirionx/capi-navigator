@@ -129,6 +129,8 @@ export const en = {
     cidrsRequired: 'Add at least one network',
     cidrInvalid: 'Use IPv4 networks like 203.0.113.7/32',
     openWarning: '0.0.0.0/0 allows SSH from the whole internet.',
+    pagingBroken:
+      'This cloud returns broken paging links in its network API (found by the credential test): the bastion would not get a floating IP and the cluster would show as not available.',
     publicIP: 'Public IP',
     privateIP: 'Private IP',
     state: 'State',

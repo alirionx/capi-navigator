@@ -153,10 +153,17 @@ export const CloudsYamlInfoSchema = z.object({
 export type CloudsYamlInfo = z.infer<typeof CloudsYamlInfoSchema>;
 
 export const CredentialCheckSchema = z.object({
+  /** Stable identifier for checks other parts of the app react to. */
+  id: z.string().optional(),
   name: z.string(),
   ok: z.boolean(),
+  /** A failed warning does not fail the test; it limits single features. */
+  warning: z.boolean().optional(),
   message: z.string().optional(),
 });
+
+/** OpenStack: Neutron returns paging links that miss the endpoint path (e.g. Infomaniak). */
+export const CHECK_NEUTRON_PAGING = 'neutron-paging-links';
 
 /** Result of a credential test (FP4-F-04, FP4-F-09). Never contains secrets. */
 export const CredentialTestResultSchema = z.object({

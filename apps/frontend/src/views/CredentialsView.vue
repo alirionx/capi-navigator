@@ -274,8 +274,8 @@ async function loadLookup(c: Credential): Promise<void> {
                       <tr v-for="c in item.lastTest.checks" :key="c.name">
                         <td style="width: 32px">
                           <v-icon
-                            :icon="c.ok ? 'mdi-check' : 'mdi-close'"
-                            :color="c.ok ? 'success' : 'error'"
+                            :icon="c.ok ? 'mdi-check' : c.warning ? 'mdi-alert' : 'mdi-close'"
+                            :color="c.ok ? 'success' : c.warning ? 'warning' : 'error'"
                             size="small"
                           />
                         </td>

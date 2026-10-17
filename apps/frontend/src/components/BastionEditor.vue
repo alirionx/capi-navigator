@@ -19,6 +19,8 @@ const props = defineProps<{
   hasKeyPair: boolean;
   /** Size cannot change while the bastion runs (day-2). */
   sizeLocked?: boolean;
+  /** The credential test found broken Neutron paging links (OpenStack). */
+  pagingWarning?: string;
 }>();
 const { t } = useI18n();
 
@@ -42,6 +44,16 @@ const openToAll = computed(
     <template v-if="model.enabled">
       <v-alert v-if="!hasKeyPair" type="error" variant="tonal" density="compact" class="mt-3">
         {{ t('bastion.needsKeyPair') }}
+      </v-alert>
+      <v-alert
+        v-if="pagingWarning"
+        type="error"
+        variant="tonal"
+        density="compact"
+        class="mt-3"
+        data-testid="bastion-paging-warning"
+      >
+        {{ t('bastion.pagingBroken') }} {{ pagingWarning }}
       </v-alert>
       <v-alert
         v-if="provider === 'openstack'"

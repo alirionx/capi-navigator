@@ -7,6 +7,7 @@ import {
   type LookupKind,
   type LookupOption,
   type OpenStackCredentialInput,
+  CHECK_NEUTRON_PAGING,
 } from '@capi-navigator/shared';
 import { CredentialInputError, type CredentialPlugin } from '../credential-plugin.js';
 import {
@@ -116,11 +117,12 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
     } catch (err) {
       checks.push({ name: 'Read flavors', ok: false, message: (err as Error).message });
     }
+    checks.push(await this.checkPagingLinks(session, data));
     const project = session.project;
     const identity = project
       ? `Project ${project.name}${project.domain?.name ? ` (domain ${project.domain.name})` : ''}`
       : undefined;
-    const missing = checks.filter((c) => !c.ok);
+    const missing = checks.filter((c) => !c.ok && !c.warning);
     return {
       ok: missing.length === 0,
       testedAt,
@@ -133,6 +135,37 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
           }
         : {}),
     };
+  }
+
+  /**
+   * Neutron paging links must point below the network endpoint. Some clouds (e.g. Infomaniak)
+   * return links without the endpoint path; CAPO follows them when it looks up the bastion port
+   * and fails with 503, so the bastion never gets a floating IP (FP5-F-20).
+   */
+  private async checkPagingLinks(
+    session: OpenStackSession,
+    data: Record<string, string>,
+  ): Promise<CredentialTestResult['checks'][number]> {
+    const check = { id: CHECK_NEUTRON_PAGING, name: 'Network API paging links', warning: true };
+    try {
+      const base = endpoint(session, 'network');
+      const res = await getJson<{ networks_links?: { rel: string; href: string }[] }>(
+        session,
+        'network',
+        '/networks?limit=1',
+        this.opts(data),
+      );
+      const next = res.networks_links?.find((l) => l.rel === 'next')?.href;
+      if (!next) return { ...check, ok: true, message: 'Not verifiable (only one network)' };
+      if (next.startsWith(`${base}/`)) return { ...check, ok: true };
+      return {
+        ...check,
+        ok: false,
+        message: `Paging links point to ${new URL(next).origin}${new URL(next).pathname} instead of below ${base}. A bastion host would not get a floating IP (CAPO follows these links).`,
+      };
+    } catch (err) {
+      return { ...check, ok: true, message: `Not verifiable: ${(err as Error).message}` };
+    }
   }
 
   /** FP4-F-05: selection lists for the cluster wizard. */

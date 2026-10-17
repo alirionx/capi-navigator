@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   ADDON_PRESETS,
+  CHECK_NEUTRON_PAGING,
   AWS_ROOT_VOLUME_TYPES,
   ClusterSpecSchema,
   distributionCatalog,
@@ -215,6 +216,11 @@ const sizes = computed(
   () => lists[draft.provider === 'openstack' ? 'flavors' : 'instanceTypes'] ?? [],
 );
 const images = computed(() => lists.images ?? []);
+/** FP5-F-20: result of the Neutron paging check of the selected credential (OpenStack). */
+const pagingWarning = computed(() => {
+  const c = credential.value?.lastTest?.checks.find((x) => x.id === CHECK_NEUTRON_PAGING);
+  return c && !c.ok ? c.message : undefined;
+});
 const volumeTypes = computed<LookupOption[]>(() =>
   draft.provider === 'openstack'
     ? (lists.volumeTypes ?? [])
@@ -785,6 +791,7 @@ const canPreview = computed(() => issues.value.length === 0);
             v-model="draft.bastion"
             :provider="draft.provider"
             :sizes="sizes"
+            :paging-warning="pagingWarning"
             :has-key-pair="
               !!(draft.provider === 'openstack' ? draft.os.sshKeyName : draft.aws.sshKeyName)
             "
