@@ -5,6 +5,7 @@ import { onUnauthorized } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
 import ChangePasswordView from '../views/ChangePasswordView.vue';
 import ConnectionsView from '../views/ConnectionsView.vue';
+import CredentialsView from '../views/CredentialsView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
@@ -47,6 +48,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'providers',
     component: ProvidersView,
     meta: { minRole: 'viewer', titleKey: 'nav.providers', icon: 'mdi-puzzle' },
+  },
+  {
+    path: '/credentials',
+    name: 'credentials',
+    component: CredentialsView,
+    meta: { minRole: 'viewer', titleKey: 'nav.credentials', icon: 'mdi-key-chain' },
   },
   {
     path: '/users',
