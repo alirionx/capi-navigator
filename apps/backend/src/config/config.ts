@@ -1,4 +1,11 @@
+import { hostname } from 'node:os';
 import { z } from 'zod';
+
+const bool = (defaultValue: 'true' | 'false') =>
+  z
+    .enum(['true', 'false'])
+    .default(defaultValue)
+    .transform((v) => v === 'true');
 
 /**
  * Backend configuration, taken exclusively from environment variables (12-factor, section 4).
@@ -13,10 +20,23 @@ const EnvSchema = z.object({
   STATIC_DIR: z.string().optional(),
   LOG_LEVEL: z.enum(['error', 'warn', 'log', 'debug', 'verbose']).default('log'),
   /** Set to "false" for human-readable logs in local development; JSON by default (NF-18). */
-  LOG_JSON: z
-    .enum(['true', 'false'])
-    .default('true')
-    .transform((v) => v === 'true'),
+  LOG_JSON: bool('true'),
+  /** Identity of this replica, used for leader election (defaults to the pod hostname). */
+  POD_NAME: z.string().default(hostname()),
+
+  /** FP1-F-02: password of the initial admin; alternatively the Secret capi-navigator-initial-admin. */
+  INITIAL_ADMIN_PASSWORD: z.string().min(12).optional(),
+  /** FP1-F-03: absolute session lifetime. */
+  SESSION_TTL_HOURS: z.coerce.number().positive().default(8),
+  /** FP1-F-03: Secure cookie flag. Browsers accept Secure cookies on http://localhost. */
+  COOKIE_SECURE: bool('true'),
+  /** Express "trust proxy" setting, needed behind an ingress for correct client IPs. */
+  TRUST_PROXY: z.string().default('loopback'),
+  /** NF-04: failed login attempts per client and username within the window. */
+  LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(10),
+  LOGIN_RATE_WINDOW_MINUTES: z.coerce.number().positive().default(15),
+  /** Section 4, State storage: AuditEvent retention. */
+  AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
@@ -28,3 +48,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return result.data;
 }
+
+export const APP_CONFIG = Symbol('APP_CONFIG');
