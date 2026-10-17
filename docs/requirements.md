@@ -466,12 +466,12 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] Against Infomaniak Public Cloud, credentials from a downloaded clouds.yaml can be created and tested successfully.
-- [ ] Images, flavors and external networks appear as selection lists.
-- [ ] The secret exists in the management cluster and is accepted by CAPO.
+- [x] Against Infomaniak Public Cloud, credentials from a downloaded clouds.yaml can be created and tested successfully.
+- [x] Images, flavors and external networks appear as selection lists.
+- [x] The secret exists in the management cluster and is accepted by CAPO.
 - [ ] AWS credentials of an IAM user can be created and tested; missing CAPA IAM prerequisites are reported with the `clusterawsadm` command.
 - [ ] Regions, instance types, Ubuntu AMIs and key pairs appear as selection lists.
-- [ ] The `AWSClusterStaticIdentity` and its Secret exist in the management cluster and are accepted by CAPA.
+- [x] The `AWSClusterStaticIdentity` and its Secret exist in the management cluster and are accepted by CAPA.
 
 ### FP-5: Create workload clusters (OpenStack and AWS + RKE2)
 

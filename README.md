@@ -45,6 +45,14 @@ cert-manager, the CAPI Operator and ORC are ready, with install commands if not.
 then the providers from the catalog: every install or upgrade shows the generated YAML first and
 is applied only after confirmation. Status updates arrive live.
 
+### Add cloud credentials
+
+Under **Credentials**, add OpenStack credentials (upload the `clouds.yaml` of an application
+credential) or AWS credentials (access key of a dedicated IAM user). They are stored once on the
+management cluster as Secret plus `OpenStackClusterIdentity` / `AWSClusterStaticIdentity`
+(ADR-0002), tested, and used for the selection lists of the cluster wizard. For AWS, the test
+checks the CAPA IAM prerequisites and shows the `clusterawsadm` command if they are missing.
+
 ## Checks
 
 ```bash

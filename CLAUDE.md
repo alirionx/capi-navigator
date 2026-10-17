@@ -31,7 +31,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-1 | Authentication and authorization (local users) | done |
 | FP-2 | Management cluster connections (kubeconfig, service account token) | done |
 | FP-3 | CAPI Operator, ORC and provider management | done |
-| FP-4 | Provider credentials: OpenStack (`clouds.yaml`) and AWS (`AWSClusterStaticIdentity`) | next |
+| FP-4 | Provider credentials: OpenStack (`clouds.yaml`) and AWS (`AWSClusterStaticIdentity`) | in review: OpenStack done; AWS live acceptance pending (needs an IAM user key) |
 | FP-5 | Create workload clusters: OpenStack and AWS + RKE2 | open |
 | FP-6 | Cluster lifecycle and visualization | open |
 | FP-7 | Live YAML view (read-only) and day-2 operations | open |
@@ -106,7 +106,8 @@ pnpm dev              # start backend and frontend in watch mode
 pnpm lint             # ESLint + Prettier check
 pnpm typecheck        # tsc --noEmit for all workspaces
 pnpm test             # Vitest (unit + snapshot)
-pnpm test:int         # Vitest integration tests against the kind cluster
+pnpm test:int         # Vitest integration tests against the kind cluster; opt-in read-only cloud tests
+                      # with OPENSTACK_CLOUDS_YAML=… or AWS_LIVE_ACCESS_KEY_ID/…SECRET_ACCESS_KEY/…REGION
 pnpm test:e2e         # Playwright
 pnpm kind:up          # local kind cluster as home + management cluster
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
@@ -127,6 +128,7 @@ The backend uses `KUBECONFIG` for the home cluster in local development.
 ## Safety while working
 
 - Do not create, change or delete resources on a real cloud (Infomaniak, AWS) or a real management cluster without asking the user first. This includes using the locally configured AWS CLI credentials. Use kind and dry runs (`dryRun=All`) by default.
+- Integration tests on kind must never remove what they did not install themselves (the user may have installed providers via the UI).
 - Never commit secrets, `clouds.yaml` files, kubeconfigs or tokens. Keep `.gitignore` and test fixtures free of real credentials.
 - Node customization runs arbitrary commands as root on nodes. Treat it as security-sensitive in code and UI.
 
