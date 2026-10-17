@@ -6,12 +6,18 @@ import { HealthResponseSchema } from '@capi-navigator/shared';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { HealthModule } from './health.module.js';
 import { KubeModule } from '../kube/kube.module.js';
+import { StoreModule } from '../store/store.module.js';
+import { StoreService } from '../store/store.service.js';
 
 describe('HealthController (FP0-F-03, NF-20)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [KubeModule, HealthModule] })
+    const moduleRef = await Test.createTestingModule({
+      imports: [KubeModule, StoreModule, HealthModule],
+    })
+      .overrideProvider(StoreService)
+      .useValue({ ready: true })
       .overrideProvider(KubeClientFactory)
       .useValue({
         homeCluster: () => ({
