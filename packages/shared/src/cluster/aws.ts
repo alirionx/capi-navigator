@@ -84,7 +84,8 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       instanceMetadataOptions: {
         httpEndpoint: 'enabled',
         httpTokens: 'required',
-        httpPutResponseHopLimit: 1,
+        // ADR-0003: pods (EBS CSI controller) need IMDS for instance profile credentials.
+        httpPutResponseHopLimit: 2,
       },
     });
   },

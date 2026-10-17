@@ -32,8 +32,8 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-2 | Management cluster connections (kubeconfig, service account token) | done |
 | FP-3 | CAPI Operator, ORC and provider management | done |
 | FP-4 | Provider credentials: OpenStack (`clouds.yaml`) and AWS (`AWSClusterStaticIdentity`) | done |
-| FP-5 | Create workload clusters: OpenStack and AWS + RKE2 | next |
-| FP-6 | Cluster lifecycle and visualization | open |
+| FP-5 | Create workload clusters: OpenStack and AWS + RKE2 | done |
+| FP-6 | Cluster lifecycle and visualization | next |
 | FP-7 | Live YAML view (read-only) and day-2 operations | open |
 | FP-8 | Helm add-ons via CAAPH | open |
 | FP-9 | k0s as second Kubernetes distribution | open |

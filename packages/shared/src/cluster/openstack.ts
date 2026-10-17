@@ -37,7 +37,23 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         managedSubnets: [
           { cidr: infra.network.nodeCidr, dnsNameservers: infra.network.dnsNameservers },
         ],
-        managedSecurityGroups: { allowAllInClusterTraffic: true },
+        managedSecurityGroups: {
+          allowAllInClusterTraffic: true,
+          // CAPO opens NodePorts only on workers; all-in-one runs workloads on the control plane node.
+          controlPlaneNodesSecurityGroupRules:
+            spec.topology.mode === 'all-in-one'
+              ? (['tcp', 'udp'] as const).map((protocol) => ({
+                  name: `nodeport-${protocol}`,
+                  description: `Kubernetes NodePort services (${protocol.toUpperCase()})`,
+                  direction: 'ingress',
+                  etherType: 'IPv4',
+                  protocol,
+                  portRangeMin: 30000,
+                  portRangeMax: 32767,
+                  remoteIPPrefix: '0.0.0.0/0',
+                }))
+              : undefined,
+        },
         apiServer: infra.apiServerLoadBalancer
           ? { managedLoadBalancer: { enabled: true } }
           : { enableFloatingIP: true },

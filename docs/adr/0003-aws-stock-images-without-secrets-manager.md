@@ -16,13 +16,20 @@ requirements) would never bootstrap.
 
 AWS machine templates set `cloudInit.insecureSkipSecretsManager: true`. To limit who can read the
 user data (which contains the RKE2 join token), instances require IMDSv2
-(`instanceMetadataOptions.httpTokens: required`) with `httpPutResponseHopLimit: 1`, so ordinary
-pods cannot reach the instance metadata service; host-network components (cloud controller
-manager) still can. The wizard explains this trade-off.
+(`instanceMetadataOptions.httpTokens: required`), which blocks SSRF-style IMDSv1 requests. The
+hop limit is `httpPutResponseHopLimit: 2`: the EBS CSI controller runs in the pod network, its
+chart has no host-network option, and it needs the instance profile credentials from IMDS. A
+first live test with hop limit 1 left the controller without credentials. The wizard explains
+this trade-off.
 
 ## Consequences
 
 - Stock AMIs work without prebuilt images.
+- Pods on the nodes can read the user data (including the join token) and the node's instance
+  profile credentials. Restrict untrusted workloads with a network policy that blocks
+  `169.254.169.254`, or use dedicated nodes for them.
+- The EBS CSI preset takes the region from the `AWSCluster` instead of IMDS.
 - The join token is readable from the instance metadata on the node itself and via
   `ec2:DescribeInstanceAttribute`; restrict that IAM permission in the account.
-- Revisit if CAPA offers a secret delivery that does not need the `aws` CLI on the image.
+- Revisit if CAPA offers a secret delivery that does not need the `aws` CLI on the image, or if
+  the EBS CSI driver can use credentials other than the instance profile (e.g. Pod Identity).
