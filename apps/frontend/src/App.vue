@@ -186,6 +186,10 @@ async function signOut(): Promise<void> {
 .v-application .v-stepper-item {
   letter-spacing: normal !important;
 }
+/* Links in the accent color. */
+.v-application a:not(.v-btn):not(.v-list-item):not(.brand) {
+  color: rgb(var(--v-theme-primary));
+}
 /* Page header used by the views. */
 .page-title {
   font-size: 1.75rem;

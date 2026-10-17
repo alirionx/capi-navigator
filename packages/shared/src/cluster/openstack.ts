@@ -77,6 +77,23 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
 
   failureDomain: (infra) => infra.failureDomain,
 
+  resources: {
+    infraClusterPlural: 'openstackclusters',
+    machineKind: 'OpenStackMachine',
+    machinePlural: 'openstackmachines',
+  },
+
+  machineDetails(s) {
+    const flavor = s.flavor as { filter?: { name?: string }; id?: string } | undefined;
+    const image = s.image as { id?: string; filter?: { name?: string } } | undefined;
+    const root = s.rootVolume as { sizeGiB?: number } | undefined;
+    return compact({
+      size: flavor?.filter?.name ?? flavor?.id,
+      image: image?.id ?? image?.filter?.name,
+      rootVolumeGB: root?.sizeGiB,
+    });
+  },
+
   nodeIdentity: {
     providerId: 'openstack:///{{ v1.instance_id }}',
     nodeName: '{{ v1.local_hostname }}',
