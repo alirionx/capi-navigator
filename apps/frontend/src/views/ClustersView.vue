@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ClusterSummary } from '@capi-navigator/shared';
+import { isReservedLabel, type ClusterSummary } from '@capi-navigator/shared';
+import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
@@ -12,6 +13,7 @@ const auth = useAuthStore();
 const connections = useConnectionsStore();
 const store = useClustersStore();
 const search = ref('');
+const now = useNow();
 
 watch(
   () => connections.activeName,
@@ -33,11 +35,18 @@ const headers = computed(() => [
   { title: t('clusters.nodes'), key: 'nodes', sortable: false },
   { title: t('clusters.labels'), key: 'labels', sortable: false },
   { title: t('clusters.phase'), key: 'phase' },
+  // Sorting by creation time: newest first means the smallest age.
+  {
+    title: t('clusters.age'),
+    key: 'createdAt',
+    sortRaw: (a: ClusterSummary, b: ClusterSummary) =>
+      (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+  },
 ]);
 
-/** Labels shown in the list: without the add-on selection labels the app sets itself. */
+/** Labels shown in the list: without the labels the app and CAPI set themselves. */
 const userLabels = (c: ClusterSummary) =>
-  Object.entries(c.labels).filter(([k]) => !k.startsWith('capi-navigator.io/'));
+  Object.entries(c.labels).filter(([k]) => !isReservedLabel(k));
 
 function filter(_value: unknown, query: string, item?: { raw: ClusterSummary }): boolean {
   if (!item) return false;
@@ -150,6 +159,11 @@ const phaseColor = (c: ClusterSummary) =>
               class="mr-1"
               >{{ k }}={{ v }}</v-chip
             >
+          </template>
+          <template #[`item.createdAt`]="{ item }">
+            <span :title="formatCreated(item.createdAt)" data-testid="cluster-age">{{
+              formatAge(item.createdAt, now)
+            }}</span>
           </template>
           <template #[`item.phase`]="{ item }">
             <v-chip

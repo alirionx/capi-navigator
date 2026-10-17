@@ -221,6 +221,8 @@ export const en = {
     count: '{n} clusters',
     search: 'Search name, namespace or label',
     distribution: 'Distribution',
+    age: 'Age',
+    created: 'Created {date} ({age} ago)',
     labels: 'Labels',
     external: 'external',
     externalHint:
