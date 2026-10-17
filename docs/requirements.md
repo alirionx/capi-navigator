@@ -677,6 +677,23 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 - [x] Operators see a shell button per machine with a node; viewers see none and the backend refuses their WebSocket.
 - [x] A WebSocket without the app's origin is refused.
 
+### FP-18: Read-only cluster dashboard (implemented ahead of FP-7)
+
+**Goal:** a quick read-only overview of what runs inside a workload cluster (ADR-0009).
+
+- **FP18-F-01** MUST show CPU and memory per node and for the cluster: usage (metrics-server), requests and limits relative to the allocatable capacity, and pod counts.
+- **FP18-F-02** MUST show workloads (Deployments, StatefulSets, DaemonSets, running or failed Jobs) with ready/desired, unhealthy ones first, and pods with problems (CrashLoopBackOff, image pull errors, unschedulable, failed, many restarts).
+- **FP18-F-03** MUST show LoadBalancer and NodePort services with their external addresses, ingresses and HTTPRoutes with hosts, TLS and backends.
+- **FP18-F-04** MUST show the newest events of the cluster, filterable by namespace and to warnings.
+- **FP18-F-05** MUST be readable by viewers and offer no actions; Secret and ConfigMap content is never read.
+- **FP18-F-06** SHOULD refresh while open and work without metrics-server (requests and limits only).
+
+**Acceptance criteria**
+
+- [x] On an RKE2 cluster on Infomaniak, usage and requests match `kubectl top nodes` and `kubectl describe node`.
+- [x] A viewer opens the dashboard and sees nodes and workloads; no action buttons.
+- [x] Without metrics-server the dashboard still works and says so.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.

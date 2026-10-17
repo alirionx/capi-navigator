@@ -55,7 +55,48 @@ async function signIn(page: Page, username: string, password: string): Promise<v
   await expect(page).not.toHaveURL(/\/login/);
 }
 
+const dashboard = {
+  generatedAt: new Date().toISOString(),
+  kubernetesVersion: 'v1.37.1+rke2r1',
+  metricsAvailable: true,
+  totals: {
+    nodes: 1,
+    readyNodes: 1,
+    namespaces: 4,
+    pods: 3,
+    podPhases: { Running: 3 },
+    services: { ClusterIP: 2 },
+  },
+  nodes: [
+    {
+      name: 'demo-cp-1',
+      ready: true,
+      roles: ['control-plane'],
+      cpu: { capacity: 2000, allocatable: 2000, requests: 500, limits: 100, usage: 150 },
+      memory: { capacity: 4e9, allocatable: 4e9, requests: 1e9, limits: 2e8, usage: 2e9 },
+      pods: { count: 3, capacity: 110 },
+      unschedulable: false,
+    },
+  ],
+  workloads: [
+    { kind: 'Deployment', namespace: 'shop', name: 'web', desired: 1, ready: 1, status: 'ok' },
+  ],
+  problemPods: [],
+  services: [],
+  ingresses: [],
+  events: [],
+  warnings: [],
+};
+
 async function openFixture(page: Page): Promise<void> {
+  // FP-18: read-only dashboard from a fixture as well.
+  await page.route('**/clusters/team-a/demo/dashboard/events', (route) =>
+    route.fulfill({
+      status: 200,
+      headers: { 'content-type': 'text/event-stream' },
+      body: `event: state\ndata: ${JSON.stringify({ type: 'state', state: dashboard })}\n\n`,
+    }),
+  );
   await page.route('**/clusters/team-a/demo/events', (route) =>
     route.fulfill({
       status: 200,
@@ -121,6 +162,10 @@ test.describe('cluster lifecycle and roles (FP-6)', () => {
       }
       await viewerPage.getByRole('tab', { name: /Machines/ }).click();
       await expect(viewerPage.getByTestId('shell-demo-cp-1')).toHaveCount(0);
+      // FP-18: viewers may read the dashboard.
+      await viewerPage.getByTestId('tab-dashboard').click();
+      await expect(viewerPage.getByTestId('dash-node-demo-cp-1')).toBeVisible();
+      await expect(viewerPage.getByTestId('dash-workloads')).toContainText('shop/web');
       // The backend enforces the roles as well (hard rule 9).
       const api = viewerPage.request;
       const base = '/api/connections/home/clusters/team-a/demo';

@@ -10,3 +10,4 @@ export { shortHash, stableStringify } from './util.js';
 export * from './api.js';
 export * from './changes.js';
 export * from './overview.js';
+export * from './dashboard.js';
