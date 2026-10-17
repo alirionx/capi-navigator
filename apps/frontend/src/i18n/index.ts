@@ -7,5 +7,10 @@ export function createAppI18n() {
     locale: 'en',
     fallbackLocale: 'en',
     messages: { en },
+    datetimeFormats: {
+      en: {
+        short: { dateStyle: 'medium', timeStyle: 'short' },
+      },
+    },
   });
 }

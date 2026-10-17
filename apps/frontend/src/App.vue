@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useTheme } from 'vuetify';
 import { routes } from './router/index.js';
+import ConnectionSelector from './components/ConnectionSelector.vue';
 import { useAuthStore } from './stores/auth.js';
+import { useConnectionsStore } from './stores/connections.js';
 
 const { t } = useI18n();
 const theme = useTheme();
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const connections = useConnectionsStore();
 const drawer = ref(true);
 
 /** The full layout is shown only to signed-in users with an active password. */
@@ -25,6 +28,15 @@ const navItems = computed(() =>
       title: r.meta!.titleKey!,
       icon: r.meta!.icon ?? 'mdi-circle-small',
     })),
+);
+
+// Load the connections for the selector once the user may use the app.
+watch(
+  () => fullLayout.value && !auth.me?.mustChangePassword,
+  (ready) => {
+    if (ready) void connections.load().catch(() => undefined);
+  },
+  { immediate: true },
 );
 
 function toggleTheme(): void {
@@ -42,6 +54,7 @@ async function signOut(): Promise<void> {
     <v-app-bar density="comfortable" color="primary">
       <v-app-bar-nav-icon v-if="fullLayout" @click="drawer = !drawer" />
       <v-app-bar-title>{{ t('app.title') }}</v-app-bar-title>
+      <ConnectionSelector v-if="fullLayout && !auth.me?.mustChangePassword" />
       <v-btn
         icon="mdi-theme-light-dark"
         :aria-label="t('app.toggleTheme')"

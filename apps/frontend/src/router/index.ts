@@ -4,6 +4,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { onUnauthorized } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
 import ChangePasswordView from '../views/ChangePasswordView.vue';
+import ConnectionsView from '../views/ConnectionsView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import UsersView from '../views/UsersView.vue';
@@ -33,6 +34,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'home',
     component: HomeView,
     meta: { minRole: 'viewer', titleKey: 'nav.home', icon: 'mdi-home' },
+  },
+  {
+    path: '/connections',
+    name: 'connections',
+    component: ConnectionsView,
+    meta: { minRole: 'viewer', titleKey: 'nav.connections', icon: 'mdi-lan-connect' },
   },
   {
     path: '/users',

@@ -10,6 +10,7 @@ export const en = {
   },
   nav: {
     home: 'Home',
+    connections: 'Connections',
     users: 'Users',
   },
   roles: {
@@ -56,6 +57,83 @@ export const en = {
     mismatch: 'The passwords do not match',
     submit: 'Change password',
     done: 'Your password has been changed.',
+  },
+  connections: {
+    title: 'Management clusters',
+    subtitle:
+      'Connections to Kubernetes clusters that run Cluster API. Credentials stay in the backend.',
+    add: 'Add connection',
+    addTitle: 'Add management cluster',
+    editTitle: 'Edit {name}',
+    active: 'Management cluster',
+    name: 'Name',
+    nameHint: 'Lowercase letters, digits and "-", 2–40 characters. Cannot be changed later.',
+    displayName: 'Display name',
+    displayNameHint: 'Optional label shown in the app. Default: the name.',
+    authType: 'Authentication',
+    auth: {
+      kubeconfig: 'Kubeconfig',
+      token: 'Token',
+      'in-cluster': 'Home cluster',
+    },
+    authHint: {
+      kubeconfig:
+        'Upload or paste a kubeconfig with embedded credentials. Exec plugins (e.g. aws, gcloud, kubelogin) and file references are rejected for security reasons.',
+      token:
+        'Service account token, e.g. from the CAPI Navigator access manifest. Recommended for production.',
+      'in-cluster':
+        "Use the cluster CAPI Navigator runs in, with the backend's own service account.",
+    },
+    kubeconfigFile: 'Kubeconfig file',
+    kubeconfig: 'Kubeconfig',
+    kubeconfigHint: 'Only the selected context is stored, as a Secret in the home cluster.',
+    context: 'Context',
+    contextHint: 'Default: the current-context of the kubeconfig.',
+    server: 'API server URL',
+    serverHint: 'https:// URL of the Kubernetes API server, including the port (usually 6443).',
+    token: 'Token',
+    tokenHint:
+      'Key "token" of the Secret capi-navigator-token in namespace capi-navigator-access (from the access manifest).',
+    caFile: 'CA certificate file',
+    caCert: 'CA certificate (PEM)',
+    caCertHint:
+      'Certificate of the cluster CA (ca.crt of the token Secret). Default: system trust store.',
+    inClusterInfo:
+      'The backend connects with its own credentials: the in-cluster service account, or KUBECONFIG in local development. Only one home cluster connection is possible.',
+    replaceCredentials: 'Replace credentials',
+    replaceCredentialsHint: 'Off: keep the stored credentials. Default: off.',
+    addAndTest: 'Add and test',
+    saveAndTest: 'Save',
+    required: 'Required',
+    status: 'Status',
+    version: 'Version',
+    lastChecked: 'Last test',
+    test: 'Test connection',
+    edit: 'Edit',
+    phase: {
+      Unknown: 'Not tested',
+      Reachable: 'Reachable',
+      Unreachable: 'Unreachable',
+      Unauthorized: 'Unauthorized',
+    },
+    permissions: 'Permissions',
+    missingRequired: '{n} required missing',
+    level: { required: 'required', install: 'for installing ORC and providers' },
+    notTested: 'Not tested yet.',
+    accessManifest: 'Access manifest',
+    manifestFull: 'Full access (recommended)',
+    manifestFullHint:
+      'ServiceAccount + token bound to cluster-admin. Needed to install ORC and providers (FP-3).',
+    manifestMinimal: 'Minimal access',
+    manifestMinimalHint:
+      'Only for operating clusters when cert-manager, the CAPI Operator and ORC are installed by other means.',
+    emptyTitle: 'No management cluster connected yet',
+    emptyAdmin:
+      'Add a connection: for a first test, use "Home cluster"; for other clusters, apply the access manifest there and use its token.',
+    emptyViewer: 'An admin has to add a management cluster first.',
+    deleteTitle: 'Remove connection {name}?',
+    deleteText:
+      'Only the connection and its stored credentials are removed. Nothing changes in the cluster itself.',
   },
   users: {
     title: 'Users',
