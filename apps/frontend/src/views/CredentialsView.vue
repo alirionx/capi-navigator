@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import YamlButton from '../components/YamlButton.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
@@ -204,7 +205,22 @@ async function loadLookup(c: Credential): Promise<void> {
             <span v-else class="text-caption">–</span>
           </template>
           <template #[`item.actions`]="{ item }">
-            <div v-if="isAdmin" class="text-no-wrap">
+            <YamlButton
+              :target="{
+                apiVersion: item.identity.apiVersion,
+                kind: item.identity.kind,
+                name: item.identity.name,
+              }"
+            />
+            <YamlButton
+              :target="{
+                apiVersion: 'v1',
+                kind: 'Secret',
+                namespace: item.secret.namespace,
+                name: item.secret.name,
+              }"
+            />
+            <div v-if="isAdmin" class="text-no-wrap d-inline-flex">
               <v-btn
                 icon="mdi-connection"
                 variant="text"

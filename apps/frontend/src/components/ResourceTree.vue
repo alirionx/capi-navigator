@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { ClusterStatus, Condition } from '@capi-navigator/shared';
+import type { ClusterStatus, Condition, ResourceRef } from '@capi-navigator/shared';
+import YamlButton from './YamlButton.vue';
 
 /**
  * Resource tree of a cluster (FP6-F-03): Cluster → infrastructure, control plane and
@@ -138,6 +139,22 @@ const edges = computed(() =>
 );
 
 const selected = ref<string | null>(null);
+
+/** Reference of a tree node for "View YAML" (FP7-F-01). */
+function refOf(n: TreeNode): ResourceRef {
+  const group =
+    n.id === 'infra'
+      ? 'infrastructure.cluster.x-k8s.io'
+      : n.id === 'cp'
+        ? 'controlplane.cluster.x-k8s.io'
+        : 'cluster.x-k8s.io';
+  return {
+    apiVersion: `${group}/v1beta2`,
+    kind: n.kind,
+    namespace: props.status.summary.namespace,
+    name: n.name,
+  };
+}
 const selectedNode = computed(() => nodes.value.find((n) => n.id === selected.value));
 </script>
 
@@ -173,7 +190,9 @@ const selectedNode = computed(() => nodes.value.find((n) => n.id === selected.va
   </div>
 
   <v-card v-if="selectedNode" border class="mt-4" data-testid="tree-selection">
-    <v-card-item :title="selectedNode.name" :subtitle="selectedNode.kind" />
+    <v-card-item :title="selectedNode.name" :subtitle="selectedNode.kind">
+      <template #append><YamlButton :target="refOf(selectedNode)" label /></template>
+    </v-card-item>
     <v-card-text>
       <div class="text-subtitle-2 mb-2">{{ t('clusters.conditions') }}</div>
       <v-table v-if="selectedNode.conditions.length" density="compact">

@@ -46,7 +46,12 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    */
   nodeIdentity: { providerId: string; nodeName: string };
   /** Plurals for reading and watching the provider's objects (FP-6). */
-  resources: { infraClusterPlural: string; machineKind: string; machinePlural: string };
+  resources: {
+    infraClusterPlural: string;
+    machineKind: string;
+    machinePlural: string;
+    machineTemplatePlural: string;
+  };
   /** Size, image and root disk of a running machine from its infra machine spec (FP6-F-02). */
   machineDetails(infraMachineSpec: Record<string, unknown>): MachineDetails;
   /** Bastion address and state from the infra cluster status (FP5-F-20). */
@@ -90,4 +95,13 @@ export interface BootstrapFlavorPlugin {
   bootstrapTemplate: { apiVersion: string; apiGroup: string; kind: string };
   /** Control plane resource for reading and watching (FP-6). */
   controlPlaneResource: { group: string; version: string; kind: string; plural: string };
+  /** Bootstrap templates and per-machine configs, for the resources tab (FP7-F-01). */
+  bootstrapResources: {
+    group: string;
+    version: string;
+    templateKind: string;
+    templatePlural: string;
+    configKind: string;
+    configPlural: string;
+  };
 }

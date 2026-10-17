@@ -6,6 +6,7 @@ import { useDisplay } from 'vuetify';
 import { routes } from './router/index.js';
 import AppLogo from './components/AppLogo.vue';
 import ConnectionSelector from './components/ConnectionSelector.vue';
+import YamlDialog from './components/YamlDialog.vue';
 import { useThemeSwitch } from './composables/theme.js';
 import { useAuthStore } from './stores/auth.js';
 import { useConnectionsStore } from './stores/connections.js';
@@ -153,6 +154,7 @@ async function signOut(): Promise<void> {
     <v-main>
       <router-view />
     </v-main>
+    <YamlDialog v-if="fullLayout" />
   </v-app>
 </template>
 

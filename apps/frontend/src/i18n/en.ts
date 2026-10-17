@@ -196,6 +196,15 @@ export const en = {
     onlyWarnings: 'Only warnings ({n})',
     readOnly: 'Read-only view, refreshed every 15 seconds while open.',
   },
+  yamlView: {
+    view: 'View YAML',
+    readOnly: 'read-only',
+    inCluster: 'in workload cluster {name}',
+    managedFields: 'Show managed fields',
+    masked: 'Secret values are never shown, only the keys.',
+    resources: 'Resources',
+    resourcesHint: 'All objects of this cluster in the management cluster, as live YAML.',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',

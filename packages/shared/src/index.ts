@@ -10,3 +10,4 @@ export * from './catalog/index.js';
 export * from './operator.js';
 export * from './operator-manifests.js';
 export * from './node-shell.js';
+export * from './resource-view.js';
