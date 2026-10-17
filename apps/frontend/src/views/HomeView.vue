@@ -14,7 +14,7 @@ onMounted(() => {
 <template>
   <v-container>
     <h1 class="page-title">{{ t('home.title') }}</h1>
-    <p class="text-medium-emphasis mb-6">{{ t('home.subtitle') }}</p>
+    <p class="text-body-2 text-medium-emphasis mt-1 mb-6">{{ t('home.subtitle') }}</p>
 
     <v-card max-width="520" border>
       <v-list>
