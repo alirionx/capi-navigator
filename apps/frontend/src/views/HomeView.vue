@@ -1,13 +1,39 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
+import { onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import ProviderGraph from '../components/ProviderGraph.vue';
+import { useClustersStore } from '../stores/clusters.js';
+import { useConnectionsStore } from '../stores/connections.js';
 import { useHealthStore } from '../stores/health.js';
+import { useOperatorStore } from '../stores/operator.js';
 
 const { t } = useI18n();
 const store = useHealthStore();
+const connections = useConnectionsStore();
+const operator = useOperatorStore();
+const clusters = useClustersStore();
 
 onMounted(() => {
   void store.load();
+});
+
+// FP6-F-08: providers and the clusters using them, live for the active management cluster.
+watch(
+  () => connections.activeName,
+  (name) => {
+    if (name) {
+      operator.connect(name);
+      clusters.watchList(name);
+    } else {
+      operator.disconnect();
+      clusters.unwatchList();
+    }
+  },
+  { immediate: true },
+);
+onBeforeUnmount(() => {
+  operator.disconnect();
+  clusters.unwatchList();
 });
 </script>
 
@@ -69,6 +95,17 @@ onMounted(() => {
           {{ t('home.refresh') }}
         </v-btn>
       </v-card-actions>
+    </v-card>
+
+    <v-card v-if="connections.active" border class="mt-6" data-testid="overview">
+      <v-card-item
+        :title="t('overview.title', { name: connections.activeName })"
+        :subtitle="t('overview.subtitle')"
+      />
+      <v-card-text>
+        <v-progress-linear v-if="!operator.state" indeterminate />
+        <ProviderGraph v-else :providers="operator.state.providers" :clusters="clusters.clusters" />
+      </v-card-text>
     </v-card>
   </v-container>
 </template>

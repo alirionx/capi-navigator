@@ -90,6 +90,12 @@ export const en = {
     timeoutHint:
       'Some cloud resources were not released in time. Check them, then delete again (with or without cleanup).',
   },
+  overview: {
+    title: 'Management cluster {name}',
+    subtitle: 'Installed providers and the workload clusters that use them.',
+    providers: 'Providers',
+    clusters: 'Workload clusters',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',
