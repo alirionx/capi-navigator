@@ -14,6 +14,8 @@ import {
 import {
   buildAddonPreset,
   catalogEntry,
+  compareVersions,
+  distributionCatalog,
   CLUSTER_SPEC_ANNOTATION,
   ClusterSpecSchema,
   infraSummary,
@@ -43,11 +45,23 @@ import {
   buildCloudConfigResourceSetSecret,
 } from '../infra-providers/openstack/cloud-config.js';
 import { readStoredCloud } from '../infra-providers/openstack/clouds-yaml.js';
-import { dryRunApply, normalizeForDiff, readLive, serverSideApply } from '../kube/apply.js';
+import {
+  deleteObjects,
+  dryRunApply,
+  normalizeForDiff,
+  readLive,
+  serverSideApply,
+} from '../kube/apply.js';
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { ImageNameCache } from './image-names.js';
+import { analyzeRollouts, type PlannedObject } from './rollouts.js';
+
+/** Extra checks of a change (FP7-F-09). */
+export interface ChangeOptions {
+  upgrade?: boolean;
+}
 import {
   CLUSTER_NAME_LABEL,
   infraPluginFor,
@@ -426,8 +440,9 @@ export class ClustersService {
     namespace: string,
     name: string,
     mutate: (spec: ClusterSpec) => ClusterSpec,
+    opts: ChangeOptions = {},
   ): Promise<ClusterChangePreview> {
-    const { preview } = await this.changePlan(connection, namespace, name, mutate);
+    const { preview } = await this.changePlan(connection, namespace, name, mutate, opts);
     return preview;
   }
 
@@ -438,8 +453,15 @@ export class ClustersService {
     name: string,
     mutate: (spec: ClusterSpec) => ClusterSpec,
     takeOver: boolean,
+    opts: ChangeOptions = {},
   ): Promise<ClusterChangePreview> {
-    const { preview, changed, kc } = await this.changePlan(connection, namespace, name, mutate);
+    const { preview, changed, removed, kc } = await this.changePlan(
+      connection,
+      namespace,
+      name,
+      mutate,
+      opts,
+    );
     if (preview.blockers.length > 0) {
       throw new ConflictException({
         message: 'The change cannot be applied',
@@ -452,7 +474,11 @@ export class ClustersService {
         hint: 'Review the drift in the preview and confirm taking the fields over.',
       });
     }
-    await this.kube('Apply the change', () => serverSideApply(kc, changed, { force: takeOver }));
+    await this.kube('Apply the change', async () => {
+      await serverSideApply(kc, changed, { force: takeOver });
+      // FP7-F-06: pools removed from the spec; their templates are cleaned up after the rollout.
+      await deleteObjects(kc, removed);
+    });
     return preview;
   }
 
@@ -461,6 +487,7 @@ export class ClustersService {
     namespace: string,
     name: string,
     mutate: (spec: ClusterSpec) => ClusterSpec,
+    opts: ChangeOptions,
   ) {
     const current = await this.storedSpec(connection, namespace, name);
     let next: ClusterSpec;
@@ -481,12 +508,23 @@ export class ClustersService {
     const diffs: ObjectDiff[] = [];
     const drift: Drift[] = [];
     const changed: KubernetesObject[] = [];
+    const planned: PlannedObject[] = [];
+    const removed: KubernetesObject[] = [];
+    const removedDeployments: { name: string; before: Record<string, unknown> }[] = [];
+    let machines: K8sObj[] = [];
     await this.kube('Compare with the cluster (dry run)', async () => {
       for (const obj of plan.objects) {
         const live = await readLive(plan.kc, obj);
         const { result, conflict } = await dryRunApply(plan.kc, obj);
         const before = live ? normalizeForDiff(live) : undefined;
         const after = normalizeForDiff(result);
+        planned.push({
+          kind: obj.kind ?? '',
+          name: obj.metadata?.name ?? '',
+          // Status is part of the live object for rollout checks.
+          ...(live ? { before: { ...before, status: (live as { status?: unknown }).status } } : {}),
+          after,
+        });
         const differs = !before || stableStringify(before) !== stableStringify(after);
         const ref = { kind: obj.kind ?? '', name: obj.metadata?.name ?? '' };
         if (conflict) drift.push({ ...ref, ...conflict, blocking: differs });
@@ -500,15 +538,120 @@ export class ClustersService {
           after: stringify(after, { lineWidth: 0 }),
         });
       }
+      // Prune: MachineDeployments of pools that are no longer in the spec (FP7-F-06).
+      const custom = plan.kc.makeApiClient(CustomObjectsApi);
+      const selector = `${CLUSTER_NAME_LABEL}=${name},${MANAGED_BY_LABEL}=${MANAGED_BY_VALUE}`;
+      const liveMds = (
+        (await custom.listNamespacedCustomObject({
+          ...CAPI,
+          namespace,
+          plural: 'machinedeployments',
+          labelSelector: selector,
+        })) as { items: (KubernetesObject & K8sObj)[] }
+      ).items;
+      const desired = new Set(
+        plan.objects.filter((o) => o.kind === 'MachineDeployment').map((o) => o.metadata?.name),
+      );
+      for (const md of liveMds.filter((m) => !desired.has(m.metadata.name))) {
+        const before = normalizeForDiff({
+          ...md,
+          apiVersion: 'cluster.x-k8s.io/v1beta2',
+          kind: 'MachineDeployment',
+        });
+        removed.push({
+          apiVersion: 'cluster.x-k8s.io/v1beta2',
+          kind: 'MachineDeployment',
+          metadata: { name: md.metadata.name, namespace },
+        });
+        removedDeployments.push({ name: md.metadata.name, before });
+        diffs.push({
+          kind: 'MachineDeployment',
+          name: md.metadata.name,
+          namespace,
+          change: 'delete',
+          before: stringify(before, { lineWidth: 0 }),
+          after: '',
+        });
+      }
+      machines = (
+        (await custom.listNamespacedCustomObject({
+          ...CAPI,
+          namespace,
+          plural: 'machines',
+          labelSelector: `${CLUSTER_NAME_LABEL}=${name}`,
+        })) as { items: K8sObj[] }
+      ).items;
     });
+    const { rollouts, running } = analyzeRollouts({
+      controlPlaneKinds: CONTROL_PLANE_RESOURCES.map((r) => r.kind),
+      objects: planned,
+      removedDeployments,
+      machines,
+      workerVersionPending: !!next.kubernetes.workerVersion && !current.kubernetes.workerVersion,
+    });
+    const blockers = [...plan.blockers];
+    const replaces = rollouts.some((r) => r.action === 'replace');
+    // FP7-F-17: one rollout at a time.
+    if ((replaces || opts.upgrade) && running.length > 0) {
+      blockers.push(
+        `A rollout is still running (${running.join(', ')}); wait until it has finished.`,
+      );
+    }
+    if (current.kubernetes.workerVersion && replaces) {
+      blockers.push('An upgrade is still running; wait until the worker pools have followed.');
+    }
+    // FP7-F-09: pre-checks before an upgrade.
+    if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];
     for (const d of drift.filter((x) => !x.blocking)) {
       warnings.push(
         `${d.kind} ${d.name} was changed outside the app (${d.fields.join(', ') || 'fields'} by ${d.managers.join(', ')}); this change does not touch it.`,
       );
     }
-    const preview: ClusterChangePreview = { diffs, drift, warnings, blockers: plan.blockers };
-    return { preview, changed, kc: plan.kc };
+    const preview: ClusterChangePreview = {
+      diffs,
+      rollouts,
+      drift,
+      warnings,
+      blockers,
+    };
+    return { preview, changed, removed, kc: plan.kc };
+  }
+
+  /** FP7-F-09: all machines healthy; the providers support the target version. */
+  private async upgradeChecks(
+    connection: string,
+    spec: ClusterSpec,
+    machines: K8sObj[],
+  ): Promise<string[]> {
+    const problems: string[] = [];
+    for (const m of machines) {
+      const ready = (m.status?.conditions as { type: string; status: string }[] | undefined)?.some(
+        (c) => c.type === 'Ready' && c.status === 'True',
+      );
+      if (m.status?.phase !== 'Running' || !ready) {
+        problems.push(
+          `Machine ${m.metadata.name} is not healthy (${String(m.status?.phase ?? 'Pending')}).`,
+        );
+      }
+    }
+    const catalog = distributionCatalog(spec.kubernetes.flavor);
+    const entry = catalog?.versions.find((v) => v.version === spec.kubernetes.version);
+    if (!entry) {
+      problems.push(`${spec.kubernetes.version} is not in the version catalog.`);
+    } else if (catalog) {
+      const state = await this.operator.state(connection);
+      for (const id of [catalog.providers.bootstrap, catalog.providers.controlPlane]) {
+        const p = state.providers.find((x) => x.catalogId === id);
+        const installed = p?.installedVersion ?? p?.version;
+        if (installed && compareVersions(installed, entry.verifiedWithProvider) < 0) {
+          problems.push(
+            `${catalogEntry(id)?.displayName ?? id} ${installed} is older than ${entry.verifiedWithProvider}, which supports ${spec.kubernetes.version} (Providers page).`,
+          );
+        }
+      }
+    }
+    return problems;
   }
 
   // ---- helpers ----

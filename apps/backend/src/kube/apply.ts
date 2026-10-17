@@ -142,3 +142,15 @@ function fingerprint(value: string): string {
   }
   return h.toString(16).padStart(8, '0').slice(0, 6);
 }
+
+/** Deletes objects; missing ones are fine (FP7-F-06 removed pools). */
+export async function deleteObjects(kc: KubeConfig, objects: KubernetesObject[]): Promise<void> {
+  const api = KubernetesObjectApi.makeApiClient(kc);
+  for (const obj of objects) {
+    try {
+      await api.delete(obj);
+    } catch (err) {
+      if (kubeStatus(err) !== 404) throw err;
+    }
+  }
+}

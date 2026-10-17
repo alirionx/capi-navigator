@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import {
   ClusterChangePreviewSchema,
+  ClusterSpecSchema,
   ClusterListSchema,
   ClusterPreviewSchema,
   ClusterStatusSchema,
@@ -10,6 +11,7 @@ import {
   DeletionStatusSchema,
   type DeleteRequest,
   type BastionRequest,
+  type SpecChangeInput,
   type ClusterChangePreview,
   type ClusterCreateRequest,
   type LabelsRequest,
@@ -91,6 +93,23 @@ export const useClustersStore = defineStore('clusters', () => {
   ): Promise<ClusterChangePreview> =>
     api('POST', `${clusterPath(c, ns, n)}/labels`, ClusterChangePreviewSchema, req);
 
+  /** FP-7: stored spec and generic day-2 changes with preview. */
+  const getSpec = (c: string, ns: string, n: string) =>
+    api('GET', `${clusterPath(c, ns, n)}/spec`, ClusterSpecSchema);
+  const changePreview = (c: string, ns: string, n: string, change: SpecChangeInput) =>
+    api('POST', `${clusterPath(c, ns, n)}/changes/preview`, ClusterChangePreviewSchema, { change });
+  const applyChange = (
+    c: string,
+    ns: string,
+    n: string,
+    change: SpecChangeInput,
+    takeOver: boolean,
+  ) =>
+    api('POST', `${clusterPath(c, ns, n)}/changes`, ClusterChangePreviewSchema, {
+      change,
+      takeOver,
+    });
+
   /** FP5-F-20: bastion host as day-2 change. */
   const bastionPreview = (c: string, ns: string, n: string, req: BastionRequest) =>
     api('POST', `${clusterPath(c, ns, n)}/bastion/preview`, ClusterChangePreviewSchema, req);
@@ -146,6 +165,9 @@ export const useClustersStore = defineStore('clusters', () => {
     deleteCluster,
     bastionPreview,
     setBastion,
+    getSpec,
+    changePreview,
+    applyChange,
     watch,
     unwatch,
   };

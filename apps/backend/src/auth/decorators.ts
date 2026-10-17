@@ -31,6 +31,8 @@ export interface AuditMetadata {
   skip?: boolean;
   /** GET endpoints that reveal secrets (e.g. a workload kubeconfig, ADR-0005) are recorded too. */
   sensitiveRead?: boolean;
+  /** Dotted path of a body field appended to the action, e.g. "change.type" (FP7-F-20). */
+  actionSuffixFromBody?: string;
 }
 
 /** Names the audit action of a mutating endpoint (FP1-F-06). */

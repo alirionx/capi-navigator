@@ -118,6 +118,29 @@ async function confirm(): Promise<void> {
               data-testid="take-over"
             />
           </v-alert>
+          <!-- FP7-F-16: which machines are replaced, in which order -->
+          <v-card v-if="result.rollouts.length" border class="mb-3" data-testid="rollout-plan">
+            <v-card-item :title="t('changes.rolloutTitle')" />
+            <v-table density="compact">
+              <tbody>
+                <tr v-for="r in result.rollouts" :key="r.kind + r.name">
+                  <td class="text-no-wrap">
+                    <v-chip
+                      size="x-small"
+                      variant="tonal"
+                      :color="
+                        r.action === 'remove' ? 'error' : r.action === 'later' ? 'info' : 'warning'
+                      "
+                      >{{ t(`changes.rollout.${r.action}`) }}</v-chip
+                    >
+                  </td>
+                  <td class="font-weight-medium">{{ r.group }}</td>
+                  <td class="text-caption">{{ r.machines.join(', ') || '–' }}</td>
+                  <td class="text-caption text-medium-emphasis">{{ r.strategy }}</td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card>
           <v-alert v-if="result.diffs.length === 0" type="info" variant="tonal">{{
             t('changes.nothing')
           }}</v-alert>

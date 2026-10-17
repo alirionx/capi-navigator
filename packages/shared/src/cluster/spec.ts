@@ -91,6 +91,8 @@ const MachineGroupFields = {
   rootVolumeSizeGB: z.int().min(10).max(4000).optional(),
   /** Cinder volume type (OpenStack) or EBS volume type (AWS, default gp3) of the root disk. */
   rootVolumeType: z.string().trim().min(1).max(255).optional(),
+  /** ISO timestamp of the last "Rebuild nodes" of this group (FP7-F-11). */
+  rebuildRequestedAt: z.string().optional(),
   customization: NodeCustomizationSchema.optional(),
 };
 
@@ -105,12 +107,21 @@ export const WorkerPoolSchema = z.object({
   name: dnsLabel(12, 'Pool name'),
   replicas: z.int().min(0).max(100).default(2),
   nodeLabels: LabelsSchema.optional(),
+  /** Overrides the cluster-wide rollout settings for this pool (FP7-F-18). */
+  rollout: z
+    .object({ maxSurge: z.int().min(0).max(10), maxUnavailable: z.int().min(0).max(10) })
+    .optional(),
 });
 export type WorkerPool = z.infer<typeof WorkerPoolSchema>;
 export type ControlPlane = z.infer<typeof ControlPlaneSchema>;
 export type MachineGroup = Pick<
   WorkerPool,
-  'machineSize' | 'image' | 'rootVolumeSizeGB' | 'rootVolumeType' | 'customization'
+  | 'machineSize'
+  | 'image'
+  | 'rootVolumeSizeGB'
+  | 'rootVolumeType'
+  | 'customization'
+  | 'rebuildRequestedAt'
 >;
 
 /**
@@ -195,6 +206,14 @@ export const ClusterSpecSchema = z
     kubernetes: z.object({
       flavor: KubernetesFlavorSchema.default('rke2'),
       version: z.string().regex(/^v\d+\.\d+\.\d+\+[a-z0-9.]+$/, 'A version like v1.35.9+rke2r1'),
+      /**
+       * During an upgrade the worker pools stay on this version until the control plane runs
+       * the new one; the rollout controller then removes it (FP7-F-08).
+       */
+      workerVersion: z
+        .string()
+        .regex(/^v\d+\.\d+\.\d+\+[a-z0-9.]+$/)
+        .optional(),
       podCidr: CidrSchema.default('10.42.0.0/16'),
       serviceCidr: CidrSchema.default('10.43.0.0/16'),
     }),

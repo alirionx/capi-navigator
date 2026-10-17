@@ -50,6 +50,13 @@ export const en = {
     summary: '{n} objects change. Unchanged objects are not touched.',
     create: 'new',
     update: 'changed',
+    delete: 'deleted',
+    rolloutTitle: 'Nodes that are replaced (control plane first, then worker pools)',
+    rollout: {
+      replace: 'replaced',
+      remove: 'removed',
+      later: 'follows',
+    },
     diffLabel: 'Changes as YAML (read-only), before and after',
     driftTitle: 'Changed outside CAPI Navigator',
     takeOver: 'Take these fields over and overwrite the changes made outside the app',
@@ -204,6 +211,52 @@ export const en = {
     masked: 'Secret values are never shown, only the keys.',
     resources: 'Resources',
     resourcesHint: 'All objects of this cluster in the management cluster, as live YAML.',
+  },
+  day2: {
+    tab: 'Configuration',
+    controlPlane: 'Control plane',
+    kubernetes: 'Kubernetes',
+    upgrade: 'Upgrade',
+    upgradeRunning:
+      'Upgrade to {version} is running: the control plane is upgraded first; the worker pools stay on {worker} and follow automatically.',
+    nodes: 'Nodes: {n} · machines: {running}',
+    customization: 'Node customization',
+    custSummary: '{files} files, {commands} commands',
+    none: 'none',
+    rolloutSettings: 'Rollout',
+    surge: 'maxSurge {maxSurge}, maxUnavailable {maxUnavailable}',
+    machine: 'Size & image',
+    rebuild: 'Rebuild nodes',
+    removePool: 'Remove pool',
+    clusterImage: 'cluster image',
+    rolloutRunning:
+      'A rollout is running. Changes that replace nodes are possible again when it has finished.',
+    quorumWarning:
+      'Scaling the control plane down removes etcd members. Make sure the remaining members are healthy, otherwise the cluster can lose its quorum and become unavailable.',
+    quorumAck: 'I understand the etcd quorum risk',
+    removeWarning:
+      'All nodes of pool {pool} are deleted, and with them every pod that runs only there.',
+    rebuildNote:
+      'Changing size or image creates new machine templates; all nodes of this group are replaced one after another (rolling update).',
+    rebuildExplain:
+      'All nodes of {group} are replaced with fresh ones from the current templates, one after another (immutable infrastructure instead of OS patching).',
+    maxSurgeHint: 'Extra nodes during the rollout. Maps to MachineDeployment rollout.strategy.',
+    maxUnavailableHint: 'Nodes that may be missing during the rollout.',
+    targetVersion: 'Target version',
+    upgradeHint: 'Only upgrades, at most one minor version. Current: {current}.',
+    upgradeOrder:
+      'The control plane is upgraded first, node by node; the worker pools follow automatically once it runs the new version. The preview runs the pre-checks.',
+    title: {
+      cpScale: 'Scale the control plane',
+      scale: 'Scale pool {group}',
+      addPool: 'Add worker pool',
+      removePool: 'Remove pool {group}',
+      machine: 'Size and image of {group}',
+      customization: 'Node customization of {group}',
+      rebuild: 'Rebuild nodes of {group}',
+      rollout: 'Rollout settings of {group}',
+      upgrade: 'Upgrade Kubernetes',
+    },
   },
   kubeconfig: {
     show: 'Kubeconfig',

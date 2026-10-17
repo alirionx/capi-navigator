@@ -39,7 +39,7 @@ export class AuditInterceptor implements NestInterceptor {
         : undefined;
       return this.audit.record({
         actor: req.principal?.username ?? req.auditActor ?? 'anonymous',
-        action: meta?.action ?? `${req.method} ${routePath(req)}`,
+        action: actionOf(meta, req),
         outcome,
         request: { method: req.method, path: req.path },
         ...(meta?.targetKind && name ? { target: { kind: meta.targetKind, name } } : {}),
@@ -86,4 +86,14 @@ function failureMessage(err: unknown): string {
     return `${err.getStatus()}: ${message}`.slice(0, 500);
   }
   return 'Internal error';
+}
+
+function actionOf(meta: AuditMetadata | undefined, req: Request): string {
+  if (!meta) return `${req.method} ${routePath(req)}`;
+  if (!meta.actionSuffixFromBody) return meta.action;
+  let v: unknown = req.body;
+  for (const key of meta.actionSuffixFromBody.split('.')) {
+    v = typeof v === 'object' && v !== null ? (v as Record<string, unknown>)[key] : undefined;
+  }
+  return typeof v === 'string' && /^[a-zA-Z0-9-]+$/.test(v) ? `${meta.action}.${v}` : meta.action;
 }
