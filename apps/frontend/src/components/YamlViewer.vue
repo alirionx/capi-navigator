@@ -8,10 +8,20 @@ import type * as Monaco from 'monaco-editor/editor/editor.api';
  * Read-only YAML view with syntax highlighting (Monaco), copy and download (NF-07, FP7-F-05).
  * Editing is not possible: YAML is read-only in CAPI Navigator (hard rule 4).
  */
-const props = withDefaults(defineProps<{ value: string; height?: string; filename?: string }>(), {
-  height: '360px',
-  filename: 'manifest.yaml',
-});
+const props = withDefaults(
+  defineProps<{
+    value: string;
+    height?: string;
+    filename?: string;
+    /** Hide the local download, e.g. when the download must go through an audited endpoint. */
+    noDownload?: boolean;
+  }>(),
+  {
+    height: '360px',
+    filename: 'manifest.yaml',
+    noDownload: false,
+  },
+);
 const { t } = useI18n();
 const theme = useTheme();
 const container = ref<HTMLElement | null>(null);
@@ -82,7 +92,14 @@ function download(): void {
       <v-btn size="small" variant="text" prepend-icon="mdi-content-copy" @click="copy">
         {{ copied ? t('yaml.copied') : t('yaml.copy') }}
       </v-btn>
-      <v-btn size="small" variant="text" prepend-icon="mdi-download" @click="download">
+      <slot name="actions" />
+      <v-btn
+        v-if="!noDownload"
+        size="small"
+        variant="text"
+        prepend-icon="mdi-download"
+        @click="download"
+      >
         {{ t('yaml.download') }}
       </v-btn>
     </div>

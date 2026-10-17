@@ -29,6 +29,8 @@ export interface AuditMetadata {
   managementClusterParam?: string;
   /** For POST endpoints that do not change anything (e.g. parsing input): no AuditEvent. */
   skip?: boolean;
+  /** GET endpoints that reveal secrets (e.g. a workload kubeconfig, ADR-0005) are recorded too. */
+  sensitiveRead?: boolean;
 }
 
 /** Names the audit action of a mutating endpoint (FP1-F-06). */

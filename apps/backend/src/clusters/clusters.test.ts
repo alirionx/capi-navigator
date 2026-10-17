@@ -316,6 +316,14 @@ const fakeKc = {
       throw notFound();
     },
     listClusterCustomObject: async () => ({ items: [] }),
+    readNamespacedSecret: async ({ name }: { name: string }) => {
+      if (name === 'demo-kubeconfig') {
+        return {
+          data: { value: Buffer.from('apiVersion: v1\nkind: Config\n').toString('base64') },
+        };
+      }
+      throw notFound();
+    },
   }),
 };
 
@@ -353,8 +361,10 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     return cookieOf(changed);
   }
 
+  let fake: ReturnType<typeof createFakeStore>;
+
   beforeAll(async () => {
-    const fake = createFakeStore();
+    fake = createFakeStore();
     const config = loadConfig({ INITIAL_ADMIN_PASSWORD: 'Admin-Pw-1', LOG_JSON: 'false' });
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, KubeModule, StoreModule, AuditModule, AuthModule, ClustersModule],
@@ -532,5 +542,33 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       .send({ spec: OS_SPEC })
       .expect(403);
     await http().get(base).set('Cookie', viewerCookie).expect(200);
+  });
+
+  it('shows and downloads the kubeconfig for operators only, audited and not cached (FP6-F-04, ADR-0005)', async () => {
+    k8s.existingCluster = true;
+    const url = '/api/connections/home/clusters/team-a/demo/kubeconfig';
+    await http().get(url).set('Cookie', viewerCookie).expect(403);
+
+    const view = await http().get(url).set('Cookie', operatorCookie).expect(200);
+    expect(view.text).toBe('apiVersion: v1\nkind: Config\n');
+    expect(view.headers['cache-control']).toBe('no-store');
+
+    const dl = await http().get(`${url}/download`).set('Cookie', operatorCookie).expect(200);
+    expect(dl.headers['content-disposition']).toBe('attachment; filename="demo.kubeconfig"');
+    expect(dl.headers['cache-control']).toBe('no-store');
+
+    const audit = fake.auditEvents
+      .filter((e) => e.spec.action.startsWith('cluster.kubeconfig'))
+      .map((e) => `${e.spec.action}:${e.spec.outcome}:${e.spec.actor}:${e.spec.target?.name}`);
+    // Requests rejected by the role guard never reach the handler (and the audit interceptor).
+    expect(audit).toEqual([
+      'cluster.kubeconfig.view:success:otto:demo',
+      'cluster.kubeconfig.download:success:otto:demo',
+    ]);
+    // The audit log never contains the kubeconfig itself.
+    expect(JSON.stringify(fake.auditEvents)).not.toContain('kind: Config');
+
+    k8s.existingCluster = false;
+    await http().get(url).set('Cookie', operatorCookie).expect(404);
   });
 });

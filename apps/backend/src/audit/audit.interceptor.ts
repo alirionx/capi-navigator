@@ -15,7 +15,8 @@ import { AuditService } from './audit.service.js';
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 /**
- * Records every mutating request as an AuditEvent, successful or not (FP1-F-06, hard rule 9).
+ * Records every mutating request, and reads of secrets marked `sensitiveRead`, as an AuditEvent,
+ * successful or not (FP1-F-06, hard rule 9).
  * Endpoints name their action with `@Audit`; others are recorded by method and route.
  */
 @Injectable()
@@ -26,10 +27,10 @@ export class AuditInterceptor implements NestInterceptor {
   ) {}
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
+    if (ctx.getType() !== 'http') return next.handle();
     const req = ctx.switchToHttp().getRequest<Request & AuthenticatedRequest>();
-    if (ctx.getType() !== 'http' || !MUTATING.has(req.method)) return next.handle();
-
     const meta = this.reflector.get<AuditMetadata | undefined>(AUDIT_KEY, ctx.getHandler());
+    if (!MUTATING.has(req.method) && !meta?.sensitiveRead) return next.handle();
     if (meta?.skip) return next.handle();
     const write = (outcome: 'success' | 'failure', message?: string) => {
       const name = meta?.targetParam ? lookup(req, meta.targetParam) : undefined;

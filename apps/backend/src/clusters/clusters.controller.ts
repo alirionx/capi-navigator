@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   Injectable,
   Param,
   Post,
+  Res,
   Sse,
   type MessageEvent,
   type OnApplicationShutdown,
@@ -16,6 +18,7 @@ import {
   type ClusterStatus,
   type ClusterSummary,
 } from '@capi-navigator/shared';
+import type { Response } from 'express';
 import { interval, map, merge, type Observable } from 'rxjs';
 import type { z } from 'zod';
 import { Audit, Roles } from '../auth/decorators.js';
@@ -125,6 +128,42 @@ export class ClustersController {
     @Param('name') name: string,
   ): Promise<ClusterStatus> {
     return this.clusters.status(connection, namespace, name);
+  }
+
+  /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */
+  @Roles('operator')
+  @Get(':namespace/:name/kubeconfig')
+  @Header('Content-Type', 'text/plain; charset=utf-8')
+  @Header('Cache-Control', 'no-store')
+  @Audit({ action: 'cluster.kubeconfig.view', sensitiveRead: true, ...AUDIT, targetParam: 'name' })
+  kubeconfig(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<string> {
+    return this.clusters.kubeconfig(connection, namespace, name);
+  }
+
+  /** FP6-F-04 / ADR-0005: download as `<cluster>.kubeconfig`. */
+  @Roles('operator')
+  @Get(':namespace/:name/kubeconfig/download')
+  @Header('Content-Type', 'application/octet-stream')
+  @Header('Cache-Control', 'no-store')
+  @Audit({
+    action: 'cluster.kubeconfig.download',
+    sensitiveRead: true,
+    ...AUDIT,
+    targetParam: 'name',
+  })
+  async downloadKubeconfig(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<string> {
+    const value = await this.clusters.kubeconfig(connection, namespace, name);
+    res.setHeader('Content-Disposition', `attachment; filename="${name}.kubeconfig"`);
+    return value;
   }
 
   @Roles('viewer')
