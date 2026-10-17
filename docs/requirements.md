@@ -511,13 +511,13 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] Snapshot tests cover the transformation for the standard topology (3 control plane + 2 workers), all-in-one, and with and without add-ons.
-- [ ] A standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image and reaches the Provisioned state.
-- [ ] With CCM and CSI selected, all nodes are initialized, a `LoadBalancer` service gets an external IP, and a PVC is bound to a Cinder volume.
-- [ ] An all-in-one cluster is created and can run workloads.
-- [ ] Invalid input (e.g. overlapping CIDRs) is reported in the wizard before anything is created.
-- [ ] Snapshot tests cover the AWS transformation for the standard topology and all-in-one, with and without add-ons.
-- [ ] A standard cluster is created on AWS from the official Ubuntu AMI and reaches the Provisioned state; with CCM and CSI, a `LoadBalancer` service gets an address and a PVC is bound to an EBS volume. Tests that create real AWS resources run only after explicit confirmation and delete everything afterwards.
+- [x] Snapshot tests cover the transformation for the standard topology (3 control plane + 2 workers), all-in-one, and with and without add-ons.
+- [x] A standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image and reaches the Provisioned state.
+- [x] With CCM and CSI selected, all nodes are initialized, a `LoadBalancer` service gets an external IP, and a PVC is bound to a Cinder volume.
+- [x] An all-in-one cluster is created and can run workloads.
+- [x] Invalid input (e.g. overlapping CIDRs) is reported in the wizard before anything is created.
+- [x] Snapshot tests cover the AWS transformation for the standard topology and all-in-one, with and without add-ons.
+- [x] A standard cluster is created on AWS from the official Ubuntu AMI and reaches the Provisioned state; with CCM and CSI, a `LoadBalancer` service gets an address and a PVC is bound to an EBS volume. Tests that create real AWS resources run only after explicit confirmation and delete everything afterwards.
 
 ### FP-6: Cluster lifecycle and visualization
 
@@ -538,6 +538,8 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - [ ] Status changes appear in under 5 seconds without reloading the page.
 - [ ] Scaling from 2 to 3 workers creates a new machine that appears in the view.
 - [ ] After deletion, all OpenStack resources of the cluster are removed and the cluster disappears from the list.
+
+Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs and volumes that the OpenStack CCM and Cinder CSI created for `LoadBalancer` services and PVCs; they block the deletion of the cluster's router. The delete flow must remove these services and PVCs in the workload cluster first (while CCM and CSI still run), or report the leftovers. CAPA removes the CCM's load balancers itself, but not EBS volumes with a `Retain` policy.
 - [ ] A viewer sees no kubeconfig download and no delete or scale buttons.
 
 ### FP-7: Live YAML view and day-2 operations

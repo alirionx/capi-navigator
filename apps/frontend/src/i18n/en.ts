@@ -240,7 +240,7 @@ export const en = {
     azCount: 'Availability zones',
     azCountHint: 'Number of zones for subnets. Default: 1.',
     awsLbInfo:
-      'AWS always uses a network load balancer for the API server. Node user data is not stored in Secrets Manager because stock images lack the AWS CLI (ADR-0003); IMDSv2 is enforced.',
+      "AWS always uses a network load balancer for the API server. Node user data is not stored in Secrets Manager because stock images lack the AWS CLI (ADR-0003). IMDSv2 is enforced with hop limit 2, so pods on the nodes can read the node's user data (including the join token) and instance profile credentials.",
     ccm: 'Cloud controller manager',
     ccmHint: 'Initializes nodes and provides LoadBalancer services. Default: on.',
     csi: 'CSI driver',

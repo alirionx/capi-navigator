@@ -17,7 +17,7 @@ export interface AddonPreset {
   chartName: string;
   version: string;
   releaseNamespace: string;
-  /** CAAPH Go template; `{{ .Cluster.metadata.name }}` is the workload cluster name. */
+  /** CAAPH Go template; `{{ .Cluster.metadata.name }}` is the workload cluster name, `.InfraCluster` its infra cluster. */
   valuesTemplate: string;
 }
 
@@ -84,7 +84,8 @@ export const ADDON_PRESETS: AddonPreset[] = [
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       // The controller runs on control plane nodes, whose instance profile may manage volumes.
-      'controller:\n  nodeSelector:\n    node-role.kubernetes.io/control-plane: "true"\n',
+      // The region comes from the AWSCluster instead of an IMDS lookup.
+      'controller:\n  region: {{ .InfraCluster.spec.region }}\n  nodeSelector:\n    node-role.kubernetes.io/control-plane: "true"\n',
       '  tolerations:\n    - key: node-role.kubernetes.io/control-plane\n      operator: Exists\n      effect: NoSchedule\n',
       'storageClasses:\n  - name: ebs-gp3\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
