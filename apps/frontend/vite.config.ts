@@ -11,5 +11,12 @@ export default defineConfig({
     port: 5173,
     proxy: { '/api': { target: backendUrl, changeOrigin: false } },
   },
+  // Pre-bundle the lazily loaded Monaco modules; otherwise Vite reloads the page on first use.
+  optimizeDeps: {
+    include: [
+      'monaco-editor/editor/editor.api',
+      'monaco-editor/languages/definitions/yaml/register',
+    ],
+  },
   build: { outDir: 'dist', emptyOutDir: true },
 });

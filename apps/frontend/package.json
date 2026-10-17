@@ -13,6 +13,7 @@
   "dependencies": {
     "@capi-navigator/shared": "workspace:*",
     "@mdi/font": "^7.4.47",
+    "monaco-editor": "0.57.0",
     "pinia": "^4.1.0",
     "vue": "^3.5.44",
     "vue-i18n": "^11.4.14",

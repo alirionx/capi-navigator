@@ -7,6 +7,7 @@ import ChangePasswordView from '../views/ChangePasswordView.vue';
 import ConnectionsView from '../views/ConnectionsView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
+import ProvidersView from '../views/ProvidersView.vue';
 import UsersView from '../views/UsersView.vue';
 
 declare module 'vue-router' {
@@ -40,6 +41,12 @@ export const routes: RouteRecordRaw[] = [
     name: 'connections',
     component: ConnectionsView,
     meta: { minRole: 'viewer', titleKey: 'nav.connections', icon: 'mdi-lan-connect' },
+  },
+  {
+    path: '/providers',
+    name: 'providers',
+    component: ProvidersView,
+    meta: { minRole: 'viewer', titleKey: 'nav.providers', icon: 'mdi-puzzle' },
   },
   {
     path: '/users',
