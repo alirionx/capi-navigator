@@ -451,7 +451,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 - **FP4-F-01** MUST capture OpenStack credentials via `clouds.yaml` upload or a form (auth URL, region, project, domain, application credential ID and secret).
 - **FP4-F-02** SHOULD prefer application credentials over username and password, and recommend them in the form.
-- **FP4-F-03** MUST store credentials as a Kubernetes secret in the target namespace of the management cluster, in the format CAPO expects (key `clouds.yaml`, optionally `cacert`).
+- **FP4-F-03** MUST store credentials as a Kubernetes secret in the target namespace of the management cluster, in the format CAPO expects (key `clouds.yaml`, optionally `cacert`). Refined by ADR-0002: one Secret in the CAPO namespace plus an `OpenStackClusterIdentity` that lists the allowed namespaces.
 - **FP4-F-04** MUST test the credentials (obtain a token, read the project) and show the result.
 - **FP4-F-05** MUST use the credentials to populate selection lists for cluster creation: images, flavors, external networks, availability zones, SSH key pairs.
 - **FP4-F-06** MUST never return secret contents to the frontend in plain text after saving.
