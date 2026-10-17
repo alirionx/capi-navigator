@@ -66,7 +66,7 @@ Because everything it creates is standard Cluster API, clusters stay open to oth
 ### Goals
 
 1. **Provider management via UI:** check whether the CAPI Operator is installed on a management cluster, and install, configure, upgrade and remove official providers through it.
-2. **Cluster creation via forms:** create a standard workload cluster (control plane and worker pools, or a single all-in-one node) on VMs in a dedicated virtual network, starting with OpenStack on Infomaniak Public Cloud.
+2. **Cluster creation via forms:** create a standard workload cluster (control plane and worker pools, or a single all-in-one node) on VMs in a dedicated virtual network, starting with OpenStack on Infomaniak Public Cloud and Amazon Web Services (AWS).
 3. **Standard OS images:** Kubernetes is installed via cloud-init on official cloud images, with RKE2 or k0s. Prebuilt Kubernetes images are not required.
 4. **Ready-to-use clusters:** OpenStack Cloud Controller Manager and Cinder CSI are rolled out with each cluster and can be deselected.
 5. **Day-2 operations with rolling updates:** Kubernetes version upgrades, scaling, flavor changes and node rebuilds from new cloud images. Nodes are replaced instead of patched, so no OS patch management is needed.
@@ -74,7 +74,7 @@ Because everything it creates is standard Cluster API, clusters stay open to oth
 7. **Transparent YAML:** every resource the app shows can be viewed live as YAML (read-only), similar to the Rancher UI. Changes go through forms that update the cluster spec.
 8. **Helm add-ons:** Helm charts are managed centrally and assigned to workload clusters via the Cluster API Add-on Provider for Helm (CAAPH).
 9. **No separate datastore:** all app state lives in Kubernetes (CRDs, Secrets, ConfigMaps), the way Rancher does it.
-10. **Extensibility:** further infrastructure providers (e.g. AWS) and Kubernetes distributions can be added as modules without changing the core.
+10. **Extensibility:** further infrastructure providers (e.g. Azure, GCP) and Kubernetes distributions can be added as modules without changing the core.
 11. **Secure access:** local user accounts with roles from day one; an external identity provider may follow later.
 
 ### Non-goals (for now)
@@ -157,7 +157,8 @@ capi-navigator/
 │   │       ├── credentials/      # FP-4: provider credentials
 │   │       ├── clusters/         # FP-5/6: workload clusters, generic
 │   │       ├── infra-providers/
-│   │       │   └── openstack/    # FP-5: OpenStack plugin
+│   │       │   ├── openstack/    # FP-5: OpenStack plugin
+│   │       │   └── aws/          # FP-5: AWS plugin
 │   │       ├── resources/        # FP-7: YAML view, safe edits
 │   │       ├── addons/           # FP-5/8: Helm add-ons (CAAPH), CCM/CSI presets
 │   │       └── kube/             # Kubernetes client factory, informers, watches
@@ -257,7 +258,7 @@ type ClusterSpec = {
     csiDriver: boolean;               // default: true (Cinder CSI)
   };
   sshPublicKeys?: string[];
-  infrastructure: OpenStackInfra;   // later: | AwsInfra | ...
+  infrastructure: OpenStackInfra | AwsInfra;   // discriminated union on `provider`
 };
 
 type OpenStackInfra = {
@@ -269,6 +270,16 @@ type OpenStackInfra = {
   apiServerLoadBalancer: boolean;  // Octavia, default: true
   failureDomain?: string;       // availability zone
   sshKeyName?: string;
+};
+
+type AwsInfra = {
+  provider: "aws";
+  credentialRef: string;        // reference to stored AWS credentials = AWSClusterStaticIdentity (FP-4)
+  region: string;               // e.g. "eu-central-1"
+  image?: string;               // AMI ID; default: official Canonical Ubuntu 24.04 AMI of the region
+  network: { vpcCidr: string; availabilityZones?: string[] };  // dedicated VPC per cluster, managed by CAPA
+  apiServerLoadBalancer: boolean;  // AWS load balancer for the API server, default: true
+  sshKeyName?: string;          // EC2 key pair
 };
 ```
 
@@ -290,6 +301,18 @@ type OpenStackInfra = {
 | `credentialRef` | Reference to a secret containing `clouds.yaml` in the cluster's namespace; CCM and CSI receive a cloud config derived from it |
 
 With `mode: "all-in-one"`, no `MachineDeployment` and no worker templates are generated; control plane nodes stay schedulable for workloads.
+
+### Transformation (AWS + RKE2)
+
+The generic part (`Cluster`, control plane, `MachineDeployments`, bootstrap templates, add-on labels) is the same as for OpenStack; the AWS plugin replaces the infrastructure part. Exact CAPA field names are verified against the CAPA CRDs in FP-5.
+
+| Part of the spec | Generated CAPI resources |
+| --- | --- |
+| `infrastructure.*` | `AWSCluster` with region, dedicated VPC and subnets, API server load balancer, `identityRef` to the `AWSClusterStaticIdentity` |
+| `topology.*` groups | `AWSMachineTemplate` per group: instance type (`machineSize`), AMI, IAM instance profile created by the CAPA IAM prerequisites, SSH key |
+| `addons.cloudControllerManager` | External cloud provider + add-on label matched by the AWS cloud controller manager preset `HelmChartProxy` |
+| `addons.csiDriver` | Add-on label matched by the AWS EBS CSI driver preset `HelmChartProxy` |
+| `credentialRef` | `identityRef` of the `AWSCluster`; the identity's `allowedNamespaces` includes the cluster's namespace |
 
 ### Provider plugin interface
 
@@ -319,8 +342,8 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 | FP-1 | Authentication and authorization | FP-0 |
 | FP-2 | Management cluster connections | FP-1 |
 | FP-3 | CAPI Operator and provider management | FP-2 |
-| FP-4 | Infrastructure provider credentials (OpenStack) | FP-3 |
-| FP-5 | Create workload clusters: OpenStack + RKE2 | FP-4 |
+| FP-4 | Infrastructure provider credentials (OpenStack, AWS) | FP-3 |
+| FP-5 | Create workload clusters: OpenStack and AWS + RKE2 | FP-4 |
 | FP-6 | Cluster lifecycle and visualization | FP-5 |
 | FP-7 | Live YAML view and day-2 operations | FP-6 |
 | FP-8 | Helm add-ons via CAAPH | FP-7 |
@@ -398,7 +421,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 **Provider catalog**
 
 - **FP3-F-05** MUST maintain a provider catalog in `packages/shared`: name, type (core, infrastructure, bootstrap, control plane, add-on), description, recommended version, `fetchConfig` URL where needed, dependencies.
-- **FP3-F-06** MUST include at least: core (cluster-api), kubeadm bootstrap and control plane, RKE2 bootstrap and control plane, OpenStack infrastructure, Helm add-on provider (CAAPH, as `AddonProvider`). The k0smotron bootstrap and control plane providers (k0s) MUST be added by FP-9; AWS SHOULD be prepared as an entry.
+- **FP3-F-06** MUST include at least: core (cluster-api), kubeadm bootstrap and control plane, RKE2 bootstrap and control plane, OpenStack infrastructure, Helm add-on provider (CAAPH, as `AddonProvider`). AWS infrastructure (CAPA) MUST be installable as well, as it is needed by FP-4 and FP-5. The k0smotron bootstrap and control plane providers (k0s) MUST be added by FP-9.
 - **FP3-F-07** SHOULD load available versions from the GitHub releases of each provider.
 - **FP3-F-07a** MUST maintain a version catalog per Kubernetes distribution (available RKE2 and k0s versions and which provider versions support them), used by the wizard and by upgrades in FP-7.
 
@@ -414,14 +437,17 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 **Acceptance criteria**
 
 - [ ] On a kind cluster with cert-manager and CAPI Operator, ORC, core, RKE2 bootstrap, RKE2 control plane, OpenStack and CAAPH can be installed via the UI.
+- [ ] The AWS infrastructure provider (CAPA) can be installed via the UI.
 - [ ] Installing CAPO without ORC is blocked with a hint to install ORC first.
 - [ ] All providers and ORC reach the Ready state and are shown as such.
 - [ ] A provider version upgrade via the UI is carried out by the operator.
 - [ ] Without an installed operator, the installation instructions appear instead of an error.
 
-### FP-4: Infrastructure provider credentials (OpenStack)
+### FP-4: Infrastructure provider credentials (OpenStack, AWS)
 
-**Goal:** OpenStack credentials are stored securely once and only referenced by clusters.
+**Goal:** OpenStack and AWS credentials are stored securely once and only referenced by clusters.
+
+**OpenStack**
 
 - **FP4-F-01** MUST capture OpenStack credentials via `clouds.yaml` upload or a form (auth URL, region, project, domain, application credential ID and secret).
 - **FP4-F-02** SHOULD prefer application credentials over username and password, and recommend them in the form.
@@ -430,22 +456,33 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - **FP4-F-05** MUST use the credentials to populate selection lists for cluster creation: images, flavors, external networks, availability zones, SSH key pairs.
 - **FP4-F-06** MUST never return secret contents to the frontend in plain text after saving.
 
+**AWS**
+
+- **FP4-F-07** MUST capture AWS credentials of a dedicated IAM user (access key ID and secret access key) plus a default region via a form, and recommend a dedicated IAM user with only the CAPA permissions instead of personal or root credentials.
+- **FP4-F-08** MUST store the access key in a Secret in the format CAPA expects and create an `AWSClusterStaticIdentity` that references it; `allowedNamespaces` lists the namespaces that may use the credentials.
+- **FP4-F-09** MUST test the credentials (identity of the caller) and check that the IAM prerequisites of CAPA (roles, policies and instance profiles as created by `clusterawsadm bootstrap iam create-cloudformation-stack`) exist. If they are missing, MUST show the `clusterawsadm` command instead of creating IAM resources itself.
+- **FP4-F-10** MUST use the AWS credentials to populate selection lists for cluster creation: regions, availability zones, instance types, the official Canonical Ubuntu LTS AMIs of the region, and EC2 key pairs.
+- **FP4-F-06** applies to AWS credentials as well.
+
 **Acceptance criteria**
 
 - [ ] Against Infomaniak Public Cloud, credentials from a downloaded clouds.yaml can be created and tested successfully.
 - [ ] Images, flavors and external networks appear as selection lists.
 - [ ] The secret exists in the management cluster and is accepted by CAPO.
+- [ ] AWS credentials of an IAM user can be created and tested; missing CAPA IAM prerequisites are reported with the `clusterawsadm` command.
+- [ ] Regions, instance types, Ubuntu AMIs and key pairs appear as selection lists.
+- [ ] The `AWSClusterStaticIdentity` and its Secret exist in the management cluster and are accepted by CAPA.
 
-### FP-5: Create workload clusters (OpenStack + RKE2)
+### FP-5: Create workload clusters (OpenStack and AWS + RKE2)
 
-**Goal:** an operator creates a standard Kubernetes cluster on OpenStack through a wizard, without writing YAML and without prebuilt Kubernetes images.
+**Goal:** an operator creates a standard Kubernetes cluster on OpenStack or AWS through a wizard, without writing YAML and without prebuilt Kubernetes images.
 
 **Wizard (Vuetify stepper)**
 
 1. **Basics:** name, namespace, labels, Kubernetes distribution (RKE2; k0s from FP-9; kubeadm, experimental, from FP-10) and version.
 2. **Topology:** standard (control plane with 1, 3 or 5 nodes + one or more worker pools) or all-in-one (1 node); per group: replicas, machine size, optional image override.
-3. **Infrastructure:** credentials, image, external network, node CIDR, DNS servers, API load balancer yes/no, availability zone, SSH key.
-4. **Add-ons:** OpenStack Cloud Controller Manager and Cinder CSI, both preselected and individually deselectable; shows chart version and lets the user override values.
+3. **Infrastructure:** provider (OpenStack or AWS) and credentials; OpenStack: image, external network, node CIDR, DNS servers, API load balancer yes/no, availability zone, SSH key; AWS: region, availability zones, VPC CIDR, AMI (default: Ubuntu 24.04), API load balancer yes/no, key pair.
+4. **Add-ons:** cloud controller manager and CSI driver of the selected provider (OpenStack CCM and Cinder CSI, or AWS cloud controller manager and EBS CSI driver), both preselected and individually deselectable; shows chart version and lets the user override values.
 5. **Node customization (collapsed):** per control plane and per worker pool, extra files and commands before or after the Kubernetes installation.
 6. **Advanced (collapsed):** pod and service CIDR, additional SSH public keys, rollout settings (max surge, max unavailable).
 7. **Preview:** summary + generated manifests as YAML (readable, copyable, downloadable).
@@ -467,6 +504,10 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - **FP5-F-12** MUST support multiple worker pools, each as its own `MachineDeployment` with its own templates, size and optional node labels.
 - **FP5-F-13** MUST apply node customization per group as files and pre/post commands of the bootstrap config, and show the resulting cloud-init content in the preview.
 - **FP5-F-14** MUST restrict node customization to operator and admin, record it in the audit log, and warn against putting secrets into file content inline. SHOULD support file content from a Secret where the bootstrap provider supports it.
+- **FP5-F-15** MUST implement the AWS plugin (`InfraProviderPlugin`) as described in section 5, without AWS-specific logic in generic modules (hard rule 10).
+- **FP5-F-16** MUST create a dedicated VPC with subnets per AWS cluster (via `AWSCluster`) and install RKE2 via cloud-init on the official Canonical Ubuntu AMI; a prebuilt Kubernetes AMI must not be required.
+- **FP5-F-17** MUST roll out the AWS cloud controller manager and the AWS EBS CSI driver via preset `HelmChartProxy` resources when selected, analogous to FP5-F-09.
+- **FP5-F-18** MUST check that the AWS infrastructure provider is installed and ready, and that the selected credentials passed their test (FP-4), and otherwise point to FP-3 or FP-4.
 
 **Acceptance criteria**
 
@@ -475,6 +516,8 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - [ ] With CCM and CSI selected, all nodes are initialized, a `LoadBalancer` service gets an external IP, and a PVC is bound to a Cinder volume.
 - [ ] An all-in-one cluster is created and can run workloads.
 - [ ] Invalid input (e.g. overlapping CIDRs) is reported in the wizard before anything is created.
+- [ ] Snapshot tests cover the AWS transformation for the standard topology and all-in-one, with and without add-ons.
+- [ ] A standard cluster is created on AWS from the official Ubuntu AMI and reaches the Provisioned state; with CCM and CSI, a `LoadBalancer` service gets an address and a PVC is bound to an EBS volume. Tests that create real AWS resources run only after explicit confirmation and delete everything afterwards.
 
 ### FP-6: Cluster lifecycle and visualization
 
@@ -655,7 +698,7 @@ These requirements apply to all feature packs and are checked in every pack.
 
 ### Outlook after FP-10
 
-- **FP-11: AWS** as second infrastructure provider (CAPA), purely as a new plugin as described in section 5.
+- **FP-11: Further infrastructure providers** (e.g. Azure, GCP), purely as new plugins as described in section 5. AWS is part of FP-4 and FP-5.
 - **FP-12: ClusterClass support**, so teams can offer their own cluster templates in the UI.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
 - **FP-14: External identity provider** (OIDC, e.g. Keycloak, Dex, Entra ID) with role mapping from group claims.
@@ -669,11 +712,12 @@ These requirements apply to all feature packs and are checked in every pack.
 | Identity provider | None for now; local user accounts (FP-1). OIDC may follow later (FP-14). |
 | Backend access to clusters | Via kubeconfig or service account token (FP-2). |
 | Test and target cloud | [Infomaniak Public Cloud](https://www.infomaniak.com/en/support/faq/2601/getting-started-public-cloud): largely vanilla OpenStack with [Octavia load balancers](https://www.infomaniak.com/public-cloud), access via `clouds.yaml`. |
+| AWS | Second target cloud from FP-4/FP-5 (CAPA). Credentials as `AWSClusterStaticIdentity` of a dedicated IAM user; the app checks the CAPA IAM prerequisites and shows the `clusterawsadm` command, but never creates IAM resources itself. Real AWS resources in tests only after explicit confirmation. |
 | Kubernetes distributions | RKE2 (FP-5), k0s (FP-9) and kubeadm (FP-10, experimental, packages installed via preKubeadmCommands), all via cloud-init on official cloud images. |
 | OS patching | None in place. Nodes are rebuilt from new cloud images via rolling update (FP-7). |
 | ORC | Required; detected and installed in FP-3 before CAPO. |
 | CCM and CSI | Rolled out with each cluster by default and deselectable in the wizard (FP-5). |
-| CCM and CSI charts | Current release of [kubernetes/cloud-provider-openstack](https://github.com/kubernetes/cloud-provider-openstack) (charts for the OpenStack Cloud Controller Manager and Cinder CSI); works on Infomaniak. |
+| CCM and CSI charts | OpenStack: current release of [kubernetes/cloud-provider-openstack](https://github.com/kubernetes/cloud-provider-openstack) (OpenStack Cloud Controller Manager and Cinder CSI); works on Infomaniak. AWS: current releases of [kubernetes/cloud-provider-aws](https://github.com/kubernetes/cloud-provider-aws) and [kubernetes-sigs/aws-ebs-csi-driver](https://github.com/kubernetes-sigs/aws-ebs-csi-driver). |
 | CAAPH version | Current release. It supports the reconcile strategy and credentials for private OCI registries, so FP-8 uses both. |
 | Manual YAML edits | Not supported. YAML is read-only; day-2 changes go through forms (FP-7). Changes made outside the app are shown as drift. |
 | Datastore | None; all state in Kubernetes CRDs, Secrets and ConfigMaps, like Rancher (section 4). |

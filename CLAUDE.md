@@ -31,8 +31,8 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-1 | Authentication and authorization (local users) | done |
 | FP-2 | Management cluster connections (kubeconfig, service account token) | done |
 | FP-3 | CAPI Operator, ORC and provider management | next |
-| FP-4 | OpenStack credentials (`clouds.yaml`) | open |
-| FP-5 | Create workload clusters: OpenStack + RKE2 | open |
+| FP-4 | Provider credentials: OpenStack (`clouds.yaml`) and AWS (`AWSClusterStaticIdentity`) | open |
+| FP-5 | Create workload clusters: OpenStack and AWS + RKE2 | open |
 | FP-6 | Cluster lifecycle and visualization | open |
 | FP-7 | Live YAML view (read-only) and day-2 operations | open |
 | FP-8 | Helm add-ons via CAAPH | open |
@@ -126,7 +126,7 @@ The backend uses `KUBECONFIG` for the home cluster in local development.
 
 ## Safety while working
 
-- Do not create, change or delete resources on a real cloud (Infomaniak) or a real management cluster without asking the user first. Use kind and dry runs (`dryRun=All`) by default.
+- Do not create, change or delete resources on a real cloud (Infomaniak, AWS) or a real management cluster without asking the user first. This includes using the locally configured AWS CLI credentials. Use kind and dry runs (`dryRun=All`) by default.
 - Never commit secrets, `clouds.yaml` files, kubeconfigs or tokens. Keep `.gitignore` and test fixtures free of real credentials.
 - Node customization runs arbitrary commands as root on nodes. Treat it as security-sensitive in code and UI.
 
