@@ -23,6 +23,11 @@ const CidrSchema = z
   .trim()
   .refine((v) => !!parseIpv4Cidr(v), 'An IPv4 network in CIDR notation, e.g. 10.42.0.0/16');
 
+/** Label prefixes the app or CAPI set themselves; users cannot set or remove them (FP6-F-07). */
+export const RESERVED_LABEL_PREFIXES = ['capi-navigator.io/', 'cluster.x-k8s.io/'] as const;
+export const isReservedLabel = (key: string) =>
+  RESERVED_LABEL_PREFIXES.some((p) => key.startsWith(p));
+
 const LabelsSchema = z.record(
   z
     .string()
@@ -31,6 +36,12 @@ const LabelsSchema = z.record(
     .string()
     .regex(/^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$/, 'Invalid label value')
     .max(63),
+);
+
+/** Cluster labels chosen by users: no reserved prefixes (FP6-F-07). */
+export const UserLabelsSchema = LabelsSchema.refine(
+  (labels) => !Object.keys(labels).some(isReservedLabel),
+  `Labels under ${RESERVED_LABEL_PREFIXES.join(' or ')} are reserved`,
 );
 
 /** Extra cloud-init configuration per group (FP5-F-13, US-16). Runs as root on the nodes. */
@@ -162,7 +173,7 @@ export const ClusterSpecSchema = z
     name: dnsLabel(40, 'Cluster name'),
     namespace: dnsLabel(63, 'Namespace').default('default'),
     /** Set on the Cluster; used to assign Helm add-ons (FP-8). */
-    labels: LabelsSchema.optional(),
+    labels: UserLabelsSchema.optional(),
     kubernetes: z.object({
       flavor: KubernetesFlavorSchema.default('rke2'),
       version: z.string().regex(/^v\d+\.\d+\.\d+\+[a-z0-9.]+$/, 'A version like v1.35.9+rke2r1'),

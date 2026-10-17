@@ -14,6 +14,11 @@ import {
 } from '@nestjs/common';
 import {
   ClusterCreateRequestSchema,
+  LabelsRequestSchema,
+  ScaleRequestSchema,
+  scalePool,
+  setLabels,
+  type ClusterChangePreview,
   type ClusterPreview,
   type ClusterStatus,
   type ClusterSummary,
@@ -28,6 +33,8 @@ import { LiveChannels } from '../kube/live-channels.js';
 import { ClustersService, listWatchPaths, namespaceWatchPaths } from './clusters.service.js';
 
 type CreateBody = z.output<typeof ClusterCreateRequestSchema>;
+type ScaleBody = z.output<typeof ScaleRequestSchema>;
+type LabelsBody = z.output<typeof LabelsRequestSchema>;
 const HEARTBEAT_MS = 25_000;
 
 /** Live status of one cluster via watches (US-07, NF-11). Key: connection/namespace/name. */
@@ -128,6 +135,78 @@ export class ClustersController {
     @Param('name') name: string,
   ): Promise<ClusterStatus> {
     return this.clusters.status(connection, namespace, name);
+  }
+
+  // ---- spec changes: preview first, then apply (hard rule 6) ----
+
+  @Roles('operator')
+  @Post(':namespace/:name/scale/preview')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.scale.preview', skip: true })
+  scalePreview(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(ScaleRequestSchema)) body: ScaleBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.changePreview(connection, namespace, name, (s) =>
+      scalePool(s, body.pool, body.replicas),
+    );
+  }
+
+  /** FP6-F-05. */
+  @Roles('operator')
+  @Post(':namespace/:name/scale')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.scale', ...AUDIT, targetParam: 'name' })
+  scale(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(ScaleRequestSchema)) body: ScaleBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.applyChange(
+      connection,
+      namespace,
+      name,
+      (s) => scalePool(s, body.pool, body.replicas),
+      body.takeOver,
+    );
+  }
+
+  @Roles('operator')
+  @Post(':namespace/:name/labels/preview')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.labels.preview', skip: true })
+  labelsPreview(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(LabelsRequestSchema)) body: LabelsBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.changePreview(connection, namespace, name, (s) =>
+      setLabels(s, body.labels),
+    );
+  }
+
+  /** FP6-F-07. */
+  @Roles('operator')
+  @Post(':namespace/:name/labels')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.labels', ...AUDIT, targetParam: 'name' })
+  labels(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(LabelsRequestSchema)) body: LabelsBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.applyChange(
+      connection,
+      namespace,
+      name,
+      (s) => setLabels(s, body.labels),
+      body.takeOver,
+    );
   }
 
   /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */

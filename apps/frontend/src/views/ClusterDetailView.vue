@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Condition, MachineStatus } from '@capi-navigator/shared';
+import { isReservedLabel } from '@capi-navigator/shared';
+import ChangeDialog from '../components/ChangeDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import { useAuthStore } from '../stores/auth.js';
@@ -16,6 +18,43 @@ const store = useClustersStore();
 const tab = ref('overview');
 const auth = useAuthStore();
 const showKubeconfig = ref(false);
+
+// ---- spec changes (FP6-F-05, FP6-F-07): managed clusters, operators only ----
+const canChange = computed(() => auth.can('operator') && !!s.value?.summary.managed);
+const conn = () => connections.activeName!;
+
+const scaling = ref<{ pool: string; current: number } | null>(null);
+const scaleOpen = ref(false);
+const replicas = ref(0);
+function openScale(pool: string, current: number): void {
+  scaling.value = { pool, current };
+  replicas.value = current;
+  scaleOpen.value = true;
+}
+const replicasValid = computed(
+  () => Number.isInteger(replicas.value) && replicas.value >= 0 && replicas.value <= 100,
+);
+const scaleRequest = () => ({ pool: scaling.value!.pool, replicas: Number(replicas.value) });
+
+const labelsOpen = ref(false);
+const labelItems = ref<string[]>([]);
+function openLabels(): void {
+  labelItems.value = Object.entries(s.value?.summary.labels ?? {})
+    .filter(([k]) => !isReservedLabel(k))
+    .map(([k, v]) => `${k}=${v}`);
+  labelsOpen.value = true;
+}
+const parsedLabels = computed(() => {
+  const out: Record<string, string> = {};
+  for (const item of labelItems.value) {
+    const i = item.indexOf('=');
+    if (i <= 0) return null;
+    const key = item.slice(0, i).trim();
+    if (isReservedLabel(key)) return null;
+    out[key] = item.slice(i + 1).trim();
+  }
+  return out;
+});
 
 watch(
   () => [connections.activeName, props.namespace, props.name] as const,
@@ -87,6 +126,14 @@ const machineHeaders = computed(() => [
         >{{ t('clusters.external') }}</v-chip
       >
       <v-spacer />
+      <v-btn
+        v-if="canChange"
+        variant="tonal"
+        prepend-icon="mdi-tag-multiple-outline"
+        data-testid="edit-labels"
+        @click="openLabels"
+        >{{ t('changes.labels') }}</v-btn
+      >
       <v-btn
         v-if="s?.kubeconfigAvailable && auth.can('operator')"
         variant="tonal"
@@ -176,9 +223,19 @@ const machineHeaders = computed(() => [
                   :title="t('wizard.poolTitle', { name: md.pool ?? md.name })"
                   subtitle="MachineDeployment"
                 />
-                <v-card-text>
+                <v-card-text class="d-flex align-center">
                   <v-chip :color="color(md.ready === md.replicas)" variant="tonal"
                     >{{ md.ready }}/{{ md.replicas }} {{ t('clusters.ready') }}</v-chip
+                  >
+                  <v-spacer />
+                  <v-btn
+                    v-if="canChange && md.pool"
+                    size="small"
+                    variant="tonal"
+                    prepend-icon="mdi-arrow-expand-vertical"
+                    :data-testid="`scale-${md.pool}`"
+                    @click="openScale(md.pool, md.replicas)"
+                    >{{ t('changes.scale') }}</v-btn
                   >
                 </v-card-text>
               </v-card>
@@ -310,6 +367,46 @@ const machineHeaders = computed(() => [
         </v-window-item>
       </v-window>
     </template>
+    <ChangeDialog
+      v-if="scaling"
+      v-model="scaleOpen"
+      :title="t('changes.scaleTitle', { pool: scaling.pool })"
+      :valid="replicasValid && replicas !== scaling.current"
+      :preview="() => store.scalePreview(conn(), namespace, name, scaleRequest())"
+      :apply="(takeOver) => store.scale(conn(), namespace, name, { ...scaleRequest(), takeOver })"
+    >
+      <v-text-field
+        v-model.number="replicas"
+        type="number"
+        min="0"
+        max="100"
+        :label="t('changes.replicas')"
+        :hint="t('changes.replicasHint', { current: scaling.current })"
+        persistent-hint
+        data-testid="scale-replicas"
+      />
+    </ChangeDialog>
+    <ChangeDialog
+      v-model="labelsOpen"
+      :title="t('changes.labelsTitle')"
+      :valid="parsedLabels !== null"
+      :preview="() => store.labelsPreview(conn(), namespace, name, { labels: parsedLabels! })"
+      :apply="
+        (takeOver) => store.setLabels(conn(), namespace, name, { labels: parsedLabels!, takeOver })
+      "
+    >
+      <v-combobox
+        v-model="labelItems"
+        :label="t('changes.labelsField')"
+        :hint="t('changes.labelsHint')"
+        persistent-hint
+        multiple
+        chips
+        closable-chips
+        :error-messages="parsedLabels === null ? [t('changes.labelsInvalid')] : []"
+        data-testid="labels-field"
+      />
+    </ChangeDialog>
     <KubeconfigDialog
       v-if="connections.activeName"
       v-model="showKubeconfig"
