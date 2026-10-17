@@ -6,3 +6,5 @@ playwright-report/
 docs/requirements.md
 CLAUDE.md
 deploy/helm/**/templates/
+deploy/crds/
+deploy/helm/**/crds/

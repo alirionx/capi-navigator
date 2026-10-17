@@ -1,0 +1,91 @@
+# Generated from packages/shared/src/crds by `pnpm crds:generate`. Do not edit.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: auditevents.navigator.capi-navigator.io
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+spec:
+  group: navigator.capi-navigator.io
+  names:
+    kind: AuditEvent
+    listKind: AuditEventList
+    plural: auditevents
+    singular: auditevent
+    categories:
+      - capi-navigator
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: Actor
+          type: string
+          jsonPath: .spec.actor
+        - name: Action
+          type: string
+          jsonPath: .spec.action
+        - name: Outcome
+          type: string
+          jsonPath: .spec.outcome
+        - name: Time
+          type: date
+          jsonPath: .spec.timestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                timestamp:
+                  type: string
+                actor:
+                  type: string
+                action:
+                  type: string
+                outcome:
+                  type: string
+                  enum:
+                    - success
+                    - failure
+                request:
+                  type: object
+                  properties:
+                    method:
+                      type: string
+                    path:
+                      type: string
+                  required:
+                    - method
+                    - path
+                target:
+                  type: object
+                  properties:
+                    kind:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  required:
+                    - kind
+                    - name
+                managementCluster:
+                  type: string
+                message:
+                  type: string
+              required:
+                - timestamp
+                - actor
+                - action
+                - outcome

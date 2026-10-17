@@ -46,5 +46,8 @@ else
     --wait --timeout 5m
 fi
 
+log "Installing CAPI Navigator CRDs"
+bash "${ROOT_DIR}/scripts/crds-install.sh"
+
 log "Done. Kubeconfig: ${KIND_KUBECONFIG}"
 log "Start the app with: pnpm dev"

@@ -1,0 +1,71 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CRD generation (STATE-02) > generates the NavigatorUser schema from Zod 1`] = `
+"# Generated from packages/shared/src/crds by \`pnpm crds:generate\`. Do not edit.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: navigatorusers.navigator.capi-navigator.io
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+spec:
+  group: navigator.capi-navigator.io
+  names:
+    kind: NavigatorUser
+    listKind: NavigatorUserList
+    plural: navigatorusers
+    singular: navigatoruser
+    shortNames:
+      - navuser
+    categories:
+      - capi-navigator
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: Role
+          type: string
+          jsonPath: .spec.role
+        - name: Disabled
+          type: boolean
+          jsonPath: .spec.disabled
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum:
+                    - viewer
+                    - operator
+                    - admin
+                disabled:
+                  default: false
+                  type: boolean
+                mustChangePassword:
+                  default: false
+                  type: boolean
+                sessionGeneration:
+                  default: 0
+                  type: integer
+                  minimum: 0
+              required:
+                - role
+"
+`;
