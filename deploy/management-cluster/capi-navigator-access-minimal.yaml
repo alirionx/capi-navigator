@@ -36,6 +36,10 @@ rules:
   - apiGroups: ['']
     resources: [events]
     verbs: [get, list, watch]
+  # Node list for the node shell (FP-17)
+  - apiGroups: ['']
+    resources: [nodes]
+    verbs: [get, list]
   - apiGroups: [apiextensions.k8s.io]
     resources: [customresourcedefinitions]
     verbs: [get, list, watch]
@@ -62,6 +66,35 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: capi-navigator-operate
+subjects:
+  - kind: ServiceAccount
+    name: capi-navigator
+    namespace: capi-navigator-access
+---
+# Node shell (FP-17, ADR-0008): short-lived privileged pods in kube-system. Remove this Role and
+# RoleBinding if admins must not open shells on management cluster nodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: capi-navigator-node-shell
+  namespace: kube-system
+rules:
+  - apiGroups: ['']
+    resources: [pods]
+    verbs: [get, list, create, delete]
+  - apiGroups: ['']
+    resources: [pods/exec]
+    verbs: [create, get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-node-shell
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: capi-navigator-node-shell
 subjects:
   - kind: ServiceAccount
     name: capi-navigator

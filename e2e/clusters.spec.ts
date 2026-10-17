@@ -34,7 +34,15 @@ const fixture = {
   machineDeployments: [
     { name: 'demo-default', pool: 'default', replicas: 2, ready: 2, upToDate: 2, conditions: [] },
   ],
-  machines: [{ name: 'demo-cp-1', role: 'control-plane', phase: 'Running', conditions: [] }],
+  machines: [
+    {
+      name: 'demo-cp-1',
+      role: 'control-plane',
+      phase: 'Running',
+      nodeName: 'demo-cp-1',
+      conditions: [],
+    },
+  ],
   events: [],
   kubeconfigAvailable: true,
 };
@@ -97,6 +105,9 @@ test.describe('cluster lifecycle and roles (FP-6)', () => {
     }
     await page.getByTestId('tab-tree').click();
     await expect(page.getByTestId('resource-tree')).toContainText('demo-control-plane');
+    // FP-17: node shell for operators and admins.
+    await page.getByRole('tab', { name: /Machines/ }).click();
+    await expect(page.getByTestId('shell-demo-cp-1')).toBeVisible();
 
     const viewer = `e2e-v-${Date.now().toString(36)}`;
     const password = await createViewer(request, viewer);
@@ -108,6 +119,8 @@ test.describe('cluster lifecycle and roles (FP-6)', () => {
       for (const id of ['delete-cluster', 'edit-labels', 'show-kubeconfig', 'scale-default']) {
         await expect(viewerPage.getByTestId(id)).toHaveCount(0);
       }
+      await viewerPage.getByRole('tab', { name: /Machines/ }).click();
+      await expect(viewerPage.getByTestId('shell-demo-cp-1')).toHaveCount(0);
       // The backend enforces the roles as well (hard rule 9).
       const api = viewerPage.request;
       const base = '/api/connections/home/clusters/team-a/demo';

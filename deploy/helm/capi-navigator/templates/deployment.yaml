@@ -34,6 +34,8 @@ spec:
               value: {{ .Values.auth.sessionTtlHours | quote }}
             - name: AUDIT_RETENTION_DAYS
               value: {{ .Values.audit.retentionDays | quote }}
+            - name: NODE_SHELL_IMAGE
+              value: {{ .Values.nodeShell.image | quote }}
           ports:
             - name: http
               containerPort: 3000

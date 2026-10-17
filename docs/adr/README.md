@@ -11,3 +11,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0005](0005-workload-kubeconfig-view-and-download.md)       | Showing and downloading workload cluster kubeconfigs                             | accepted |
 | [0006](0006-cluster-deletion-with-cleanup.md)               | Cluster deletion with cleanup inside the workload cluster                        | accepted |
 | [0007](0007-bastion-host.md)                                | Bastion host via the providers' built-in bastion                                 | accepted |
+| [0008](0008-node-shell-via-privileged-pod.md)               | Node shell via a privileged pod                                                  | accepted |

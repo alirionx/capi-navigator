@@ -38,6 +38,8 @@ const EnvSchema = z.object({
   LOGIN_RATE_WINDOW_MINUTES: z.coerce.number().positive().default(15),
   /** Section 4, State storage: AuditEvent retention. */
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+  /** Image of the node shell pod (FP-17); e.g. a registry mirror in air-gapped setups. */
+  NODE_SHELL_IMAGE: z.string().min(1).default('alpine:3.22'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

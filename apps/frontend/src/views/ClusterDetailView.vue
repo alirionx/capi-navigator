@@ -11,6 +11,7 @@ import { sshJumpCommand, sshUserFor } from '../composables/ssh.js';
 import { useCredentialsStore } from '../stores/credentials.js';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
+import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
@@ -101,6 +102,14 @@ function sshCommand(m: MachineStatus): string | undefined {
   return sshJumpCommand({ bastionIP: b.publicIP, bastionUser, nodeIP: m.internalIP, nodeUser });
 }
 const copiedCmd = ref<string | null>(null);
+
+// ---- node shell (FP-17): operators, machines with a node ----
+const shellNode = ref<string | null>(null);
+const shellOpen = ref(false);
+function openShell(node: string): void {
+  shellNode.value = node;
+  shellOpen.value = true;
+}
 async function copyCmd(cmd: string): Promise<void> {
   await navigator.clipboard.writeText(cmd);
   copiedCmd.value = cmd;
@@ -179,6 +188,7 @@ const machineHeaders = computed(() => [
   { title: t('clusters.node'), key: 'nodeName' },
   { title: 'providerID', key: 'providerID' },
   { title: t('clusters.age'), key: 'createdAt' },
+  { title: '', key: 'shell', sortable: false },
   { title: '', key: 'data-table-expand' },
 ]);
 </script>
@@ -543,6 +553,17 @@ const machineHeaders = computed(() => [
                 item.rootVolumeGB ? `${item.rootVolumeGB} GB` : '–'
               }}</template>
               <template #[`item.nodeName`]="{ item }">{{ item.nodeName ?? '–' }}</template>
+              <template #[`item.shell`]="{ item }">
+                <v-btn
+                  v-if="item.nodeName && auth.can('operator')"
+                  size="small"
+                  variant="tonal"
+                  prepend-icon="mdi-console"
+                  :data-testid="`shell-${item.name}`"
+                  @click="openShell(item.nodeName)"
+                  >{{ t('shell.open') }}</v-btn
+                >
+              </template>
               <template #[`item.createdAt`]="{ item }">
                 <span :title="formatCreated(item.createdAt)">{{
                   formatAge(item.createdAt, now)
@@ -713,6 +734,12 @@ const machineHeaders = computed(() => [
       :namespace="namespace"
       :name="name"
       @deleted="router.push({ name: 'clusters' })"
+    />
+    <NodeShellDialog
+      v-if="shellNode && connections.activeName"
+      v-model="shellOpen"
+      :title="t('shell.title', { node: shellNode })"
+      :path="`/api/connections/${encodeURIComponent(connections.activeName)}/clusters/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/nodes/${encodeURIComponent(shellNode)}/shell`"
     />
     <KubeconfigDialog
       v-if="connections.activeName"

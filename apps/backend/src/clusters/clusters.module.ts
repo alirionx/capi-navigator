@@ -14,6 +14,7 @@ import { ClustersService } from './clusters.service.js';
 @Module({
   imports: [ConnectionsModule, CredentialsModule, OperatorModule],
   controllers: [ClustersController],
+  exports: [ClustersService],
   providers: [
     ClustersService,
     ClusterEventsService,
