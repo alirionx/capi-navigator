@@ -705,6 +705,13 @@ These requirements apply to all feature packs and are checked in every pack.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
 - **FP-14: External identity provider** (OIDC, e.g. Keycloak, Dex, Entra ID) with role mapping from group claims.
 - **FP-15: Immutable OS images** such as openSUSE MicroOS. To check first: MicroOS is usually configured with Ignition or Combustion rather than cloud-init, so it may need its own bootstrap path.
+- **FP-16: Operation behind an HTTP(S) proxy** (optional, after FP-10), for OpenStack in an own data center. Agreed scope:
+  - The proxy is configured and enabled **per cluster**: per management cluster connection (CAPI Operator, providers, CAAPH, backend access) and per workload cluster (defaults from the management cluster connection, overridable or disabled per cluster). Hybrid setups are supported, e.g. management cluster in the intranet behind a proxy and workload clusters on a public cloud without one, or the other way round.
+  - Workload clusters: `httpProxy`, `httpsProxy` and `noProxy` in the cluster spec. Each `BootstrapFlavorPlugin` writes its own proxy configuration (RKE2: `/etc/default/rke2-server|rke2-agent` plus exports for the install script; k0s and kubeadm analogous, including apt/dnf), each `InfraProviderPlugin` contributes its `NO_PROXY` entries. `NO_PROXY` is derived automatically (pod, service and node CIDRs, `.svc`, `.cluster.local`, `localhost`, API server endpoint, `169.254.169.254`, cloud API endpoints) and can be extended. CCM and CSI get the proxy through their Helm values.
+  - The proxy intercepts TLS: a custom CA certificate (stored as a Secret) is distributed to the nodes (system trust store and container runtime), the backend (`NODE_EXTRA_CA_CERTS`), the CAPI Operator, the providers, CAAPH, CCM and CSI.
+  - No proxy authentication (server-to-server in the data center); proxy URLs end up in the node user data and must not contain credentials.
+  - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
+  - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
