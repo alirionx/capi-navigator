@@ -1,0 +1,1726 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > AWS all-in-one 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-aws-aio
+  namespace: default
+  labels:
+    capi-navigator.io/ccm: aws
+    capi-navigator.io/csi: aws
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws-aio
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1","sshKeyName":"ops"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-aws-aio","namespace":"default","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-aws-aio-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: demo-aws-aio
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: demo-aws-aio
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws-aio
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws-dev
+  sshKeyName: ops
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: BGP
+          fromPort: 179
+          toPort: 179
+          protocol: tcp
+        - description: IP-in-IP
+          fromPort: -1
+          toPort: 65535
+          protocol: "4"
+        - description: Calico Typha
+          fromPort: 5473
+          toPort: 5473
+          protocol: tcp
+        - description: Calico Typha health check
+          fromPort: 9098
+          toPort: 9098
+          protocol: tcp
+        - description: Calico health check
+          fromPort: 9099
+          toPort: 9099
+          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+      - description: etcd
+        fromPort: 2379
+        toPort: 2379
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+      - description: etcd peer
+        fromPort: 2380
+        toPort: 2380
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: nlb
+    additionalListeners:
+      - port: 9345
+        protocol: TCP
+    ingressRules:
+      - description: Kubernetes API
+        fromPort: 6443
+        toPort: 6443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+  bastion:
+    enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-aio-cp-32c5dde4
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws-aio
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 1
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-aws-aio-control-plane
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws-aio
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 1
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-aio-cp-32c5dde4
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    kubelet:
+      extraArgs:
+        - provider-id=aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > AWS standard with CCM and CSI 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-aws
+  namespace: default
+  labels:
+    capi-navigator.io/ccm: aws
+    capi-navigator.io/csi: aws
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1","sshKeyName":"ops"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-aws","namespace":"default","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":3},"mode":"standard","workerPools":[{"machineSize":"t3.large","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-aws-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: demo-aws
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: demo-aws
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws-dev
+  sshKeyName: ops
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: BGP
+          fromPort: 179
+          toPort: 179
+          protocol: tcp
+        - description: IP-in-IP
+          fromPort: -1
+          toPort: 65535
+          protocol: "4"
+        - description: Calico Typha
+          fromPort: 5473
+          toPort: 5473
+          protocol: tcp
+        - description: Calico Typha health check
+          fromPort: 9098
+          toPort: 9098
+          protocol: tcp
+        - description: Calico health check
+          fromPort: 9099
+          toPort: 9099
+          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+      - description: etcd
+        fromPort: 2379
+        toPort: 2379
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+      - description: etcd peer
+        fromPort: 2380
+        toPort: 2380
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: nlb
+    additionalListeners:
+      - port: 9345
+        protocol: TCP
+    ingressRules:
+      - description: Kubernetes API
+        fromPort: 6443
+        toPort: 6443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+  bastion:
+    enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-cp-32c5dde4
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 1
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-aws-control-plane
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 3
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-cp-32c5dde4
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-default-4843bd55
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 1
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-aws-default-206d2550
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-aws-default
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  clusterName: demo-aws
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo-aws
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo-aws
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: demo-aws
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-aws-default-206d2550
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-default-4843bd55
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > AWS without add-ons 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-aws
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":false,"csiDriver":false},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1","sshKeyName":"ops"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-aws","namespace":"default","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":3},"mode":"standard","workerPools":[{"machineSize":"t3.large","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-aws-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: demo-aws
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: demo-aws
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws-dev
+  sshKeyName: ops
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: BGP
+          fromPort: 179
+          toPort: 179
+          protocol: tcp
+        - description: IP-in-IP
+          fromPort: -1
+          toPort: 65535
+          protocol: "4"
+        - description: Calico Typha
+          fromPort: 5473
+          toPort: 5473
+          protocol: tcp
+        - description: Calico Typha health check
+          fromPort: 9098
+          toPort: 9098
+          protocol: tcp
+        - description: Calico health check
+          fromPort: 9099
+          toPort: 9099
+          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+      - description: etcd
+        fromPort: 2379
+        toPort: 2379
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+      - description: etcd peer
+        fromPort: 2380
+        toPort: 2380
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: nlb
+    additionalListeners:
+      - port: 9345
+        protocol: TCP
+    ingressRules:
+      - description: Kubernetes API
+        fromPort: 6443
+        toPort: 6443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+  bastion:
+    enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-cp-32c5dde4
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 1
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-aws-control-plane
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 3
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-cp-32c5dde4
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: demo-aws-default-4843bd55
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ops
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 1
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-aws-default-96396e1b
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-aws-default
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  clusterName: demo-aws
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo-aws
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo-aws
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: demo-aws
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-aws-default-96396e1b
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-default-4843bd55
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > OpenStack all-in-one 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo-aio
+  namespace: team-a
+  labels:
+    env: test
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","sshKeyName":"my-keys"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"env":"test"},"name":"demo-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk0","replicas":1,"rootVolumeSizeGB":50},"mode":"all-in-one","workerPools":[]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-aio-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: demo-aio
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: demo-aio
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-aio-cp-a6815c13
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 50
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-aio-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 1
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-aio-cp-a6815c13
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    kubelet:
+      extraArgs:
+        - provider-id=openstack:///{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: demo-aio-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo-aio
+  resources:
+    - kind: Secret
+      name: demo-aio-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > OpenStack standard (3 control plane + 2 pools) with CCM and CSI 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    env: test
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","sshKeyName":"my-keys"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"env":"test"},"name":"demo","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk0","replicas":3,"rootVolumeSizeGB":50},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":2},{"machineSize":"a8-ram32-disk80-perf1","name":"gpu","nodeLabels":{"example.com/gpu":"true"},"replicas":1}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: demo
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-cp-a6815c13
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 50
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 3
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-cp-a6815c13
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=openstack:///{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-default-c264cd9f
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-default-20cfa44b
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-default-20cfa44b
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-default-c264cd9f
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-gpu-dc53c27b
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a8-ram32-disk80-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-gpu-3dc2a68d
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        nodeLabels:
+          - example.com/gpu=true
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-gpu
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 1
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: gpu
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: gpu
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-gpu-3dc2a68d
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-gpu-dc53c27b
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: demo-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+  resources:
+    - kind: Secret
+      name: demo-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > OpenStack without add-ons 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    env: test
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":false,"csiDriver":false},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","sshKeyName":"my-keys"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"env":"test"},"name":"demo","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk0","replicas":3,"rootVolumeSizeGB":50},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":2},{"machineSize":"a8-ram32-disk80-perf1","name":"gpu","nodeLabels":{"example.com/gpu":"true"},"replicas":1}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: demo
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-cp-a6815c13
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 50
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 3
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-cp-a6815c13
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=openstack:///{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-default-c264cd9f
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-default-128f0858
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-default-128f0858
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-default-c264cd9f
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-gpu-dc53c27b
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a8-ram32-disk80-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-gpu-a0c1a64a
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        nodeLabels:
+          - example.com/gpu=true
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-gpu
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 1
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: gpu
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: gpu
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-gpu-a0c1a64a
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-gpu-dc53c27b
+"
+`;
+
+exports[`transformation snapshots (FP5-F-01, NF-14) > node customization and SSH keys (FP5-F-13) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    env: test
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","sshKeyName":"my-keys"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"env":"test"},"name":"demo","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":["ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example"],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk0","replicas":3,"rootVolumeSizeGB":50},"mode":"standard","workerPools":[{"customization":{"files":[{"content":"managed by CAPI Navigator\\n","path":"/etc/motd","permissions":"0644"},{"contentFromSecret":{"key":"token","name":"app-token"},"path":"/etc/app/token","permissions":"0600"}],"postCommands":["echo after"],"preCommands":["echo before"]},"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":2},{"machineSize":"a8-ram32-disk80-perf1","name":"gpu","nodeLabels":{"example.com/gpu":"true"},"replicas":1}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: demo-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: demo
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-cp-a6815c13
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+      rootVolume:
+        sizeGiB: 50
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: demo-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 3
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-cp-a6815c13
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=openstack:///{{ v1.instance_id }}
+    additionalUserData:
+      config: |
+        ssh_authorized_keys:
+          - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example"
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-default-c264cd9f
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-default-20df1989
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+            - cloud-provider=external
+        additionalUserData:
+          config: |
+            ssh_authorized_keys:
+              - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example"
+      files:
+        - path: /etc/motd
+          content: |
+            managed by CAPI Navigator
+          permissions: "0644"
+        - path: /etc/app/token
+          contentFrom:
+            secret:
+              name: app-token
+              key: token
+          permissions: "0600"
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+        - echo before
+      postRKE2Commands:
+        - echo after
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-default-20df1989
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-default-c264cd9f
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: demo-gpu-dc53c27b
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a8-ram32-disk80-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: demo-gpu-c643f674
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        nodeLabels:
+          - example.com/gpu=true
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+            - cloud-provider=external
+        additionalUserData:
+          config: |
+            ssh_authorized_keys:
+              - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example"
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: demo-gpu
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterName: demo
+  replicas: 1
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+      capi-navigator.io/pool: gpu
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: demo
+        capi-navigator.io/pool: gpu
+    spec:
+      clusterName: demo
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: demo-gpu-c643f674
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-gpu-dc53c27b
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: demo-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: demo
+  resources:
+    - kind: Secret
+      name: demo-cloud-config
+  strategy: Reconcile
+"
+`;
