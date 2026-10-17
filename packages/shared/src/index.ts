@@ -3,6 +3,7 @@ export * from './auth.js';
 export * from './errors.js';
 export * from './connections.js';
 export * from './management-access.js';
+export * from './credentials.js';
 export * from './crds/index.js';
 export * from './catalog/index.js';
 export * from './operator.js';
