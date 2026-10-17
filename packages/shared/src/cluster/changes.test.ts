@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scalePool, setLabels, SpecChangeError } from './changes.js';
+import { scalePool, setBastion, setLabels, SpecChangeError } from './changes.js';
 import { ClusterSpecSchema, type ClusterSpec } from './spec.js';
 import { transform } from './transform.js';
 
@@ -58,5 +58,29 @@ describe('spec changes (FP6-F-05, FP6-F-07)', () => {
     expect(setLabels(spec, {}).labels).toBeUndefined();
     expect(() => setLabels(spec, { 'capi-navigator.io/ccm': 'x' })).toThrow(/reserved/);
     expect(() => setLabels(spec, { 'cluster.x-k8s.io/cluster-name': 'x' })).toThrow(/reserved/);
+  });
+
+  it('enables and disables the bastion without touching machine templates (FP5-F-20)', () => {
+    const withKey = ClusterSpecSchema.parse({
+      ...spec,
+      infrastructure: { ...spec.infrastructure, sshKeyName: 'my-keys' },
+    });
+    const on = setBastion(withKey, { enabled: true, machineSize: 'a1-ram2-disk20-perf1' });
+    const before = byKey(withKey);
+    const after = byKey(on);
+    expect([...after.keys()].filter((k) => after.get(k) !== before.get(k))).toEqual([
+      'Cluster/demo',
+      'OpenStackCluster/demo',
+    ]);
+    // Disabling keeps the size, which CAPO needs while it deletes the bastion.
+    const off = setBastion(on, { enabled: false });
+    expect(off.infrastructure.bastion).toEqual({
+      enabled: false,
+      machineSize: 'a1-ram2-disk20-perf1',
+    });
+    expect(() => setBastion(on, { enabled: true, machineSize: 'a2-ram4-disk50-perf1' })).toThrow(
+      /Disable the bastion first/,
+    );
+    expect(() => setBastion(spec, { enabled: true, machineSize: 'x' })).toThrow(/key pair/);
   });
 });

@@ -49,6 +49,12 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   resources: { infraClusterPlural: string; machineKind: string; machinePlural: string };
   /** Size, image and root disk of a running machine from its infra machine spec (FP6-F-02). */
   machineDetails(infraMachineSpec: Record<string, unknown>): MachineDetails;
+  /** Bastion address and state from the infra cluster status (FP5-F-20). */
+  bastionStatus(infraClusterStatus: Record<string, unknown>): {
+    publicIP?: string;
+    privateIP?: string;
+    state?: string;
+  };
   /** Facts for the infrastructure card of the detail view (region, network, …), from the spec. */
   infraFacts(infra: T): { label: string; value: string }[];
   /** Labels on the Cluster that select the CCM/CSI presets (FP5-F-09, FP5-F-17). */

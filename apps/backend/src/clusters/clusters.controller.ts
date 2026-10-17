@@ -13,6 +13,8 @@ import {
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import {
+  BastionRequestSchema,
+  setBastion,
   ClusterCreateRequestSchema,
   DeleteRequestSchema,
   type DeletePreview,
@@ -40,6 +42,7 @@ type CreateBody = z.output<typeof ClusterCreateRequestSchema>;
 type ScaleBody = z.output<typeof ScaleRequestSchema>;
 type LabelsBody = z.output<typeof LabelsRequestSchema>;
 type DeleteBody = z.output<typeof DeleteRequestSchema>;
+type BastionBody = z.output<typeof BastionRequestSchema>;
 const HEARTBEAT_MS = 25_000;
 
 /** Live status of one cluster via watches (US-07, NF-11). Key: connection/namespace/name. */
@@ -240,6 +243,41 @@ export class ClustersController {
     @Body(new ZodValidationPipe(DeleteRequestSchema)) body: DeleteBody,
   ): Promise<DeletionStatus> {
     return this.deletion.delete(connection, namespace, name, body);
+  }
+
+  @Roles('operator')
+  @Post(':namespace/:name/bastion/preview')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.bastion.preview', skip: true })
+  bastionPreview(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(BastionRequestSchema)) body: BastionBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.changePreview(connection, namespace, name, (s) =>
+      setBastion(s, body.bastion),
+    );
+  }
+
+  /** FP5-F-20: enable, disable or reconfigure the bastion host. */
+  @Roles('operator')
+  @Post(':namespace/:name/bastion')
+  @HttpCode(200)
+  @Audit({ action: 'cluster.bastion', ...AUDIT, targetParam: 'name' })
+  bastion(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(BastionRequestSchema)) body: BastionBody,
+  ): Promise<ClusterChangePreview> {
+    return this.clusters.applyChange(
+      connection,
+      namespace,
+      name,
+      (s) => setBastion(s, body.bastion),
+      body.takeOver,
+    );
   }
 
   /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */

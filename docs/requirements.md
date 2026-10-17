@@ -509,6 +509,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - **FP5-F-17** MUST roll out the AWS cloud controller manager and the AWS EBS CSI driver via preset `HelmChartProxy` resources when selected, analogous to FP5-F-09.
 - **FP5-F-18** MUST check that the AWS infrastructure provider is installed and ready, and that the selected credentials passed their test (FP-4), and otherwise point to FP-3 or FP-4.
 - **FP5-F-19** MUST make the root disk of every machine group configurable (size and, optionally, type), with an option to use the same root disk for all groups. OpenStack: without a size the node uses the flavor's local disk; with a size it boots from a Cinder volume (`rootVolume.sizeGiB`, `rootVolume.type` from the Cinder volume types of the cloud); flavors without local disk require a size. AWS: EBS root volume (`rootVolume.size`, default 50 GB; `rootVolume.type` gp3 or gp2, default gp3).
+- **FP5-F-20** SHOULD offer an optional bastion host per cluster for SSH access to the nodes, using the provider's built-in bastion (CAPO/CAPA): configurable in the wizard and switchable as a day-2 change without rebuilding nodes; AWS restricts SSH to allowed source networks; the detail view shows the bastion address and an `ssh -J` command per machine (ADR-0007).
 
 **Acceptance criteria**
 
@@ -714,6 +715,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - No proxy authentication (server-to-server in the data center); proxy URLs end up in the node user data and must not contain credentials.
   - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
   - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
+- **FP-17: Node shell** (optional): a terminal in the web UI on a node via a privileged pod (`nsenter` into the host namespaces, like Lens), for operators and admins, audited; pod deleted at session end and limited by `activeDeadlineSeconds`; image configurable (FP-16). Needs xterm.js and WebSockets (to approve). A web SSH terminal through the bastion (FP5-F-20) is on hold.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions

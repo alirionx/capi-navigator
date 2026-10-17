@@ -10,3 +10,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0004](0004-node-provider-id-and-openstack-cloud-config.md) | providerID from instance metadata; OpenStack cloud config via ClusterResourceSet | accepted |
 | [0005](0005-workload-kubeconfig-view-and-download.md)       | Showing and downloading workload cluster kubeconfigs                             | accepted |
 | [0006](0006-cluster-deletion-with-cleanup.md)               | Cluster deletion with cleanup inside the workload cluster                        | accepted |
+| [0007](0007-bastion-host.md)                                | Bastion host via the providers' built-in bastion                                 | accepted |

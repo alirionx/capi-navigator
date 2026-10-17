@@ -119,6 +119,22 @@ export type MachineGroup = Pick<
  */
 export const AWS_ROOT_VOLUME_TYPES = ['gp3', 'gp2'] as const;
 
+/**
+ * Bastion host for SSH access to the nodes (FP5-F-20). Both providers attach a cloud key pair
+ * (`sshKeyName`); CAPA restricts SSH to `allowedCidrs`, CAPO v0.15 opens SSH to the bastion to
+ * everyone (not configurable), so OpenStack takes no CIDRs.
+ */
+export const BastionSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Flavor (OpenStack, required) or instance type (AWS, default by CAPA). */
+  machineSize: z.string().trim().min(1).max(255).optional(),
+  /** Image ID / AMI; default: the cluster image (OpenStack) or CAPA's bastion AMI (AWS). */
+  image: z.string().trim().min(1).max(255).optional(),
+  /** Source networks allowed to SSH to the bastion (AWS only). */
+  allowedCidrs: z.array(CidrSchema).max(20).optional(),
+});
+export type Bastion = z.infer<typeof BastionSchema>;
+
 export const OpenStackInfraSchema = z.object({
   provider: z.literal('openstack'),
   /** Stored credentials = OpenStackClusterIdentity (FP-4, ADR-0002). */
@@ -137,6 +153,7 @@ export const OpenStackInfraSchema = z.object({
   apiServerLoadBalancer: z.boolean().default(true),
   failureDomain: z.string().trim().max(255).optional(),
   sshKeyName: z.string().trim().max(255).optional(),
+  bastion: BastionSchema.optional(),
 });
 export type OpenStackInfra = z.infer<typeof OpenStackInfraSchema>;
 
@@ -157,6 +174,7 @@ export const AwsInfraSchema = z.object({
   /** CAPA always needs a load balancer for the control plane endpoint. */
   apiServerLoadBalancer: z.literal(true).default(true),
   sshKeyName: z.string().trim().max(255).optional(),
+  bastion: BastionSchema.optional(),
 });
 export type AwsInfra = z.infer<typeof AwsInfraSchema>;
 
@@ -307,6 +325,34 @@ export const ClusterSpecSchema = z
         );
       }
     });
+
+    // FP5-F-20: bastion host.
+    const bastion = spec.infrastructure.bastion;
+    if (bastion?.enabled) {
+      const path = ['infrastructure', 'bastion'];
+      if (!spec.infrastructure.sshKeyName) {
+        issue(['infrastructure', 'sshKeyName'], 'The bastion needs an SSH key pair of the cloud');
+      }
+      if (spec.infrastructure.provider === 'openstack') {
+        if (!bastion.machineSize) issue([...path, 'machineSize'], 'Required for the bastion');
+        if (bastion.image && !z.uuid().safeParse(bastion.image).success) {
+          issue([...path, 'image'], 'An image ID (UUID)');
+        }
+      } else {
+        if (!bastion.allowedCidrs?.length) {
+          issue([...path, 'allowedCidrs'], 'Add at least one network allowed to connect via SSH');
+        }
+        if (bastion.image && !/^ami-[0-9a-f]{8,17}$/.test(bastion.image)) {
+          issue([...path, 'image'], 'An AMI ID like ami-0123456789abcdef0');
+        }
+      }
+    }
+    if (spec.infrastructure.provider === 'openstack' && bastion?.allowedCidrs?.length) {
+      issue(
+        ['infrastructure', 'bastion', 'allowedCidrs'],
+        'OpenStack (CAPO) cannot restrict SSH to the bastion; remove the networks',
+      );
+    }
 
     if (
       spec.infrastructure.provider === 'openstack' &&

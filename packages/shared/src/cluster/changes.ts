@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { ClusterSpecSchema, UserLabelsSchema, type ClusterSpec } from './spec.js';
+import {
+  BastionSchema,
+  ClusterSpecSchema,
+  UserLabelsSchema,
+  type Bastion,
+  type ClusterSpec,
+} from './spec.js';
 
 /**
  * Day-to-day changes of a stored cluster spec (FP-6): pure functions that return a new, validated
@@ -45,6 +51,36 @@ export function setLabels(spec: ClusterSpec, labels: Record<string, string>): Cl
   delete next.labels;
   if (Object.keys(labels).length > 0) next.labels = labels;
   return ClusterSpecSchema.parse(next);
+}
+
+/** FP5-F-20: enable, disable or reconfigure the bastion host. */
+export const BastionRequestSchema = z.object({
+  bastion: BastionSchema,
+  takeOver: z.boolean().default(false),
+});
+export type BastionRequest = z.input<typeof BastionRequestSchema>;
+
+export function setBastion(spec: ClusterSpec, bastion: Bastion): ClusterSpec {
+  const current = spec.infrastructure.bastion;
+  if (
+    current?.enabled &&
+    bastion.enabled &&
+    (current.machineSize !== bastion.machineSize || current.image !== bastion.image)
+  ) {
+    // Neither CAPO nor CAPA change a running bastion; it is replaced via disable and enable.
+    throw new SpecChangeError('Disable the bastion first to change its size or image');
+  }
+  return ClusterSpecSchema.parse({
+    ...spec,
+    infrastructure: {
+      ...spec.infrastructure,
+      bastion: {
+        ...bastion,
+        // CAPO needs the bastion spec (flavor) also while disabling.
+        machineSize: bastion.machineSize ?? current?.machineSize,
+      },
+    },
+  });
 }
 
 /** One object of a change preview, as YAML before and after (Secret values masked). */

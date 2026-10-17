@@ -245,13 +245,14 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
             }));
         }
         case 'keyPairs': {
-          const res = await getJson<{ keypairs: { keypair: { name: string; type?: string } }[] }>(
-            session,
-            'compute',
-            '/os-keypairs',
-            opts,
-          );
-          return res.keypairs.map(({ keypair }) => ({ value: keypair.name, label: keypair.name }));
+          const res = await getJson<{
+            keypairs: { keypair: { name: string; type?: string; fingerprint?: string } }[];
+          }>(session, 'compute', '/os-keypairs', opts);
+          return res.keypairs.map(({ keypair }) => ({
+            value: keypair.name,
+            label: keypair.name,
+            details: compact({ fingerprint: keypair.fingerprint, type: keypair.type }),
+          }));
         }
         default:
           throw new CredentialInputError(`Unknown selection list "${kind}" for OpenStack`);

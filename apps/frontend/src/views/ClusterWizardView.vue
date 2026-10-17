@@ -16,6 +16,7 @@ import ErrorAlert from '../components/ErrorAlert.vue';
 import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../components/wizard/MachineGroupEditor.vue';
+import BastionEditor from '../components/BastionEditor.vue';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
@@ -96,6 +97,8 @@ const draft = reactive({
     azCount: 1,
     sshKeyName: '' as string | null,
   },
+  /** FP5-F-20: bastion host. */
+  bastion: { enabled: false, machineSize: '', allowedCidrs: [] as string[] },
   addons: { ccm: true, csi: true },
   podCidr: '10.42.0.0/16',
   serviceCidr: '10.43.0.0/16',
@@ -293,6 +296,14 @@ const spec = computed<ClusterSpecInput>(() => ({
           apiServerLoadBalancer: draft.os.apiLb,
           ...(draft.os.failureDomain ? { failureDomain: draft.os.failureDomain } : {}),
           ...(draft.os.sshKeyName ? { sshKeyName: draft.os.sshKeyName } : {}),
+          ...(draft.bastion.enabled
+            ? {
+                bastion: {
+                  enabled: true,
+                  ...(draft.bastion.machineSize ? { machineSize: draft.bastion.machineSize } : {}),
+                },
+              }
+            : {}),
         }
       : {
           provider: 'aws',
@@ -304,6 +315,15 @@ const spec = computed<ClusterSpecInput>(() => ({
             availabilityZoneCount: Number(draft.aws.azCount),
           },
           ...(draft.aws.sshKeyName ? { sshKeyName: draft.aws.sshKeyName } : {}),
+          ...(draft.bastion.enabled
+            ? {
+                bastion: {
+                  enabled: true,
+                  allowedCidrs: draft.bastion.allowedCidrs.map((c) => c.trim()),
+                  ...(draft.bastion.machineSize ? { machineSize: draft.bastion.machineSize } : {}),
+                },
+              }
+            : {}),
         },
 }));
 
@@ -759,6 +779,17 @@ const canPreview = computed(() => issues.value.length === 0);
             }}</v-alert>
           </v-col>
         </v-row>
+        <v-card border class="pa-4 mt-4">
+          <div class="text-subtitle-1 mb-1">{{ t('bastion.title') }}</div>
+          <BastionEditor
+            v-model="draft.bastion"
+            :provider="draft.provider"
+            :sizes="sizes"
+            :has-key-pair="
+              !!(draft.provider === 'openstack' ? draft.os.sshKeyName : draft.aws.sshKeyName)
+            "
+          />
+        </v-card>
       </template>
 
       <!-- 4 Add-ons -->

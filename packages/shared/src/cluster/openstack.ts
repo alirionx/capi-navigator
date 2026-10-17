@@ -58,6 +58,22 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
           ? { managedLoadBalancer: { enabled: true } }
           : { enableFloatingIP: true },
         controlPlaneAvailabilityZones: infra.failureDomain ? [infra.failureDomain] : undefined,
+        // FP5-F-20: CAPO opens SSH to the bastion to everyone and SSH to the nodes from the
+        // bastion. Disabling keeps the spec, as CAPO requires (enabled: false, then removal).
+        bastion:
+          infra.bastion && (infra.bastion.enabled || infra.bastion.machineSize)
+            ? {
+                enabled: infra.bastion.enabled,
+                spec: compact({
+                  flavor: infra.bastion.machineSize
+                    ? { filter: { name: infra.bastion.machineSize } }
+                    : undefined,
+                  image: { id: infra.bastion.image ?? infra.image },
+                  sshKeyName: infra.sshKeyName,
+                }),
+                ...(infra.failureDomain ? { availabilityZone: infra.failureDomain } : {}),
+              }
+            : undefined,
       }),
     };
   },
@@ -93,6 +109,11 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       rootVolumeGB: root?.sizeGiB,
       rootVolumeType: root?.type,
     });
+  },
+
+  bastionStatus(st) {
+    const b = st.bastion as { floatingIP?: string; ip?: string; state?: string } | undefined;
+    return compact({ publicIP: b?.floatingIP, privateIP: b?.ip, state: b?.state });
   },
 
   infraFacts: (infra) => [

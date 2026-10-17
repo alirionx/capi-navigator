@@ -68,6 +68,8 @@ export const MachineStatusSchema = z.object({
   failureDomain: z.string().optional(),
   /** MachineDeployment of a worker machine (resource tree, FP6-F-03). */
   deployment: z.string().optional(),
+  /** Node address in the cluster network, the target behind the bastion (FP5-F-20). */
+  internalIP: z.string().optional(),
   /** Flavor / instance type, image and root disk from the infra machine (FP6-F-02). */
   size: z.string().optional(),
   image: z.string().optional(),
@@ -102,6 +104,11 @@ export type ImageRef = z.infer<typeof ImageRefSchema>;
 
 /** What the cluster is built from, per machine group, from the stored spec (managed clusters). */
 export const InfraSummarySchema = z.object({
+  provider: z.string(),
+  /** Stored credentials of the cluster (for selection lists in day-2 dialogs). */
+  credentialRef: z.string(),
+  region: z.string().optional(),
+  sshKeyName: z.string().optional(),
   facts: z.array(z.object({ label: z.string(), value: z.string() })),
   groups: z.array(
     z.object({
@@ -151,6 +158,19 @@ export const ClusterStatusSchema = z.object({
     }),
   ),
   machines: z.array(MachineStatusSchema),
+  /** Bastion host (FP5-F-20): desired state from the spec, address from the provider. */
+  bastion: z
+    .object({
+      enabled: z.boolean(),
+      allowedCidrs: z.array(z.string()).optional(),
+      machineSize: z.string().optional(),
+      publicIP: z.string().optional(),
+      privateIP: z.string().optional(),
+      state: z.string().optional(),
+      /** SSH open to everyone (CAPO); the UI warns. */
+      openToAll: z.boolean(),
+    })
+    .optional(),
   /** Infrastructure card: facts and machine groups (managed clusters only). */
   infraSummary: InfraSummarySchema.optional(),
   /** Newest first, at most EVENT_LIMIT (FP6-F-02). */

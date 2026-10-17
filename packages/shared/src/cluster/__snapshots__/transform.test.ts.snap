@@ -1,5 +1,111 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`bastion host (FP5-F-20) > AWS: CAPA bastion restricted to the allowed networks 1`] = `
+"apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: demo-aws
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws-dev
+  sshKeyName: ops
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: BGP
+          fromPort: 179
+          toPort: 179
+          protocol: tcp
+        - description: IP-in-IP
+          fromPort: -1
+          toPort: 65535
+          protocol: "4"
+        - description: Calico Typha
+          fromPort: 5473
+          toPort: 5473
+          protocol: tcp
+        - description: Calico Typha health check
+          fromPort: 9098
+          toPort: 9098
+          protocol: tcp
+        - description: Calico health check
+          fromPort: 9099
+          toPort: 9099
+          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: RKE2 supervisor
+        fromPort: 9345
+        toPort: 9345
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+  controlPlaneLoadBalancer:
+    loadBalancerType: nlb
+    ingressRules:
+      - description: Kubernetes API
+        fromPort: 6443
+        toPort: 6443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+  bastion:
+    enabled: true
+    allowedCIDRBlocks:
+      - 203.0.113.7/32
+    instanceType: t3.micro
+"
+`;
+
+exports[`bastion host (FP5-F-20) > OpenStack: CAPO bastion with flavor, cluster image and key pair; disabled keeps the spec 1`] = `
+"apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: demo
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+  bastion:
+    enabled: true
+    spec:
+      flavor:
+        filter:
+          name: a1-ram2-disk20-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      sshKeyName: my-keys
+"
+`;
+
 exports[`root disks (FP5-F-19) > AWS: EBS root volume with size and type 1`] = `
 "apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
 kind: AWSMachineTemplate

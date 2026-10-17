@@ -297,7 +297,7 @@ export class ClustersService {
         events,
         kubeconfigAvailable: kubeconfig,
       });
-      return this.withImageNames(connection, cluster, status);
+      return this.withImageNames(connection, cluster, status, infra);
     });
   }
 
@@ -309,11 +309,24 @@ export class ClustersService {
     connection: string,
     cluster: K8sObj,
     status: ClusterStatus,
+    infraObj?: K8sObj,
   ): Promise<ClusterStatus> {
     const raw = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
     const parsed = raw ? ClusterSpecSchema.safeParse(safeJson(raw)) : undefined;
     if (!parsed?.success) return status;
     const spec = parsed.data;
+    // FP5-F-20: bastion from the spec plus address and state from the provider.
+    const b = spec.infrastructure.bastion;
+    const bastion =
+      b && (b.enabled || infraObj?.status?.bastion)
+        ? {
+            enabled: b.enabled,
+            ...(b.allowedCidrs ? { allowedCidrs: b.allowedCidrs } : {}),
+            ...(b.machineSize ? { machineSize: b.machineSize } : {}),
+            ...INFRA_PLUGINS[spec.infrastructure.provider].bastionStatus(infraObj?.status ?? {}),
+            openToAll: spec.infrastructure.provider === 'openstack',
+          }
+        : undefined;
     const summary = infraSummary(spec);
     const ids = [
       ...new Set([
@@ -340,6 +353,7 @@ export class ClustersService {
         : { id };
     return {
       ...status,
+      ...(bastion ? { bastion } : {}),
       machines: status.machines.map((m) =>
         m.image && names.get(m.image) ? { ...m, imageName: names.get(m.image)! } : m,
       ),

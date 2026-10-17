@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { Condition, MachineStatus } from '@capi-navigator/shared';
+import type { Condition, LookupOption, MachineStatus } from '@capi-navigator/shared';
 import { isReservedLabel } from '@capi-navigator/shared';
 import { useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
+import BastionEditor, { type BastionDraft } from '../components/BastionEditor.vue';
+import { sshJumpCommand, sshUserFor } from '../composables/ssh.js';
+import { useCredentialsStore } from '../stores/credentials.js';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
@@ -38,6 +41,68 @@ const canDelete = computed(
     (!s.value.summary.deletion || s.value.summary.deletion.phase === 'cleanup-timeout'),
 );
 const conn = () => connections.activeName!;
+
+// ---- bastion (FP5-F-20) ----
+const credentials = useCredentialsStore();
+const bastionOpen = ref(false);
+const bastionDraft = ref<BastionDraft>({ enabled: false, machineSize: '', allowedCidrs: [] });
+const bastionSizes = ref<LookupOption[]>([]);
+async function openBastion(): Promise<void> {
+  const b = s.value?.bastion;
+  bastionDraft.value = {
+    enabled: b?.enabled ?? false,
+    machineSize: b?.machineSize ?? '',
+    allowedCidrs: b?.allowedCidrs ?? [],
+  };
+  bastionOpen.value = true;
+  const info = s.value?.infraSummary;
+  if (!info || !connections.activeName) return;
+  try {
+    await credentials.load(connections.activeName);
+    const c = credentials.credentials.find(
+      (x) => x.provider === info.provider && x.name === info.credentialRef,
+    );
+    if (c) {
+      const kind = info.provider === 'openstack' ? 'flavors' : 'instanceTypes';
+      bastionSizes.value = (await credentials.lookup(c, kind, info.region)).options;
+    }
+  } catch {
+    bastionSizes.value = [];
+  }
+}
+const bastionRequest = () => ({
+  bastion: {
+    enabled: bastionDraft.value.enabled,
+    ...(bastionDraft.value.machineSize ? { machineSize: bastionDraft.value.machineSize } : {}),
+    ...(s.value?.infraSummary?.provider === 'aws' && bastionDraft.value.enabled
+      ? { allowedCidrs: bastionDraft.value.allowedCidrs.map((c) => c.trim()) }
+      : {}),
+  },
+});
+const bastionValid = computed(() => {
+  const d = bastionDraft.value;
+  if (!d.enabled) return true;
+  if (!s.value?.infraSummary?.sshKeyName) return false;
+  return s.value.infraSummary.provider === 'openstack'
+    ? !!d.machineSize
+    : d.allowedCidrs.length > 0;
+});
+const bastionRunning = computed(() => !!s.value?.bastion?.enabled);
+/** `ssh -J` command for a machine, if bastion and node address are known. */
+function sshCommand(m: MachineStatus): string | undefined {
+  const b = s.value?.bastion;
+  if (!b?.enabled || !b.publicIP || !m.internalIP) return undefined;
+  const nodeUser = sshUserFor(m.imageName) ?? '<user>';
+  // The OpenStack bastion uses the cluster image; CAPA's default bastion AMI is Ubuntu.
+  const bastionUser = s.value?.infraSummary?.provider === 'aws' ? 'ubuntu' : nodeUser;
+  return sshJumpCommand({ bastionIP: b.publicIP, bastionUser, nodeIP: m.internalIP, nodeUser });
+}
+const copiedCmd = ref<string | null>(null);
+async function copyCmd(cmd: string): Promise<void> {
+  await navigator.clipboard.writeText(cmd);
+  copiedCmd.value = cmd;
+  setTimeout(() => (copiedCmd.value = null), 1200);
+}
 
 const scaling = ref<{ pool: string; current: number } | null>(null);
 const scaleOpen = ref(false);
@@ -349,6 +414,74 @@ const machineHeaders = computed(() => [
             </v-card-text>
           </v-card>
 
+          <!-- Bastion host (FP5-F-20) -->
+          <v-card
+            v-if="s.summary.managed && (s.bastion || canChange)"
+            border
+            class="mt-4"
+            data-testid="bastion-card"
+          >
+            <v-card-item :title="t('bastion.title')">
+              <template #append>
+                <v-btn
+                  v-if="canChange"
+                  size="small"
+                  variant="tonal"
+                  prepend-icon="mdi-shield-key-outline"
+                  data-testid="manage-bastion"
+                  @click="openBastion"
+                  >{{ t('bastion.manage') }}</v-btn
+                >
+              </template>
+            </v-card-item>
+            <v-card-text>
+              <div v-if="!s.bastion" class="text-medium-emphasis">{{ t('bastion.off') }}</div>
+              <template v-else>
+                <div class="d-flex flex-wrap ga-6">
+                  <div>
+                    <div class="text-caption text-medium-emphasis">{{ t('bastion.state') }}</div>
+                    <v-chip
+                      size="small"
+                      variant="tonal"
+                      :color="
+                        s.bastion.enabled ? (s.bastion.publicIP ? 'success' : 'info') : undefined
+                      "
+                      >{{
+                        s.bastion.enabled
+                          ? (s.bastion.state ?? t('bastion.waiting'))
+                          : t('bastion.off')
+                      }}</v-chip
+                    >
+                  </div>
+                  <div v-if="s.bastion.publicIP">
+                    <div class="text-caption text-medium-emphasis">{{ t('bastion.publicIP') }}</div>
+                    <div class="font-monospace" data-testid="bastion-ip">
+                      {{ s.bastion.publicIP }}
+                    </div>
+                  </div>
+                  <div v-if="s.bastion.privateIP">
+                    <div class="text-caption text-medium-emphasis">
+                      {{ t('bastion.privateIP') }}
+                    </div>
+                    <div class="font-monospace">{{ s.bastion.privateIP }}</div>
+                  </div>
+                  <div v-if="s.bastion.allowedCidrs?.length">
+                    <div class="text-caption text-medium-emphasis">{{ t('bastion.cidrs') }}</div>
+                    <div class="font-monospace">{{ s.bastion.allowedCidrs.join(', ') }}</div>
+                  </div>
+                </div>
+                <v-alert
+                  v-if="s.bastion.enabled && s.bastion.openToAll"
+                  type="warning"
+                  variant="tonal"
+                  density="compact"
+                  class="mt-3"
+                  >{{ t('bastion.openStackOpen') }}</v-alert
+                >
+              </template>
+            </v-card-text>
+          </v-card>
+
           <v-alert
             v-for="c in failing(s.conditions)"
             :key="c.type"
@@ -418,6 +551,27 @@ const machineHeaders = computed(() => [
               <template #expanded-row="{ columns, item }">
                 <tr>
                   <td :colspan="columns.length" class="py-3">
+                    <div v-if="s.bastion?.enabled" class="mb-3">
+                      <div class="text-subtitle-2 mb-1">{{ t('bastion.sshCommand') }}</div>
+                      <div v-if="sshCommand(item)" class="d-flex align-center ga-1">
+                        <code class="ssh-cmd" data-testid="ssh-command">{{
+                          sshCommand(item)
+                        }}</code>
+                        <v-btn
+                          :icon="copiedCmd === sshCommand(item) ? 'mdi-check' : 'mdi-content-copy'"
+                          size="x-small"
+                          variant="text"
+                          :aria-label="t('yaml.copy')"
+                          @click="copyCmd(sshCommand(item)!)"
+                        />
+                      </div>
+                      <div v-else class="text-caption text-medium-emphasis">
+                        {{ s.bastion.publicIP ? t('bastion.noIP') : t('bastion.waiting') }}
+                      </div>
+                      <div class="text-caption text-medium-emphasis mt-1">
+                        {{ t('bastion.sshHint') }}
+                      </div>
+                    </div>
                     <div v-if="item.image" class="mb-3" style="max-width: 32rem">
                       <div class="text-subtitle-2 mb-1">{{ t('infra.image') }}</div>
                       <ImageLabel :id="item.image" :name="item.imageName" dense />
@@ -491,6 +645,24 @@ const machineHeaders = computed(() => [
       </v-window>
     </template>
     <ChangeDialog
+      v-if="s?.infraSummary"
+      v-model="bastionOpen"
+      :title="t('bastion.changeTitle')"
+      :valid="bastionValid"
+      :preview="() => store.bastionPreview(conn(), namespace, name, bastionRequest())"
+      :apply="
+        (takeOver) => store.setBastion(conn(), namespace, name, { ...bastionRequest(), takeOver })
+      "
+    >
+      <BastionEditor
+        v-model="bastionDraft"
+        :provider="s.infraSummary.provider === 'aws' ? 'aws' : 'openstack'"
+        :sizes="bastionSizes"
+        :has-key-pair="!!s.infraSummary.sshKeyName"
+        :size-locked="bastionRunning && bastionDraft.enabled"
+      />
+    </ChangeDialog>
+    <ChangeDialog
       v-if="scaling"
       v-model="scaleOpen"
       :title="t('changes.scaleTitle', { pool: scaling.pool })"
@@ -547,3 +719,13 @@ const machineHeaders = computed(() => [
     />
   </v-container>
 </template>
+
+<style scoped>
+.ssh-cmd {
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  word-break: break-all;
+}
+</style>

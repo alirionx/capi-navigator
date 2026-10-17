@@ -13,7 +13,12 @@ async function bootstrap(): Promise<void> {
     json: config.LOG_JSON,
     logLevels: logLevels(config.LOG_LEVEL),
   });
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
+  // Live views keep server-sent event streams open; close them on shutdown instead of waiting
+  // forever (rolling updates, dev restarts). Browsers reconnect to the next instance (NF-11).
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    logger,
+    forceCloseConnections: true,
+  });
   app.enableShutdownHooks();
   configureApp(app, config);
 

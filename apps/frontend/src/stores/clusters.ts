@@ -9,6 +9,7 @@ import {
   DeletePreviewSchema,
   DeletionStatusSchema,
   type DeleteRequest,
+  type BastionRequest,
   type ClusterChangePreview,
   type ClusterCreateRequest,
   type LabelsRequest,
@@ -141,6 +142,12 @@ export const useClustersStore = defineStore('clusters', () => {
   ): Promise<ClusterChangePreview> =>
     api('POST', `${clusterPath(c, ns, n)}/labels`, ClusterChangePreviewSchema, req);
 
+  /** FP5-F-20: bastion host as day-2 change. */
+  const bastionPreview = (c: string, ns: string, n: string, req: BastionRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/bastion/preview`, ClusterChangePreviewSchema, req);
+  const setBastion = (c: string, ns: string, n: string, req: BastionRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/bastion`, ClusterChangePreviewSchema, req);
+
   /** FP6-F-06: what a deletion removes, then the confirmed deletion. */
   const deletePreview = (c: string, ns: string, n: string) =>
     api('GET', `${clusterPath(c, ns, n)}/delete-preview`, DeletePreviewSchema);
@@ -188,6 +195,8 @@ export const useClustersStore = defineStore('clusters', () => {
     setLabels,
     deletePreview,
     deleteCluster,
+    bastionPreview,
+    setBastion,
     watch,
     unwatch,
   };

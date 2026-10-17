@@ -143,6 +143,63 @@ describe('root disks (FP5-F-19)', () => {
   });
 });
 
+describe('bastion host (FP5-F-20)', () => {
+  const infraCluster = (input: ClusterSpecInput) =>
+    renderManifests(
+      transform(ClusterSpecSchema.parse(input), ctx).filter((o) =>
+        /(OpenStack|AWS)Cluster$/.test(o.kind),
+      ),
+    );
+
+  it('OpenStack: CAPO bastion with flavor, cluster image and key pair; disabled keeps the spec', () => {
+    const on = openstack();
+    (on.infrastructure as Record<string, unknown>).bastion = {
+      enabled: true,
+      machineSize: 'a1-ram2-disk20-perf1',
+    };
+    expect(infraCluster(on)).toMatchSnapshot();
+    const off = openstack();
+    (off.infrastructure as Record<string, unknown>).bastion = {
+      enabled: false,
+      machineSize: 'a1-ram2-disk20-perf1',
+    };
+    expect(infraCluster(off)).toMatch(/bastion:\n {4}enabled: false\n {4}spec:/);
+  });
+
+  it('AWS: CAPA bastion restricted to the allowed networks', () => {
+    const on = aws();
+    (on.infrastructure as Record<string, unknown>).bastion = {
+      enabled: true,
+      allowedCidrs: ['203.0.113.7/32'],
+      machineSize: 't3.micro',
+    };
+    expect(infraCluster(on)).toMatchSnapshot();
+  });
+
+  it('validates key pair, flavor and networks per provider', () => {
+    const msgs = (input: ClusterSpecInput) =>
+      (ClusterSpecSchema.safeParse(input).error?.issues ?? []).map(
+        (i) => `${i.path.join('.')}: ${i.message}`,
+      );
+    const os = openstack();
+    delete (os.infrastructure as Record<string, unknown>).sshKeyName;
+    (os.infrastructure as Record<string, unknown>).bastion = {
+      enabled: true,
+      allowedCidrs: ['203.0.113.7/32'],
+    };
+    expect(msgs(os)).toEqual([
+      'infrastructure.sshKeyName: The bastion needs an SSH key pair of the cloud',
+      'infrastructure.bastion.machineSize: Required for the bastion',
+      'infrastructure.bastion.allowedCidrs: OpenStack (CAPO) cannot restrict SSH to the bastion; remove the networks',
+    ]);
+    const a = aws();
+    (a.infrastructure as Record<string, unknown>).bastion = { enabled: true };
+    expect(msgs(a)).toEqual([
+      'infrastructure.bastion.allowedCidrs: Add at least one network allowed to connect via SSH',
+    ]);
+  });
+});
+
 describe('transformation rules', () => {
   it('is deterministic: same input, byte-identical YAML (hard rule 3)', () => {
     expect(render(openstack())).toBe(render(openstack()));
