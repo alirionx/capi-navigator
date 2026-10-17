@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { ConnectionsModule } from '../connections/connections.module.js';
+import { OperatorEventsService } from './operator-events.service.js';
+import { OperatorController } from './operator.controller.js';
+import { OperatorService } from './operator.service.js';
+
+/** FP-3: CAPI Operator, ORC and provider management. */
+@Module({
+  imports: [ConnectionsModule],
+  controllers: [OperatorController],
+  providers: [OperatorService, OperatorEventsService],
+})
+export class OperatorModule {}
