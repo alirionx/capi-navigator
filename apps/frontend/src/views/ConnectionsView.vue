@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ManagementNodesDialog from '../components/shell/ManagementNodesDialog.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Connection } from '@capi-navigator/shared';
@@ -92,6 +93,14 @@ async function download(variant: 'full' | 'minimal'): Promise<void> {
 
 const missingRequired = (c: Connection) =>
   c.status.permissions?.filter((p) => !p.allowed && p.level === 'required').length ?? 0;
+
+// FP-17: nodes of the management cluster, with a node shell for admins.
+const nodesOf = ref<string | null>(null);
+const nodesOpen = ref(false);
+function showNodes(name: string): void {
+  nodesOf.value = name;
+  nodesOpen.value = true;
+}
 </script>
 
 <template>
@@ -184,34 +193,45 @@ const missingRequired = (c: Connection) =>
           </span>
         </template>
         <template #[`item.actions`]="{ item }">
-          <div v-if="isAdmin" class="text-no-wrap">
+          <div class="text-no-wrap">
             <v-btn
-              icon="mdi-connection"
+              icon="mdi-server-outline"
               variant="text"
               size="small"
-              :title="t('connections.test')"
-              :aria-label="t('connections.test')"
-              :loading="testing === item.name"
-              data-testid="test-connection"
-              @click="test(item)"
+              :title="t('shell.nodes')"
+              :aria-label="t('shell.nodes')"
+              :data-testid="`nodes-${item.name}`"
+              @click="showNodes(item.name)"
             />
-            <v-btn
-              icon="mdi-pencil"
-              variant="text"
-              size="small"
-              :title="t('connections.edit')"
-              :aria-label="t('connections.edit')"
-              @click="open('edit', item)"
-            />
-            <v-btn
-              icon="mdi-delete"
-              variant="text"
-              size="small"
-              color="error"
-              :title="t('common.delete')"
-              :aria-label="t('common.delete')"
-              @click="open('delete', item)"
-            />
+            <template v-if="isAdmin">
+              <v-btn
+                icon="mdi-connection"
+                variant="text"
+                size="small"
+                :title="t('connections.test')"
+                :aria-label="t('connections.test')"
+                :loading="testing === item.name"
+                data-testid="test-connection"
+                @click="test(item)"
+              />
+              <v-btn
+                icon="mdi-pencil"
+                variant="text"
+                size="small"
+                :title="t('connections.edit')"
+                :aria-label="t('connections.edit')"
+                @click="open('edit', item)"
+              />
+              <v-btn
+                icon="mdi-delete"
+                variant="text"
+                size="small"
+                color="error"
+                :title="t('common.delete')"
+                :aria-label="t('common.delete')"
+                @click="open('delete', item)"
+              />
+            </template>
           </div>
         </template>
         <template #expanded-row="{ columns, item }">
@@ -301,6 +321,7 @@ const missingRequired = (c: Connection) =>
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <ManagementNodesDialog v-if="nodesOf" v-model="nodesOpen" :connection="nodesOf" />
   </v-container>
 </template>
 

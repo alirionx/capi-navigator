@@ -9,7 +9,7 @@ export default defineConfig({
   resolve: { conditions: ['@capi-navigator/source', ...defaultClientConditions] },
   server: {
     port: 5173,
-    proxy: { '/api': { target: backendUrl, changeOrigin: false } },
+    proxy: { '/api': { target: backendUrl, changeOrigin: false, ws: true } },
   },
   // Pre-bundle the lazily loaded Monaco modules; otherwise Vite reloads the page on first use.
   optimizeDeps: {
@@ -17,6 +17,8 @@ export default defineConfig({
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/yaml/register',
       'monaco-editor/features/codicon/register',
+      '@xterm/xterm',
+      '@xterm/addon-fit',
     ],
   },
   build: { outDir: 'dist', emptyOutDir: true },

@@ -660,6 +660,23 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 - [ ] Upgrading by one minor version replaces all nodes, and the new nodes run the new kubelet version.
 - [ ] The wizard shows the experimental label and the trade-offs before creation.
 
+### FP-17: Node shell (implemented ahead of FP-7)
+
+**Goal:** a root shell on any node of a workload cluster or of the management cluster from the web UI, for troubleshooting, without SSH keys (ADR-0008).
+
+- **FP17-F-01** MUST open a terminal (xterm.js over WebSocket) on a node through a short-lived privileged pod that enters the host namespaces with `nsenter`.
+- **FP17-F-02** MUST allow workload cluster nodes for operators and admins and management cluster nodes for admins only; the backend enforces the roles and a same-origin check on the WebSocket.
+- **FP17-F-03** MUST delete the pod when the session ends, after 15 minutes without input, and at the latest after one hour (`activeDeadlineSeconds`), and remove leftovers.
+- **FP17-F-04** MUST record start and end of every session as `AuditEvent`, without terminal content.
+- **FP17-F-05** SHOULD make the pod image configurable for mirrors (FP-16).
+- A web SSH terminal through the bastion host (FP5-F-20) is on hold.
+
+**Acceptance criteria**
+
+- [x] An admin opens a shell on a management cluster node (kind) and runs commands as root in the host namespaces; the pod is gone after closing.
+- [x] Operators see a shell button per machine with a node; viewers see none and the backend refuses their WebSocket.
+- [x] A WebSocket without the app's origin is refused.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -715,7 +732,6 @@ These requirements apply to all feature packs and are checked in every pack.
   - No proxy authentication (server-to-server in the data center); proxy URLs end up in the node user data and must not contain credentials.
   - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
   - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
-- **FP-17: Node shell** (optional): a terminal in the web UI on a node via a privileged pod (`nsenter` into the host namespaces, like Lens), for operators and admins, audited; pod deleted at session end and limited by `activeDeadlineSeconds`; image configurable (FP-16). Needs xterm.js and WebSockets (to approve). A web SSH terminal through the bastion (FP5-F-20) is on hold.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions

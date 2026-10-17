@@ -38,6 +38,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-8 | Helm add-ons via CAAPH | open |
 | FP-9 | k0s as second Kubernetes distribution | open |
 | FP-10 | kubeadm on stock images (experimental) | open |
+| FP-17 | Node shell via privileged pod (pulled forward) | done |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
 
