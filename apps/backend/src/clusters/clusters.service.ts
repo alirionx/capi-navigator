@@ -27,6 +27,7 @@ import {
 } from '../infra-providers/openstack/cloud-config.js';
 import { readStoredCloud } from '../infra-providers/openstack/clouds-yaml.js';
 import { serverSideApply } from '../kube/apply.js';
+import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { CLUSTER_NAME_LABEL, toStatus, toSummary, type K8sObj } from './status.js';
@@ -318,22 +319,38 @@ export class ClustersService {
       } as KubernetesObject);
     }
 
-    // CCM/CSI presets, created on first use in the namespace (FP5-F-09, FP5-F-17).
+    // CCM/CSI presets, created on first use in the namespace (FP5-F-09, FP5-F-17). Presets that
+    // only the app manages are brought up to date, so fixes reach namespaces with older presets;
+    // presets changed by someone else are left alone and reported.
     const clusterObj = objects.find((o) => o.kind === 'Cluster') as ManifestObject | undefined;
     for (const preset of presetsFor(clusterObj?.metadata.labels ?? {})) {
-      const hcp = buildAddonPreset(preset, spec.namespace) as KubernetesObject;
-      if (
-        !(await this.exists(
-          kc,
-          'addons.cluster.x-k8s.io',
-          'v1alpha1',
-          'helmchartproxies',
-          spec.namespace,
-          hcp.metadata!.name!,
-        ))
-      ) {
+      const hcp = buildAddonPreset(preset, spec.namespace) as unknown as KubernetesObject & {
+        spec: unknown;
+      };
+      const current = await this.getCustom(
+        kc,
+        'addons.cluster.x-k8s.io',
+        'v1alpha1',
+        'helmchartproxies',
+        spec.namespace,
+        hcp.metadata!.name!,
+      );
+      if (!current) {
         extra.push(hcp);
         extraPreview.push(hcp);
+        continue;
+      }
+      if (presetUpToDate(current, hcp)) continue;
+      if (onlyManagedByApp(current)) {
+        extra.push(hcp);
+        extraPreview.push(hcp);
+        warnings.push(
+          `Updates the add-on preset ${hcp.metadata!.name} in namespace ${spec.namespace} to the current version; clusters already using it are updated by CAAPH.`,
+        );
+      } else {
+        warnings.push(
+          `The add-on preset ${hcp.metadata!.name} in namespace ${spec.namespace} differs from the current version and was changed outside the app; it is left as is.`,
+        );
       }
     }
 
@@ -411,6 +428,24 @@ export class ClustersService {
     }
   }
 
+  private async getCustom(
+    kc: KubeConfig,
+    group: string,
+    version: string,
+    plural: string,
+    namespace: string,
+    name: string,
+  ): Promise<K8sObject | undefined> {
+    try {
+      return (await kc
+        .makeApiClient(CustomObjectsApi)
+        .getNamespacedCustomObject({ group, version, plural, namespace, name })) as K8sObject;
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw toHttpException(err, `Read ${plural}`);
+    }
+  }
+
   private async exists(
     kc: KubeConfig,
     group: string,
@@ -452,4 +487,30 @@ async function listAll(
     if (isNotFound(err)) return []; // CRD not installed yet
     throw err;
   }
+}
+
+interface K8sObject {
+  metadata?: { managedFields?: { manager?: string; fieldsV1?: Record<string, unknown> }[] };
+  spec?: unknown;
+}
+
+/** The stored preset matches the generated one (CAAPH defaults may add fields, so compare ours). */
+export function presetUpToDate(current: K8sObject, desired: { spec: unknown }): boolean {
+  const contains = (have: unknown, want: unknown): boolean => {
+    if (want && typeof want === 'object' && !Array.isArray(want)) {
+      if (!have || typeof have !== 'object') return false;
+      return Object.entries(want).every(([k, v]) =>
+        contains((have as Record<string, unknown>)[k], v),
+      );
+    }
+    return JSON.stringify(have) === JSON.stringify(want);
+  };
+  return contains(current.spec, desired.spec);
+}
+
+/** Nobody but the app (field manager capi-navigator) owns fields of the spec. */
+export function onlyManagedByApp(current: K8sObject): boolean {
+  return (current.metadata?.managedFields ?? []).every(
+    (f) => f.manager === FIELD_MANAGER || !('f:spec' in (f.fieldsV1 ?? {})),
+  );
 }
