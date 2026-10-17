@@ -96,6 +96,20 @@ export const en = {
     providers: 'Providers',
     clusters: 'Workload clusters',
   },
+  images: {
+    notFound: 'Unknown image (deleted or not visible)',
+    copyId: 'Copy image ID',
+  },
+  infra: {
+    title: 'Infrastructure',
+    subtitle: 'From the stored cluster spec; image names from the cloud.',
+    group: 'Group',
+    nodes: 'Nodes',
+    size: 'Size',
+    image: 'Image',
+    rootDisk: 'Root disk',
+    localDisk: 'local disk of the flavor',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',

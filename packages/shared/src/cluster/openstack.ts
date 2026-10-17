@@ -86,13 +86,25 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
   machineDetails(s) {
     const flavor = s.flavor as { filter?: { name?: string }; id?: string } | undefined;
     const image = s.image as { id?: string; filter?: { name?: string } } | undefined;
-    const root = s.rootVolume as { sizeGiB?: number } | undefined;
+    const root = s.rootVolume as { sizeGiB?: number; type?: string } | undefined;
     return compact({
       size: flavor?.filter?.name ?? flavor?.id,
       image: image?.id ?? image?.filter?.name,
       rootVolumeGB: root?.sizeGiB,
+      rootVolumeType: root?.type,
     });
   },
+
+  infraFacts: (infra) => [
+    { label: 'Node network', value: infra.network.nodeCidr },
+    { label: 'External network', value: infra.externalNetwork },
+    {
+      label: 'API server',
+      value: infra.apiServerLoadBalancer ? 'Octavia load balancer' : 'Floating IP',
+    },
+    ...(infra.failureDomain ? [{ label: 'Availability zone', value: infra.failureDomain }] : []),
+    ...(infra.sshKeyName ? [{ label: 'SSH key pair', value: infra.sshKeyName }] : []),
+  ],
 
   nodeIdentity: {
     providerId: 'openstack:///{{ v1.instance_id }}',

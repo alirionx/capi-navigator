@@ -71,6 +71,8 @@ export const MachineStatusSchema = z.object({
   /** Flavor / instance type, image and root disk from the infra machine (FP6-F-02). */
   size: z.string().optional(),
   image: z.string().optional(),
+  /** Name of the image in the cloud, resolved with the cluster's credentials (if found). */
+  imageName: z.string().optional(),
   rootVolumeGB: z.number().optional(),
   infrastructure: z.object({ kind: z.string(), name: z.string(), ready: z.boolean() }).optional(),
   conditions: z.array(ConditionSchema),
@@ -88,6 +90,32 @@ export const ClusterEventSchema = z.object({
   lastSeen: z.string().optional(),
 });
 export type ClusterEvent = z.infer<typeof ClusterEventSchema>;
+
+/** An image with the name the cloud reports for it (OpenStack image / AWS AMI). */
+export const ImageRefSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  /** The cloud does not know the ID (deleted, or not visible to the credentials). */
+  notFound: z.boolean().optional(),
+});
+export type ImageRef = z.infer<typeof ImageRefSchema>;
+
+/** What the cluster is built from, per machine group, from the stored spec (managed clusters). */
+export const InfraSummarySchema = z.object({
+  facts: z.array(z.object({ label: z.string(), value: z.string() })),
+  groups: z.array(
+    z.object({
+      name: z.string(),
+      role: z.enum(['control-plane', 'worker']),
+      replicas: z.number(),
+      size: z.string().optional(),
+      image: ImageRefSchema.optional(),
+      rootVolumeGB: z.number().optional(),
+      rootVolumeType: z.string().optional(),
+    }),
+  ),
+});
+export type InfraSummary = z.infer<typeof InfraSummarySchema>;
 
 /** Live status of one cluster (US-07). */
 export const ClusterStatusSchema = z.object({
@@ -123,6 +151,8 @@ export const ClusterStatusSchema = z.object({
     }),
   ),
   machines: z.array(MachineStatusSchema),
+  /** Infrastructure card: facts and machine groups (managed clusters only). */
+  infraSummary: InfraSummarySchema.optional(),
   /** Newest first, at most EVENT_LIMIT (FP6-F-02). */
   events: z.array(ClusterEventSchema),
   /** Kubeconfig Secret exists (FP6-F-04). */

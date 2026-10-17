@@ -38,6 +38,16 @@ export interface CredentialPlugin<TInput = unknown> {
   /** Tests the credentials against the cloud (read-only). */
   test(data: Record<string, string>, summary: CredentialSummary): Promise<CredentialTestResult>;
   lookupKinds: readonly LookupKind[];
+  /**
+   * Names of images by ID (read-only), for the cluster detail view. IDs the cloud does not know
+   * are left out of the result.
+   */
+  imageNames(
+    data: Record<string, string>,
+    summary: CredentialSummary,
+    ids: string[],
+    opts: { region?: string },
+  ): Promise<Record<string, string>>;
   /** Selection lists for the cluster wizard (read-only). */
   lookup(
     data: Record<string, string>,

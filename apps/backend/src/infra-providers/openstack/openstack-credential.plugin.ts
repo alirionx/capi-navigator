@@ -136,6 +136,30 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
   }
 
   /** FP4-F-05: selection lists for the cluster wizard. */
+  async imageNames(
+    data: Record<string, string>,
+    _s: CredentialSummary,
+    ids: string[],
+  ): Promise<Record<string, string>> {
+    const session = await this.session(data);
+    const opts = this.opts(data);
+    const out: Record<string, string> = {};
+    for (const id of ids) {
+      try {
+        const img = await getJson<GlanceImage>(
+          session,
+          'image',
+          `/images/${encodeURIComponent(id)}`,
+          opts,
+        );
+        if (img.name) out[id] = img.name;
+      } catch {
+        // Deleted or not visible to these credentials: shown as ID only.
+      }
+    }
+    return out;
+  }
+
   async lookup(
     data: Record<string, string>,
     _s: CredentialSummary,

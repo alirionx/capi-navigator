@@ -16,6 +16,7 @@ import {
   catalogEntry,
   CLUSTER_SPEC_ANNOTATION,
   ClusterSpecSchema,
+  infraSummary,
   SpecChangeError,
   stableStringify,
   type ClusterChangePreview,
@@ -46,6 +47,7 @@ import { dryRunApply, normalizeForDiff, readLive, serverSideApply } from '../kub
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { OperatorService } from '../operator/operator.service.js';
+import { ImageNameCache } from './image-names.js';
 import {
   CLUSTER_NAME_LABEL,
   infraPluginFor,
@@ -118,6 +120,9 @@ interface Plan {
  */
 @Injectable()
 export class ClustersService {
+  /** Image names per credential, cached (read-only cloud lookups, FP6-F-02). */
+  private readonly imageNames = new ImageNameCache();
+
   constructor(
     private readonly clients: ManagementClusterClients,
     private readonly credentials: CredentialsService,
@@ -282,7 +287,7 @@ export class ClustersService {
             () => false,
           ),
       ]);
-      return toStatus({
+      const status = toStatus({
         cluster: { ...cluster, kind: 'Cluster' },
         infra,
         cp,
@@ -292,7 +297,57 @@ export class ClustersService {
         events,
         kubeconfigAvailable: kubeconfig,
       });
+      return this.withImageNames(connection, cluster, status);
     });
+  }
+
+  /**
+   * Adds the infrastructure summary of managed clusters and resolves image names with the
+   * cluster's credentials (read-only, cached). Best effort: without names the IDs are shown.
+   */
+  private async withImageNames(
+    connection: string,
+    cluster: K8sObj,
+    status: ClusterStatus,
+  ): Promise<ClusterStatus> {
+    const raw = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
+    const parsed = raw ? ClusterSpecSchema.safeParse(safeJson(raw)) : undefined;
+    if (!parsed?.success) return status;
+    const spec = parsed.data;
+    const summary = infraSummary(spec);
+    const ids = [
+      ...new Set([
+        ...summary.groups.flatMap((g) => (g.image ? [g.image.id] : [])),
+        ...status.machines.flatMap((m) => (m.image ? [m.image] : [])),
+      ]),
+    ];
+    const infra = spec.infrastructure;
+    const names = await this.imageNames.resolve(
+      `${connection}|${infra.provider}|${infra.credentialRef}|${'region' in infra ? infra.region : ''}`,
+      ids,
+      (missing) =>
+        this.credentials.imageNames(
+          connection,
+          infra.provider,
+          infra.credentialRef,
+          missing,
+          'region' in infra ? infra.region : undefined,
+        ),
+    );
+    const ref = (id: string) =>
+      names.has(id)
+        ? { id, ...(names.get(id) ? { name: names.get(id)! } : { notFound: true }) }
+        : { id };
+    return {
+      ...status,
+      machines: status.machines.map((m) =>
+        m.image && names.get(m.image) ? { ...m, imageName: names.get(m.image)! } : m,
+      ),
+      infraSummary: {
+        ...summary,
+        groups: summary.groups.map((g) => (g.image ? { ...g, image: ref(g.image.id) } : g)),
+      },
+    };
   }
 
   /**
@@ -736,4 +791,12 @@ export function onlyManagedByApp(current: K8sObject): boolean {
   return (current.metadata?.managedFields ?? []).every(
     (f) => f.manager === FIELD_MANAGER || !('f:spec' in (f.fieldsV1 ?? {})),
   );
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
 }

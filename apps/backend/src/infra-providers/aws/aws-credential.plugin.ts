@@ -220,6 +220,29 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
     };
   }
 
+  async imageNames(
+    data: Record<string, string>,
+    summary: CredentialSummary,
+    ids: string[],
+    opts: { region?: string },
+  ): Promise<Record<string, string>> {
+    const { ec2 } = this.clients(opts.region ?? summary.region ?? 'us-east-1', data);
+    const out: Record<string, string> = {};
+    // One call per AMI: an unknown ID fails the whole DescribeImages request.
+    for (const id of ids) {
+      try {
+        const res = (await ec2.send(new DescribeImagesCommand({ ImageIds: [id] }))) as {
+          Images?: { ImageId?: string; Name?: string }[];
+        };
+        const name = res.Images?.[0]?.Name;
+        if (name) out[id] = name;
+      } catch {
+        // Deregistered, or not visible to these credentials: shown as ID only.
+      }
+    }
+    return out;
+  }
+
   /** FP4-F-10: selection lists for the cluster wizard. Read-only. */
   async lookup(
     data: Record<string, string>,
