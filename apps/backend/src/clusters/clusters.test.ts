@@ -24,7 +24,7 @@ import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { ClustersModule } from './clusters.module.js';
 import { onlyManagedByApp, presetUpToDate } from './clusters.service.js';
-import { toStatus, toSummary, type K8sObj } from './status.js';
+import { toEvents, toStatus, toSummary, type K8sObj } from './status.js';
 
 const OS_SPEC = {
   name: 'demo',
@@ -200,10 +200,88 @@ describe('status mapping (US-07)', () => {
       replicas: 2,
       ready: 1,
       upToDate: 2,
+      conditions: [],
     });
     expect(
       status.machines.map((m) => `${m.role}:${m.name}:${m.phase}:${m.nodeName ?? ''}`),
     ).toEqual(['control-plane:cp1:Provisioning:', 'worker:w1:Running:n1']);
+  });
+
+  it('adds size, image and root disk from the infra machine and the deployment (FP6-F-02)', () => {
+    const status = toStatus({
+      cluster,
+      mds: [md],
+      machines: [
+        {
+          metadata: {
+            name: 'w1',
+            labels: { 'cluster.x-k8s.io/deployment-name': 'demo-default' },
+          },
+          spec: { infrastructureRef: { kind: 'OpenStackMachine', name: 'w1-os' } },
+          status: { phase: 'Running' },
+        },
+        {
+          metadata: { name: 'a1' },
+          spec: { infrastructureRef: { kind: 'AWSMachine', name: 'a1-aws' } },
+        },
+      ],
+      infraMachines: [
+        {
+          kind: 'OpenStackMachine',
+          metadata: { name: 'w1-os' },
+          spec: { flavor: { filter: { name: 'a2-ram4' } }, image: { id: 'img-1' } },
+          status: { initialization: { provisioned: true } },
+        },
+        {
+          kind: 'AWSMachine',
+          metadata: { name: 'a1-aws' },
+          spec: { instanceType: 't3.large', ami: { id: 'ami-1' }, rootVolume: { size: 80 } },
+        },
+      ],
+      kubeconfigAvailable: false,
+    });
+    expect(status.machines.find((m) => m.name === 'w1')).toMatchObject({
+      deployment: 'demo-default',
+      size: 'a2-ram4',
+      image: 'img-1',
+      infrastructure: { kind: 'OpenStackMachine', name: 'w1-os', ready: true },
+    });
+    expect(status.machines.find((m) => m.name === 'a1')).toMatchObject({
+      size: 't3.large',
+      image: 'ami-1',
+      rootVolumeGB: 80,
+    });
+  });
+
+  it('keeps events about the cluster objects only, newest first (FP6-F-02)', () => {
+    const events = toEvents(
+      [
+        {
+          type: 'Warning',
+          reason: 'Failed',
+          message: 'old',
+          involvedObject: { kind: 'Machine', name: 'w1' },
+          lastTimestamp: '2026-10-17T10:00:00Z',
+        },
+        {
+          reason: 'Created',
+          message: 'new',
+          involvedObject: { kind: 'Cluster', name: 'demo' },
+          series: { count: 3, lastObservedTime: '2026-10-17T11:00:00Z' },
+        },
+        { reason: 'Other', involvedObject: { kind: 'Pod', name: 'x' } },
+      ],
+      [
+        { kind: 'Cluster', name: 'demo' },
+        { kind: 'Machine', name: 'w1' },
+      ],
+    );
+    expect(events.map((e) => `${e.reason}:${e.count}`)).toEqual(['Created:3', 'Failed:1']);
+  });
+
+  it('derives the distribution of external clusters from the control plane kind', () => {
+    const external = { ...cluster, metadata: { ...cluster.metadata, annotations: {} } };
+    expect(toSummary(external, cp).flavor).toBe('rke2');
   });
 });
 

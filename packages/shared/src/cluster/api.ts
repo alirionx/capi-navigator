@@ -55,10 +55,28 @@ export const MachineStatusSchema = z.object({
   providerID: z.string().optional(),
   version: z.string().optional(),
   failureDomain: z.string().optional(),
+  /** MachineDeployment of a worker machine (resource tree, FP6-F-03). */
+  deployment: z.string().optional(),
+  /** Flavor / instance type, image and root disk from the infra machine (FP6-F-02). */
+  size: z.string().optional(),
+  image: z.string().optional(),
+  rootVolumeGB: z.number().optional(),
+  infrastructure: z.object({ kind: z.string(), name: z.string(), ready: z.boolean() }).optional(),
   conditions: z.array(ConditionSchema),
   createdAt: z.string().optional(),
 });
 export type MachineStatus = z.infer<typeof MachineStatusSchema>;
+
+/** Kubernetes event about one of the cluster's objects (FP6-F-02). */
+export const ClusterEventSchema = z.object({
+  type: z.string(),
+  reason: z.string(),
+  message: z.string(),
+  object: z.object({ kind: z.string(), name: z.string() }),
+  count: z.number(),
+  lastSeen: z.string().optional(),
+});
+export type ClusterEvent = z.infer<typeof ClusterEventSchema>;
 
 /** Live status of one cluster (US-07). */
 export const ClusterStatusSchema = z.object({
@@ -89,10 +107,16 @@ export const ClusterStatusSchema = z.object({
       replicas: z.number(),
       ready: z.number(),
       upToDate: z.number(),
+      phase: z.string().optional(),
+      conditions: z.array(ConditionSchema),
     }),
   ),
   machines: z.array(MachineStatusSchema),
-  /** Kubeconfig Secret exists (download in FP-6). */
+  /** Newest first, at most EVENT_LIMIT (FP6-F-02). */
+  events: z.array(ClusterEventSchema),
+  /** Kubeconfig Secret exists (FP6-F-04). */
   kubeconfigAvailable: z.boolean(),
 });
 export type ClusterStatus = z.infer<typeof ClusterStatusSchema>;
+
+export const EVENT_LIMIT = 50;

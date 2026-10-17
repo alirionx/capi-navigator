@@ -45,10 +45,21 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * Jinja templates rendered on the node.
    */
   nodeIdentity: { providerId: string; nodeName: string };
+  /** Plurals for reading and watching the provider's objects (FP-6). */
+  resources: { infraClusterPlural: string; machineKind: string; machinePlural: string };
+  /** Size, image and root disk of a running machine from its infra machine spec (FP6-F-02). */
+  machineDetails(infraMachineSpec: Record<string, unknown>): MachineDetails;
   /** Labels on the Cluster that select the CCM/CSI presets (FP5-F-09, FP5-F-17). */
   addonLabels(spec: ClusterSpec): Record<string, string>;
   /** Extra objects, e.g. the ClusterResourceSet that delivers the OpenStack cloud config. */
   extraObjects(spec: ClusterSpec, infra: T, labels: Record<string, string>): ManifestObject[];
+}
+
+/** What the cluster detail view shows per machine (FP6-F-02). */
+export interface MachineDetails {
+  size?: string;
+  image?: string;
+  rootVolumeGB?: number;
 }
 
 /** Kubernetes distribution (section 5, `BootstrapFlavorPlugin`): RKE2 in FP-5. */
@@ -68,4 +79,6 @@ export interface BootstrapFlavorPlugin {
     pool: ClusterSpec['topology']['workerPools'][number];
   }): Record<string, unknown>;
   bootstrapTemplate: { apiVersion: string; apiGroup: string; kind: string };
+  /** Control plane resource for reading and watching (FP-6). */
+  controlPlaneResource: { group: string; version: string; kind: string; plural: string };
 }

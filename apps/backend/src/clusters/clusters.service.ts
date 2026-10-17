@@ -8,6 +8,8 @@ import {
 import {
   buildAddonPreset,
   catalogEntry,
+  FLAVOR_PLUGINS,
+  INFRA_PLUGINS,
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
   presetsFor,
@@ -30,32 +32,61 @@ import { serverSideApply } from '../kube/apply.js';
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { OperatorService } from '../operator/operator.service.js';
-import { CLUSTER_NAME_LABEL, toStatus, toSummary, type K8sObj } from './status.js';
+import {
+  CLUSTER_NAME_LABEL,
+  infraPluginFor,
+  toStatus,
+  toSummary,
+  type K8sEvent,
+  type K8sObj,
+} from './status.js';
 
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
+const INFRA_GROUP = { group: 'infrastructure.cluster.x-k8s.io', version: 'v1beta2' };
+
+/** Control plane resources of all distributions (hard rule 10: from the plugins). */
+export const CONTROL_PLANE_RESOURCES = Object.values(FLAVOR_PLUGINS).flatMap((p) =>
+  p ? [p.controlPlaneResource] : [],
+);
+
 /** Plurals and versions of referenced control plane and infrastructure kinds. */
-const KINDS: Record<string, { group: string; version: string; plural: string }> = {
-  RKE2ControlPlane: {
-    group: 'controlplane.cluster.x-k8s.io',
-    version: 'v1beta2',
-    plural: 'rke2controlplanes',
-  },
-  KubeadmControlPlane: {
-    group: 'controlplane.cluster.x-k8s.io',
-    version: 'v1beta2',
-    plural: 'kubeadmcontrolplanes',
-  },
-  OpenStackCluster: {
-    group: 'infrastructure.cluster.x-k8s.io',
-    version: 'v1beta2',
-    plural: 'openstackclusters',
-  },
-  AWSCluster: {
-    group: 'infrastructure.cluster.x-k8s.io',
-    version: 'v1beta2',
-    plural: 'awsclusters',
-  },
-};
+const KINDS: Record<string, { group: string; version: string; plural: string }> =
+  Object.fromEntries([
+    ...CONTROL_PLANE_RESOURCES.map((r) => [
+      r.kind,
+      { group: r.group, version: r.version, plural: r.plural },
+    ]),
+    ...Object.values(INFRA_PLUGINS).map((p) => [
+      p.infraClusterKind,
+      { ...INFRA_GROUP, plural: p.resources.infraClusterPlural },
+    ]),
+  ]);
+
+/** Watch paths for the live status of the clusters in one namespace (NF-11). */
+export function namespaceWatchPaths(ns: string): string[] {
+  return [
+    `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/clusters`,
+    `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/machines`,
+    `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/machinedeployments`,
+    ...CONTROL_PLANE_RESOURCES.map(
+      (r) => `/apis/${r.group}/${r.version}/namespaces/${ns}/${r.plural}`,
+    ),
+    ...Object.values(INFRA_PLUGINS).flatMap((p) => [
+      `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/${p.resources.infraClusterPlural}`,
+      `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/${p.resources.machinePlural}`,
+    ]),
+    `/api/v1/namespaces/${ns}/events`,
+  ];
+}
+
+/** Watch paths for the cluster list of a management cluster (FP6-F-01). */
+export function listWatchPaths(): string[] {
+  return [
+    '/apis/cluster.x-k8s.io/v1beta2/clusters',
+    '/apis/cluster.x-k8s.io/v1beta2/machinedeployments',
+    ...CONTROL_PLANE_RESOURCES.map((r) => `/apis/${r.group}/${r.version}/${r.plural}`),
+  ];
+}
 
 interface Plan {
   kc: KubeConfig;
@@ -144,12 +175,21 @@ export class ClustersService {
       const clusters = await listAll(api, 'clusters');
       if (clusters.length === 0) return [];
       const mds = await listAll(api, 'machinedeployments');
-      const cps = await listAll(api, KINDS.RKE2ControlPlane!.plural, KINDS.RKE2ControlPlane);
+      const cps = (
+        await Promise.all(
+          CONTROL_PLANE_RESOURCES.map(async (r) =>
+            (await listAll(api, r.plural, r)).map((o) => ({ ...o, kind: r.kind })),
+          ),
+        )
+      ).flat();
       return clusters
         .map((c) => {
           const ns = c.metadata.namespace;
-          const cpName = (c.spec?.controlPlaneRef as { name?: string } | undefined)?.name;
-          const cp = cps.find((x) => x.metadata.namespace === ns && x.metadata.name === cpName);
+          const ref = c.spec?.controlPlaneRef as { kind?: string; name?: string } | undefined;
+          const cp = cps.find(
+            (x) =>
+              x.metadata.namespace === ns && x.metadata.name === ref?.name && x.kind === ref.kind,
+          );
           const pools = mds.filter(
             (md) =>
               md.metadata.namespace === ns &&
@@ -185,7 +225,10 @@ export class ClustersService {
         }
       };
       const selector = `${CLUSTER_NAME_LABEL}=${name}`;
-      const [cp, infra, mds, machines, kubeconfig] = await Promise.all([
+      const infraPlugin = infraPluginFor(ref('infrastructureRef')?.kind);
+      const items = (res: unknown, kind: string) =>
+        ((res as { items: K8sObj[] }).items ?? []).map((o) => ({ ...o, kind }));
+      const [cp, infra, mds, machines, infraMachines, events, kubeconfig] = await Promise.all([
         read(ref('controlPlaneRef')),
         read(ref('infrastructureRef')),
         api.listNamespacedCustomObject({
@@ -200,6 +243,23 @@ export class ClustersService {
           plural: 'machines',
           labelSelector: selector,
         }),
+        infraPlugin
+          ? api
+              .listNamespacedCustomObject({
+                ...INFRA_GROUP,
+                namespace,
+                plural: infraPlugin.resources.machinePlural,
+                labelSelector: selector,
+              })
+              .then((r) => items(r, infraPlugin.resources.machineKind))
+              .catch(() => [] as K8sObj[])
+          : Promise.resolve([] as K8sObj[]),
+        // Events are best effort: missing permissions must not break the status view.
+        kc
+          .makeApiClient(CoreV1Api)
+          .listNamespacedEvent({ namespace })
+          .then((r) => r.items as K8sEvent[])
+          .catch(() => [] as K8sEvent[]),
         kc
           .makeApiClient(CoreV1Api)
           .readNamespacedSecret({ name: `${name}-kubeconfig`, namespace })
@@ -209,11 +269,13 @@ export class ClustersService {
           ),
       ]);
       return toStatus({
-        cluster,
+        cluster: { ...cluster, kind: 'Cluster' },
         infra,
         cp,
-        mds: (mds as { items: K8sObj[] }).items,
-        machines: (machines as { items: K8sObj[] }).items,
+        mds: items(mds, 'MachineDeployment'),
+        machines: items(machines, 'Machine'),
+        infraMachines,
+        events,
         kubeconfigAvailable: kubeconfig,
       });
     });

@@ -22,7 +22,7 @@ import { Audit, Roles } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { LiveChannels } from '../kube/live-channels.js';
-import { ClustersService } from './clusters.service.js';
+import { ClustersService, listWatchPaths, namespaceWatchPaths } from './clusters.service.js';
 
 type CreateBody = z.output<typeof ClusterCreateRequestSchema>;
 const HEARTBEAT_MS = 25_000;
@@ -36,21 +36,29 @@ export class ClusterEventsService implements OnApplicationShutdown {
     const parse = (key: string) => key.split('/') as [string, string, string];
     this.live = new LiveChannels('cluster', {
       kubeConfig: (key) => clients.forConnection(parse(key)[0]),
-      paths: (key) => {
-        const [, ns] = parse(key);
-        return [
-          `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/clusters`,
-          `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/machines`,
-          `/apis/cluster.x-k8s.io/v1beta2/namespaces/${ns}/machinedeployments`,
-          `/apis/controlplane.cluster.x-k8s.io/v1beta2/namespaces/${ns}/rke2controlplanes`,
-          `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/openstackclusters`,
-          `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/awsclusters`,
-        ];
-      },
+      paths: (key) => namespaceWatchPaths(parse(key)[1]),
       compute: (key) => {
         const [connection, ns, name] = parse(key);
         return clusters.status(connection, ns, name);
       },
+    });
+  }
+
+  onApplicationShutdown(): void {
+    this.live.stopAll();
+  }
+}
+
+/** Live cluster list of one management cluster (FP6-F-01, NF-11). Key: connection. */
+@Injectable()
+export class ClusterListEventsService implements OnApplicationShutdown {
+  readonly live: LiveChannels<ClusterSummary[]>;
+
+  constructor(clusters: ClustersService, clients: ManagementClusterClients) {
+    this.live = new LiveChannels('cluster-list', {
+      kubeConfig: (connection) => clients.forConnection(connection),
+      paths: () => listWatchPaths(),
+      compute: (connection) => clusters.list(connection),
     });
   }
 
@@ -67,12 +75,23 @@ export class ClustersController {
   constructor(
     private readonly clusters: ClustersService,
     private readonly events: ClusterEventsService,
+    private readonly listEvents: ClusterListEventsService,
   ) {}
 
   @Roles('viewer')
   @Get()
   list(@Param('connection') connection: string): Promise<ClusterSummary[]> {
     return this.clusters.list(connection);
+  }
+
+  /** Live list (FP6-F-01); registered before ':namespace/:name' so "events" is not a namespace. */
+  @Roles('viewer')
+  @Sse('events')
+  listStream(@Param('connection') connection: string): Observable<MessageEvent> {
+    return merge(
+      this.listEvents.live.stream(connection).pipe(map((e) => ({ type: e.type, data: e }))),
+      interval(HEARTBEAT_MS).pipe(map(() => ({ type: 'ping', data: {} }))),
+    );
   }
 
   /** Preview: generated YAML, dry run and blockers (hard rule 6, FP5-F-08). */

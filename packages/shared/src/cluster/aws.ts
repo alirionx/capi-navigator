@@ -97,6 +97,22 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     nodeName: '{{ v1.local_hostname }}',
   },
 
+  resources: {
+    infraClusterPlural: 'awsclusters',
+    machineKind: 'AWSMachine',
+    machinePlural: 'awsmachines',
+  },
+
+  machineDetails(s) {
+    const ami = s.ami as { id?: string } | undefined;
+    const root = s.rootVolume as { size?: number } | undefined;
+    return compact({
+      size: typeof s.instanceType === 'string' ? s.instanceType : undefined,
+      image: ami?.id,
+      rootVolumeGB: root?.size,
+    });
+  },
+
   addonLabels(spec) {
     return {
       ...(spec.addons.cloudControllerManager ? { 'capi-navigator.io/ccm': 'aws' } : {}),

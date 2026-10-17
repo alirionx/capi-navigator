@@ -85,6 +85,13 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
     kind: 'RKE2ConfigTemplate',
   },
 
+  controlPlaneResource: {
+    group: 'controlplane.cluster.x-k8s.io',
+    version: 'v1beta2',
+    kind: 'RKE2ControlPlane',
+    plural: 'rke2controlplanes',
+  },
+
   controlPlaneRef: (spec) => ({
     apiGroup: 'controlplane.cluster.x-k8s.io',
     kind: 'RKE2ControlPlane',
