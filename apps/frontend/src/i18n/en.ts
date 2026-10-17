@@ -227,6 +227,17 @@ export const en = {
     surge: 'maxSurge {maxSurge}, maxUnavailable {maxUnavailable}',
     machine: 'Size & image',
     rebuild: 'Rebuild nodes',
+    drift: 'Drift',
+    driftChecking: 'checking…',
+    noDrift: 'no drift',
+    driftFound: '{n} objects differ from the spec',
+    driftExplain:
+      'These objects were changed outside CAPI Navigator (e.g. with kubectl) or differ from the stored spec:',
+    reapply: 'Reapply from spec',
+    reapplyExplain:
+      'Regenerates all objects from the stored cluster spec and sets changes made outside the app back. The preview shows what is reset.',
+    newerImage: 'Newer image of the same OS: {name}',
+    useImage: 'Use it (rebuild)',
     removePool: 'Remove pool',
     clusterImage: 'cluster image',
     rolloutRunning:
@@ -247,6 +258,7 @@ export const en = {
     upgradeOrder:
       'The control plane is upgraded first, node by node; the worker pools follow automatically once it runs the new version. The preview runs the pre-checks.',
     title: {
+      reapply: 'Reapply from spec',
       cpScale: 'Scale the control plane',
       scale: 'Scale pool {group}',
       addPool: 'Add worker pool',
