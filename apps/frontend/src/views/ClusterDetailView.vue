@@ -13,6 +13,7 @@ import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import ClusterDashboard from '../components/dashboard/ClusterDashboard.vue';
 import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
@@ -284,6 +285,9 @@ const machineHeaders = computed(() => [
     <template v-if="s">
       <v-tabs v-model="tab" class="mb-4">
         <v-tab value="overview">{{ t('clusters.overview') }}</v-tab>
+        <v-tab v-if="s.kubeconfigAvailable" value="dashboard" data-testid="tab-dashboard">{{
+          t('dashboard.tab')
+        }}</v-tab>
         <v-tab value="tree" data-testid="tab-tree">{{ t('clusters.tree') }}</v-tab>
         <v-tab value="machines">
           {{ t('clusters.machines') }}
@@ -505,6 +509,16 @@ const machineHeaders = computed(() => [
           >
             <strong>{{ c.type }}</strong> ({{ c.reason }}): {{ c.message }}
           </v-alert>
+        </v-window-item>
+
+        <!-- Dashboard (FP-18): only polled while this tab is shown -->
+        <v-window-item value="dashboard">
+          <ClusterDashboard
+            v-if="tab === 'dashboard' && connections.activeName"
+            :connection="connections.activeName"
+            :namespace="namespace"
+            :name="name"
+          />
         </v-window-item>
 
         <!-- Resource tree (FP6-F-03) -->
