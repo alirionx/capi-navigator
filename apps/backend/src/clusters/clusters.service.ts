@@ -61,6 +61,8 @@ import { analyzeRollouts, type PlannedObject } from './rollouts.js';
 /** Extra checks of a change (FP7-F-09). */
 export interface ChangeOptions {
   upgrade?: boolean;
+  /** The rollout controller lets the workers follow an upgrade (FP7-F-08). */
+  finishUpgrade?: boolean;
 }
 import {
   CLUSTER_NAME_LABEL,
@@ -597,7 +599,7 @@ export class ClustersService {
         `A rollout is still running (${running.join(', ')}); wait until it has finished.`,
       );
     }
-    if (current.kubernetes.workerVersion && replaces) {
+    if (current.kubernetes.workerVersion && replaces && !opts.finishUpgrade) {
       blockers.push('An upgrade is still running; wait until the worker pools have followed.');
     }
     // FP7-F-09: pre-checks before an upgrade.
