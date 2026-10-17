@@ -5,9 +5,10 @@ import {
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
 } from '@nestjs/common';
-import { CoordinationV1Api, V1MicroTime, type V1Lease } from '@kubernetes/client-node';
+import { CoordinationV1Api } from '@kubernetes/client-node';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
-import { isConflict, isNotFound } from '../kube/errors.js';
+import { isNotFound } from '../kube/errors.js';
+import { acquireLease } from '../kube/lease.js';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { StoreService } from '../store/store.service.js';
 
@@ -70,44 +71,16 @@ export class AuditCleanupService implements OnApplicationBootstrap, OnApplicatio
     return deleted;
   }
 
-  private async acquireLease(now: Date): Promise<boolean> {
-    const namespace = this.store.namespace;
-    const me = this.config.POD_NAME;
-    const spec = {
-      holderIdentity: me,
-      leaseDurationSeconds: LEASE_SECONDS,
-      renewTime: new V1MicroTime(now.getTime()),
-    };
-    let lease: V1Lease;
-    try {
-      lease = await this.leases.readNamespacedLease({ name: LEASE_NAME, namespace });
-    } catch (err) {
-      if (!isNotFound(err)) throw err;
-      try {
-        await this.leases.createNamespacedLease({
-          namespace,
-          body: { metadata: { name: LEASE_NAME, namespace }, spec },
-        });
-        return true;
-      } catch (createErr) {
-        if (isConflict(createErr)) return false;
-        throw createErr;
-      }
-    }
-    const holder = lease.spec?.holderIdentity;
-    const renew = lease.spec?.renewTime ? new Date(lease.spec.renewTime).getTime() : 0;
-    const duration = (lease.spec?.leaseDurationSeconds ?? LEASE_SECONDS) * 1000;
-    if (holder && holder !== me && renew + duration > now.getTime()) return false;
-    try {
-      await this.leases.replaceNamespacedLease({
+  private acquireLease(now: Date): Promise<boolean> {
+    return acquireLease(
+      this.leases,
+      {
+        namespace: this.store.namespace,
         name: LEASE_NAME,
-        namespace,
-        body: { ...lease, spec: { ...lease.spec, ...spec } },
-      });
-      return true;
-    } catch (err) {
-      if (isConflict(err)) return false;
-      throw err;
-    }
+        holder: this.config.POD_NAME,
+        durationSeconds: LEASE_SECONDS,
+      },
+      now,
+    );
   }
 }

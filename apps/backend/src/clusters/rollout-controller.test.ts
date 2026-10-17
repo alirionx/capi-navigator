@@ -1,0 +1,45 @@
+import { describe, expect, it } from 'vitest';
+import { controlPlaneAt, unusedTemplates } from './rollout-controller.service.js';
+
+describe('rollout controller (FP7-F-08, FP7-F-15)', () => {
+  const cp = (status: Record<string, unknown>, replicas = 3) => ({
+    metadata: { name: 'demo-control-plane' },
+    spec: { replicas },
+    status,
+  });
+
+  it('lets workers follow only when every control plane node runs the new version', () => {
+    const v = 'v1.35.9+rke2r1';
+    expect(controlPlaneAt(cp({ version: v, upToDateReplicas: 3, readyReplicas: 3 }), v)).toBe(true);
+    expect(
+      controlPlaneAt(cp({ version: 'v1.34.12+rke2r1', upToDateReplicas: 3, readyReplicas: 3 }), v),
+    ).toBe(false);
+    expect(controlPlaneAt(cp({ version: v, upToDateReplicas: 2, readyReplicas: 3 }), v)).toBe(
+      false,
+    );
+    expect(controlPlaneAt(cp({ version: v, upToDateReplicas: 3, readyReplicas: 2 }), v)).toBe(
+      false,
+    );
+    expect(controlPlaneAt(undefined, v)).toBe(false);
+  });
+
+  it('deletes only old templates that nothing references', () => {
+    const now = Date.parse('2026-10-18T12:00:00Z');
+    const t = (name: string, minutesAgo: number) => ({
+      metadata: { name, creationTimestamp: new Date(now - minutesAgo * 60_000).toISOString() },
+    });
+    const templates = [
+      t('demo-cp-aaaa1111', 60),
+      t('demo-cp-bbbb2222', 60),
+      t('demo-default-cccc3333', 60),
+      t('demo-default-dddd4444', 2),
+    ];
+    const referencing = [
+      { machineTemplate: { spec: { infrastructureRef: { name: 'demo-cp-bbbb2222' } } } },
+      { template: { spec: { infrastructureRef: { name: 'demo-default-cccc3333' } } } },
+    ];
+    expect(unusedTemplates(templates, referencing, now).map((x) => x.metadata.name)).toEqual([
+      'demo-cp-aaaa1111',
+    ]);
+  });
+});

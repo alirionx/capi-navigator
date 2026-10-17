@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuditModule } from '../audit/audit.module.js';
 import { ConnectionsModule } from '../connections/connections.module.js';
 import { CredentialsModule } from '../credentials/credentials.module.js';
 import { OperatorModule } from '../operator/operator.module.js';
@@ -9,10 +10,11 @@ import {
 } from './clusters.controller.js';
 import { ClusterDeletionService } from './cluster-deletion.service.js';
 import { ClustersService } from './clusters.service.js';
+import { RolloutControllerService } from './rollout-controller.service.js';
 
 /** FP-5/FP-6: create workload clusters, live list and status, lifecycle. */
 @Module({
-  imports: [ConnectionsModule, CredentialsModule, OperatorModule],
+  imports: [ConnectionsModule, CredentialsModule, OperatorModule, AuditModule],
   controllers: [ClustersController],
   exports: [ClustersService],
   providers: [
@@ -20,6 +22,7 @@ import { ClustersService } from './clusters.service.js';
     ClusterEventsService,
     ClusterListEventsService,
     ClusterDeletionService,
+    RolloutControllerService,
   ],
 })
 export class ClustersModule {}
