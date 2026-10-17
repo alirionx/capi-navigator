@@ -7,3 +7,4 @@ export * from './rke2.js';
 export * from './addons.js';
 export { transform, INFRA_PLUGINS, FLAVOR_PLUGINS } from './transform.js';
 export { shortHash, stableStringify } from './util.js';
+export * from './api.js';
