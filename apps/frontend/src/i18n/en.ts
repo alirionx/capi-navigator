@@ -66,6 +66,30 @@ export const en = {
     labelsInvalid: 'Use key=value; reserved prefixes are not allowed',
     externalReadOnly: 'Created outside CAPI Navigator: read-only.',
   },
+  deletion: {
+    action: 'Delete',
+    title: 'Delete cluster {name}?',
+    removes: 'This removes:',
+    cascade:
+      'all machines, templates and the cloud infrastructure of the cluster (network, router, security groups, servers), deleted by Cluster API',
+    cleanup: 'Remove workloads, load balancers and volumes inside the cluster first',
+    cleanupHint:
+      'Recommended. Otherwise load balancers, floating IPs and volumes created by the cloud controller and CSI driver stay in the cloud and can block the deletion of the cluster network.',
+    nothingInside: 'Nothing inside the cluster needs to be removed.',
+    namespaces: 'Namespaces',
+    loadBalancers: 'LoadBalancer services',
+    volumes: 'Volumes (data is lost)',
+    noCleanupWarning:
+      'Without cleanup, cloud resources created inside the cluster may remain and cost money.',
+    confirmLabel: 'Type "{name}" to confirm',
+    phase: {
+      cleanup: 'Removing load balancers and volumes inside the cluster…',
+      'cleanup-timeout': 'Cleanup did not finish',
+      deleting: 'Deleting…',
+    },
+    timeoutHint:
+      'Some cloud resources were not released in time. Check them, then delete again (with or without cleanup).',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',

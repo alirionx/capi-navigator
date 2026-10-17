@@ -1,5 +1,7 @@
 import {
   CLUSTER_SPEC_ANNOTATION,
+  DELETION_ANNOTATION,
+  DeletionStatusSchema,
   EVENT_LIMIT,
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
@@ -7,6 +9,7 @@ import {
   type ClusterStatus,
   type ClusterSummary,
   type Condition,
+  type DeletionStatus,
   type MachineStatus,
 } from '@capi-navigator/shared';
 
@@ -99,7 +102,20 @@ export function toSummary(cluster: K8sObj, cp?: K8sObj, mds: K8sObj[] = []): Clu
       ? { createdAt: String(cluster.metadata.creationTimestamp) }
       : {}),
     managed: !!stored,
+    ...deletionOf(cluster),
   };
+}
+
+/** Deletion progress from the annotation the app sets (FP6-F-06). */
+function deletionOf(cluster: K8sObj): { deletion?: DeletionStatus } {
+  const raw = cluster.metadata.annotations?.[DELETION_ANNOTATION];
+  if (!raw) return {};
+  try {
+    const parsed = DeletionStatusSchema.safeParse(JSON.parse(raw));
+    return parsed.success ? { deletion: parsed.data } : {};
+  } catch {
+    return {};
+  }
 }
 
 /**

@@ -152,7 +152,16 @@ const phaseColor = (c: ClusterSummary) =>
             >
           </template>
           <template #[`item.phase`]="{ item }">
-            <v-chip size="small" variant="tonal" :color="phaseColor(item)">
+            <v-chip
+              v-if="item.deletion"
+              size="small"
+              variant="tonal"
+              :color="item.deletion.phase === 'cleanup-timeout' ? 'warning' : 'info'"
+              :title="item.deletion.message"
+            >
+              {{ t(`deletion.phase.${item.deletion.phase}`) }}
+            </v-chip>
+            <v-chip v-else size="small" variant="tonal" :color="phaseColor(item)">
               {{ item.ready ? t('clusters.ready') : item.phase }}
             </v-chip>
           </template>

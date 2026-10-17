@@ -6,6 +6,9 @@ import {
   ClusterPreviewSchema,
   ClusterStatusSchema,
   ClusterSummarySchema,
+  DeletePreviewSchema,
+  DeletionStatusSchema,
+  type DeleteRequest,
   type ClusterChangePreview,
   type ClusterCreateRequest,
   type LabelsRequest,
@@ -138,6 +141,12 @@ export const useClustersStore = defineStore('clusters', () => {
   ): Promise<ClusterChangePreview> =>
     api('POST', `${clusterPath(c, ns, n)}/labels`, ClusterChangePreviewSchema, req);
 
+  /** FP6-F-06: what a deletion removes, then the confirmed deletion. */
+  const deletePreview = (c: string, ns: string, n: string) =>
+    api('GET', `${clusterPath(c, ns, n)}/delete-preview`, DeletePreviewSchema);
+  const deleteCluster = (c: string, ns: string, n: string, req: DeleteRequest) =>
+    api('POST', `${clusterPath(c, ns, n)}/delete`, DeletionStatusSchema, req);
+
   /** Live status of one cluster (US-07, FP6-F-02). */
   function watch(connection: string, namespace: string, name: string): void {
     unwatch();
@@ -177,6 +186,8 @@ export const useClustersStore = defineStore('clusters', () => {
     scale,
     labelsPreview,
     setLabels,
+    deletePreview,
+    deleteCluster,
     watch,
     unwatch,
   };
