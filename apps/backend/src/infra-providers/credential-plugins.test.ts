@@ -98,7 +98,9 @@ describe('clouds.yaml handling (FP4-F-01, FP4-F-03)', () => {
 });
 
 /** Fake OpenStack: Keystone + catalog without version suffixes (like Infomaniak). */
-function fakeOpenStack(opts: { authStatus?: number; noOctavia?: boolean } = {}): HttpFn {
+function fakeOpenStack(
+  opts: { authStatus?: number; noOctavia?: boolean; brokenPaging?: boolean } = {},
+): HttpFn {
   const catalog = [
     'compute',
     'network',
@@ -135,6 +137,18 @@ function fakeOpenStack(opts: { authStatus?: number; noOctavia?: boolean } = {}):
     },
     'https://api.example/compute/os-keypairs': { keypairs: [{ keypair: { name: 'my-keys' } }] },
     'https://api.example/image/v2/images/img-1': { id: 'img-1', name: 'Ubuntu 24.04' },
+    // Paging links like Infomaniak: without the endpoint path when broken.
+    'https://api.example/network/v2.0/networks?limit=1': {
+      networks: [{ id: 'net-1' }],
+      networks_links: [
+        {
+          rel: 'next',
+          href: opts.brokenPaging
+            ? 'https://api.example/v2.0/networks?limit=1&marker=net-1'
+            : 'https://api.example/network/v2.0/networks?limit=1&marker=net-1',
+        },
+      ],
+    },
     'https://api.example/volumev3/types': {
       volume_types: [
         { id: 'vt-2', name: 'ssd', description: 'Fast' },
@@ -191,6 +205,16 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
     const plugin = new OpenStackCredentialPlugin(fakeOpenStack());
     const result = await plugin.test(plugin.normalize(input).data);
     expect(result).toMatchObject({ ok: true, identity: 'Project PCP-1 (domain Default)' });
+    expect(result.checks.find((c) => c.id === 'neutron-paging-links')?.ok).toBe(true);
+  });
+
+  it('warns about broken Neutron paging links without failing the test (FP5-F-20)', async () => {
+    const plugin = new OpenStackCredentialPlugin(fakeOpenStack({ brokenPaging: true }));
+    const result = await plugin.test(plugin.normalize(input).data);
+    const paging = result.checks.find((c) => c.id === 'neutron-paging-links');
+    expect(result.ok).toBe(true);
+    expect(paging).toMatchObject({ ok: false, warning: true });
+    expect(paging?.message).toMatch(/bastion host would not get a floating IP/);
   });
 
   it('reports a missing service and rejected credentials', async () => {

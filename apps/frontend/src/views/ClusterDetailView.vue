@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { Condition, LookupOption, MachineStatus } from '@capi-navigator/shared';
-import { isReservedLabel } from '@capi-navigator/shared';
+import { CHECK_NEUTRON_PAGING, isReservedLabel } from '@capi-navigator/shared';
 import { useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
@@ -47,6 +47,7 @@ const credentials = useCredentialsStore();
 const bastionOpen = ref(false);
 const bastionDraft = ref<BastionDraft>({ enabled: false, machineSize: '', allowedCidrs: [] });
 const bastionSizes = ref<LookupOption[]>([]);
+const bastionPagingWarning = ref<string | undefined>();
 async function openBastion(): Promise<void> {
   const b = s.value?.bastion;
   bastionDraft.value = {
@@ -63,6 +64,8 @@ async function openBastion(): Promise<void> {
       (x) => x.provider === info.provider && x.name === info.credentialRef,
     );
     if (c) {
+      const check = c.lastTest?.checks.find((x) => x.id === CHECK_NEUTRON_PAGING);
+      bastionPagingWarning.value = check && !check.ok ? check.message : undefined;
       const kind = info.provider === 'openstack' ? 'flavors' : 'instanceTypes';
       bastionSizes.value = (await credentials.lookup(c, kind, info.region)).options;
     }
@@ -659,6 +662,7 @@ const machineHeaders = computed(() => [
         :provider="s.infraSummary.provider === 'aws' ? 'aws' : 'openstack'"
         :sizes="bastionSizes"
         :has-key-pair="!!s.infraSummary.sshKeyName"
+        :paging-warning="bastionPagingWarning"
         :size-locked="bastionRunning && bastionDraft.enabled"
       />
     </ChangeDialog>
