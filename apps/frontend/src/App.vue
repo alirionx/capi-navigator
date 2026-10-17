@@ -193,6 +193,10 @@ async function signOut(): Promise<void> {
   letter-spacing: -0.01em !important;
   line-height: 1.2;
 }
+/* Windows (stepper, tabs) clip overflow; leave room for the floating labels of outlined fields. */
+.v-application .v-window-item {
+  padding-top: 8px;
+}
 /* Tables and lists sit on a bordered card. */
 .table-card {
   overflow: hidden;

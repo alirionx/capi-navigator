@@ -352,7 +352,7 @@ const canPreview = computed(() => issues.value.length === 0);
 <template>
   <v-container>
     <h1 class="page-title">{{ t('wizard.title') }}</h1>
-    <p class="text-medium-emphasis mb-4">{{ t('wizard.subtitle') }}</p>
+    <p class="text-body-2 text-medium-emphasis mt-1 mb-4">{{ t('wizard.subtitle') }}</p>
 
     <v-alert v-if="!connections.active" type="info" variant="tonal">{{
       t('providers.noConnection')
