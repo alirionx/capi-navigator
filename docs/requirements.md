@@ -461,7 +461,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - **FP4-F-07** MUST capture AWS credentials of a dedicated IAM user (access key ID and secret access key) plus a default region via a form, and recommend a dedicated IAM user with only the CAPA permissions instead of personal or root credentials.
 - **FP4-F-08** MUST store the access key in a Secret in the format CAPA expects and create an `AWSClusterStaticIdentity` that references it; `allowedNamespaces` lists the namespaces that may use the credentials.
 - **FP4-F-09** MUST test the credentials (identity of the caller) and check that the IAM prerequisites of CAPA (roles, policies and instance profiles as created by `clusterawsadm bootstrap iam create-cloudformation-stack`) exist. If they are missing, MUST show the `clusterawsadm` command instead of creating IAM resources itself.
-- **FP4-F-10** MUST use the AWS credentials to populate selection lists for cluster creation: regions, availability zones, instance types, the official Canonical Ubuntu LTS AMIs of the region, and EC2 key pairs.
+- **FP4-F-10** MUST use the AWS credentials to populate selection lists for cluster creation: regions, availability zones, instance types, the official OS AMIs of the region (Ubuntu LTS as default; Rocky Linux and Debian from their publishers' accounts, with the RKE2 support level), and EC2 key pairs.
 - **FP4-F-06** applies to AWS credentials as well.
 
 **Acceptance criteria**
@@ -470,7 +470,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 - [x] Images, flavors and external networks appear as selection lists.
 - [x] The secret exists in the management cluster and is accepted by CAPO.
 - [x] AWS credentials of an IAM user can be created and tested; missing CAPA IAM prerequisites are reported with the `clusterawsadm` command.
-- [ ] Regions, instance types, Ubuntu AMIs and key pairs appear as selection lists.
+- [x] Regions, instance types, Ubuntu AMIs and key pairs appear as selection lists.
 - [x] The `AWSClusterStaticIdentity` and its Secret exist in the management cluster and are accepted by CAPA.
 
 ### FP-5: Create workload clusters (OpenStack and AWS + RKE2)
