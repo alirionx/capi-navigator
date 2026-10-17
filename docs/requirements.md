@@ -537,12 +537,12 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] Status changes appear in under 5 seconds without reloading the page.
-- [ ] Scaling from 2 to 3 workers creates a new machine that appears in the view.
-- [ ] After deletion, all OpenStack resources of the cluster are removed and the cluster disappears from the list.
+- [x] Status changes appear in under 5 seconds without reloading the page.
+- [x] Scaling from 2 to 3 workers creates a new machine that appears in the view.
+- [x] After deletion, all OpenStack resources of the cluster are removed and the cluster disappears from the list.
 
-Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs and volumes that the OpenStack CCM and Cinder CSI created for `LoadBalancer` services and PVCs; they block the deletion of the cluster's router. The delete flow must remove these services and PVCs in the workload cluster first (while CCM and CSI still run), or report the leftovers. CAPA removes the CCM's load balancers itself, but not EBS volumes with a `Retain` policy.
-- [ ] A viewer sees no kubeconfig download and no delete or scale buttons.
+Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs and volumes that the OpenStack CCM and Cinder CSI created for `LoadBalancer` services and PVCs; they block the deletion of the cluster's router. The delete flow therefore removes workloads, these services and PVCs in the workload cluster first, while CCM and CSI still run (ADR-0006). CAPA removes the CCM's load balancers itself, but not EBS volumes with a `Retain` policy.
+- [x] A viewer sees no kubeconfig download and no delete or scale buttons.
 
 ### FP-7: Live YAML view and day-2 operations
 
