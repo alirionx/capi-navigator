@@ -37,7 +37,8 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
         region: infra.region,
         // ADR-0002: credentials as cluster-scoped identity.
         identityRef: { kind: AWS_IDENTITY.kind, name: infra.credentialRef },
-        sshKeyName: infra.sshKeyName,
+        // CAPA defaults a missing sshKeyName to "default"; an empty string means no key pair.
+        sshKeyName: infra.sshKeyName ?? '',
         network: {
           // Dedicated VPC per cluster (FP5-F-16).
           vpc: {
@@ -54,19 +55,16 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
               tcp(9099, 'Calico health check'),
             ],
           },
-          additionalControlPlaneIngressRules: [
-            tcp(9345, 'RKE2 supervisor', fromRke2Nodes),
-            tcp(2379, 'etcd', { sourceSecurityGroupRoles: ['controlplane'] }),
-            tcp(2380, 'etcd peer', { sourceSecurityGroupRoles: ['controlplane'] }),
-          ],
+          // Only the RKE2 supervisor port: CAPA already allows etcd and the API between control
+          // plane nodes, and AWS rejects duplicate permissions in one security group.
+          additionalControlPlaneIngressRules: [tcp(9345, 'RKE2 supervisor', fromRke2Nodes)],
         },
+        // NLB for the API server. CAPA copies NLB ingress rules into the control plane security
+        // group, so 9345 must only appear once (above); nodes register via internal IPs
+        // (registrationMethod internal-first), so the NLB needs no 9345 listener.
         controlPlaneLoadBalancer: {
           loadBalancerType: 'nlb',
-          additionalListeners: [{ port: 9345, protocol: 'TCP' }],
-          ingressRules: [
-            tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] }),
-            tcp(9345, 'RKE2 supervisor', fromRke2Nodes),
-          ],
+          ingressRules: [tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] })],
         },
         bastion: { enabled: false },
       }),
@@ -79,7 +77,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       instanceType: group.machineSize,
       // IAM instance profiles from clusterawsadm (FP4-F-09); also used by CCM and EBS CSI.
       iamInstanceProfile: `${role === 'control-plane' ? 'control-plane' : 'nodes'}${CAPA_IAM.suffix}`,
-      sshKeyName: infra.sshKeyName,
+      sshKeyName: infra.sshKeyName ?? '',
       rootVolume: { size: group.rootVolumeSizeGB ?? 50, type: 'gp3' },
       // ADR-0003: stock AMIs lack the aws CLI for the Secrets Manager boothook.
       cloudInit: { insecureSkipSecretsManager: true },

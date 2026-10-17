@@ -80,23 +80,8 @@ spec:
           - controlplane
           - apiserver-lb
           - lb
-      - description: etcd
-        fromPort: 2379
-        toPort: 2379
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
-      - description: etcd peer
-        fromPort: 2380
-        toPort: 2380
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
   controlPlaneLoadBalancer:
     loadBalancerType: nlb
-    additionalListeners:
-      - port: 9345
-        protocol: TCP
     ingressRules:
       - description: Kubernetes API
         fromPort: 6443
@@ -104,15 +89,6 @@ spec:
         protocol: tcp
         cidrBlocks:
           - 0.0.0.0/0
-      - description: RKE2 supervisor
-        fromPort: 9345
-        toPort: 9345
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - node
-          - controlplane
-          - apiserver-lb
-          - lb
   bastion:
     enabled: false
 ---
@@ -261,23 +237,8 @@ spec:
           - controlplane
           - apiserver-lb
           - lb
-      - description: etcd
-        fromPort: 2379
-        toPort: 2379
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
-      - description: etcd peer
-        fromPort: 2380
-        toPort: 2380
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
   controlPlaneLoadBalancer:
     loadBalancerType: nlb
-    additionalListeners:
-      - port: 9345
-        protocol: TCP
     ingressRules:
       - description: Kubernetes API
         fromPort: 6443
@@ -285,15 +246,6 @@ spec:
         protocol: tcp
         cidrBlocks:
           - 0.0.0.0/0
-      - description: RKE2 supervisor
-        fromPort: 9345
-        toPort: 9345
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - node
-          - controlplane
-          - apiserver-lb
-          - lb
   bastion:
     enabled: false
 ---
@@ -528,23 +480,8 @@ spec:
           - controlplane
           - apiserver-lb
           - lb
-      - description: etcd
-        fromPort: 2379
-        toPort: 2379
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
-      - description: etcd peer
-        fromPort: 2380
-        toPort: 2380
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - controlplane
   controlPlaneLoadBalancer:
     loadBalancerType: nlb
-    additionalListeners:
-      - port: 9345
-        protocol: TCP
     ingressRules:
       - description: Kubernetes API
         fromPort: 6443
@@ -552,15 +489,6 @@ spec:
         protocol: tcp
         cidrBlocks:
           - 0.0.0.0/0
-      - description: RKE2 supervisor
-        fromPort: 9345
-        toPort: 9345
-        protocol: tcp
-        sourceSecurityGroupRoles:
-          - node
-          - controlplane
-          - apiserver-lb
-          - lb
   bastion:
     enabled: false
 ---
