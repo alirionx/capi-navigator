@@ -5,3 +5,4 @@ test-results/
 playwright-report/
 docs/requirements.md
 CLAUDE.md
+deploy/helm/**/templates/

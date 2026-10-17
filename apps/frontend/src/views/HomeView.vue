@@ -60,8 +60,13 @@ onMounted(() => {
         </v-list-item>
       </v-list>
       <v-card-actions>
-        <v-btn :loading="store.loading" prepend-icon="mdi-refresh" @click="store.load()">
-          {{ t('home.retry') }}
+        <v-btn
+          :loading="store.loading"
+          variant="tonal"
+          prepend-icon="mdi-refresh"
+          @click="store.load()"
+        >
+          {{ t('home.refresh') }}
         </v-btn>
       </v-card-actions>
     </v-card>

@@ -16,7 +16,7 @@ export const en = {
     unreachable: 'Not reachable',
     checking: 'Checking…',
     error: 'Error',
-    retry: 'Retry',
+    refresh: 'Refresh',
     version: 'Version {version}',
   },
 };

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: capi-navigator
+description: A lean web UI for Cluster API
+type: application
+version: 0.1.0
+appVersion: 0.1.0
+# Skeleton from FP-0. CRDs, RBAC and the in-cluster service account follow with FP-1 and FP-2.
