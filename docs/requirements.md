@@ -379,9 +379,9 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 
 **Acceptance criteria**
 
-- [ ] A kind cluster can be added via kubeconfig and via service account token; the test shows version and status “reachable”.
-- [ ] Credentials exist only as Secrets in the home cluster and never appear in API responses.
-- [ ] An invalid kubeconfig or token produces a clear error message.
+- [x] A kind cluster can be added via kubeconfig and via service account token; the test shows version and status “reachable”.
+- [x] Credentials exist only as Secrets in the home cluster and never appear in API responses.
+- [x] An invalid kubeconfig or token produces a clear error message.
 
 ### FP-3: CAPI Operator and provider management
 

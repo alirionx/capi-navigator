@@ -30,6 +30,14 @@ kubectl --kubeconfig .kube/kind-capi-navigator.yaml -n capi-navigator-system \
   get secret capi-navigator-initial-admin -o jsonpath='{.data.password}' | base64 -d
 ```
 
+### Connect a management cluster
+
+Under **Connections**, add the kind cluster as **Home cluster** (uses the backend's own access) or
+upload `.kube/kind-capi-navigator.yaml` as **Kubeconfig**. For other clusters, apply the access
+manifest there (`deploy/management-cluster/capi-navigator-access.yaml`, also downloadable in the
+UI) and connect with its service account **Token**. Kubeconfigs with exec plugins or file
+references are rejected for security reasons.
+
 ## Checks
 
 ```bash

@@ -20,3 +20,7 @@ auth:
 
 audit:
   retentionDays: 90
+
+# FP2-F-03: allow using the home cluster itself as management cluster ("Home cluster"
+# connection). Binds the app's service account to cluster-admin. Default: false.
+homeClusterAsManagementCluster: false

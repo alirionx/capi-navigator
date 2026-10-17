@@ -1,7 +1,7 @@
 {{- /*
 Home cluster access of the in-cluster service account (section 4, Operations).
 Only the release namespace: the app's own CRDs, Secrets (password hashes, session key) and the
-Lease used for audit cleanup. Access to management clusters follows in FP-2.
+Lease used for audit cleanup. Remote management clusters use their own stored credentials (FP-2).
 */ -}}
 apiVersion: v1
 kind: ServiceAccount
@@ -20,8 +20,11 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 rules:
   - apiGroups: [navigator.capi-navigator.io]
-    resources: [navigatorusers, auditevents]
+    resources: [navigatorusers, auditevents, managementclusters]
     verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [navigator.capi-navigator.io]
+    resources: [managementclusters/status]
+    verbs: [get, update, patch]
   - apiGroups: ['']
     resources: [secrets]
     verbs: [get, create, update, delete]
@@ -44,3 +47,23 @@ subjects:
   - kind: ServiceAccount
     name: {{ .Release.Name }}
     namespace: {{ .Release.Namespace }}
+{{- if .Values.homeClusterAsManagementCluster }}
+---
+# FP2-F-03: the home cluster itself as management cluster ("Home cluster" connection).
+# cluster-admin, because installing ORC and providers (FP-3) creates CRDs and cluster RBAC.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-home-cluster-admin
+  labels:
+    app.kubernetes.io/name: capi-navigator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
