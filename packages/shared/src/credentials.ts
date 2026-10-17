@@ -255,5 +255,7 @@ export const CAPA_IAM = {
     'https://cluster-api-aws.sigs.k8s.io/topics/using-clusterawsadm-to-fulfill-prerequisites',
 };
 
-/** Canonical's owner ID for official Ubuntu AMIs. */
+/** Publisher accounts of official AMIs: Canonical (Ubuntu), Debian cloud team, Rocky (RESF). */
 export const CANONICAL_AWS_OWNER = '099720109477';
+export const DEBIAN_AWS_OWNER = '136693071363';
+export const ROCKY_AWS_OWNER = '792107900819';

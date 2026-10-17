@@ -263,7 +263,7 @@ function fakeAws(
               NextToken: 'n',
             };
       case 'DescribeImagesCommand':
-        expect(cmd.input.Owners).toEqual(['099720109477']);
+        if ((cmd.input.Owners as string[])[0] !== '099720109477') return { Images: [] };
         return {
           Images: [
             {

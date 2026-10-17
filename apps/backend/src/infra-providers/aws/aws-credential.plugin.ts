@@ -13,6 +13,8 @@ import {
   AWS_IDENTITY,
   AwsCredentialInputSchema,
   CANONICAL_AWS_OWNER,
+  DEBIAN_AWS_OWNER,
+  ROCKY_AWS_OWNER,
   CAPA_IAM,
   LOOKUP_KINDS,
   type AwsCredentialInput,
@@ -53,13 +55,58 @@ export const sdkClients: AwsClientFactory = (region, data) => {
 };
 
 /**
- * Official Canonical Ubuntu LTS AMIs (amd64, gp3/ssd). Name patterns of Canonical's image
- * publication; the live test (test/live) checks them against a real account.
+ * Official OS images per publisher account (verified 2026-10-17): Canonical (Ubuntu), the Debian
+ * cloud team (wiki.debian.org/Cloud/AmazonEC2Image) and the Rocky Enterprise Software Foundation.
+ * Support level for RKE2 per the SUSE RKE2 support matrix (v1.36): Ubuntu and Rocky (as RHEL
+ * derivative) are validated, Debian is not. Name patterns checked against eu-central-1 on 2026-10-17;
+ * Rocky publishes Base and LVM variants, Base is the one for cluster nodes.
  */
-const UBUNTU_IMAGES = [
-  { release: '24.04', pattern: 'ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*' },
-  { release: '22.04', pattern: 'ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*' },
-];
+const OS_IMAGES = [
+  {
+    distro: 'ubuntu',
+    release: '24.04',
+    owner: CANONICAL_AWS_OWNER,
+    pattern: 'ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*',
+    support: 'validated',
+  },
+  {
+    distro: 'ubuntu',
+    release: '22.04',
+    owner: CANONICAL_AWS_OWNER,
+    pattern: 'ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*',
+    support: 'validated',
+  },
+  {
+    distro: 'rocky',
+    release: '10',
+    owner: ROCKY_AWS_OWNER,
+    pattern: 'Rocky-10-EC2-Base-*',
+    support: 'validated',
+  },
+  {
+    distro: 'rocky',
+    release: '9',
+    owner: ROCKY_AWS_OWNER,
+    pattern: 'Rocky-9-EC2-Base-*',
+    support: 'validated',
+  },
+  {
+    distro: 'debian',
+    release: '13',
+    owner: DEBIAN_AWS_OWNER,
+    pattern: 'debian-13-amd64-*',
+    support: 'community',
+  },
+  {
+    distro: 'debian',
+    release: '12',
+    owner: DEBIAN_AWS_OWNER,
+    pattern: 'debian-12-amd64-*',
+    support: 'community',
+  },
+] as const;
+
+const DISTRO_LABEL = { ubuntu: 'Ubuntu', rocky: 'Rocky Linux', debian: 'Debian' } as const;
 
 /** AWS credentials for CAPA as AWSClusterStaticIdentity (FP4-F-07..10, ADR-0002). */
 export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput> {
@@ -235,12 +282,12 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
         }
         case 'images': {
           const options: LookupOption[] = [];
-          for (const { release, pattern } of UBUNTU_IMAGES) {
+          for (const os of OS_IMAGES) {
             const res = (await ec2.send(
               new DescribeImagesCommand({
-                Owners: [CANONICAL_AWS_OWNER],
+                Owners: [os.owner],
                 Filters: [
-                  { Name: 'name', Values: [pattern] },
+                  { Name: 'name', Values: [os.pattern] },
                   { Name: 'state', Values: ['available'] },
                   { Name: 'architecture', Values: ['x86_64'] },
                 ],
@@ -248,14 +295,15 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
             )) as { Images?: { ImageId?: string; Name?: string; CreationDate?: string }[] };
             const newest = (res.Images ?? [])
               .sort((a, b) => (b.CreationDate ?? '').localeCompare(a.CreationDate ?? ''))
-              .slice(0, 5);
+              .slice(0, 3);
             for (const img of newest) {
               options.push({
                 value: img.ImageId!,
-                label: `Ubuntu ${release} – ${img.Name?.split('/').pop() ?? img.ImageId}`,
+                label: `${DISTRO_LABEL[os.distro]} ${os.release} – ${img.Name?.split('/').pop() ?? img.ImageId}`,
                 details: {
-                  os_distro: 'ubuntu',
-                  os_version: release,
+                  os_distro: os.distro,
+                  os_version: os.release,
+                  rke2_support: os.support,
                   created_at: img.CreationDate ?? '',
                 },
               });
