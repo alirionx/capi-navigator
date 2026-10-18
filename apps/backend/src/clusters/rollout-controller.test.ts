@@ -53,3 +53,17 @@ describe('version comparison for k0s (FP9-F-05)', () => {
     expect(sameVersion(undefined, 'v1.35.8+k0s.1')).toBe(false);
   });
 });
+
+describe('control plane done (FP7-F-08)', () => {
+  it('waits until the old control plane machines are gone', () => {
+    const v = 'v1.35.8+k0s.1';
+    const cp = (status: Record<string, unknown>) =>
+      ({ metadata: { name: 'cp' }, spec: { replicas: 1 }, status }) as never;
+    expect(
+      controlPlaneAt(cp({ version: v, replicas: 2, upToDateReplicas: 1, readyReplicas: 1 }), v),
+    ).toBe(false);
+    expect(
+      controlPlaneAt(cp({ version: v, replicas: 1, upToDateReplicas: 1, readyReplicas: 1 }), v),
+    ).toBe(true);
+  });
+});
