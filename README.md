@@ -124,10 +124,12 @@ kubectl --kubeconfig .kube/kind-capi-navigator.yaml -n capi-navigator-system \
 ### Install into a cluster with Helm
 
 Every release publishes the image `ghcr.io/alirionx/capi-navigator:<version>` and attaches the
-packaged chart to the [GitHub release](https://github.com/alirionx/capi-navigator/releases):
+packaged chart to the [GitHub release](https://github.com/alirionx/capi-navigator/releases). Pick
+the version there; the notes of each release also contain these commands with the version filled
+in.
 
 ```sh
-VERSION=0.3.0
+VERSION=x.y.z   # a version from the releases page, without the leading "v"
 helm install capi-navigator \
   https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz \
   -n capi-navigator-system --create-namespace \
@@ -152,10 +154,12 @@ there on first start.
 ### Upgrading
 
 Helm installs the CRDs from the chart's `crds/` directory only on `helm install`, never on
-`helm upgrade`. Apply the CRDs of the new version first, otherwise new resources (e.g.
-`NavigatorRole` in 0.3.0) are missing and new fields are dropped by the API server:
+`helm upgrade`. Apply the CRDs of the new version first, otherwise new resources (e.g. the
+`NavigatorRole` CRD added with role management) are missing and new fields are dropped by the API
+server:
 
 ```sh
+VERSION=x.y.z   # the version to upgrade to
 CHART=https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz
 helm show crds "$CHART" | kubectl apply --server-side -f -
 helm upgrade capi-navigator "$CHART" -n capi-navigator-system --reuse-values
@@ -320,22 +324,73 @@ scripts/            kind, development and integration test helpers
 
 ### Releases
 
-CI ([ci.yaml](.github/workflows/ci.yaml)) runs lint, type check, tests, the Helm chart check,
-the integration tests on kind and an image build for every push to `main` and every pull request.
+CI ([ci.yaml](.github/workflows/ci.yaml)) runs lint, type check, tests with the coverage
+threshold, the Helm chart check, the integration tests on kind and an image build for every push
+to `main` and every pull request. Nothing is published by CI.
 
-A release is triggered by a version tag ([release.yaml](.github/workflows/release.yaml)):
+A release is published by pushing a version tag `vX.Y.Z`
+([release.yaml](.github/workflows/release.yaml)). It checks that the tag matches `Chart.yaml`,
+pushes the image `ghcr.io/alirionx/capi-navigator` with the tags `X.Y.Z`, `X.Y` and `latest`, and
+creates the GitHub release with `capi-navigator-X.Y.Z.tgz`, its SHA-256 checksum and notes with
+the install and upgrade commands.
 
-1. Set `version` and `appVersion` in `deploy/helm/capi-navigator/Chart.yaml` to the new version
-   and commit.
-2. `git tag v0.3.0 && git push origin v0.3.0`
+**Choosing the version** (semantic versioning, `0.x` while the app is young): new features or
+changes to the chart's CRDs, RBAC or values raise the minor version (`0.3.0` → `0.4.0`), fixes
+the patch version (`0.3.0` → `0.3.1`). A published version is never reused or moved; a broken
+release is fixed by the next patch version.
 
-The workflow checks that the tag matches `Chart.yaml`, pushes the image
-`ghcr.io/alirionx/capi-navigator` with the tags `0.3.0`, `0.3` and `latest`, and creates the
-GitHub release with `capi-navigator-0.3.0.tgz` and its SHA-256 checksum.
+**Where the version lives** — change exactly one file per release:
 
-The version lives in one place: `version` and `appVersion` in `Chart.yaml` (always equal). The
-image gets it from the tag at build time (`APP_VERSION`); local builds and the `package.json` files
-carry `0.0.0-dev`. New features raise the minor version, fixes the patch version.
+| File                                                  | Per release?                                      | Content                                                                                                 |
+| ----------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `deploy/helm/capi-navigator/Chart.yaml`               | **Yes**: `version` and `appVersion`, both `X.Y.Z` | The only source of the app version. The chart uses the image tag `appVersion` by default.               |
+| Git tag `vX.Y.Z`                                      | **Yes**, created after the commit                 | Triggers the release; must match `Chart.yaml`, otherwise the workflow stops before publishing anything. |
+| `Dockerfile` (`ARG APP_VERSION`)                      | No                                                | `0.0.0-dev` for local builds; the release workflow passes the version from the tag.                     |
+| `apps/*/package.json`, `packages/shared/package.json` | No                                                | `0.0.0-dev`; the packages are private and never published.                                              |
+| `apps/backend/src/version.ts`                         | No                                                | Reads `APP_VERSION` at runtime; `0.0.0-dev` without it.                                                 |
+| `README.md`, `docs/`                                  | No                                                | Version-neutral (`VERSION=x.y.z`); the release notes carry the concrete commands.                       |
+| `.github/workflows/release.yaml`                      | No                                                | Takes everything from the tag.                                                                          |
+
+**Why it is set up this way:**
+
+- **One source, no drift.** If the version were written into several files, they would sooner or
+  later disagree, and nobody could tell which number the running app has. With `Chart.yaml` as the
+  only source, chart, image and release always carry the same version.
+- **The tag check protects the published artifacts.** The chart refers to the image by its
+  `appVersion`. A tag that does not match `Chart.yaml` would publish a chart that pulls a different
+  image than the one just built, so the workflow refuses it before anything is pushed.
+- **The image gets its version from the tag at build time.** The image is built from exactly the
+  tagged commit, and no extra commit is needed to bump numbers in the `Dockerfile` or in
+  `package.json`.
+- **`0.0.0-dev` everywhere else.** Local builds and `pnpm dev` report `0.0.0-dev` (the CI test
+  image, which is never published, the commit SHA), so a development build can never be mistaken
+  for a release. The version is visible in `GET /api/health`. The `package.json` versions would only
+  matter if the packages were published to npm, which they are not.
+- **Chart version equals app version.** Separate numbers only pay off when the chart is released
+  independently of the app. Here every release ships both, so one number is easier to follow.
+- **Version-neutral docs.** A README with concrete versions goes stale with every release and
+  must be edited each time. The release notes are generated with the right version, so the docs
+  only describe the procedure.
+- **Published versions are never moved.** Clusters cache images (`pullPolicy: IfNotPresent`) and
+  users pin chart versions. If `0.3.0` were rebuilt from another commit, two clusters could run
+  different code under the same version.
+- **CRDs are a separate upgrade step** because Helm deliberately never updates or deletes CRDs on
+  `helm upgrade` (deleting a CRD deletes all its resources). The release notes therefore list the
+  CRD command first.
+
+**Steps:**
+
+1. Make sure `main` is green in CI.
+2. Set `version` and `appVersion` in `Chart.yaml`, commit and push:
+   `git commit -am "chore(release): version X.Y.Z" && git push`
+3. Tag that commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
+4. Check the run under Actions → Release, then the release page. The first image push creates
+   the package private on ghcr.io; make it public once (Packages → capi-navigator → Package
+   settings → Change visibility) so the chart can pull it without credentials.
+5. If the release adds or changes CRDs, edit the release on GitHub and add a line at the top
+   ("Changes CRDs: apply them before upgrading"). The generated notes always contain the CRD
+   command, but only this line tells users that skipping it breaks the upgrade (see
+   [Upgrading](#upgrading)).
 
 ## Contributing
 
