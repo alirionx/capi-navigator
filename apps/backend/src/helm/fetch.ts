@@ -103,8 +103,29 @@ function once(url: URL, opts: FetchOptions): Promise<Omit<FetchResult, 'url'>> {
     );
     req.on('timeout', () => req.destroy(new FetchError(`Timeout contacting ${url.host}`)));
     req.on('error', (err) =>
-      reject(err instanceof FetchError ? err : new FetchError(`${url.host}: ${err.message}`)),
+      reject(err instanceof FetchError ? err : new FetchError(describeError(url, err))),
     );
     req.end();
   });
+}
+
+const TLS_TRUST = new Set([
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+  'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+  'SELF_SIGNED_CERT_IN_CHAIN',
+  'DEPTH_ZERO_SELF_SIGNED_CERT',
+]);
+
+/** Understandable messages for the usual network and TLS errors (NF-06). */
+export function describeError(url: URL, err: Error & { code?: string }): string {
+  if (err.code && TLS_TRUST.has(err.code)) {
+    return `${url.host}: the server certificate is not trusted; add the CA certificate of the registry`;
+  }
+  if (err.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
+    return `${url.host}: the server certificate is not valid for this host name`;
+  }
+  if (err.code === 'CERT_HAS_EXPIRED') return `${url.host}: the server certificate has expired`;
+  if (err.code === 'ENOTFOUND') return `${url.hostname}: host name not found`;
+  if (err.code === 'ECONNREFUSED') return `${url.host}: connection refused`;
+  return `${url.host}: ${err.message}`;
 }
