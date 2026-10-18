@@ -47,7 +47,7 @@ Browser (Vue 3 SPA)  ──REST + SSE + WebSocket──▶  NestJS backend  ─�
 | Part       | Path                                          | Responsibility                                                                                                                                                                                  |
 | ---------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Frontend   | [apps/frontend/src](../apps/frontend/src)     | Views, forms and previews. One Pinia store per domain ([stores](../apps/frontend/src/stores)); texts in [i18n](../apps/frontend/src/i18n). Never talks to Kubernetes and never sees credentials |
-| Backend    | [apps/backend/src](../apps/backend/src)       | REST API, role checks, audit, all Kubernetes access, live updates, background jobs                                                                                                              |
+| Backend    | [apps/backend/src](../apps/backend/src)       | REST API, permission checks, audit, all Kubernetes access, live updates, background jobs                                                                                                        |
 | Shared     | [packages/shared/src](../packages/shared/src) | Zod schemas (types, form and API validation, CRD schemas), catalogs of providers and versions, the pure transformation from cluster spec to CAPI resources, add-on presets                      |
 | Deployment | [deploy](../deploy)                           | Generated CRDs, Helm chart, access manifests for management clusters                                                                                                                            |
 
@@ -59,27 +59,28 @@ from it (`pnpm crds:generate`).
 
 One NestJS module per domain:
 
-| Module             | Path                                                                       | What it does                                                                                                                                  |
-| ------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`             | [auth](../apps/backend/src/auth)                                           | Local users (`NavigatorUser` CRs, password hashes in Secrets), sign-in with rate limit, sessions as signed cookies, the global role guard     |
-| `audit`            | [audit](../apps/backend/src/audit)                                         | Interceptor that writes an `AuditEvent` for every mutating request and sensitive reads; cleanup after the retention period                    |
-| `store`            | [store](../apps/backend/src/store)                                         | Typed access to the app's CRDs (informer-backed cache, so reads do not hit the API server), Secrets and ConfigMaps in the home cluster        |
-| `kube`             | [kube](../apps/backend/src/kube)                                           | Kubernetes client helpers: server-side apply and dry runs, diffs, conflict parsing, error translation, Leases, live channels (watches → SSE)  |
-| `connections`      | [connections](../apps/backend/src/connections)                             | Management cluster connections (`ManagementCluster` CR + Secret with kubeconfig or token), connection tests, one cached client per connection |
-| `operator`         | [operator](../apps/backend/src/operator)                                   | Prerequisites (cert-manager, CAPI Operator), ORC, provider CRs of the CAPI Operator                                                           |
-| `credentials`      | [credentials](../apps/backend/src/credentials)                             | Cloud credentials on the management cluster; tests and lookups (images, flavors, networks) against the cloud                                  |
-| `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client) and AWS                                                        |
-| `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                      |
-| `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets                                  |
-| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                      |
-| `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                             |
-| `health`, `config` | [health](../apps/backend/src/health), [config](../apps/backend/src/config) | Liveness/readiness and health of connections; environment variables validated with Zod                                                        |
+| Module             | Path                                                                       | What it does                                                                                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`             | [auth](../apps/backend/src/auth)                                           | Local users (`NavigatorUser` CRs, password hashes in Secrets) with role assignments, custom roles (`NavigatorRole`), sign-in with rate limit, sessions as signed cookies, the global permission guard |
+| `audit`            | [audit](../apps/backend/src/audit)                                         | Interceptor that writes an `AuditEvent` for every mutating request and sensitive reads; cleanup after the retention period                                                                            |
+| `store`            | [store](../apps/backend/src/store)                                         | Typed access to the app's CRDs (informer-backed cache, so reads do not hit the API server), Secrets and ConfigMaps in the home cluster                                                                |
+| `kube`             | [kube](../apps/backend/src/kube)                                           | Kubernetes client helpers: server-side apply and dry runs, diffs, conflict parsing, error translation, Leases, live channels (watches → SSE)                                                          |
+| `connections`      | [connections](../apps/backend/src/connections)                             | Management cluster connections (`ManagementCluster` CR + Secret with kubeconfig or token), connection tests, one cached client per connection                                                         |
+| `operator`         | [operator](../apps/backend/src/operator)                                   | Prerequisites (cert-manager, CAPI Operator), ORC, provider CRs of the CAPI Operator                                                                                                                   |
+| `credentials`      | [credentials](../apps/backend/src/credentials)                             | Cloud credentials on the management cluster; tests and lookups (images, flavors, networks) against the cloud                                                                                          |
+| `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client) and AWS                                                                                                                |
+| `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                              |
+| `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets                                                                                          |
+| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                                                                              |
+| `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                     |
+| `health`, `config` | [health](../apps/backend/src/health), [config](../apps/backend/src/config) | Liveness/readiness and health of connections; environment variables validated with Zod                                                                                                                |
 
 ## Where state lives
 
 | State                              | Stored as                                                                                                                                                                                  | Where                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| Users and roles                    | `NavigatorUser` CR, password hash in a Secret                                                                                                                                              | Home cluster            |
+| Custom roles                       | `NavigatorRole` CR                                                                                                                                                                         | Home cluster            |
+| Users and role assignments         | `NavigatorUser` CR, password hash in a Secret                                                                                                                                              | Home cluster            |
 | Sessions                           | Signed cookie in the browser; the signing key is a Secret                                                                                                                                  | Home cluster (key only) |
 | Management cluster connections     | `ManagementCluster` CR, kubeconfig or token in a Secret                                                                                                                                    | Home cluster            |
 | Helm repositories                  | `HelmRepository` CR, OCI credentials in a Secret                                                                                                                                           | Home cluster            |
@@ -140,11 +141,18 @@ subscriber of that channel. Watches stop when nobody listens
 ([live-channels.ts](../apps/backend/src/kube/live-channels.ts)). Only the dashboard polls (every
 15 s), because metrics cannot be watched ([ADR-0009](adr/0009-dashboard-polling.md)).
 
-### Every request: role check and audit
+### Every request: permission check and audit
 
 1. The global guard ([auth.guard.ts](../apps/backend/src/auth/auth.guard.ts)) verifies the
-   session cookie and the minimum role of the endpoint (`viewer`, `operator`, `admin`). An
-   endpoint without a role rule is denied. Hiding buttons in the frontend is cosmetic only.
+   session cookie and the permission the endpoint declares with `@Requires` (14 permissions,
+   [permissions.ts](../packages/shared/src/permissions.ts)). It reads the user's role assignments
+   and the roles from the cache on every request, so changes apply immediately, and checks them
+   in the scope of the request: connection and namespace from the route, or the namespace in the
+   body when something is created. Assignments limited to connections and namespaces restrict
+   actions only; every user can read everything. The built-in roles viewer, operator and admin
+   live in code; custom roles are `NavigatorRole` resources
+   ([ADR-0015](adr/0015-permissions-and-scoped-role-assignments.md)). An endpoint without a rule
+   is denied. The frontend runs the same check to hide buttons, which is cosmetic only.
 2. The audit interceptor ([audit.interceptor.ts](../apps/backend/src/audit/audit.interceptor.ts))
    writes an `AuditEvent` with actor, action, target and outcome for every mutating request.
 3. Kubernetes errors are translated into a message with a hint; the original stays expandable.
@@ -250,7 +258,7 @@ Secret that CAPI maintains:
 
 - Only the backend talks to Kubernetes. The browser gets display data, never credentials;
   Secret values in previews are masked.
-- Roles are enforced in the backend for every endpoint and for the node shell WebSocket.
+- Permissions are enforced in the backend for every endpoint and for the node shell WebSocket.
 - Each management cluster is accessed with the credentials of its connection only; the minimal
   access manifest limits what the app can do there.
 - Sessions are signed cookies (Secure, HttpOnly) with a fixed lifetime; sign-in is rate-limited.

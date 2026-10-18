@@ -66,7 +66,9 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Kubeconfig**: view and download the admin kubeconfig of a workload cluster (audited).
 - **Deletion** with cleanup of load balancers and volumes inside the cluster first, so nothing is
   left in the cloud.
-- **Users and roles**: viewer, operator and admin, enforced in the backend; every change is written
+- **Users and roles**: built-in roles viewer, operator and admin plus custom roles from 14
+  permissions; role assignments can be limited to management cluster connections and namespaces
+  (e.g. operator only in `team-a`). Enforced in the backend; every change is written
   to an audit log.
 - Light and dark theme, live updates via server-sent events.
 
@@ -256,17 +258,17 @@ stored in the home cluster (the app has no database).
 
 ## Technology
 
-| Area              | Technology                                                                                                                                                                              | Why                                                                                            |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Backend           | Node.js 24, [NestJS](https://nestjs.com), [@kubernetes/client-node](https://github.com/kubernetes-client/javascript)                                                                    | Modules per domain, guards for roles, watches and server-side apply against the Kubernetes API |
-| Frontend          | [Vue 3](https://vuejs.org), [Vite](https://vite.dev), [Pinia](https://pinia.vuejs.org), [Vuetify 3](https://vuetifyjs.com), [Monaco Editor](https://microsoft.github.io/monaco-editor/) | Accessible components with light/dark themes; read-only YAML views and the Helm values editor  |
-| Shared model      | TypeScript (strict), [Zod](https://zod.dev)                                                                                                                                             | One schema per entity for form validation, API validation, types and the CRDs' OpenAPI schemas |
-| Transformation    | Pure functions in `packages/shared`                                                                                                                                                     | Same spec, byte-identical YAML; every topology and distribution has snapshot tests             |
-| State             | CRDs (`navigator.capi-navigator.io/v1alpha1`), Secrets and ConfigMaps in the home cluster                                                                                               | No database; the backend stays stateless                                                       |
-| Live updates      | Kubernetes watches → server-sent events                                                                                                                                                 | Lists and status update without polling                                                        |
-| Cluster lifecycle | Cluster API, CAPI Operator, CAPO + ORC, CAPA, RKE2/k0smotron/kubeadm providers, CAAPH                                                                                                   | Upstream only; clusters stay manageable without the app                                        |
-| Container         | Multi-stage build on `node:24-bookworm-slim`, non-root                                                                                                                                  | One image serves API and frontend                                                              |
-| Tests             | Vitest (unit, snapshot), Playwright (end-to-end), kind (integration)                                                                                                                    | From pure transformations to the UI against a real management cluster                          |
+| Area              | Technology                                                                                                                                                                              | Why                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Backend           | Node.js 24, [NestJS](https://nestjs.com), [@kubernetes/client-node](https://github.com/kubernetes-client/javascript)                                                                    | Modules per domain, guards for permissions, watches and server-side apply against the Kubernetes API |
+| Frontend          | [Vue 3](https://vuejs.org), [Vite](https://vite.dev), [Pinia](https://pinia.vuejs.org), [Vuetify 3](https://vuetifyjs.com), [Monaco Editor](https://microsoft.github.io/monaco-editor/) | Accessible components with light/dark themes; read-only YAML views and the Helm values editor        |
+| Shared model      | TypeScript (strict), [Zod](https://zod.dev)                                                                                                                                             | One schema per entity for form validation, API validation, types and the CRDs' OpenAPI schemas       |
+| Transformation    | Pure functions in `packages/shared`                                                                                                                                                     | Same spec, byte-identical YAML; every topology and distribution has snapshot tests                   |
+| State             | CRDs (`navigator.capi-navigator.io/v1alpha1`), Secrets and ConfigMaps in the home cluster                                                                                               | No database; the backend stays stateless                                                             |
+| Live updates      | Kubernetes watches → server-sent events                                                                                                                                                 | Lists and status update without polling                                                              |
+| Cluster lifecycle | Cluster API, CAPI Operator, CAPO + ORC, CAPA, RKE2/k0smotron/kubeadm providers, CAAPH                                                                                                   | Upstream only; clusters stay manageable without the app                                              |
+| Container         | Multi-stage build on `node:24-bookworm-slim`, non-root                                                                                                                                  | One image serves API and frontend                                                                    |
+| Tests             | Vitest (unit, snapshot), Playwright (end-to-end), kind (integration)                                                                                                                    | From pure transformations to the UI against a real management cluster                                |
 
 ## Development
 
@@ -326,7 +328,7 @@ The project is driven by a requirements specification, one feature pack at a tim
 - Hard rules: no database; one Zod schema per entity; pure transformations with snapshot tests;
   the cluster spec is the source of truth; template rotation instead of editing templates; preview
   before every change; only upstream resources for workload clusters; secrets never leave the
-  backend; roles enforced in the backend; providers and distributions as plugins. See
+  backend; permissions enforced in the backend; providers and distributions as plugins. See
   [CLAUDE.md](CLAUDE.md) for the details.
 - English everywhere: UI, API messages, logs, documentation and code comments.
 - Never commit secrets, `clouds.yaml` files, kubeconfigs or tokens.
