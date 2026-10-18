@@ -7,6 +7,7 @@ import type {
   ObjectRef,
   TransformContext,
 } from './plugins.js';
+import { k0sPlugin } from './k0s.js';
 import { rke2Plugin } from './rke2.js';
 import { CLUSTER_SPEC_ANNOTATION, type ClusterSpec, type Infrastructure } from './spec.js';
 import { shortHash, stableStringify } from './util.js';
@@ -22,6 +23,7 @@ export const FLAVOR_PLUGINS: Partial<
   Record<ClusterSpec['kubernetes']['flavor'], BootstrapFlavorPlugin>
 > = {
   rke2: rke2Plugin,
+  k0s: k0sPlugin,
 };
 
 const CAPI_API = 'cluster.x-k8s.io/v1beta2';
@@ -71,7 +73,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   });
 
   // Infrastructure cluster
-  objects.push(infra.infraCluster(spec, spec.infrastructure, ctx, labels));
+  objects.push(infra.infraCluster(spec, spec.infrastructure, ctx, labels, flavor.network));
 
   // Control plane
   const cpTemplateSpec = infra.machineTemplateSpec(
@@ -80,7 +82,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     spec.topology.controlPlane,
     'control-plane',
   );
-  // A rebuild (FP7-F-11) changes the template name: RKE2ControlPlane has no rolloutAfter.
+  // A rebuild (FP7-F-11) changes the template name: control plane providers have no rolloutAfter.
   const cpRebuild =
     spec.topology.controlPlane.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt;
   const cpTemplateName = `${spec.name}-cp-${shortHash(

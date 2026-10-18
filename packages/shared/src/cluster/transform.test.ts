@@ -315,3 +315,57 @@ describe('AWS specifics', () => {
     }
   });
 });
+
+describe('k0s flavor (FP-9)', () => {
+  const k0s = (base: ClusterSpecInput): ClusterSpecInput => ({
+    ...base,
+    name: `${base.name}-k0s`,
+    kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+  });
+
+  it('OpenStack standard with CCM and CSI (FP9-F-02, FP9-F-04)', () => {
+    expect(render(k0s(openstack()))).toMatchSnapshot();
+  });
+  it('OpenStack all-in-one', () => {
+    expect(render(allInOne(k0s(openstack())))).toMatchSnapshot();
+  });
+  it('AWS standard', () => {
+    expect(render(k0s(aws()))).toMatchSnapshot();
+  });
+  it('node customization and SSH keys (FP9-F-03)', () => {
+    const spec = k0s(
+      openstack({ sshPublicKeys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example'] }),
+    );
+    spec.topology.workerPools![0]!.customization = {
+      files: [{ path: '/etc/motd', content: 'managed by CAPI Navigator\n', permissions: '0644' }],
+      preCommands: ['echo before'],
+      postCommands: ['echo after'],
+    };
+    const objects = transform(ClusterSpecSchema.parse(spec), ctx);
+    expect(
+      renderManifests(objects.filter((o) => o.kind === 'K0sWorkerConfigTemplate')),
+    ).toMatchSnapshot();
+  });
+  it('rotates templates on upgrade and keeps workers until the control plane is done', () => {
+    const base = ClusterSpecSchema.parse(k0s(openstack()));
+    const upgraded = ClusterSpecSchema.parse({
+      ...k0s(openstack()),
+      kubernetes: { flavor: 'k0s', version: 'v1.36.4+k0s.1', workerVersion: 'v1.35.8+k0s.1' },
+    });
+    const names = (s: typeof base) =>
+      transform(s, ctx)
+        .filter((o) => o.kind === 'K0sWorkerConfigTemplate')
+        .map((o) => o.metadata.name);
+    // Worker templates stay while workerVersion pins the old version (FP7-F-08).
+    expect(names(upgraded)).toEqual(names(base));
+    const cp = transform(upgraded, ctx).find((o) => o.kind === 'K0sControlPlane')!;
+    expect((cp.spec as { version: string }).version).toBe('v1.36.4+k0s.1');
+  });
+  it('accepts only k0s versions for k0s', () => {
+    const bad = ClusterSpecSchema.safeParse({
+      ...k0s(openstack()),
+      kubernetes: { flavor: 'k0s', version: 'v1.35.9+rke2r1' },
+    });
+    expect(bad.error?.issues[0]?.path.join('.')).toBe('kubernetes.version');
+  });
+});

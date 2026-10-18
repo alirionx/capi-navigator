@@ -15,3 +15,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0009](0009-dashboard-polling.md)                           | Polling for the read-only cluster dashboard                                      | accepted |
 | [0010](0010-rollout-controller.md)                          | Background rollout controller in the backend                                     | accepted |
 | [0011](0011-helm-addons.md)                                 | Helm add-ons with the HelmChartProxy as source of truth                          | accepted |
+| [0012](0012-flavor-network-requirements.md)                 | Kubernetes distributions declare their network needs                             | accepted |

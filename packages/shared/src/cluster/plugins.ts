@@ -9,6 +9,29 @@ export interface TransformContext {
   };
 }
 
+/**
+ * Network needs of a Kubernetes distribution (ADR-0012). Infrastructure plugins turn them into
+ * load balancer listeners and security group rules, so a new distribution needs no change in
+ * the infrastructure plugins.
+ */
+export interface FlavorNetwork {
+  /** Ports the control plane accepts from all nodes, besides the Kubernetes API (6443). */
+  controlPlanePorts: {
+    port: number;
+    description: string;
+    /** Reached through the API load balancer (listener on the load balancer). */
+    viaLoadBalancer: boolean;
+  }[];
+  /** Traffic between all nodes, e.g. of the CNI; for providers without in-cluster allow-all. */
+  nodeTraffic: {
+    /** IP protocol: tcp, udp or a protocol number like "4" (IP-in-IP). */
+    protocol: 'tcp' | 'udp' | '4';
+    fromPort: number;
+    toPort: number;
+    description: string;
+  }[];
+}
+
 export interface ObjectRef {
   apiGroup: string;
   kind: string;
@@ -30,6 +53,7 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
     infra: T,
     ctx: TransformContext,
     labels: Record<string, string>,
+    network: FlavorNetwork,
   ): ManifestObject;
   /** `spec.template.spec` of the machine template of one group. */
   machineTemplateSpec(
@@ -76,9 +100,11 @@ export interface MachineDetails {
   rootVolumeType?: string;
 }
 
-/** Kubernetes distribution (section 5, `BootstrapFlavorPlugin`): RKE2 in FP-5. */
+/** Kubernetes distribution (section 5, `BootstrapFlavorPlugin`): RKE2 in FP-5, k0s in FP-9. */
 export interface BootstrapFlavorPlugin {
   flavor: ClusterSpec['kubernetes']['flavor'];
+  /** Ports and node traffic the distribution needs (ADR-0012). */
+  network: FlavorNetwork;
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {
     spec: ClusterSpec;

@@ -79,6 +79,19 @@ function customizationFields(spec: ClusterSpec, group: MachineGroup) {
 
 export const rke2Plugin: BootstrapFlavorPlugin = {
   flavor: 'rke2',
+  // Rules from the RKE2 provider's AWS example (v0.26.0, examples/templates/aws). Nodes register
+  // via internal IPs (registrationMethod internal-first): the supervisor needs no LB listener.
+  network: {
+    controlPlanePorts: [{ port: 9345, description: 'RKE2 supervisor', viaLoadBalancer: false }],
+    // Calico (serverConfig.cni) between nodes.
+    nodeTraffic: [
+      { protocol: 'tcp', fromPort: 179, toPort: 179, description: 'BGP' },
+      { protocol: '4', fromPort: -1, toPort: 65535, description: 'IP-in-IP' },
+      { protocol: 'tcp', fromPort: 5473, toPort: 5473, description: 'Calico Typha' },
+      { protocol: 'tcp', fromPort: 9098, toPort: 9098, description: 'Calico Typha health check' },
+      { protocol: 'tcp', fromPort: 9099, toPort: 9099, description: 'Calico health check' },
+    ],
+  },
   bootstrapTemplate: {
     apiVersion: RKE2_BOOTSTRAP_API,
     apiGroup: 'bootstrap.cluster.x-k8s.io',
