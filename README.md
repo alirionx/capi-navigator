@@ -121,18 +121,26 @@ kubectl --kubeconfig .kube/kind-capi-navigator.yaml -n capi-navigator-system \
 
 ### Install into a cluster with Helm
 
-There is no published image yet; build it and make it available to your cluster (for kind:
-`kind load docker-image`, otherwise push it to your registry):
+Every release publishes the image `ghcr.io/alirionx/capi-navigator:<version>` and attaches the
+packaged chart to the [GitHub release](https://github.com/alirionx/capi-navigator/releases):
 
 ```sh
-docker build -t capi-navigator:0.1.0 .
-kind load docker-image capi-navigator:0.1.0 --name capi-navigator   # kind only
-
-helm install capi-navigator deploy/helm/capi-navigator \
+VERSION=0.2.0
+helm install capi-navigator \
+  https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz \
   -n capi-navigator-system --create-namespace \
-  --set image.tag=0.1.0 \
   --set homeClusterAsManagementCluster=true   # optional: use this cluster as management cluster
 kubectl -n capi-navigator-system port-forward svc/capi-navigator 8080:80
+```
+
+The chart uses the image of its own version by default. To run a local build instead (for kind):
+
+```sh
+docker build -t capi-navigator:dev .
+kind load docker-image capi-navigator:dev --name capi-navigator
+helm install capi-navigator deploy/helm/capi-navigator \
+  -n capi-navigator-system --create-namespace \
+  --set image.repository=capi-navigator --set image.tag=dev
 ```
 
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
@@ -290,6 +298,21 @@ docs/               Requirements specification, architecture overview, architect
 e2e/                Playwright end-to-end tests
 scripts/            kind, development and integration test helpers
 ```
+
+### Releases
+
+CI ([ci.yaml](.github/workflows/ci.yaml)) runs lint, type check, tests, the Helm chart check,
+the integration tests on kind and an image build for every push to `main` and every pull request.
+
+A release is triggered by a version tag ([release.yaml](.github/workflows/release.yaml)):
+
+1. Set `version` and `appVersion` in `deploy/helm/capi-navigator/Chart.yaml` to the new version
+   and commit.
+2. `git tag v0.2.0 && git push origin v0.2.0`
+
+The workflow checks that the tag matches `Chart.yaml`, pushes the image
+`ghcr.io/alirionx/capi-navigator` with the tags `0.2.0`, `0.2` and `latest`, and creates the
+GitHub release with `capi-navigator-0.2.0.tgz` and its SHA-256 checksum.
 
 ## Contributing
 
