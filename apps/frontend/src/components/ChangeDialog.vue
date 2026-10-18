@@ -2,6 +2,10 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { ClusterChangePreview } from '@capi-navigator/shared';
+
+/** Previews of cluster changes and of add-ons (FP-8): rollouts only for clusters. */
+type ChangePreview = Omit<ClusterChangePreview, 'rollouts'> &
+  Partial<Pick<ClusterChangePreview, 'rollouts'>>;
 import ErrorAlert from './ErrorAlert.vue';
 import YamlDiff from './YamlDiff.vue';
 
@@ -13,15 +17,17 @@ const props = defineProps<{
   title: string;
   /** False while the form is invalid. */
   valid: boolean;
-  preview: () => Promise<ClusterChangePreview>;
+  preview: () => Promise<ChangePreview>;
   apply: (takeOver: boolean) => Promise<unknown>;
+  /** Width of the form step (wider for forms with an editor). */
+  formWidth?: number;
 }>();
 const open = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ applied: [] }>();
 const { t } = useI18n();
 
 const step = ref<'form' | 'preview'>('form');
-const result = ref<ClusterChangePreview | null>(null);
+const result = ref<ChangePreview | null>(null);
 const error = ref<unknown>(null);
 const busy = ref(false);
 const takeOver = ref(false);
@@ -75,7 +81,7 @@ async function confirm(): Promise<void> {
 </script>
 
 <template>
-  <v-dialog v-model="open" :max-width="step === 'form' ? 560 : 1100" scrollable>
+  <v-dialog v-model="open" :max-width="step === 'form' ? (formWidth ?? 560) : 1100" scrollable>
     <v-card :title="title" data-testid="change-dialog">
       <v-card-text>
         <div v-show="step === 'form'"><slot /></div>
@@ -119,7 +125,8 @@ async function confirm(): Promise<void> {
             />
           </v-alert>
           <!-- FP7-F-16: which machines are replaced, in which order -->
-          <v-card v-if="result.rollouts.length" border class="mb-3" data-testid="rollout-plan">
+          <slot name="preview" :result="result" />
+          <v-card v-if="result.rollouts?.length" border class="mb-3" data-testid="rollout-plan">
             <v-card-item :title="t('changes.rolloutTitle')" />
             <v-table density="compact">
               <tbody>

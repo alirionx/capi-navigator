@@ -3,12 +3,14 @@ import type { Pinia } from 'pinia';
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { onUnauthorized } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
+import AddonsView from '../views/AddonsView.vue';
 import ChangePasswordView from '../views/ChangePasswordView.vue';
 import ClusterDetailView from '../views/ClusterDetailView.vue';
 import ClustersView from '../views/ClustersView.vue';
 import ClusterWizardView from '../views/ClusterWizardView.vue';
 import ConnectionsView from '../views/ConnectionsView.vue';
 import CredentialsView from '../views/CredentialsView.vue';
+import HelmRepositoriesView from '../views/HelmRepositoriesView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
@@ -67,6 +69,17 @@ export const routes: RouteRecordRaw[] = [
     meta: { minRole: 'viewer' },
   },
   {
+    path: '/addons',
+    name: 'addons',
+    component: AddonsView,
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.addons',
+      icon: 'mdi-package-variant-closed',
+      navGroup: 'overview',
+    },
+  },
+  {
     path: '/connections',
     name: 'connections',
     component: ConnectionsView,
@@ -96,6 +109,17 @@ export const routes: RouteRecordRaw[] = [
       minRole: 'viewer',
       titleKey: 'nav.credentials',
       icon: 'mdi-key-chain',
+      navGroup: 'management',
+    },
+  },
+  {
+    path: '/helm-repositories',
+    name: 'helm-repositories',
+    component: HelmRepositoriesView,
+    meta: {
+      minRole: 'viewer',
+      titleKey: 'nav.helmRepositories',
+      icon: 'mdi-database-outline',
       navGroup: 'management',
     },
   },
