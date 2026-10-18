@@ -336,7 +336,7 @@ Kubernetes distributions are likewise interchangeable through an analogous `Boot
 
 ## 6. Feature packs
 
-Implementation proceeds in eleven feature packs that build on each other. Each pack ends in a working, tested state.
+Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
 
 | Pack | Content | Depends on |
 | --- | --- | --- |
@@ -674,7 +674,7 @@ Verified on 2026-10-18 on Infomaniak with `fp10-kubeadm-c` (1 control plane, 1 w
 **Goal:** a root shell on any node of a workload cluster or of the management cluster from the web UI, for troubleshooting, without SSH keys (ADR-0008).
 
 - **FP17-F-01** MUST open a terminal (xterm.js over WebSocket) on a node through a short-lived privileged pod that enters the host namespaces with `nsenter`.
-- **FP17-F-02** MUST allow workload cluster nodes for operators and admins and management cluster nodes for admins only; the backend enforces the roles and a same-origin check on the WebSocket.
+- **FP17-F-02** MUST allow workload cluster nodes for operators and admins and management cluster nodes for admins only; the backend enforces the roles and a same-origin check on the WebSocket. Since FP-19 these are the permissions `nodes.shell` (in the cluster's connection and namespace) and `managementNodes.shell`.
 - **FP17-F-03** MUST delete the pod when the session ends, after 15 minutes without input, and at the latest after one hour (`activeDeadlineSeconds`), and remove leftovers.
 - **FP17-F-04** MUST record start and end of every session as `AuditEvent`, without terminal content.
 - **FP17-F-05** SHOULD make the pod image configurable for mirrors (FP-16).

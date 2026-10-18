@@ -205,8 +205,9 @@ service:
 
 > [!IMPORTANT]
 > The app manages clusters and stores cloud credentials. Expose it only via HTTPS (sessions use
-> Secure cookies) and give the admin role to few people: admins can install providers and open
-> root shells on management cluster nodes, operators on workload cluster nodes.
+> Secure cookies) and give the admin role, or any role with `users.manage`, to few people: they can
+> grant every permission, install providers and open root shells on management cluster nodes;
+> operators open root shells on workload cluster nodes.
 
 ## Using the app
 
@@ -222,6 +223,9 @@ service:
 5. **Day-2**: the tabs of a cluster offer configuration changes (always with preview), the
    dashboard, the node shell, add-ons and the YAML of every resource.
 6. **Add-ons**: add Helm repositories (admins), then create add-ons that select clusters by label.
+7. **Users and roles**: create users and give them role assignments, everywhere or limited to
+   connections and namespaces (e.g. operator in `team-a`); custom roles are combined from 14
+   permissions on the **Roles** page. Every user can read everything; limits apply to actions.
 
 ## Where configuration lives
 
@@ -230,7 +234,7 @@ service:
 | Catalogs and defaults: provider versions, Kubernetes versions, add-on presets (charts, versions), Calico version and checksum, containerd/runc versions | `packages/shared/src/catalog/`, `packages/shared/src/cluster/` (e.g. `addons.ts`, `kubeadm.ts`, `cni.ts`)                                        | At build time, per app version | Developers (later Renovate via a central `versions.yaml`, FP-20) |
 | Schemas and types (cluster spec, API requests, CRDs), all as Zod                                                                                        | `packages/shared/src/`                                                                                                                           | At build time                  | Developers                                                       |
 | Operation of the backend: app namespace, node shell image, port, sessions, initial admin                                                                | Environment variables, validated in `apps/backend/src/config/config.ts`; set through the Helm values in `deploy/helm/capi-navigator/values.yaml` | At deployment                  | Operators (Helm)                                                 |
-| Runtime settings: preset overrides, Helm repositories, connections, credentials, users                                                                  | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Admins in the app                                                |
+| Runtime settings: preset overrides, Helm repositories, connections, credentials, users, roles                                                           | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Users with the matching permission                               |
 | Large backend-only artifacts: Calico manifest                                                                                                           | `apps/backend/assets/`                                                                                                                           | At build time                  | Developers                                                       |
 | UI texts                                                                                                                                                | `apps/frontend/src/i18n/`                                                                                                                        | At build time                  | Developers                                                       |
 
