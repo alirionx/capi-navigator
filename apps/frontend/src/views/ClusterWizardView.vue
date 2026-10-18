@@ -16,6 +16,7 @@ import {
   type LookupOption,
 } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
+import { stepIssues, visibleIssues } from '../forms/wizard-issues.js';
 import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../components/wizard/MachineGroupEditor.vue';
@@ -380,23 +381,16 @@ const spec = computed<ClusterSpecInput>(() => ({
 }));
 
 // ---- validation per step with the shared schema (FP5-F-02) ----
-const STEP_OF: [RegExp, number][] = [
-  [/^(name|namespace|labels|kubernetes\.(version|flavor)|infrastructure\.credentialRef)/, 1],
-  [/customization/, 5],
-  [/^topology/, 2],
-  [/^infrastructure/, 3],
-  [/^addons/, 4],
-  [/^(kubernetes\.(podCidr|serviceCidr)|sshPublicKeys|rollout)/, 6],
-];
 const issues = computed(() => {
   const r = ClusterSpecSchema.safeParse(spec.value);
-  if (r.success) return [];
-  return r.error.issues.map((i) => {
-    const path = i.path.join('.');
-    return { path, message: i.message, step: STEP_OF.find(([re]) => re.test(path))?.[1] ?? 1 };
-  });
+  return r.success ? [] : stepIssues(r.error.issues);
 });
-const issuesFor = (s: number) => issues.value.filter((i) => i.step === s);
+/** Steps the user has left once; only their issues are shown (no errors on an empty form). */
+const visited = ref(new Set<number>());
+watch(step, (_, previous) => {
+  visited.value = new Set([...visited.value, previous]);
+});
+const issuesFor = (s: number) => visibleIssues(issues.value, s, visited.value);
 const firstInvalidStep = computed(() => Math.min(...issues.value.map((i) => i.step), 99));
 
 // ---- preview and create (steps 7 and 8) ----
@@ -1109,7 +1103,8 @@ const canPreview = computed(() => issues.value.length === 0);
         data-testid="step-issues"
       >
         <div v-for="i in issuesFor(step)" :key="i.path">
-          <span class="font-monospace text-caption">{{ i.path }}</span
+          <template v-if="i.labelKey">{{ t(i.labelKey) }}</template>
+          <span v-else class="font-monospace text-caption">{{ i.path }}</span
           >: {{ i.message }}
         </div>
       </v-alert>
