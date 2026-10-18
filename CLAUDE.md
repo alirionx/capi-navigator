@@ -21,7 +21,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 2. Before starting a pack, read in `docs/requirements.md`: section 4 (architecture), section 5 (cluster spec and transformation), and the pack's own section.
 3. Make a short plan for the pack and confirm it with the user before writing larger amounts of code.
 4. Implement in small, reviewable commits. Write tests alongside the code; for transformations, write the snapshot test first.
-5. A pack is done only when all MUST acceptance criteria are met and `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
+5. A pack is done only when all MUST acceptance criteria are met and `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm test:coverage` pass.
 6. Tick the acceptance criteria in `docs/requirements.md`, update the status table below, and summarize what was done and what was deferred.
 
 ### Feature pack status
@@ -110,6 +110,7 @@ pnpm dev              # start backend and frontend in watch mode
 pnpm lint             # ESLint + Prettier check
 pnpm typecheck        # tsc --noEmit for all workspaces
 pnpm test             # Vitest (unit + snapshot)
+pnpm test:coverage    # backend unit tests with the 70 % line coverage threshold (NF-15), as in CI
 pnpm test:int         # Vitest integration tests against the kind cluster; opt-in read-only cloud tests
                       # with OPENSTACK_CLOUDS_YAML=… or AWS_LIVE_ACCESS_KEY_ID/…SECRET_ACCESS_KEY/…REGION
 pnpm test:e2e         # Playwright
@@ -139,7 +140,7 @@ The backend uses `KUBECONFIG` for the home cluster in local development.
 ## Definition of done for every pack
 
 - [ ] All MUST acceptance criteria of the pack are met and ticked in `docs/requirements.md`.
-- [ ] `pnpm lint`, `pnpm typecheck` and `pnpm test` pass.
+- [ ] `pnpm lint`, `pnpm typecheck`, `pnpm test` and `pnpm test:coverage` pass (backend line coverage ≥ 70 %, NF-15).
 - [ ] New transformations have snapshot tests.
 - [ ] No hard rule above is violated.
 - [ ] Deviations are documented as ADRs in `docs/adr/`.

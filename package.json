@@ -12,6 +12,7 @@
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
+    "test:coverage": "pnpm --filter @capi-navigator/backend test:coverage",
     "test": "pnpm -r test",
     "test:int": "bash scripts/test-int.sh",
     "test:e2e": "playwright test",
