@@ -125,6 +125,9 @@ describe('cluster deletion (FP6-F-06)', () => {
     internals.deleteObjects = async () => {
       events.push('deleted');
     };
+    internals.skipDrain = async () => {
+      events.push('skip-drain');
+    };
     svc.workloadApiFor = () => opts.workload ?? fakeWorkload().api;
     return { svc, events };
   }
@@ -169,5 +172,15 @@ describe('cluster deletion (FP6-F-06)', () => {
     });
     expect(status.phase).toBe('deleting');
     expect(events).toEqual(['phase:deleting', 'deleted']);
+  });
+
+  it('skips draining before deleting when asked, e.g. for an unreachable cluster', async () => {
+    const { svc, events } = service({ workload: null });
+    await svc.delete('home', 'team-a', 'demo', {
+      confirmName: 'demo',
+      cleanup: false,
+      skipDrain: true,
+    });
+    expect(events).toEqual(['phase:deleting', 'skip-drain', 'deleted']);
   });
 });

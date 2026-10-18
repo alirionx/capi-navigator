@@ -20,6 +20,7 @@ const loading = ref(false);
 const busy = ref(false);
 const error = ref<unknown>(null);
 const cleanup = ref(true);
+const skipDrain = ref(false);
 const confirmName = ref('');
 
 watch(open, async (o) => {
@@ -28,6 +29,7 @@ watch(open, async (o) => {
   error.value = null;
   confirmName.value = '';
   cleanup.value = true;
+  skipDrain.value = false;
   loading.value = true;
   try {
     preview.value = await store.deletePreview(props.connection, props.namespace, props.name);
@@ -58,6 +60,7 @@ async function confirm(): Promise<void> {
     await store.deleteCluster(props.connection, props.namespace, props.name, {
       confirmName: confirmName.value,
       cleanup: cleanup.value,
+      skipDrain: skipDrain.value,
     });
     open.value = false;
     emit('deleted');
@@ -110,6 +113,17 @@ async function confirm(): Promise<void> {
                 <strong>{{ t('deletion.volumes') }}:</strong> {{ preview.volumes.join(', ') }}
               </div>
             </div>
+            <!-- Without a working cluster API, node draining never finishes. -->
+            <v-switch
+              v-if="!preview.workloadReachable"
+              v-model="skipDrain"
+              :label="t('deletion.skipDrain')"
+              :hint="t('deletion.skipDrainHint')"
+              persistent-hint
+              color="warning"
+              class="mt-2"
+              data-testid="delete-skip-drain"
+            />
           </v-card>
 
           <v-alert

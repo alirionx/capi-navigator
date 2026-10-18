@@ -100,7 +100,7 @@ export class ClusterDeletionService {
     connection: string,
     namespace: string,
     name: string,
-    req: { confirmName: string; cleanup: boolean },
+    req: { confirmName: string; cleanup: boolean; skipDrain?: boolean },
   ): Promise<DeletionStatus> {
     if (req.confirmName !== name) {
       throw new BadRequestException({
@@ -130,6 +130,7 @@ export class ClusterDeletionService {
       ? { phase: 'cleanup', startedAt: new Date().toISOString() }
       : { phase: 'deleting', startedAt: new Date().toISOString() };
     await this.annotate(kc, namespace, name, status);
+    if (req.skipDrain) await this.skipDrain(kc, namespace, name);
     if (cleanup) void this.finishAfterCleanup(connection, namespace, name, api!, status.startedAt);
     else await this.deleteObjects(kc, namespace, name);
     return status;
@@ -164,6 +165,42 @@ export class ClusterDeletionService {
       await this.deleteObjects(kc, namespace, name);
     } catch (err) {
       this.logger.error(`Deletion of ${namespace}/${name} failed: ${String(err)}`);
+    }
+  }
+
+  /**
+   * Upstream CAPI annotations on all machines of the cluster: delete without draining the node or
+   * waiting for volume detach, which never finish while the cluster API is down.
+   */
+  private async skipDrain(kc: KubeConfig, namespace: string, name: string): Promise<void> {
+    const custom = kc.makeApiClient(CustomObjectsApi);
+    const machines = (await custom.listNamespacedCustomObject({
+      ...CAPI,
+      plural: 'machines',
+      namespace,
+      labelSelector: `${CLUSTER_NAME_LABEL}=${name}`,
+    })) as { items: { metadata: { name: string } }[] };
+    const objects = KubernetesObjectApi.makeApiClient(kc);
+    for (const m of machines.items) {
+      await objects.patch(
+        {
+          apiVersion: 'cluster.x-k8s.io/v1beta2',
+          kind: 'Machine',
+          metadata: {
+            name: m.metadata.name,
+            namespace,
+            annotations: {
+              'machine.cluster.x-k8s.io/exclude-node-draining': '',
+              'machine.cluster.x-k8s.io/exclude-wait-for-node-volume-detach': '',
+            },
+          },
+        },
+        undefined,
+        undefined,
+        DELETION_MANAGER,
+        undefined,
+        PatchStrategy.MergePatch,
+      );
     }
   }
 

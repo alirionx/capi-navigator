@@ -113,6 +113,11 @@ export interface BootstrapFlavorPlugin {
    * for the UpToDate condition. Defaults to the distribution version.
    */
   machineVersion?(version: string): string;
+  /**
+   * Fewest control plane nodes with which replacing control plane machines is safe (ADR-0013);
+   * below it, changes that replace them are blocked. Unset: always safe.
+   */
+  safeControlPlaneReplacement?: { minReplicas: number; reason: string };
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {
     spec: ClusterSpec;

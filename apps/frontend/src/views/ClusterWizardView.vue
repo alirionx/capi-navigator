@@ -115,6 +115,14 @@ const draft = reactive({
 });
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
+/** ADR-0013: warn when the control plane is too small to be replaced later. */
+const cpReplacementWarning = computed(() => {
+  const safe = FLAVOR_PLUGINS[draft.flavor]?.safeControlPlaneReplacement;
+  const replicas = draft.mode === 'all-in-one' ? 1 : draft.cp.replicas;
+  return safe && replicas < safe.minReplicas
+    ? t('wizard.cpReplacementWarning', { reason: safe.reason, min: safe.minReplicas })
+    : '';
+});
 watch(
   () => draft.flavor,
   (f) => (draft.version = defaultVersion(f)),
@@ -569,6 +577,15 @@ const canPreview = computed(() => issues.value.length === 0);
           <div class="text-caption text-medium-emphasis mb-3">
             {{ t('wizard.cpHint', { cp: cpKind }) }}
           </div>
+          <v-alert
+            v-if="cpReplacementWarning"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+            data-testid="cp-replacement-warning"
+            >{{ cpReplacementWarning }}</v-alert
+          >
           <MachineGroupEditor
             v-model="draft.cp"
             :provider="draft.provider"
