@@ -15,6 +15,7 @@ playwright-report/
 .kube/
 *.kubeconfig
 kubeconfig*
+!*.ts
 clouds.yaml
 clouds.yml
 *.pem
