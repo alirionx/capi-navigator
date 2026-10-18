@@ -35,6 +35,8 @@ export function analyzeRollouts(args: {
   removedDeployments: { name: string; before: Record<string, unknown> }[];
   machines: MachineLike[];
   workerVersionPending: boolean;
+  /** Control plane kinds whose version upgrades run in place (ADR-0013). */
+  inPlaceVersionKinds?: string[];
 }): { rollouts: RolloutPlan[]; running: string[] } {
   const rollouts: RolloutPlan[] = [];
   const running: string[] = [];
@@ -74,19 +76,23 @@ export function analyzeRollouts(args: {
     }
     if (!o.before || !o.after) continue;
     if (isCp) {
-      // Everything but the replica count rolls the control plane machines.
-      if (
-        stableStringify(without(spec(o.before), 'replicas')) !==
-        stableStringify(without(spec(o.after), 'replicas'))
-      ) {
+      // Everything but the replica count rolls the control plane machines, except version-only
+      // changes of providers that upgrade in place (ADR-0013).
+      const before = without(spec(o.before), 'replicas');
+      const after = without(spec(o.after), 'replicas');
+      if (stableStringify(before) !== stableStringify(after)) {
+        const inPlace =
+          (args.inPlaceVersionKinds ?? []).includes(o.kind) &&
+          stableStringify(without(before, 'version')) ===
+            stableStringify(without(after, 'version'));
         rollouts.push({
           order: 0,
           kind: o.kind,
           name: o.name,
           group: 'control plane',
           machines: machinesOf((m) => CP_LABEL in (m.metadata.labels ?? {})),
-          strategy: 'one node at a time (maxSurge 1)',
-          action: 'replace',
+          strategy: inPlace ? 'in place, one node at a time' : 'one node at a time (maxSurge 1)',
+          action: inPlace ? 'inPlace' : 'replace',
         });
       }
       continue;

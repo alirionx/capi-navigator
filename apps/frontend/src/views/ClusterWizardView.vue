@@ -115,13 +115,10 @@ const draft = reactive({
 });
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
-/** ADR-0013: warn when the control plane is too small to be replaced later. */
+/** ADR-0013: the distribution cannot replace control plane machines later. */
 const cpReplacementWarning = computed(() => {
-  const safe = FLAVOR_PLUGINS[draft.flavor]?.safeControlPlaneReplacement;
-  const replicas = draft.mode === 'all-in-one' ? 1 : draft.cp.replicas;
-  return safe && replicas < safe.minReplicas
-    ? t('wizard.cpReplacementWarning', { reason: safe.reason, min: safe.minReplicas })
-    : '';
+  const blocked = FLAVOR_PLUGINS[draft.flavor]?.controlPlaneUpdates?.replacementBlocked;
+  return blocked ? t('wizard.cpReplacementWarning', { reason: blocked }) : '';
 });
 watch(
   () => draft.flavor,

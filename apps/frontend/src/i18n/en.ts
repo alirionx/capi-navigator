@@ -58,6 +58,7 @@ export const en = {
       replace: 'replaced',
       remove: 'removed',
       later: 'follows',
+      inPlace: 'updated in place',
     },
     diffLabel: 'Changes as YAML (read-only), before and after',
     driftTitle: 'Changed outside CAPI Navigator',
@@ -596,8 +597,7 @@ export const en = {
     modeAio: 'All-in-one (1 node)',
     controlPlane: 'Control plane',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',
-    cpReplacementWarning:
-      '{reason} Upgrades, image changes and rebuilds of the control plane are blocked until it has {min} nodes; choose {min} if you plan them.',
+    cpReplacementWarning: '{reason}',
     poolName: 'Pool name',
     poolNameHint: 'Lowercase, at most 12 characters. MachineDeployment <cluster>-<pool>.',
     poolTitle: 'Pool {name}',

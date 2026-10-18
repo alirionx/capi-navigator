@@ -136,7 +136,11 @@ async function confirm(): Promise<void> {
                       size="x-small"
                       variant="tonal"
                       :color="
-                        r.action === 'remove' ? 'error' : r.action === 'later' ? 'info' : 'warning'
+                        r.action === 'remove'
+                          ? 'error'
+                          : r.action === 'later' || r.action === 'inPlace'
+                            ? 'info'
+                            : 'warning'
                       "
                       >{{ t(`changes.rollout.${r.action}`) }}</v-chip
                     >

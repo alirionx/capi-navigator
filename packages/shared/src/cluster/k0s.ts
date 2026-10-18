@@ -7,8 +7,8 @@ import { compact } from './util.js';
  * regular machines. Field names verified against the CRDs of the v2.2.0 release
  * (control-plane-components.yaml, bootstrap-components.yaml) and the k0s configuration reference.
  *
- * - `updateStrategy: Recreate`: version, configuration and template changes replace machines
- *   (hard rule 5) instead of k0smotron's default in-place update via autopilot.
+ * - `updateStrategy: InPlace`: version upgrades of the control plane run via k0s autopilot; changes
+ *   that would replace control plane machines are refused (ADR-0013).
  * - Control plane nodes run with `--enable-worker` and keep the control plane taint, so they are
  *   nodes like with RKE2 (CCM/CSI controllers schedule there); all-in-one drops the taint.
  * - k0smotron's ProviderID controller sets the node's providerID from the Machine, so no instance
@@ -87,12 +87,13 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
   // The k0s kubelet reports "v1.35.8+k0s" for k0s "v1.35.8+k0s.1" (seen live with CAPI v1.14.3).
   machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
-  // ADR-0013: replacing the only controller lost etcd quorum when k0smotron removed the old
-  // member (reproduced twice with k0smotron v2.2.0 on OpenStack).
-  safeControlPlaneReplacement: {
-    minReplicas: 3,
-    reason:
-      'k0s with fewer than 3 control plane nodes loses etcd quorum when k0smotron replaces a control plane machine (ADR-0013).',
+  // ADR-0013: k0smotron v2.2.0 removes all old control plane machines (and their etcd members)
+  // right after the first replacement is ready, so etcd loses quorum. Version upgrades therefore
+  // run in place (k0s autopilot); changes that would replace control plane machines are refused.
+  controlPlaneUpdates: {
+    versionInPlace: true,
+    replacementBlocked:
+      'k0smotron v2.2.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Version upgrades run in place; image, flavor, customization and rebuild changes of the control plane are not possible.',
   },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
@@ -143,7 +144,8 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
       spec: {
         version: spec.kubernetes.version,
         replicas: cp.replicas,
-        updateStrategy: 'Recreate',
+        // ADR-0013: in place via k0s autopilot (exception to hard rule 5, versions only).
+        updateStrategy: 'InPlace',
         machineTemplate: {
           // v1beta2 K0sControlPlane still references the template with apiVersion.
           infrastructureRef: {

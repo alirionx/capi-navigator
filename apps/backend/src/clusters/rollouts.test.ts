@@ -50,6 +50,27 @@ describe('running rollouts (FP7-F-17)', () => {
     expect(run([cp as never], [])).toEqual(['K0sControlPlane demo-control-plane']);
   });
 
+  it('marks version-only control plane changes as in place when the provider supports it', () => {
+    const cp = (version: string, extra: Record<string, unknown> = {}) => ({
+      spec: { replicas: 3, version, k0sConfigSpec: { args: ['--enable-worker'] }, ...extra },
+      status: { replicas: 3, readyReplicas: 3, upToDateReplicas: 3 },
+    });
+    const plan = (after: Record<string, unknown>) =>
+      analyzeRollouts({
+        controlPlaneKinds: ['K0sControlPlane'],
+        objects: [{ kind: 'K0sControlPlane', name: 'cp', before: cp('v1.35.8+k0s.1'), after }],
+        removedDeployments: [],
+        machines: [],
+        workerVersionPending: false,
+        inPlaceVersionKinds: ['K0sControlPlane'],
+      }).rollouts;
+    expect(plan(cp('v1.36.4+k0s.1'))[0]?.action).toBe('inPlace');
+    expect(
+      plan(cp('v1.36.4+k0s.1', { machineTemplate: { infrastructureRef: { name: 'new' } } }))[0]
+        ?.action,
+    ).toBe('replace');
+  });
+
   it('does not block on ready machines that never count as up to date (FP9: kubelet version)', () => {
     expect(
       run(
