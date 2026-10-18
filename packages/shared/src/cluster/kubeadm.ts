@@ -194,6 +194,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
   displayName: 'kubeadm',
   experimental: true,
   needsCni: true,
+  installsPackages: true,
   customizationFields: { preCommands: 'preKubeadmCommands', postCommands: 'postKubeadmCommands' },
   // API server only behind the load balancer; Calico VXLAN with Typha between nodes (FP10-F-04).
   network: {

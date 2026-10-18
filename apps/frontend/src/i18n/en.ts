@@ -579,7 +579,19 @@ export const en = {
     distribution: 'Kubernetes distribution',
     distributionHint:
       'Installed via cloud-init on stock images; its bootstrap and control plane providers must be installed. Default: RKE2.',
-    kubeadmLater: 'kubeadm, experimental (FP-10)',
+    kubeadmExperimental: 'kubeadm (experimental)',
+    experimentalTitle: 'Experimental',
+    kubeadmTradeoffs:
+      'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images.',
+    cni: 'Calico CNI',
+    cniHint:
+      'kubeadm ships no network plugin: Calico with VXLAN, as with RKE2 and k0s. Turn off only to install your own CNI. Default: on.',
+    packageRepository: 'Kubernetes package mirror (optional)',
+    packageRepositoryHint:
+      'Instead of https://pkgs.k8s.io; the path /core:/stable:/vX.Y/ is appended. Default: pkgs.k8s.io.',
+    binaryDownloads: 'Runtime download mirror (optional)',
+    binaryDownloadsHint:
+      'Instead of https://github.com for the containerd and runc releases (same paths). Default: github.com.',
     version: 'Kubernetes version',
     versionHint:
       'From the version catalog. Maps to {cp}.spec.version and MachineDeployment.spec.template.spec.version.',
