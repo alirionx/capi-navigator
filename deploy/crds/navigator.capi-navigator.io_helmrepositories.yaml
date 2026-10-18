@@ -1,0 +1,75 @@
+# Generated from packages/shared/src/crds by `pnpm crds:generate`. Do not edit.
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: helmrepositories.navigator.capi-navigator.io
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+spec:
+  group: navigator.capi-navigator.io
+  names:
+    kind: HelmRepository
+    listKind: HelmRepositoryList
+    plural: helmrepositories
+    singular: helmrepository
+    shortNames:
+      - navhelmrepo
+    categories:
+      - capi-navigator
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          jsonPath: .spec.type
+        - name: URL
+          type: string
+          jsonPath: .spec.url
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+      schema:
+        openAPIV3Schema:
+          type: object
+          required:
+            - spec
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                  maxLength: 80
+                type:
+                  type: string
+                  enum:
+                    - http
+                    - oci
+                url:
+                  type: string
+                  maxLength: 512
+                insecureSkipTLSVerify:
+                  default: false
+                  type: boolean
+                hasCredentials:
+                  default: false
+                  type: boolean
+                hasCaCertificate:
+                  default: false
+                  type: boolean
+                credentialsRevision:
+                  default: 0
+                  type: integer
+                  minimum: 0
+              required:
+                - type
+                - url
