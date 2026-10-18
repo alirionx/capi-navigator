@@ -453,3 +453,25 @@ describe('kubeadm flavor (FP-10)', () => {
     expect(names('v1.36.5')).not.toEqual(names('v1.35.9'));
   });
 });
+
+describe('kubeadm install script runs in bash (FP10-F-02)', () => {
+  it('is valid bash and picks the package version without breaking the pipe', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const spec = ClusterSpecSchema.parse({
+      ...openstack(),
+      kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+    });
+    const script = kubeadmInstallScript(spec, 'v1.35.9');
+    execFileSync('bash', ['-n'], { input: script });
+    // The version lookup under pipefail with a long package list (an early awk exit broke the
+    // pipe and ended the script silently, seen live on Infomaniak).
+    const program = /awk -v v="\$\{K8S_VERSION\}-" '([^']+)'/.exec(script)![1]!;
+    const list =
+      'for i in $(seq 1 5000); do echo "   kubeadm | 1.35.8-1.1 | x"; done; echo "   kubeadm | 1.35.9-1.1 | x"; for i in $(seq 1 5000); do echo "   kubeadm | 1.35.7-1.1 | x"; done';
+    const out = execFileSync('bash', [
+      '-c',
+      `set -euo pipefail; pkg=$( { ${list}; } | awk -v v="1.35.9-" '${program}'); echo "$pkg"`,
+    ]).toString();
+    expect(out.trim()).toBe('1.35.9-1.1');
+  });
+});
