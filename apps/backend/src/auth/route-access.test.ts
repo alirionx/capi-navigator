@@ -21,7 +21,14 @@ const meta = <T>(key: string, ...targets: object[]): T | undefined =>
  */
 describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
   const routes = await listRoutes();
-  const expected = baseline as Record<string, string>;
+  // Endpoints added since: the built-in roles get the access stated here.
+  const added: Record<string, Role> = {
+    'GET /api/roles': 'admin',
+    'POST /api/roles': 'admin',
+    'PATCH /api/roles/:name': 'admin',
+    'DELETE /api/roles/:name': 'admin',
+  };
+  const expected = { ...(baseline as Record<string, string>), ...added };
 
   it('covers every endpoint, and every endpoint has an access rule', () => {
     expect(routes.map((r) => r.route).sort()).toEqual(Object.keys(expected).sort());

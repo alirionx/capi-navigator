@@ -218,6 +218,51 @@ export function bindingProblems(
  * becomes one unlimited assignment.
  */
 export function userBindings(spec: { role?: Role; bindings?: RoleBinding[] }): RoleBinding[] {
-  if (spec.bindings && spec.bindings.length > 0) return spec.bindings;
+  // Once written, `bindings` wins, also when empty (all access removed).
+  if (spec.bindings) return spec.bindings;
   return spec.role ? [{ role: spec.role }] : [];
 }
+
+/**
+ * True if at least one enabled user keeps an unlimited assignment with `users.manage`
+ * (FP19-F-08), so nobody can lock the app out of its user management.
+ */
+export function hasUserManager(
+  users: readonly { disabled: boolean; bindings: readonly RoleBinding[] }[],
+  rolePermissions: RolePermissions,
+): boolean {
+  return users.some(
+    (u) =>
+      !u.disabled &&
+      u.bindings.some((b) => isUnlimited(b) && rolePermissions(b.role)?.includes('users.manage')),
+  );
+}
+
+/** A role as shown on the roles page (FP19-F-09). */
+export const RoleInfoSchema = z.object({
+  name: z.string(),
+  displayName: z.string(),
+  description: z.string().optional(),
+  permissions: z.array(PermissionSchema),
+  builtin: z.boolean(),
+  /** Users with an assignment of this role. */
+  users: z.array(z.string()),
+});
+export type RoleInfo = z.infer<typeof RoleInfoSchema>;
+export const RoleInfoListSchema = z.array(RoleInfoSchema);
+
+const RoleFieldsSchema = z.object({
+  displayName: z.string().trim().min(1, 'Required').max(60, 'At most 60 characters'),
+  description: z.string().trim().max(300, 'At most 300 characters').optional(),
+  /** `view` is always granted in addition. */
+  permissions: z.array(PermissionSchema).max(PERMISSIONS.length),
+});
+export const CreateRoleRequestSchema = RoleFieldsSchema.extend({
+  name: RoleNameSchema.refine(
+    (n) => !isBuiltinRole(n),
+    'This name is reserved for a built-in role',
+  ),
+});
+export type CreateRoleRequest = z.infer<typeof CreateRoleRequestSchema>;
+export const UpdateRoleRequestSchema = RoleFieldsSchema;
+export type UpdateRoleRequest = z.infer<typeof UpdateRoleRequestSchema>;
