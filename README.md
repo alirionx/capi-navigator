@@ -127,7 +127,7 @@ Every release publishes the image `ghcr.io/alirionx/capi-navigator:<version>` an
 packaged chart to the [GitHub release](https://github.com/alirionx/capi-navigator/releases):
 
 ```sh
-VERSION=0.2.0
+VERSION=0.3.0
 helm install capi-navigator \
   https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz \
   -n capi-navigator-system --create-namespace \
@@ -148,6 +148,18 @@ helm install capi-navigator deploy/helm/capi-navigator \
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
 there on first start.
+
+### Upgrading
+
+Helm installs the CRDs from the chart's `crds/` directory only on `helm install`, never on
+`helm upgrade`. Apply the CRDs of the new version first, otherwise new resources (e.g.
+`NavigatorRole` in 0.3.0) are missing and new fields are dropped by the API server:
+
+```sh
+CHART=https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz
+helm show crds "$CHART" | kubectl apply --server-side -f -
+helm upgrade capi-navigator "$CHART" -n capi-navigator-system --reuse-values
+```
 
 ### Exposing the app
 
@@ -315,11 +327,15 @@ A release is triggered by a version tag ([release.yaml](.github/workflows/releas
 
 1. Set `version` and `appVersion` in `deploy/helm/capi-navigator/Chart.yaml` to the new version
    and commit.
-2. `git tag v0.2.0 && git push origin v0.2.0`
+2. `git tag v0.3.0 && git push origin v0.3.0`
 
 The workflow checks that the tag matches `Chart.yaml`, pushes the image
-`ghcr.io/alirionx/capi-navigator` with the tags `0.2.0`, `0.2` and `latest`, and creates the
-GitHub release with `capi-navigator-0.2.0.tgz` and its SHA-256 checksum.
+`ghcr.io/alirionx/capi-navigator` with the tags `0.3.0`, `0.3` and `latest`, and creates the
+GitHub release with `capi-navigator-0.3.0.tgz` and its SHA-256 checksum.
+
+The version lives in one place: `version` and `appVersion` in `Chart.yaml` (always equal). The
+image gets it from the tag at build time (`APP_VERSION`); local builds and the `package.json` files
+carry `0.0.0-dev`. New features raise the minor version, fixes the patch version.
 
 ## Contributing
 
