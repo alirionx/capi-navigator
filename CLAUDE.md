@@ -38,7 +38,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-7 | Live YAML view (read-only) and day-2 operations | done |
 | FP-8 | Helm add-ons via CAAPH | done |
 | FP-9 | k0s as second Kubernetes distribution | done (control plane image rebuild blocked upstream, ADR-0013) |
-| FP-10 | kubeadm on stock images (experimental) | next |
+| FP-10 | kubeadm on stock images (experimental) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 

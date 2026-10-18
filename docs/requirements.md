@@ -661,10 +661,12 @@ Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11
 
 **Acceptance criteria**
 
-- [ ] Snapshot tests cover the kubeadm flavor including the generated install script.
-- [ ] A kubeadm standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CNI, CCM and CSI working.
-- [ ] Upgrading by one minor version replaces all nodes, and the new nodes run the new kubelet version.
-- [ ] The wizard shows the experimental label and the trade-offs before creation.
+- [x] Snapshot tests cover the kubeadm flavor including the generated install script.
+- [x] A kubeadm standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CNI, CCM and CSI working.
+- [x] Upgrading by one minor version replaces all nodes, and the new nodes run the new kubelet version.
+- [x] The wizard shows the experimental label and the trade-offs before creation.
+
+Verified on 2026-10-18 on Infomaniak with `fp10-kubeadm-c` (1 control plane, 1 worker): created from stock Ubuntu 24.04 with kubeadm v1.34.12; Calico, OpenStack CCM (load balancer with public IP) and Cinder CSI (volume bound and mounted) working; pod traffic across nodes by pod IP and service name. Upgrade to v1.35.9 replaced both nodes (control plane first) without API downtime; changing the image of control plane and workers to Debian 13 created new templates and left existing ones unchanged; then deleted with cleanup. Refinements (ADR-0014): containerd and runc come as checksum-verified release binaries, so Debian and Rocky/Alma images work as well (FP10-F-03); Calico is delivered by a `ClusterResourceSet` instead of CAAPH, because its CRD chart exceeds the 1 MiB Helm release limit (FP10-F-04).
 
 ### FP-17: Node shell (implemented ahead of FP-7)
 
