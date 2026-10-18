@@ -19,6 +19,8 @@ export interface AddonPreset {
   chartName: string;
   version: string;
   releaseNamespace: string;
+  /** Cluster label that selects the preset; default capi-navigator.io/<kind>=<provider or id>. */
+  selector?: [string, string];
   /** CAAPH Go template; `{{ .Cluster.metadata.name }}` is the workload cluster name, `.InfraCluster` its infra cluster. */
   valuesTemplate: string;
 }
@@ -123,29 +125,11 @@ export const ADDON_PRESETS: AddonPreset[] = [
       'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
     ].join(''),
   },
-  {
-    // FP10-F-04: Calico for distributions without a built-in CNI (kubeadm), the same CNI and VXLAN
-    // overlay that RKE2 and k0s use. tigera-operator v3.33.0; values verified against its
-    // values.yaml on 2026-10-18. Optional components (API server, Goldmane, Whisker) stay off.
-    id: 'calico',
-    provider: 'any',
-    kind: 'cni',
-    displayName: 'Calico CNI',
-    repoURL: 'https://docs.tigera.io/calico/charts',
-    chartName: 'tigera-operator',
-    version: 'v3.33.0',
-    releaseNamespace: 'tigera-operator',
-    valuesTemplate: [
-      'installation:\n  calicoNetwork:\n    bgp: Disabled\n    ipPools:\n',
-      '      - cidr: {{ index .Cluster.spec.clusterNetwork.pods.cidrBlocks 0 }}\n',
-      '        encapsulation: VXLAN\n        natOutgoing: Enabled\n        nodeSelector: all()\n',
-      'apiServer:\n  enabled: false\ngoldmane:\n  enabled: false\nwhisker:\n  enabled: false\n',
-    ].join(''),
-  },
 ];
 
 /** Cluster label that selects a preset, e.g. capi-navigator.io/ccm=openstack. */
 export function presetSelector(preset: AddonPreset): [string, string] {
+  if (preset.selector) return preset.selector;
   return [
     `capi-navigator.io/${preset.kind}`,
     preset.provider === 'any' ? preset.id : preset.provider,

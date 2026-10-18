@@ -25,6 +25,8 @@ import {
   type Drift,
   type ObjectDiff,
   FLAVOR_PLUGINS,
+  buildCalicoResourceSet,
+  CALICO_MANIFEST,
   INFRA_PLUGINS,
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
@@ -55,6 +57,7 @@ import {
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
+import { calicoManifest } from './cni-manifest.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { ImageNameCache } from './image-names.js';
 import { analyzeRollouts, type PlannedObject } from './rollouts.js';
@@ -810,6 +813,36 @@ export class ClustersService {
       } else {
         warnings.push(
           `The add-on preset ${hcp.metadata!.name} in namespace ${spec.namespace} differs from the current version and was changed outside the app; it is left as is.`,
+        );
+      }
+    }
+
+    // FP10-F-04 (ADR-0014): Calico for distributions without a built-in CNI, once per namespace
+    // via ClusterResourceSet; existing ones are left as they are (versioned names for upgrades).
+    if (FLAVOR_PLUGINS[spec.kubernetes.flavor]?.needsCni && spec.addons.cni !== 'none') {
+      const manifest = await calicoManifest();
+      const [configMap, resourceSet] = buildCalicoResourceSet(
+        spec.namespace,
+        manifest,
+      ) as unknown as [KubernetesObject, KubernetesObject];
+      const existing = await this.getCustom(
+        kc,
+        'addons.cluster.x-k8s.io',
+        'v1beta2',
+        'clusterresourcesets',
+        spec.namespace,
+        resourceSet.metadata!.name!,
+      );
+      if (!existing) {
+        extra.push(configMap, resourceSet);
+        extraPreview.push(
+          {
+            ...configMap,
+            data: {
+              'calico.yaml': `# Official Calico ${CALICO_MANIFEST.version} manifest (calico-vxlan.yaml, ${Math.round(manifest.length / 1024)} KB, sha256 ${CALICO_MANIFEST.sha256.slice(0, 12)}…) with VXLAN Always, shortened in the preview`,
+            },
+          } as KubernetesObject,
+          resourceSet,
         );
       }
     }

@@ -21,6 +21,18 @@ describe('apply helpers (hard rules 4 and 8)', () => {
     ).toEqual({ managers: ['kubectl (scale)'], fields: ['.spec.replicas'] });
   });
 
+  it('shortens large ConfigMap values but keeps small ones (ADR-0014)', () => {
+    const out = normalizeForDiff({
+      apiVersion: 'v1',
+      kind: 'ConfigMap',
+      metadata: { name: 'c' },
+      data: { big: 'x'.repeat(200 * 1024), small: 'ok' },
+    } as never);
+    const data = out.data as Record<string, string>;
+    expect(data.small).toBe('ok');
+    expect(data.big).toMatch(/^# 200 KB, shortened in the preview \([0-9a-f]{6}\)$/);
+  });
+
   it('drops server-managed metadata and masks Secret values', () => {
     const out = normalizeForDiff({
       apiVersion: 'v1',
