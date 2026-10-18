@@ -89,6 +89,9 @@ Browser (Vue 3 SPA)  ──REST + SSE──▶  NestJS backend  ──Kubernetes
   Pure functions translate it into CAPI resources; providers and distributions are plugins.
 - The **home cluster** holds the app's own state. It can also be one of the management clusters.
 
+See [docs/architecture.md](docs/architecture.md) for how the parts work together: which
+resources the app writes, which controllers act on them, and the main flows step by step.
+
 ## Quick start
 
 ### Local development with kind
@@ -283,7 +286,7 @@ packages/shared/    Zod schemas, catalogs, transformation (cluster spec → CAPI
 deploy/helm/        Helm chart incl. CRDs
 deploy/crds/        Generated CRDs of the app
 deploy/management-cluster/  Access manifests for management clusters (full and minimal)
-docs/               Requirements specification, architecture decisions (ADRs), screenshots
+docs/               Requirements specification, architecture overview, architecture decisions (ADRs)
 e2e/                Playwright end-to-end tests
 scripts/            kind, development and integration test helpers
 ```
