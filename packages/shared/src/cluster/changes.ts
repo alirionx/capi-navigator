@@ -136,10 +136,10 @@ export type ClusterChangePreview = z.infer<typeof ClusterChangePreviewSchema>;
 /** Name of the control plane group in day-2 changes (pool names have at most 12 characters). */
 export const CONTROL_PLANE_GROUP = 'control-plane';
 
-/** Version parts for comparisons: "v1.35.9+rke2r1" → [1, 35, 9, 1]. */
+/** Version parts for comparisons: "v1.35.9+rke2r1" → [1, 35, 9, 1], "v1.35.9" → [1, 35, 9, 0]. */
 export function versionParts(v: string): number[] {
   // The revision is the last number of the suffix: "+rke2r1" → 1, "+k0s.1" → 1.
-  const m = /^v(\d+)\.(\d+)\.(\d+)\+.*?(\d+)?$/.exec(v);
+  const m = /^v(\d+)\.(\d+)\.(\d+)(?:\+.*?(\d+)?)?$/.exec(v);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4] ?? 0)] : [0, 0, 0, 0];
 }
 
