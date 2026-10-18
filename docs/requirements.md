@@ -616,10 +616,12 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 
 **Acceptance criteria**
 
-- [ ] A chart from a public repository (e.g. ingress-nginx) is rolled out to two labelled workload clusters, and both releases show as deployed.
-- [ ] Adding the label to a third cluster installs the release there automatically.
-- [ ] Changing values updates the releases on all matching clusters.
-- [ ] Deleting the `HelmChartProxy` removes the releases after confirmation.
+- [x] A chart from a public repository (e.g. ingress-nginx) is rolled out to two labelled workload clusters, and both releases show as deployed.
+- [x] Adding the label to a third cluster installs the release there automatically.
+- [x] Changing values updates the releases on all matching clusters.
+- [x] Deleting the `HelmChartProxy` removes the releases after confirmation.
+
+Verified on 2026-10-18 with podinfo 6.15.0 instead of ingress-nginx (retired in March 2026) on two OpenStack clusters and an AWS cluster in one namespace, plus a private OCI registry with credentials and a custom CA (ADR-0011). Deferred: admin-defined presets (SHOULD part of FP8-F-14).
 
 ### FP-9: k0s as second Kubernetes distribution
 
