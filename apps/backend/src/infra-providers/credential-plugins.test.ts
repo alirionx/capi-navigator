@@ -99,13 +99,19 @@ describe('clouds.yaml handling (FP4-F-01, FP4-F-03)', () => {
 
 /** Fake OpenStack: Keystone + catalog without version suffixes (like Infomaniak). */
 function fakeOpenStack(
-  opts: { authStatus?: number; noOctavia?: boolean; brokenPaging?: boolean } = {},
+  opts: {
+    authStatus?: number;
+    noOctavia?: boolean;
+    brokenPaging?: boolean;
+    /** Kolla 2026.1 registers Cinder as block-storage. */
+    cinderType?: 'volumev3' | 'block-storage';
+  } = {},
 ): HttpFn {
   const catalog = [
     'compute',
     'network',
     'image',
-    'volumev3',
+    opts.cinderType ?? 'volumev3',
     ...(opts.noOctavia ? [] : ['load-balancer']),
   ].map((type) => ({
     type,
@@ -149,7 +155,7 @@ function fakeOpenStack(
         },
       ],
     },
-    'https://api.example/volumev3/types': {
+    [`https://api.example/${opts.cinderType ?? 'volumev3'}/types`]: {
       volume_types: [
         { id: 'vt-2', name: 'ssd', description: 'Fast' },
         { id: 'vt-1', name: 'hdd', description: null },
@@ -215,6 +221,15 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
     expect(result.ok).toBe(true);
     expect(paging).toMatchObject({ ok: false, warning: true });
     expect(paging?.message).toMatch(/bastion host would not get a floating IP/);
+  });
+
+  it('finds Cinder under its current service type block-storage (Kolla 2026.1)', async () => {
+    const plugin = new OpenStackCredentialPlugin(fakeOpenStack({ cinderType: 'block-storage' }));
+    const { data, summary } = plugin.normalize(input);
+    const result = await plugin.test(data, summary);
+    expect(result.checks.find((c) => c.name === 'Block storage (Cinder)')?.ok).toBe(true);
+    const types = await plugin.lookup(data, summary, 'volumeTypes', {});
+    expect(types.map((t) => t.value)).toEqual(['hdd', 'ssd']);
   });
 
   it('reports a missing service and rejected credentials', async () => {
