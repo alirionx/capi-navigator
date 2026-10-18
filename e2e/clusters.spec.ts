@@ -131,7 +131,7 @@ async function createViewer(request: APIRequestContext, name: string): Promise<s
   return 'E2e-New-Password-1';
 }
 
-test.describe('cluster lifecycle and roles (FP-6)', () => {
+test.describe('cluster lifecycle and roles (FP-6, FP-7)', () => {
   test.skip(!adminPassword, 'set E2E_ADMIN_PASSWORD to run');
 
   test('operators see lifecycle actions, viewers do not (acceptance FP-6)', async ({
@@ -149,6 +149,8 @@ test.describe('cluster lifecycle and roles (FP-6)', () => {
     // FP-17: node shell for operators and admins.
     await page.getByRole('tab', { name: /Machines/ }).click();
     await expect(page.getByTestId('shell-demo-cp-1')).toBeVisible();
+    // FP-7: day-2 configuration for operators and admins.
+    await expect(page.getByTestId('tab-config')).toBeVisible();
 
     const viewer = `e2e-v-${Date.now().toString(36)}`;
     const password = await createViewer(request, viewer);
@@ -166,6 +168,22 @@ test.describe('cluster lifecycle and roles (FP-6)', () => {
       await viewerPage.getByTestId('tab-dashboard').click();
       await expect(viewerPage.getByTestId('dash-node-demo-cp-1')).toBeVisible();
       await expect(viewerPage.getByTestId('dash-workloads')).toContainText('shop/web');
+      // FP-7: viewers read the YAML but get no day-2 forms.
+      await expect(viewerPage.getByTestId('tab-config')).toHaveCount(0);
+      await viewerPage.route('**/resources/yaml/events?*', (route) =>
+        route.fulfill({
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+          body: `event: state\ndata: ${JSON.stringify({
+            type: 'state',
+            state: { yaml: 'kind: Cluster\nmetadata:\n  name: demo\n', masked: false },
+          })}\n\n`,
+        }),
+      );
+      await viewerPage.getByTestId('tab-tree').click();
+      await viewerPage.getByRole('button', { name: /^Cluster demo/ }).click();
+      await viewerPage.getByTestId('yaml-Cluster-demo').click();
+      await expect(viewerPage.getByTestId('yaml-dialog')).toContainText('kind: Cluster');
       // The backend enforces the roles as well (hard rule 9).
       const api = viewerPage.request;
       const base = '/api/connections/home/clusters/team-a/demo';

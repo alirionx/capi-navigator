@@ -13,3 +13,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0007](0007-bastion-host.md)                                | Bastion host via the providers' built-in bastion                                 | accepted |
 | [0008](0008-node-shell-via-privileged-pod.md)               | Node shell via a privileged pod                                                  | accepted |
 | [0009](0009-dashboard-polling.md)                           | Polling for the read-only cluster dashboard                                      | accepted |
+| [0010](0010-rollout-controller.md)                          | Background rollout controller in the backend                                     | accepted |
