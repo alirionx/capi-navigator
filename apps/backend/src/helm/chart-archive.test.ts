@@ -54,3 +54,19 @@ describe('chart archive (FP8-F-04)', () => {
     ).toEqual(['2.0.0', '1.10.0', '1.10.0-rc.1', 'v1.9.3', '1.2.0']);
   });
 });
+
+describe('fetch errors (NF-06)', () => {
+  it('translates TLS trust errors', async () => {
+    const { describeError } = await import('./fetch.js');
+    const url = new URL('https://registry.example:5443/v2/');
+    const err = Object.assign(
+      new Error('unable to verify the first certificate; try --use-system-ca'),
+      {
+        code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
+      },
+    );
+    expect(describeError(url, err)).toBe(
+      'registry.example:5443: the server certificate is not trusted; add the CA certificate of the registry',
+    );
+  });
+});
