@@ -1,66 +1,259 @@
 # CAPI Navigator
 
-A lean web UI for [Cluster API](https://cluster-api.sigs.k8s.io/). See
-[docs/requirements.md](docs/requirements.md) for the full specification.
+[![CI](https://github.com/alirionx/capi-navigator/actions/workflows/ci.yaml/badge.svg)](https://github.com/alirionx/capi-navigator/actions/workflows/ci.yaml)
 
-## Prerequisites
+A lean web UI for [Cluster API](https://cluster-api.sigs.k8s.io/) (CAPI). Connect a management
+cluster, install the CAPI providers, store cloud credentials and create, operate and delete
+Kubernetes clusters on OpenStack and AWS with RKE2, k0s or kubeadm, from forms with a preview of
+every change instead of hand-written YAML.
 
-Node.js 24 (`.nvmrc`), pnpm via corepack (`corepack enable`), Docker, kind, kubectl, Helm.
+## Why
 
-## Local development
+Cluster API manages Kubernetes clusters declaratively, but getting started is hard: a management
+cluster with cert-manager, the CAPI Operator and several providers, credentials in the format each
+provider expects, and a dozen interlinked resources per cluster (`Cluster`, infrastructure cluster,
+control plane, machine templates, bootstrap templates, MachineDeployments) whose fields change
+between provider releases. Day-2 operations such as upgrades or image changes need template
+rotation, and mistakes show up only when machines fail to boot.
 
-```bash
+CAPI Navigator is a **showcase and entry point** that makes these concepts visible, and a practical
+option for **small fleets** (up to about 50 workload clusters per management cluster). It is not a
+competitor to Rancher or other platforms.
+
+Everything the app creates for workload clusters is **standard upstream Cluster API**: clusters
+stay manageable with `kubectl`, `clusterctl` and other CAPI tools, even after the app is
+uninstalled. The app keeps no database; its own state lives in the home cluster as custom
+resources, Secrets and ConfigMaps.
+
+### Supported infrastructure and distributions
+
+|                        | Status                                              | Notes                                                                                                                                                                                 |
+| ---------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenStack (CAPO + ORC) | Tested on Infomaniak Public Cloud and Kolla-Ansible | Cloud controller manager and Cinder CSI as presets; bastion host; custom CA for the identity API                                                                                      |
+| AWS (CAPA)             | Tested                                              | AWS cloud controller manager and EBS CSI as presets; dedicated VPC per cluster                                                                                                        |
+| RKE2                   | Default distribution                                | All day-2 operations                                                                                                                                                                  |
+| k0s (k0smotron)        | Supported                                           | Control plane upgrades run in place; control plane image changes are blocked until k0smotron replaces controllers safely ([ADR-0013](docs/adr/0013-k0s-control-plane-replacement.md)) |
+| kubeadm                | Experimental                                        | Installed at first boot on stock Ubuntu, Debian or Rocky/Alma images; Calico via ClusterResourceSet ([ADR-0014](docs/adr/0014-kubeadm-on-stock-images.md))                            |
+
+All distributions use Calico with VXLAN as CNI and run on unmodified cloud images.
+
+## Features
+
+- **Management clusters**: connect by kubeconfig or service account token; an access manifest
+  with full or minimal permissions is downloadable. Connection health is checked continuously.
+- **Providers**: install, upgrade and remove CAPI providers through the CAPI Operator, with the
+  generated YAML shown before applying, and ORC for OpenStack. Shows which clusters use a provider.
+- **Credentials**: OpenStack `clouds.yaml` (application credential or password, custom CA) and AWS
+  access keys, tested against the cloud (services, IAM prerequisites, paging quirks) and used for
+  the selection lists of the wizard. Secrets are never sent to the browser.
+- **Cluster wizard**: topology (standard or all-in-one), machine sizes, images, root disks, worker
+  pools with labels, add-ons, node customization (files, pre/post commands), bastion host, network
+  ranges. Every field explains its default and the CAPI field it maps to.
+- **Preview before apply**: every change shows the generated objects and a diff, runs as a server
+  dry run, reports changes made outside the app as drift, and is applied by server-side apply.
+- **Day-2 operations**: scale, change machine size or image, edit node customization, add and
+  remove pools, rebuild nodes, upgrade Kubernetes (control plane first, then workers), with a
+  rollout plan and one rollout at a time. Machine-affecting changes create new templates instead of
+  editing existing ones.
+- **Visibility**: live cluster list and status, resource tree, machines with images and addresses,
+  events, read-only YAML of every resource, and a dashboard with nodes, workloads, services,
+  ingresses and resource usage of the workload cluster.
+- **Helm add-ons** via the Cluster API Add-on Provider for Helm (CAAPH): Helm repositories (HTTP
+  and private OCI), chart browser with default values, add-ons assigned to clusters by label,
+  release status per cluster, editable CCM/CSI presets and the kured reboot daemon.
+- **Node shell**: a root shell on any node through a temporary privileged pod (operators for
+  workload clusters, admins for the management cluster).
+- **Kubeconfig**: view and download the admin kubeconfig of a workload cluster (audited).
+- **Deletion** with cleanup of load balancers and volumes inside the cluster first, so nothing is
+  left in the cloud.
+- **Users and roles**: viewer, operator and admin, enforced in the backend; every change is written
+  to an audit log.
+- Light and dark theme, live updates via server-sent events.
+
+## Architecture
+
+```
+Browser (Vue 3 SPA)  ──REST + SSE──▶  NestJS backend  ──Kubernetes API──▶  Management cluster
+                                       │                                    ├─ cert-manager
+                                       │ own state (CRDs, Secrets,          ├─ CAPI Operator
+                                       │ ConfigMaps) in the home cluster    └─ Providers: core, RKE2 / k0s / kubeadm,
+                                       │                                       CAPO + ORC, CAPA, CAAPH
+                                       ▼                                              │
+                                   Transformation                                     ▼
+                                   cluster spec → CAPI YAML                 OpenStack / AWS: workload clusters
+                                   (pure functions)                         on stock cloud images
+```
+
+- Only the backend talks to Kubernetes; the browser never sees cluster credentials.
+- A cluster is described by a **cluster spec** (stored as an annotation on the CAPI `Cluster`).
+  Pure functions translate it into CAPI resources; providers and distributions are plugins.
+- The **home cluster** holds the app's own state. It can also be one of the management clusters.
+
+## Quick start
+
+### Local development with kind
+
+Prerequisites: Node.js 24 (`.nvmrc`), pnpm via corepack (`corepack enable`), Docker, kind,
+kubectl, Helm.
+
+```sh
+git clone https://github.com/alirionx/capi-navigator.git
+cd capi-navigator
 pnpm install
-pnpm kind:up        # kind cluster "capi-navigator" + cert-manager + CAPI Operator
-                    # (--bare: cluster only, without cert-manager and operator)
+pnpm kind:up        # kind cluster "capi-navigator" with cert-manager and the CAPI Operator
 pnpm dev            # backend on :3000, frontend on http://localhost:5173
 ```
 
-The scripts always use `.kube/kind-capi-navigator.yaml` and ignore any `KUBECONFIG` set in your
-shell, so a real cluster is never touched by accident. `pnpm kind:down` deletes the cluster.
+The scripts always use `.kube/kind-capi-navigator.yaml` and ignore any `KUBECONFIG` in your shell,
+so a real cluster is never touched by accident. `pnpm kind:down` deletes the cluster.
 
-### First sign-in
+On first start the backend creates the user `admin`; the password must be changed at first sign-in.
+Set `INITIAL_ADMIN_PASSWORD` in `.env.local` (see `.env.example`) before the first start, or read the
+generated one:
 
-On first start the backend creates the user `admin` (you must change the password at first
-sign-in). Either set `INITIAL_ADMIN_PASSWORD` in `.env.local` (see `.env.example`) before the first
-start, or read the generated password:
-
-```bash
+```sh
 kubectl --kubeconfig .kube/kind-capi-navigator.yaml -n capi-navigator-system \
   get secret capi-navigator-initial-admin -o jsonpath='{.data.password}' | base64 -d
 ```
 
-### Connect a management cluster
+### Install into a cluster with Helm
 
-Under **Connections**, add the kind cluster as **Home cluster** (uses the backend's own access) or
-upload `.kube/kind-capi-navigator.yaml` as **Kubeconfig**. For other clusters, apply the access
-manifest there (`deploy/management-cluster/capi-navigator-access.yaml`, also downloadable in the
-UI) and connect with its service account **Token**. Kubeconfigs with exec plugins or file
-references are rejected for security reasons.
+There is no published image yet; build it and make it available to your cluster (for kind:
+`kind load docker-image`, otherwise push it to your registry):
 
-### Install providers
+```sh
+docker build -t capi-navigator:0.1.0 .
+kind load docker-image capi-navigator:0.1.0 --name capi-navigator   # kind only
 
-Under **Providers** (for the management cluster selected in the app bar) the app shows whether
-cert-manager, the CAPI Operator and ORC are ready, with install commands if not. Install ORC and
-then the providers from the catalog: every install or upgrade shows the generated YAML first and
-is applied only after confirmation. Status updates arrive live.
-
-### Add cloud credentials
-
-Under **Credentials**, add OpenStack credentials (upload the `clouds.yaml` of an application
-credential) or AWS credentials (access key of a dedicated IAM user). They are stored once on the
-management cluster as Secret plus `OpenStackClusterIdentity` / `AWSClusterStaticIdentity`
-(ADR-0002), tested, and used for the selection lists of the cluster wizard. For AWS, the test
-checks the CAPA IAM prerequisites and shows the `clusterawsadm` command if they are missing.
-
-## Checks
-
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test           # Vitest unit and snapshot tests
-pnpm test:int       # integration tests against the kind cluster (own throwaway namespace)
-pnpm test:e2e       # Playwright (first time: pnpm exec playwright install chromium);
-                    # the login flow runs with E2E_ADMIN_PASSWORD=<admin password>
-docker build -t capi-navigator .
+helm install capi-navigator deploy/helm/capi-navigator \
+  -n capi-navigator-system --create-namespace \
+  --set image.tag=0.1.0 \
+  --set homeClusterAsManagementCluster=true   # optional: use this cluster as management cluster
+kubectl -n capi-navigator-system port-forward svc/capi-navigator 8080:80
 ```
+
+The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
+the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
+there on first start.
+
+> [!IMPORTANT]
+> The app manages clusters and stores cloud credentials. Expose it only via HTTPS (sessions use
+> Secure cookies) and give the admin role to few people: admins can install providers and open
+> root shells on management cluster nodes, operators on workload cluster nodes.
+
+## Using the app
+
+1. **Connections**: add the management cluster (the kind cluster as **Home cluster**, or another
+   cluster with the access manifest from `deploy/management-cluster/` and its service account
+   token).
+2. **Providers**: install ORC (for OpenStack) and the providers from the catalog: core, the
+   bootstrap and control plane providers of your distribution, CAPO and/or CAPA, and CAAPH.
+3. **Credentials**: upload the `clouds.yaml` of an OpenStack application credential or enter an AWS
+   access key; run the test.
+4. **Clusters → Create cluster**: walk through the wizard, check the preview and create. The
+   resource tree and the events show the progress; the cluster is ready after a few minutes.
+5. **Day-2**: the tabs of a cluster offer configuration changes (always with preview), the
+   dashboard, the node shell, add-ons and the YAML of every resource.
+6. **Add-ons**: add Helm repositories (admins), then create add-ons that select clusters by label.
+
+## Where configuration lives
+
+| What                                                                                                                                                    | Where                                                                                                                                            | When it is set                 | Who changes it                                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------- |
+| Catalogs and defaults: provider versions, Kubernetes versions, add-on presets (charts, versions), Calico version and checksum, containerd/runc versions | `packages/shared/src/catalog/`, `packages/shared/src/cluster/` (e.g. `addons.ts`, `kubeadm.ts`, `cni.ts`)                                        | At build time, per app version | Developers (later Renovate via a central `versions.yaml`, FP-20) |
+| Schemas and types (cluster spec, API requests, CRDs), all as Zod                                                                                        | `packages/shared/src/`                                                                                                                           | At build time                  | Developers                                                       |
+| Operation of the backend: app namespace, node shell image, port, sessions, initial admin                                                                | Environment variables, validated in `apps/backend/src/config/config.ts`; set through the Helm values in `deploy/helm/capi-navigator/values.yaml` | At deployment                  | Operators (Helm)                                                 |
+| Runtime settings: preset overrides, Helm repositories, connections, credentials, users                                                                  | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Admins in the app                                                |
+| Large backend-only artifacts: Calico manifest                                                                                                           | `apps/backend/assets/`                                                                                                                           | At build time                  | Developers                                                       |
+| UI texts                                                                                                                                                | `apps/frontend/src/i18n/`                                                                                                                        | At build time                  | Developers                                                       |
+
+Versions and domain defaults live in code because each app version is tested with them; values
+that differ per installation are deployment settings; what admins change while the app runs is
+stored in the home cluster (the app has no database).
+
+### Environment variables
+
+| Variable                                        | Default                 | Description                                                                        |
+| ----------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| `PORT`, `HOST`                                  | `3000`, `0.0.0.0`       | Listen address of the backend                                                      |
+| `NAVIGATOR_NAMESPACE`                           | `capi-navigator-system` | Namespace of the app's own state in the home cluster                               |
+| `STATIC_DIR`                                    | –                       | Serve the built frontend from this directory (set in the image)                    |
+| `INITIAL_ADMIN_PASSWORD`                        | –                       | Password of the initial admin; otherwise the Secret `capi-navigator-initial-admin` |
+| `SESSION_TTL_HOURS`                             | `8`                     | Absolute session lifetime                                                          |
+| `COOKIE_SECURE`                                 | `true`                  | Secure flag of the session cookie                                                  |
+| `TRUST_PROXY`                                   | `loopback`              | Express trust proxy setting, needed behind an ingress                              |
+| `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW_MINUTES` | `10`, `15`              | Failed logins per client and user within the window                                |
+| `AUDIT_RETENTION_DAYS`                          | `90`                    | Retention of audit events                                                          |
+| `NODE_SHELL_IMAGE`                              | `alpine:3.22`           | Image of the node shell pod, e.g. a registry mirror                                |
+| `LOG_LEVEL`, `LOG_JSON`                         | `log`, `true`           | Log level; JSON logs by default                                                    |
+| `POD_NAME`                                      | host name               | Identity of the replica for leader election                                        |
+| `KUBECONFIG`                                    | in-cluster              | Access to the home cluster in local development                                    |
+
+## Technology
+
+| Area              | Technology                                                                                                                                                                              | Why                                                                                            |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Backend           | Node.js 24, [NestJS](https://nestjs.com), [@kubernetes/client-node](https://github.com/kubernetes-client/javascript)                                                                    | Modules per domain, guards for roles, watches and server-side apply against the Kubernetes API |
+| Frontend          | [Vue 3](https://vuejs.org), [Vite](https://vite.dev), [Pinia](https://pinia.vuejs.org), [Vuetify 3](https://vuetifyjs.com), [Monaco Editor](https://microsoft.github.io/monaco-editor/) | Accessible components with light/dark themes; read-only YAML views and the Helm values editor  |
+| Shared model      | TypeScript (strict), [Zod](https://zod.dev)                                                                                                                                             | One schema per entity for form validation, API validation, types and the CRDs' OpenAPI schemas |
+| Transformation    | Pure functions in `packages/shared`                                                                                                                                                     | Same spec, byte-identical YAML; every topology and distribution has snapshot tests             |
+| State             | CRDs (`navigator.capi-navigator.io/v1alpha1`), Secrets and ConfigMaps in the home cluster                                                                                               | No database; the backend stays stateless                                                       |
+| Live updates      | Kubernetes watches → server-sent events                                                                                                                                                 | Lists and status update without polling                                                        |
+| Cluster lifecycle | Cluster API, CAPI Operator, CAPO + ORC, CAPA, RKE2/k0smotron/kubeadm providers, CAAPH                                                                                                   | Upstream only; clusters stay manageable without the app                                        |
+| Container         | Multi-stage build on `node:24-bookworm-slim`, non-root                                                                                                                                  | One image serves API and frontend                                                              |
+| Tests             | Vitest (unit, snapshot), Playwright (end-to-end), kind (integration)                                                                                                                    | From pure transformations to the UI against a real management cluster                          |
+
+## Development
+
+### Commands
+
+| What                                                                                                                                  | Command                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Install all workspaces                                                                                                                | `pnpm install`                             |
+| Backend and frontend in watch mode                                                                                                    | `pnpm dev`                                 |
+| Lint and format check                                                                                                                 | `pnpm lint`                                |
+| Type check                                                                                                                            | `pnpm typecheck`                           |
+| Unit and snapshot tests                                                                                                               | `pnpm test`                                |
+| Integration tests against kind (own throwaway namespace; opt-in read-only cloud tests with `OPENSTACK_CLOUDS_YAML=…` or `AWS_LIVE_*`) | `pnpm test:int`                            |
+| End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                            |
+| kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`          |
+| Regenerate / install the app's CRDs from the Zod schemas                                                                              | `pnpm crds:generate` / `pnpm crds:install` |
+| Container image                                                                                                                       | `docker build -t capi-navigator .`         |
+
+### Repository layout
+
+```
+apps/backend/       NestJS backend: modules per domain, Kubernetes access, plugins, tests
+apps/frontend/      Vue 3 app: views, components, Pinia stores, i18n
+packages/shared/    Zod schemas, catalogs, transformation (cluster spec → CAPI YAML), presets
+deploy/helm/        Helm chart incl. CRDs
+deploy/crds/        Generated CRDs of the app
+deploy/management-cluster/  Access manifests for management clusters (full and minimal)
+docs/               Requirements specification, architecture decisions (ADRs), screenshots
+e2e/                Playwright end-to-end tests
+scripts/            kind, development and integration test helpers
+```
+
+## Contributing
+
+The project is driven by a requirements specification, one feature pack at a time:
+
+- [docs/requirements.md](docs/requirements.md) is the binding specification. Every requirement has
+  a stable ID (`FP5-F-09`, `NF-13`, …). Planned work is listed in its outlook section.
+- Decisions that refine or deviate from it are recorded as ADRs in [docs/adr/](docs/adr/).
+- Reference requirement IDs in commit messages, tests and code comments; use conventional commits,
+  e.g. `feat(fp5): generate RKE2ControlPlane from cluster spec (FP5-F-01)`.
+- Hard rules: no database; one Zod schema per entity; pure transformations with snapshot tests;
+  the cluster spec is the source of truth; template rotation instead of editing templates; preview
+  before every change; only upstream resources for workload clusters; secrets never leave the
+  backend; roles enforced in the backend; providers and distributions as plugins. See
+  [CLAUDE.md](CLAUDE.md) for the details.
+- English everywhere: UI, API messages, logs, documentation and code comments.
+- Never commit secrets, `clouds.yaml` files, kubeconfigs or tokens.
+
+Before opening a pull request, run `pnpm lint`, `pnpm typecheck` and `pnpm test`, and for UI
+changes the end-to-end tests. npm dependencies are kept current by Renovate (`renovate.json`).
+
+## License
+
+No license has been chosen yet.
