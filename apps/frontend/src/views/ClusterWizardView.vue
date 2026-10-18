@@ -927,7 +927,7 @@ const canPreview = computed(() => issues.value.length === 0);
         <v-expansion-panels variant="accordion">
           <v-expansion-panel :title="t('wizard.controlPlane')">
             <v-expansion-panel-text
-              ><CustomizationEditor :flavor="draft.flavor" v-model="draft.cp.customization"
+              ><CustomizationEditor v-model="draft.cp.customization" :flavor="draft.flavor"
             /></v-expansion-panel-text>
           </v-expansion-panel>
           <template v-if="draft.mode === 'standard'">
@@ -938,8 +938,8 @@ const canPreview = computed(() => issues.value.length === 0);
             >
               <v-expansion-panel-text
                 ><CustomizationEditor
-                  :flavor="draft.flavor"
                   v-model="draft.pools[i]!.customization"
+                  :flavor="draft.flavor"
               /></v-expansion-panel-text>
             </v-expansion-panel>
           </template>
