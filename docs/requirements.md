@@ -816,6 +816,15 @@ These requirements apply to all feature packs and are checked in every pack.
   - In-app hints for operators of older app versions: "newer chart version available" for presets and "newer release available" for providers, like the newer image hint of FP7-F-12.
   - `docs/maintenance.md`: who approves updates, cadence, and what is verified before merging (patch updates by CI; minor updates of CAPI, providers, CCM/CSI additionally with a dry run on kind and a short live test, as the k0smotron findings of FP-9 showed).
 - **FP-21: CNI selection** (optional, low priority). Calico with VXLAN is the default for all distributions (RKE2 and k0s built in, kubeadm via a preset, FP-10). Later the wizard could offer a choice (e.g. Cilium or Flannel) per cluster, where each distribution supports it; the flavor plugins would then declare the CNIs they support and the node traffic each one needs (ADR-0012).
+- **FP-22: API tokens** (optional, after FP-19), for CI pipelines and GitOps scripts that call the REST API without a browser session. Ideas:
+  - A token belongs to a user or to a dedicated service account user and carries its own role assignments (FP-19 bindings), never more than its creator has; optional expiry date (default e.g. 90 days), name and description.
+  - Sent as `Authorization: Bearer <token>`. Only a hash (e.g. SHA-256 of a long random value) is stored in a Secret of the home cluster; the token is shown once on creation. A prefix (e.g. `capin_`) makes leaked tokens detectable by secret scanners.
+  - Bearer requests need no CSRF header (no cookie involved) and are refused on the node shell WebSocket and the login endpoints. Revoking a token takes effect on the next request; the last use is recorded (timestamp, not per request in the audit log, only mutating actions).
+  - UI: own tokens under the user menu, all tokens for `users.manage`. Every creation, use for a mutating action and revocation is an `AuditEvent` with the token name as actor detail.
+- **FP-23: OpenAPI description and Swagger UI** (optional). Ideas:
+  - Generate an OpenAPI 3.1 document from the existing Zod schemas in `packages/shared` (request and response bodies, Zod 4 JSON Schema output) plus a route table of the NestJS controllers, so the API description cannot drift from the validation (hard rule 2); a test fails when an endpoint has no description.
+  - Serve it at `/api/openapi.json` and Swagger UI at `/api/docs` for signed-in users; requests from Swagger UI use the session cookie and the CSRF header (and API tokens once FP-22 exists). Each operation names its required permission (FP-19).
+  - Dependencies to check before starting (lean stack): `@nestjs/swagger` (decorator-based, would duplicate the Zod schemas) versus a small generator from Zod plus `swagger-ui-dist` as static files.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
