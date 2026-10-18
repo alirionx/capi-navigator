@@ -180,3 +180,37 @@ describe('kured reboot daemon preset (FP-9, ADR-0013)', () => {
     expect(stringify(buildAddonPreset(presets[0]!, 'default'))).toMatchSnapshot();
   });
 });
+
+describe('Calico via ClusterResourceSet (FP10-F-04, ADR-0014)', () => {
+  const official = [
+    'kind: DaemonSet',
+    '            - name: CALICO_IPV4POOL_VXLAN',
+    '              value: "CrossSubnet"',
+    '            - name: CALICO_IPV6POOL_VXLAN',
+    '              value: "CrossSubnet"',
+    '',
+  ].join('\n');
+
+  it('forces VXLAN for all pod traffic and names objects by version and content', async () => {
+    const { buildCalicoResourceSet } = await import('../cluster/cni.js');
+    const [cm, crs] = buildCalicoResourceSet('team-a', official);
+    const content = (cm!.data as Record<string, string>)['calico.yaml']!;
+    expect(content).not.toContain('CrossSubnet');
+    expect(content.match(/value: "Always"/g)).toHaveLength(2);
+    expect(cm!.metadata.name).toMatch(/^capi-navigator-calico-v3-33-0-[0-9a-f]{6}$/);
+    expect(cm!.metadata.labels?.['cluster.x-k8s.io/cluster-name']).toBeUndefined();
+    expect(crs!.spec).toEqual({
+      clusterSelector: { matchLabels: { 'capi-navigator.io/cni': 'calico' } },
+      resources: [{ kind: 'ConfigMap', name: cm!.metadata.name }],
+      strategy: 'ApplyOnce',
+    });
+    expect(presetsFor({ 'capi-navigator.io/cni': 'calico' })).toEqual([]);
+  });
+
+  it('fails when the manifest layout changed', async () => {
+    const { buildCalicoResourceSet } = await import('../cluster/cni.js');
+    expect(() => buildCalicoResourceSet('team-a', 'kind: DaemonSet\n')).toThrow(
+      /CALICO_IPV4POOL_VXLAN not found/,
+    );
+  });
+});

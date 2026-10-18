@@ -26,9 +26,15 @@ while RKE2 and k0s set `"true"`.
   `kubernetes.binaryDownloads`, FP10-F-09).
 - The script is part of the bootstrap configuration, so a version change creates new templates and
   machines (hard rule 5); `KubeadmControlPlane` replaces control plane machines one at a time.
-- CNI: Calico with VXLAN as a CAAPH preset (`tigera-operator`), the same CNI and overlay RKE2 and
-  k0s use; selected by the label `capi-navigator.io/cni=calico`, which the transformation sets for
-  distributions that declare `needsCni`, unless the spec says `addons.cni: none`.
+- CNI: Calico with VXLAN, the same CNI and overlay RKE2 and k0s use, from the official manifest
+  `calico-vxlan.yaml` (v3.33.0, no operator; pod CIDR detected from the kubeadm configuration).
+  It is shipped with the backend (`assets/calico`, checked against its SHA-256) and delivered by an
+  upstream `ClusterResourceSet` per namespace (`ApplyOnce`, versioned name) to clusters with the
+  label `capi-navigator.io/cni=calico`. The transformation sets the label for distributions that
+  declare `needsCni`, unless the spec says `addons.cni: none`. Not via CAAPH: since Calico v3.32 the
+  CRDs live in a separate chart whose Helm release exceeds the 1 MiB limit of the release Secret
+  (seen live), and Calico recommends `helm template | kubectl apply` for them, which CAAPH cannot do.
+  Previews shorten the 729 KB ConfigMap.
 - The CCM and EBS CSI presets render the control plane node selector per cluster from its control
   plane kind (CAAPH template on `.ControlPlane.kind`): `""` for kubeadm, `"true"` otherwise.
 

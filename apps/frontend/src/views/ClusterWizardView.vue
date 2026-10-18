@@ -449,7 +449,7 @@ const presets = computed(() =>
     (p) =>
       p.provider === draft.provider ||
       (p.id === 'kured' && draft.addons.reboot) ||
-      (p.id === 'calico' && !!flavorPlugin.value?.needsCni && draft.cni),
+      (p.kind === 'cni' && !!flavorPlugin.value?.needsCni && draft.cni),
   ),
 );
 const canPreview = computed(() => issues.value.length === 0);

@@ -106,6 +106,8 @@ export async function dryRunApply(
   }
 }
 
+const LARGE_VALUE = 64 * 1024;
+
 /** Strips server-managed metadata and status for comparisons and diffs. */
 export function normalizeForDiff(obj: KubernetesObject): Record<string, unknown> {
   const out: Record<string, unknown> = { ...obj };
@@ -122,6 +124,20 @@ export function normalizeForDiff(obj: KubernetesObject): Record<string, unknown>
     delete metadata[key];
   }
   out.metadata = metadata;
+  // Large ConfigMap values (e.g. the Calico manifest, ADR-0014) are shortened in previews.
+  if (obj.kind === 'ConfigMap') {
+    const values = out.data as Record<string, string> | undefined;
+    if (values) {
+      out.data = Object.fromEntries(
+        Object.entries(values).map(([k, v]) => [
+          k,
+          v.length > LARGE_VALUE
+            ? `# ${Math.round(v.length / 1024)} KB, shortened in the preview (${fingerprint(v)})`
+            : v,
+        ]),
+      );
+    }
+  }
   // Secrets: never show values (NF-01); mark changed values via a short hash.
   if (obj.kind === 'Secret') {
     for (const key of ['data', 'stringData'] as const) {

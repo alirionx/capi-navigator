@@ -585,7 +585,7 @@ export const en = {
       'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images.',
     cni: 'Calico CNI',
     cniHint:
-      'kubeadm ships no network plugin: Calico with VXLAN, as with RKE2 and k0s. Turn off only to install your own CNI. Default: on.',
+      'kubeadm ships no network plugin: Calico with VXLAN, as with RKE2 and k0s, from the official manifest via a ClusterResourceSet. Turn off only to install your own CNI. Default: on.',
     packageRepository: 'Kubernetes package mirror (optional)',
     packageRepositoryHint:
       'Instead of https://pkgs.k8s.io; the path /core:/stable:/vX.Y/ is appended. Default: pkgs.k8s.io.',

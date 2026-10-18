@@ -6,6 +6,7 @@ export * from './aws.js';
 export * from './rke2.js';
 export * from './k0s.js';
 export * from './kubeadm.js';
+export * from './cni.js';
 export * from './addons.js';
 export { transform, INFRA_PLUGINS, FLAVOR_PLUGINS } from './transform.js';
 export { shortHash, stableStringify } from './util.js';
