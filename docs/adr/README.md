@@ -18,3 +18,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0012](0012-flavor-network-requirements.md)                 | Kubernetes distributions declare their network needs                             | accepted |
 | [0013](0013-k0s-control-plane-replacement.md)               | k0s control planes are upgraded in place and never replaced                      | accepted |
 | [0014](0014-kubeadm-on-stock-images.md)                     | kubeadm on stock images with release binaries for the container runtime          | accepted |
+| [0015](0015-permissions-and-scoped-role-assignments.md)     | Permissions and scoped role assignments                                          | accepted |

@@ -88,7 +88,7 @@ Because everything it creates is standard Cluster API, clusters stay open to oth
 
 ## 3. Roles and user stories
 
-The app has three roles. The permissions apply across all feature packs.
+The app has three built-in roles. The permissions apply across all feature packs. Since FP-19, admins can also define their own roles from a fixed set of permissions and assign roles per management cluster connection and namespace.
 
 | Role | Can |
 | --- | --- |
@@ -351,6 +351,7 @@ Implementation proceeds in eleven feature packs that build on each other. Each p
 | FP-8 | Helm add-ons via CAAPH | FP-7 |
 | FP-9 | k0s as second Kubernetes distribution | FP-7 |
 | FP-10 | Vanilla Kubernetes with kubeadm on stock images (experimental) | FP-8 |
+| FP-19 | Role management: custom roles and scoped role assignments (optional) | FP-1 |
 
 ### FP-0: Project scaffold
 
@@ -702,6 +703,56 @@ Verified on 2026-10-18 on Infomaniak with `fp10-kubeadm-c` (1 control plane, 1 w
 - [x] A viewer opens the dashboard and sees nodes and workloads; no action buttons.
 - [x] Without metrics-server the dashboard still works and says so.
 
+### FP-19: Role management (optional)
+
+**Goal:** admins define their own roles as a set of permissions and assign roles to users, optionally limited to management cluster connections and namespaces (e.g. operator only in `home/team-a`). The three built-in roles stay and behave exactly as before (ADR-0015).
+
+**Permissions**
+
+| Permission | Allows | Built-in role | Scopable |
+| --- | --- | --- | --- |
+| `view` | Read everything: clusters, status, YAML, dashboard, providers, add-ons, events | viewer | – (reading is global, see FP19-F-04) |
+| `clusters.create` | Create workload clusters, incl. cloud lookups in the wizard and allowing a credential in the cluster's namespace | operator | yes |
+| `clusters.change` | Day-2 changes, scaling, labels (which also assigns add-ons), bastion | operator | yes |
+| `clusters.delete` | Delete workload clusters | operator | yes |
+| `clusters.kubeconfig` | View and download workload kubeconfigs | operator | yes |
+| `nodes.shell` | Node shell on workload cluster nodes | operator | yes |
+| `addons.manage` | Create, change and delete add-ons; browse charts | operator | yes |
+| `presets.manage` | Override and roll out CCM, CSI and kured presets | admin | no |
+| `providers.manage` | Install, change and remove ORC and providers | admin | no |
+| `credentials.manage` | Manage and test cloud credentials | admin | no |
+| `connections.manage` | Connect management clusters | admin | no |
+| `helmRepositories.manage` | Manage Helm repositories | admin | no |
+| `managementNodes.shell` | Node shell on management cluster nodes | admin | no |
+| `users.manage` | Manage users, roles and role assignments | admin | no |
+
+Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes.shell` and `addons.manage`; admin = all permissions.
+
+**Requirements**
+
+- **FP19-F-01** MUST define the permissions above once in `packages/shared`; the built-in roles viewer, operator and admin are fixed in code, cannot be changed or deleted and grant exactly the access of FP-1.
+- **FP19-F-02** MUST store custom roles as `NavigatorRole` resources in the app namespace of the home cluster (display name, description, permissions; every role includes `view`).
+- **FP19-F-03** MUST give each user one or more role assignments (bindings), each optionally limited to management cluster connections and namespaces. An assignment without a limit applies everywhere. A limited assignment may only grant scopable permissions.
+- **FP19-F-04** MUST apply the limits to actions only: every signed-in user can read all clusters, add-ons and events; lists are not filtered.
+- **FP19-F-05** MUST check permissions in the backend on every endpoint and on the node shell WebSocket instead of fixed roles (hard rule 9). The scope comes from the route (connection, namespace) or, for creation, from the requested namespace. An endpoint that names a connection but no namespace (e.g. cloud lookups, chart browsing) requires the permission for at least one namespace of that connection. Endpoints without a rule stay denied.
+- **FP19-F-06** MUST resolve permissions on every request from the cached users and roles, so changes to roles and assignments apply without signing in again.
+- **FP19-F-07** MUST keep existing users working after the update: a stored `role` becomes one unlimited assignment of that role.
+- **FP19-F-08** MUST refuse deleting a role that is still assigned (the message names the users) and changes that would leave no enabled user with an unlimited `users.manage`.
+- **FP19-F-09** MUST provide a roles page for users with `users.manage`: built-in and custom roles, permissions grouped with help texts, the users of each role, creating a role as a copy of another; and editing role assignments in the user management.
+- **FP19-F-10** MUST show actions in the frontend according to the permissions for the respective cluster or namespace (cosmetic only); the wizard offers only namespaces in which the user may create clusters.
+- **FP19-F-11** MUST record creating, changing and deleting roles and changes to role assignments as `AuditEvent`s.
+- **FP19-F-12** SHOULD keep the mapping open for FP-14, where group claims of an identity provider become role assignments.
+
+**Acceptance criteria**
+
+- [ ] A test lists every endpoint with its permission and checks that viewer, operator and admin get exactly the access they had before FP-19; all existing tests pass unchanged.
+- [ ] A custom role with `view` and `clusters.change` can scale a cluster but cannot create or delete clusters or read the kubeconfig: the backend answers 403 also to direct API calls, and the UI hides these actions.
+- [ ] An assignment "operator in `home/team-a`" can change clusters in `team-a` and gets 403 in another namespace, also for the node shell; the wizard offers only `team-a`.
+- [ ] Changing a role takes effect without signing in again; an assigned role and the built-in roles cannot be deleted; the last user with unlimited `users.manage` cannot be removed or limited.
+- [ ] Existing users keep their access after the update without manual steps.
+- [ ] Role and assignment changes appear as `AuditEvent`s.
+- [ ] A Playwright test covers the custom role case.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -757,12 +808,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - No proxy authentication (server-to-server in the data center); proxy URLs end up in the node user data and must not contain credentials.
   - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
   - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
-- **FP-19: Role management** (optional, scope to be refined before it starts). Today the three fixed roles from section 3 are hard-coded. Ideas:
-  - Admins define their own roles in the UI as a set of permissions (e.g. view, manage clusters, day-2 operations, node shell, kubeconfig download, assign add-ons, manage repositories, manage providers, manage users). The three built-in roles remain as non-deletable defaults.
-  - Optional scoping of a role assignment to management cluster connections and namespaces (e.g. operator only in `team-a`).
-  - Stored as an app CRD (e.g. `NavigatorRole`) in the home cluster; the NestJS guard checks permissions instead of fixed roles (hard rule 9 stays: enforcement in the backend, frontend hiding only cosmetic). Changes to roles and assignments write `AuditEvent`s.
-  - Fits FP-14: group claims from an identity provider map to these roles.
-  - To decide first: permission granularity, whether scoping is needed, and how lists (clusters, add-ons, events) are filtered by scope.
+- **FP-19: Role management**: specified in section 6 (custom roles and assignments limited to connections and namespaces). Possible later: filtering what users can read by their scope.
 - **FP-20: Version maintenance** (optional, scope to be refined before it starts). About 30 versions are pinned in the code (provider catalog incl. ORC, Kubernetes version catalog, add-on preset charts, kubeadm container runtime, Calico manifest, node shell image) plus the app's own npm dependencies. Ideas:
   - A central, human-readable `versions.yaml` as the app's bill of materials: every pinned version with its source (Helm repository, GitHub releases, container registry), checksums of shipped artifacts (e.g. the Calico manifest) and "verified on / against" notes. It is validated by a Zod schema at build time and turned into a typed TypeScript module in `packages/shared` (no file reads at runtime; an app version stays reproducible). It holds versions and origins only; behaviour (values templates, install script, network rules) stays in code under snapshot tests. Coupled versions are grouped (CAPO and ORC, CAPI contract and providers, Kubernetes versions and `verifiedWithProvider`, containerd and Kubernetes) and checked by tests. Large artifacts stay separate files referenced by version and SHA-256. Runtime overrides by operators (mirrors, node shell image, preset overrides) stay separate (Helm values, ConfigMap).
   - Renovate keeps them current: standard managers for npm and the Helm chart, one manager for `versions.yaml`; grouped pull requests per coupled group, checked by lint, typecheck, unit and snapshot tests. Running Renovate (GitHub App or GitHub Actions) is decided when FP-20 starts.
