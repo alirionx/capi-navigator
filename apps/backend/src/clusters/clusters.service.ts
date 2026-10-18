@@ -604,6 +604,16 @@ export class ClustersService {
     if (current.kubernetes.workerVersion && replaces && !opts.finishUpgrade) {
       blockers.push('An upgrade is still running; wait until the worker pools have followed.');
     }
+    // ADR-0013: some distributions cannot replace control plane machines below a minimum size.
+    const safe = FLAVOR_PLUGINS[next.kubernetes.flavor]?.safeControlPlaneReplacement;
+    const cpReplaced = rollouts.some(
+      (r) => r.action === 'replace' && CONTROL_PLANE_RESOURCES.some((c) => c.kind === r.kind),
+    );
+    if (safe && cpReplaced && current.topology.controlPlane.replicas < safe.minReplicas) {
+      blockers.push(
+        `${safe.reason} Scale the control plane to ${safe.minReplicas} nodes first, or recreate the cluster.`,
+      );
+    }
     // FP7-F-09: pre-checks before an upgrade.
     if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];

@@ -85,6 +85,9 @@ export const en = {
     cleanupHint:
       'Recommended. Otherwise load balancers, floating IPs and volumes created by the cloud controller and CSI driver stay in the cloud and can block the deletion of the cluster network.',
     nothingInside: 'Nothing inside the cluster needs to be removed.',
+    skipDrain: 'Skip draining the nodes',
+    skipDrainHint:
+      'For clusters whose API no longer answers: Cluster API cannot drain the nodes and would wait forever. Sets the upstream exclude-node-draining annotations on the machines. Default: off.',
     namespaces: 'Namespaces',
     loadBalancers: 'LoadBalancer services',
     volumes: 'Volumes (data is lost)',
@@ -593,6 +596,8 @@ export const en = {
     modeAio: 'All-in-one (1 node)',
     controlPlane: 'Control plane',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',
+    cpReplacementWarning:
+      '{reason} Upgrades, image changes and rebuilds of the control plane are blocked until it has {min} nodes; choose {min} if you plan them.',
     poolName: 'Pool name',
     poolNameHint: 'Lowercase, at most 12 characters. MachineDeployment <cluster>-<pool>.',
     poolTitle: 'Pool {name}',

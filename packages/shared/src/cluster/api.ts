@@ -189,6 +189,11 @@ export const DeleteRequestSchema = z.object({
   confirmName: z.string(),
   /** Remove workloads, LoadBalancer services and volumes inside the cluster first. */
   cleanup: z.boolean().default(true),
+  /**
+   * Delete machines without draining their nodes or waiting for volume detach (CAPI
+   * exclude-node-draining annotations); for clusters whose API no longer answers.
+   */
+  skipDrain: z.boolean().default(false),
 });
 export type DeleteRequest = z.input<typeof DeleteRequestSchema>;
 

@@ -744,6 +744,40 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.existingCluster = false;
   });
 
+  it('blocks control plane replacement for k0s with one control plane node (ADR-0013)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+      addons: { cloudControllerManager: false, csiDriver: false },
+      topology: {
+        mode: 'standard',
+        controlPlane: { replicas: 1, machineSize: 'a2-ram4-disk0' },
+        workerPools: [{ name: 'default', replicas: 1, machineSize: 'a4-ram8-disk50-perf1' }],
+      },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      const replicas = (o.spec as { replicas?: number }).replicas;
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, {
+        ...o,
+        status: { replicas, readyReplicas: replicas, upToDateReplicas: replicas },
+      });
+    }
+    k8s.machines = [];
+    const url = '/api/connections/home/clusters/team-a/demo/changes';
+    const post = (change: unknown) =>
+      http().post(`${url}/preview`).set(CSRF).set('Cookie', operatorCookie).send({ change });
+    const rebuildCp = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
+    expect(rebuildCp.body.blockers.join()).toMatch(/fewer than 3 control plane nodes/);
+    // Worker changes stay possible.
+    const rebuildWorkers = await post({ type: 'rebuild', group: 'default' }).expect(200);
+    expect(rebuildWorkers.body.blockers.join()).not.toMatch(/control plane nodes/);
+    k8s.live.clear();
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
+  });
+
   it('applies day-2 changes generically: rollout plan, pool removal, one rollout at a time (FP-7)', async () => {
     const spec = ClusterSpecSchema.parse({
       ...OS_SPEC,

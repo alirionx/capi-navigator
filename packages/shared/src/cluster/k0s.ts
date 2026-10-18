@@ -87,6 +87,13 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
   // The k0s kubelet reports "v1.35.8+k0s" for k0s "v1.35.8+k0s.1" (seen live with CAPI v1.14.3).
   machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
+  // ADR-0013: replacing the only controller lost etcd quorum when k0smotron removed the old
+  // member (reproduced twice with k0smotron v2.2.0 on OpenStack).
+  safeControlPlaneReplacement: {
+    minReplicas: 3,
+    reason:
+      'k0s with fewer than 3 control plane nodes loses etcd quorum when k0smotron replaces a control plane machine (ADR-0013).',
+  },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
     controlPlanePorts: [

@@ -38,3 +38,12 @@ stateless (STATE-04), but waiting for the cloud to release resources takes minut
 - Data in PVCs is lost; the dialog says so.
 - A read-only check for leftovers in the cloud after deletion (proposed as SHOULD in the FP-6
   plan) is deferred.
+
+## Update 2026-10-18 (FP-9)
+
+When the workload cluster API does not answer, Cluster API cannot drain the nodes and waits
+forever. The delete dialog then offers "Skip draining the nodes", which sets the upstream
+annotations `machine.cluster.x-k8s.io/exclude-node-draining` and
+`machine.cluster.x-k8s.io/exclude-wait-for-node-volume-detach` on all machines of the cluster
+before deleting it. Calling delete again on a cluster that is already being deleted applies them as
+well.
