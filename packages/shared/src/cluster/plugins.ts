@@ -114,10 +114,11 @@ export interface BootstrapFlavorPlugin {
    */
   machineVersion?(version: string): string;
   /**
-   * Fewest control plane nodes with which replacing control plane machines is safe (ADR-0013);
-   * below it, changes that replace them are blocked. Unset: always safe.
+   * How the control plane takes changes (ADR-0013). `versionInPlace`: version upgrades update the
+   * nodes in place; `replacementBlocked`: changes that replace control plane machines are refused
+   * with this reason. Unset: every change replaces machines (template rotation).
    */
-  safeControlPlaneReplacement?: { minReplicas: number; reason: string };
+  controlPlaneUpdates?: { versionInPlace: boolean; replacementBlocked?: string };
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {
     spec: ClusterSpec;

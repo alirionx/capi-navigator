@@ -117,7 +117,8 @@ export const RolloutPlanSchema = z.object({
   machines: z.array(z.string()),
   /** Rolling update settings, e.g. "maxSurge 1, maxUnavailable 0". */
   strategy: z.string(),
-  action: z.enum(['replace', 'remove', 'later']),
+  /** inPlace: the provider updates the nodes without replacing them (ADR-0013). */
+  action: z.enum(['replace', 'remove', 'later', 'inPlace']),
 });
 export type RolloutPlan = z.infer<typeof RolloutPlanSchema>;
 

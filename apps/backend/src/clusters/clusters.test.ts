@@ -744,7 +744,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.existingCluster = false;
   });
 
-  it('blocks control plane replacement for k0s with one control plane node (ADR-0013)', async () => {
+  it('k0s: control plane upgrades run in place, replacements are blocked (ADR-0013)', async () => {
     const spec = ClusterSpecSchema.parse({
       ...OS_SPEC,
       kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
@@ -769,10 +769,14 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     const post = (change: unknown) =>
       http().post(`${url}/preview`).set(CSRF).set('Cookie', operatorCookie).send({ change });
     const rebuildCp = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
-    expect(rebuildCp.body.blockers.join()).toMatch(/fewer than 3 control plane nodes/);
+    expect(rebuildCp.body.blockers.join()).toMatch(/cannot replace k0s control plane machines/);
     // Worker changes stay possible.
     const rebuildWorkers = await post({ type: 'rebuild', group: 'default' }).expect(200);
-    expect(rebuildWorkers.body.blockers.join()).not.toMatch(/control plane nodes/);
+    expect(rebuildWorkers.body.blockers.join()).not.toMatch(/control plane machines/);
+    // A version upgrade updates the control plane in place and is not blocked by it.
+    const upgrade = await post({ type: 'upgrade', version: 'v1.36.4+k0s.1' }).expect(200);
+    expect(upgrade.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'inPlace' });
+    expect(upgrade.body.blockers.join()).not.toMatch(/control plane machines/);
     k8s.live.clear();
     k8s.storedSpec = undefined;
     k8s.existingCluster = false;

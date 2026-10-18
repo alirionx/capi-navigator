@@ -1,4 +1,4 @@
-# ADR-0013: No control plane replacement for k0s with fewer than 3 control plane nodes
+# ADR-0013: k0s control planes are upgraded in place and never replaced
 
 - Status: accepted
 - Date: 2026-10-18
@@ -6,35 +6,39 @@
 
 ## Context
 
-k0s control planes are managed by k0smotron v2.2.0 with `updateStrategy: Recreate` (hard rule 5:
-machines are replaced, not updated in place). The live test on Infomaniak upgraded a k0s cluster
-with one control plane node from v1.34.11 to v1.35.8. Twice, with the same result:
+Hard rule 5 makes every machine-affecting change replace machines with new templates. For k0s,
+control plane machines are replaced by k0smotron (`updateStrategy: Recreate`). The live tests on
+Infomaniak with k0smotron v2.2.0 failed three times:
 
-1. The new control plane machine joined etcd (2 members); the API was unavailable for about
-   10 seconds, as expected while a second member starts.
-2. k0smotron marked the old etcd member to leave (`EtcdMember.spec.leave: true`).
-3. About 30 seconds later etcd lost quorum for good (`readyz`: etcd failed). The old machine then
-   hung in node draining, the new worker could not get a join token, and the cluster was lost.
+- One control plane node, upgrade v1.34.11 → v1.35.8 (twice): the new controller joined etcd, then
+  k0smotron marked the old member to leave and etcd lost quorum about 30 seconds later.
+- Three control plane nodes, same upgrade: after the first replacement was ready, k0smotron deleted
+  all three old machines within 41 seconds and marked their etcd members to leave; etcd lost
+  quorum.
 
-With three or more control plane nodes, etcd keeps quorum while one member joins and another
-leaves. k0smotron's documentation does not mention the single node case; no upstream issue was
-found.
+The cause is in k0smotron (`internal/controller/controlplane/scale.go`, identical in v2.1.1):
+`isNeededScaleDown` scales down as long as any machine is not up to date and does not wait for
+machines that are already being deleted; with node draining in progress, it removes one old machine
+(and etcd member) per reconcile before replacements exist. `RecreateDeleteFirst` uses the same code
+path. Worker machines are not affected: Cluster API replaces them through MachineDeployments.
 
 ## Decision
 
-- `BootstrapFlavorPlugin.safeControlPlaneReplacement` declares the smallest control plane size with
-  which replacing control plane machines is safe. k0s sets 3; RKE2 sets nothing.
-- The change preview blocks every change that replaces control plane machines (version upgrade,
-  image or flavor change, customization, rebuild of the control plane) when the cluster has fewer
-  control plane nodes. The message explains why and suggests scaling to 3 first. Worker changes
-  stay possible.
-- The wizard warns when k0s is chosen with one control plane node or all-in-one.
-- k0smotron's `InPlace` strategy (autopilot) is not used as a fallback: it would update machines in
-  place (hard rule 5) and still recreate them for image and configuration changes.
+- k0s control planes use k0smotron's `InPlace` strategy: version upgrades run via k0s autopilot,
+  one node at a time, without replacing machines. This is a deliberate exception to hard rule 5,
+  limited to the k0s version of the control plane. Worker pools still follow by machine replacement.
+- `BootstrapFlavorPlugin.controlPlaneUpdates` declares this (`versionInPlace`) and a reason why
+  control plane machines must not be replaced (`replacementBlocked`). The rollout plan shows
+  version-only control plane changes as "updated in place".
+- The change preview blocks every change that would replace k0s control plane machines: image,
+  flavor, root disk, customization and rebuild of the control plane. Worker changes stay possible.
+- The wizard shows the limitation when k0s is chosen.
 
 ## Consequences
 
-- k0s all-in-one clusters cannot be upgraded through the app; they are meant for short-lived tests.
-- The rule can be lifted once k0smotron handles the 2 → 1 member transition; the incident logs are
-  kept for an upstream report.
-- Deleting such a broken cluster needs node draining skipped (see ADR-0006, update 2026-10-18).
+- k0s control plane nodes keep their image; a new image reaches them only by recreating the
+  cluster, until k0smotron replaces machines safely. FP-9's acceptance criterion "rebuilt from a new
+  image" is met for worker pools only.
+- The incident logs are kept for an upstream report; the block is lifted once a fixed k0smotron
+  version is verified.
+- Deleting a cluster whose API is gone needs node draining skipped (ADR-0006, update 2026-10-18).

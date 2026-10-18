@@ -592,6 +592,9 @@ export class ClustersService {
       removedDeployments,
       machines,
       workerVersionPending: !!next.kubernetes.workerVersion && !current.kubernetes.workerVersion,
+      inPlaceVersionKinds: Object.values(FLAVOR_PLUGINS)
+        .filter((p) => p?.controlPlaneUpdates?.versionInPlace)
+        .map((p) => p!.controlPlaneResource.kind),
     });
     const blockers = [...plan.blockers];
     const replaces = rollouts.some((r) => r.action === 'replace');
@@ -604,16 +607,12 @@ export class ClustersService {
     if (current.kubernetes.workerVersion && replaces && !opts.finishUpgrade) {
       blockers.push('An upgrade is still running; wait until the worker pools have followed.');
     }
-    // ADR-0013: some distributions cannot replace control plane machines below a minimum size.
-    const safe = FLAVOR_PLUGINS[next.kubernetes.flavor]?.safeControlPlaneReplacement;
+    // ADR-0013: some distributions cannot replace control plane machines.
+    const blocked = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates?.replacementBlocked;
     const cpReplaced = rollouts.some(
       (r) => r.action === 'replace' && CONTROL_PLANE_RESOURCES.some((c) => c.kind === r.kind),
     );
-    if (safe && cpReplaced && current.topology.controlPlane.replicas < safe.minReplicas) {
-      blockers.push(
-        `${safe.reason} Scale the control plane to ${safe.minReplicas} nodes first, or recreate the cluster.`,
-      );
-    }
+    if (blocked && cpReplaced) blockers.push(blocked);
     // FP7-F-09: pre-checks before an upgrade.
     if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];
