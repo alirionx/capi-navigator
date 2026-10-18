@@ -226,9 +226,9 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
   it('finds Cinder under its current service type block-storage (Kolla 2026.1)', async () => {
     const plugin = new OpenStackCredentialPlugin(fakeOpenStack({ cinderType: 'block-storage' }));
     const { data, summary } = plugin.normalize(input);
-    const result = await plugin.test(data, summary);
+    const result = await plugin.test(data);
     expect(result.checks.find((c) => c.name === 'Block storage (Cinder)')?.ok).toBe(true);
-    const types = await plugin.lookup(data, summary, 'volumeTypes', {});
+    const types = await plugin.lookup(data, summary, 'volumeTypes');
     expect(types.map((t) => t.value)).toEqual(['hdd', 'ssd']);
   });
 
