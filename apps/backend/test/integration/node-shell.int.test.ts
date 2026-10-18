@@ -13,16 +13,13 @@ import { AppModule } from '../../src/app.module.js';
 import { SESSION_COOKIE } from '../../src/auth/session.service.js';
 import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
+import { requireKindCluster } from './kind-guard.js';
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const ADMIN_PW = 'It-Admin-Pw-1';
 const CSRF = { 'x-capi-navigator': '1' };
 
-if (!process.env.KUBECONFIG?.endsWith('kind-capi-navigator.yaml')) {
-  throw new Error(
-    'Refusing to run: KUBECONFIG must point to the local kind cluster (pnpm test:int)',
-  );
-}
+requireKindCluster();
 
 describe('FP-17 node shell against kind', () => {
   const kc = new KubeConfig();

@@ -19,18 +19,15 @@ import { AppModule } from '../../src/app.module.js';
 import { SESSION_COOKIE } from '../../src/auth/session.service.js';
 import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
-import { fetchOrcManifest } from '../../src/operator/orc-manifest.js';
+import { requireKindCluster } from './kind-guard.js';
+import { removeOrc } from './orc.js';
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const CSRF = { 'x-capi-navigator': '1' };
 const BASE = '/api/connections/home/operator';
 const MIN = 60_000;
 
-if (!process.env.KUBECONFIG?.endsWith('kind-capi-navigator.yaml')) {
-  throw new Error(
-    'Refusing to run: KUBECONFIG must point to the local kind cluster (pnpm test:int)',
-  );
-}
+requireKindCluster();
 
 describe('FP-3 acceptance against kind', () => {
   const kc = new KubeConfig();
@@ -307,11 +304,8 @@ describe('FP-3 acceptance against kind', () => {
   it(
     'cleans up ORC',
     async () => {
-      const objects = KubernetesObjectApi.makeApiClient(kc);
-      for (const obj of (await fetchOrcManifest('v2.6.0')).reverse()) {
-        await objects.delete(obj).catch(() => undefined);
-      }
+      await removeOrc(kc, 'v2.6.0');
     },
-    2 * MIN,
+    4 * MIN,
   );
 });

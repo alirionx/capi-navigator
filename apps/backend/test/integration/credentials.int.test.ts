@@ -4,12 +4,7 @@
 // tested against the real cloud (read-only). The AWS key is a dummy: STS just rejects it.
 import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import {
-  CoreV1Api,
-  CustomObjectsApi,
-  KubeConfig,
-  KubernetesObjectApi,
-} from '@kubernetes/client-node';
+import { CoreV1Api, CustomObjectsApi, KubeConfig } from '@kubernetes/client-node';
 import type { Credential, OperatorState } from '@capi-navigator/shared';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
@@ -19,7 +14,8 @@ import { AppModule } from '../../src/app.module.js';
 import { SESSION_COOKIE } from '../../src/auth/session.service.js';
 import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
-import { fetchOrcManifest } from '../../src/operator/orc-manifest.js';
+import { requireKindCluster } from './kind-guard.js';
+import { removeOrc } from './orc.js';
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const CSRF = { 'x-capi-navigator': '1' };
@@ -38,11 +34,7 @@ const FAKE_CLOUDS = `clouds:
     auth_type: v3applicationcredential
 `;
 
-if (!process.env.KUBECONFIG?.endsWith('kind-capi-navigator.yaml')) {
-  throw new Error(
-    'Refusing to run: KUBECONFIG must point to the local kind cluster (pnpm test:int)',
-  );
-}
+requireKindCluster();
 
 describe('FP-4 credentials against kind', () => {
   const kc = new KubeConfig();
@@ -157,12 +149,14 @@ describe('FP-4 credentials against kind', () => {
       await send('delete', `${OP}/providers/CoreProvider/capi-system/cluster-api`).catch(
         () => undefined,
       );
+      // Wait until it is gone, so a following test finds the cluster as it was before.
+      await waitFor(
+        'no providers left',
+        async () => ((await get(OP)).body as OperatorState).providers.length === 0,
+        3 * MIN,
+      ).catch(() => undefined);
     }
-    if (installedByTest.includes('orc')) {
-      const objects = KubernetesObjectApi.makeApiClient(kc);
-      for (const obj of (await fetchOrcManifest('v2.6.0')).reverse())
-        await objects.delete(obj).catch(() => undefined);
-    }
+    if (installedByTest.includes('orc')) await removeOrc(kc, 'v2.6.0').catch(() => undefined);
     await app?.close();
     await core.deleteNamespace({ name: NAMESPACE }).catch(() => undefined);
   }, 8 * MIN);
@@ -261,9 +255,13 @@ describe('FP-4 credentials against kind', () => {
     2 * MIN,
   );
 
+  const ownNames = (list: Credential[]) =>
+    list.map((c) => c.name).filter((n) => n.startsWith('it-'));
+
   it('lists credentials without secrets and updates allowed namespaces', async () => {
     const list = await get(CRED).expect(200);
-    expect((list.body as Credential[]).map((c) => c.name)).toEqual(['it-aws', 'it-openstack']);
+    // Only the test's own credentials: a dev cluster may hold real ones (never touched here).
+    expect(ownNames(list.body as Credential[])).toEqual(['it-aws', 'it-openstack']);
     expect(JSON.stringify(list.body)).not.toContain(DUMMY_SECRET);
     const updated = await send('patch', `${CRED}/aws/it-aws`, {
       allowedNamespaces: ['default', 'prod'],
@@ -278,6 +276,6 @@ describe('FP-4 credentials against kind', () => {
     ]) {
       await send('delete', `${CRED}/${provider}/${name}`).expect(204);
     }
-    expect((await get(CRED).expect(200)).body).toEqual([]);
+    expect(ownNames((await get(CRED).expect(200)).body as Credential[])).toEqual([]);
   });
 });

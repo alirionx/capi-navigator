@@ -11,16 +11,13 @@ import { SESSION_COOKIE } from '../../src/auth/session.service.js';
 import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
 import { StoreService } from '../../src/store/store.service.js';
+import { requireKindCluster } from './kind-guard.js';
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const ADMIN_PW = 'It-Initial-Admin-1';
 const CSRF = { 'x-capi-navigator': '1' };
 
-if (!process.env.KUBECONFIG?.endsWith('kind-capi-navigator.yaml')) {
-  throw new Error(
-    'Refusing to run: KUBECONFIG must point to the local kind cluster (pnpm test:int)',
-  );
-}
+requireKindCluster();
 
 async function startApp(): Promise<NestExpressApplication> {
   const config = loadConfig({
