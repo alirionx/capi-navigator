@@ -83,6 +83,8 @@ const sortedLabels = (labels: Record<string, string>) =>
 
 export const k0sPlugin: BootstrapFlavorPlugin = {
   flavor: 'k0s',
+  displayName: 'k0s',
+  customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
     controlPlanePorts: [

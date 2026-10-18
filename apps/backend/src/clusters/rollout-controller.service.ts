@@ -33,13 +33,24 @@ const TEMPLATE_MIN_AGE_MS = 10 * 60_000;
 const CLUSTER_NAME_LABEL = 'cluster.x-k8s.io/cluster-name';
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
 
+/**
+ * Same version; providers may report it without the distribution suffix (K0sControlPlane
+ * status.version is the minimum Kubernetes version of its machines, e.g. "v1.35.8").
+ */
+export function sameVersion(reported: string | undefined, wanted: string): boolean {
+  if (!reported) return false;
+  if (reported === wanted) return true;
+  const core = (v: string) => v.split('+')[0];
+  return !reported.includes('+') && core(reported) === core(wanted);
+}
+
 /** Control plane state relevant for an upgrade. */
 export function controlPlaneAt(cp: K8sObj | undefined, version: string): boolean {
   if (!cp) return false;
   const replicas = Number(cp.spec?.replicas ?? 0);
   const st = cp.status ?? {};
   return (
-    st.version === version &&
+    sameVersion(st.version as string | undefined, version) &&
     Number(st.upToDateReplicas ?? -1) === replicas &&
     Number(st.readyReplicas ?? st.availableReplicas ?? -1) >= replicas
   );

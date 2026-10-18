@@ -8,9 +8,11 @@ import {
   AWS_ROOT_VOLUME_TYPES,
   ClusterSpecSchema,
   distributionCatalog,
+  FLAVOR_PLUGINS,
   type ClusterPreview,
   type ClusterSpecInput,
   type Credential,
+  type KubernetesFlavor,
   type LookupOption,
 } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
@@ -30,7 +32,8 @@ const credentialsStore = useCredentialsStore();
 const clusters = useClustersStore();
 
 const step = ref(1);
-const rke2 = distributionCatalog('rke2')!;
+const defaultVersion = (flavor: KubernetesFlavor) =>
+  distributionCatalog(flavor)!.versions.find((v) => v.default)!.version;
 const emptyCustomization = () => ({
   files: [],
   preCommands: [] as string[],
@@ -58,7 +61,9 @@ const draft = reactive({
   name: '',
   namespace: 'default',
   labels: [] as string[],
-  version: rke2.versions.find((v) => v.default)!.version,
+  /** FP9-F-06: RKE2 or k0s, RKE2 by default. */
+  flavor: 'rke2' as KubernetesFlavor,
+  version: defaultVersion('rke2'),
   provider: 'openstack' as 'openstack' | 'aws',
   credential: '',
   mode: 'standard' as 'standard' | 'all-in-one',
@@ -108,6 +113,12 @@ const draft = reactive({
   maxUnavailable: 0,
   grantNamespace: false,
 });
+/** Control plane kind of the chosen distribution, for help texts (POS-04). */
+const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
+watch(
+  () => draft.flavor,
+  (f) => (draft.version = defaultVersion(f)),
+);
 
 // ---- credentials and selection lists (FP4-F-05, FP4-F-10) ----
 const credentials = computed(() =>
@@ -264,7 +275,7 @@ const spec = computed<ClusterSpecInput>(() => ({
   namespace: draft.namespace.trim(),
   ...(kv(draft.labels) ? { labels: kv(draft.labels) } : {}),
   kubernetes: {
-    flavor: 'rke2',
+    flavor: draft.flavor,
     version: draft.version,
     podCidr: draft.podCidr.trim(),
     serviceCidr: draft.serviceCidr.trim(),
@@ -455,12 +466,13 @@ const canPreview = computed(() => issues.value.length === 0);
           </v-col>
           <v-col cols="12" md="6">
             <v-select
-              :model-value="'rke2'"
+              v-model="draft.flavor"
               :items="[
                 { title: 'RKE2', value: 'rke2' },
-                { title: t('wizard.k0sLater'), value: 'k0s', props: { disabled: true } },
+                { title: 'k0s', value: 'k0s' },
                 { title: t('wizard.kubeadmLater'), value: 'kubeadm', props: { disabled: true } },
               ]"
+              data-testid="wizard-flavor"
               :label="t('wizard.distribution')"
               :hint="t('wizard.distributionHint')"
               persistent-hint
@@ -470,7 +482,7 @@ const canPreview = computed(() => issues.value.length === 0);
             <v-select
               v-model="draft.version"
               :items="
-                rke2.versions.map((v) => ({
+                distributionCatalog(draft.flavor)!.versions.map((v) => ({
                   title:
                     v.version +
                     (v.default
@@ -482,7 +494,7 @@ const canPreview = computed(() => issues.value.length === 0);
                 }))
               "
               :label="t('wizard.version')"
-              :hint="t('wizard.versionHint')"
+              :hint="t('wizard.versionHint', { cp: cpKind })"
               persistent-hint
             />
           </v-col>
@@ -554,7 +566,9 @@ const canPreview = computed(() => issues.value.length === 0);
               <v-btn :value="5">5</v-btn>
             </v-btn-toggle>
           </div>
-          <div class="text-caption text-medium-emphasis mb-3">{{ t('wizard.cpHint') }}</div>
+          <div class="text-caption text-medium-emphasis mb-3">
+            {{ t('wizard.cpHint', { cp: cpKind }) }}
+          </div>
           <MachineGroupEditor
             v-model="draft.cp"
             :provider="draft.provider"
@@ -843,7 +857,7 @@ const canPreview = computed(() => issues.value.length === 0);
         <v-expansion-panels variant="accordion">
           <v-expansion-panel :title="t('wizard.controlPlane')">
             <v-expansion-panel-text
-              ><CustomizationEditor v-model="draft.cp.customization"
+              ><CustomizationEditor :flavor="draft.flavor" v-model="draft.cp.customization"
             /></v-expansion-panel-text>
           </v-expansion-panel>
           <template v-if="draft.mode === 'standard'">
@@ -853,7 +867,9 @@ const canPreview = computed(() => issues.value.length === 0);
               :title="t('wizard.poolTitle', { name: pool.name })"
             >
               <v-expansion-panel-text
-                ><CustomizationEditor v-model="draft.pools[i]!.customization"
+                ><CustomizationEditor
+                  :flavor="draft.flavor"
+                  v-model="draft.pools[i]!.customization"
               /></v-expansion-panel-text>
             </v-expansion-panel>
           </template>

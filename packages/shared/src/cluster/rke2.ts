@@ -79,6 +79,8 @@ function customizationFields(spec: ClusterSpec, group: MachineGroup) {
 
 export const rke2Plugin: BootstrapFlavorPlugin = {
   flavor: 'rke2',
+  displayName: 'RKE2',
+  customizationFields: { preCommands: 'preRKE2Commands', postCommands: 'postRKE2Commands' },
   // Rules from the RKE2 provider's AWS example (v0.26.0, examples/templates/aws). Nodes register
   // via internal IPs (registrationMethod internal-first): the supervisor needs no LB listener.
   network: {
