@@ -581,7 +581,14 @@ const provider = computed(() =>
           t('day2.reapplyExplain')
         }}</v-alert>
         <template v-else-if="mode === 'cpScale'">
-          <v-btn-toggle v-model="form.replicas" mandatory variant="outlined" density="comfortable">
+          <div class="text-body-2 text-medium-emphasis mb-2">{{ t('wizard.cpNodes') }}</div>
+          <v-btn-toggle
+            v-model="form.replicas"
+            mandatory
+            variant="outlined"
+            density="comfortable"
+            :aria-label="t('wizard.cpNodes')"
+          >
             <v-btn :value="1">1</v-btn><v-btn :value="3">3</v-btn><v-btn :value="5">5</v-btn>
           </v-btn-toggle>
           <div class="text-caption text-medium-emphasis mt-2">

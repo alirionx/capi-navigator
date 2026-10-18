@@ -596,6 +596,7 @@ export const en = {
     modeStandard: 'Standard',
     modeAio: 'All-in-one (1 node)',
     controlPlane: 'Control plane',
+    cpNodes: 'Control plane nodes',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',
     cpReplacementWarning: '{reason}',
     poolName: 'Pool name',
