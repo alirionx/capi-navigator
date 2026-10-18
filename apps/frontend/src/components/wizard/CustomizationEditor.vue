@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { FLAVOR_PLUGINS, type KubernetesFlavor } from '@capi-navigator/shared';
 
 /** Files and pre/post commands of one group (FP5-F-13). Runs as root on the nodes. */
 interface FileEntry {
@@ -15,6 +16,14 @@ interface Customization {
   postCommands: string[];
 }
 const model = defineModel<Customization>({ required: true });
+const props = withDefaults(defineProps<{ flavor?: KubernetesFlavor }>(), { flavor: 'rke2' });
+const fields = computed(
+  () =>
+    FLAVOR_PLUGINS[props.flavor]?.customizationFields ?? {
+      preCommands: 'preCommands',
+      postCommands: 'postCommands',
+    },
+);
 const { t } = useI18n();
 
 const lines = (key: 'preCommands' | 'postCommands') =>
@@ -84,7 +93,7 @@ function addFile(fromSecret: boolean): void {
     <v-textarea
       v-model="pre"
       :label="t('wizard.custom.pre')"
-      :hint="t('wizard.custom.preHint')"
+      :hint="t('wizard.custom.preHint', { field: fields.preCommands })"
       persistent-hint
       rows="2"
       auto-grow
@@ -93,7 +102,7 @@ function addFile(fromSecret: boolean): void {
     <v-textarea
       v-model="post"
       :label="t('wizard.custom.post')"
-      :hint="t('wizard.custom.postHint')"
+      :hint="t('wizard.custom.postHint', { field: fields.postCommands })"
       persistent-hint
       rows="2"
       auto-grow

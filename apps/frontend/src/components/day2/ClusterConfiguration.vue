@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import {
   CONTROL_PLANE_GROUP,
   distributionCatalog,
+  FLAVOR_PLUGINS,
   upgradeProblem,
   type ClusterSpec,
   type ClusterStatus,
@@ -583,7 +584,13 @@ const provider = computed(() =>
           <v-btn-toggle v-model="form.replicas" mandatory variant="outlined" density="comfortable">
             <v-btn :value="1">1</v-btn><v-btn :value="3">3</v-btn><v-btn :value="5">5</v-btn>
           </v-btn-toggle>
-          <div class="text-caption text-medium-emphasis mt-2">{{ t('wizard.cpHint') }}</div>
+          <div class="text-caption text-medium-emphasis mt-2">
+            {{
+              t('wizard.cpHint', {
+                cp: FLAVOR_PLUGINS[spec?.kubernetes.flavor ?? 'rke2']?.controlPlaneResource.kind,
+              })
+            }}
+          </div>
           <v-alert
             v-if="form.replicas < spec.topology.controlPlane.replicas"
             type="warning"
@@ -665,7 +672,7 @@ const provider = computed(() =>
           <v-alert type="warning" variant="tonal" density="compact" class="mb-3">{{
             t('wizard.customWarning')
           }}</v-alert>
-          <CustomizationEditor v-model="form.c" />
+          <CustomizationEditor v-model="form.c" :flavor="spec?.kubernetes.flavor" />
         </template>
         <v-alert v-else-if="mode === 'rebuild'" type="info" variant="tonal">{{
           t('day2.rebuildExplain', { group: target })

@@ -105,6 +105,9 @@ export interface BootstrapFlavorPlugin {
   flavor: ClusterSpec['kubernetes']['flavor'];
   /** Ports and node traffic the distribution needs (ADR-0012). */
   network: FlavorNetwork;
+  /** Display name and the fields node customization maps to, for help texts (POS-04). */
+  displayName: string;
+  customizationFields: { preCommands: string; postCommands: string };
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {
     spec: ClusterSpec;

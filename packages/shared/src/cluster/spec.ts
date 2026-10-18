@@ -196,6 +196,7 @@ export const InfrastructureSchema = z.discriminatedUnion('provider', [
 export type Infrastructure = z.infer<typeof InfrastructureSchema>;
 
 export const KubernetesFlavorSchema = z.enum(['rke2', 'k0s', 'kubeadm']);
+export type KubernetesFlavor = z.infer<typeof KubernetesFlavorSchema>;
 
 /** Version format per available distribution; kubeadm follows in FP-10. */
 export const FLAVOR_VERSION_FORMATS: Partial<

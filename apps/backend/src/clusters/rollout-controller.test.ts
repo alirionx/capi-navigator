@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { controlPlaneAt, unusedTemplates } from './rollout-controller.service.js';
+import { controlPlaneAt, sameVersion, unusedTemplates } from './rollout-controller.service.js';
 
 describe('rollout controller (FP7-F-08, FP7-F-15)', () => {
   const cp = (status: Record<string, unknown>, replicas = 3) => ({
@@ -41,5 +41,15 @@ describe('rollout controller (FP7-F-08, FP7-F-15)', () => {
     expect(unusedTemplates(templates, referencing, now).map((x) => x.metadata.name)).toEqual([
       'demo-cp-aaaa1111',
     ]);
+  });
+});
+
+describe('version comparison for k0s (FP9-F-05)', () => {
+  it('accepts a reported version without the distribution suffix', () => {
+    expect(sameVersion('v1.35.8', 'v1.35.8+k0s.1')).toBe(true);
+    expect(sameVersion('v1.35.8+k0s.1', 'v1.35.8+k0s.1')).toBe(true);
+    expect(sameVersion('v1.34.11', 'v1.35.8+k0s.1')).toBe(false);
+    expect(sameVersion('v1.35.8+k0s.0', 'v1.35.8+k0s.1')).toBe(false);
+    expect(sameVersion(undefined, 'v1.35.8+k0s.1')).toBe(false);
   });
 });
