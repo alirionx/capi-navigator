@@ -21,9 +21,9 @@ permissions, whether assignments are scoped, and whether lists are filtered by s
 - **Built-in roles in code.** viewer, operator and admin are constants with exactly the access of
   FP-1; they cannot be changed or deleted, only copied. A test pins the endpoint matrix of the
   built-in roles. Custom roles are `NavigatorRole` resources in the app namespace.
-- **Several assignments per user**, like Kubernetes RoleBindings: `bindings: [{ role,
-connections?, namespaces? }]` on `NavigatorUser`. Without limits an assignment applies
-  everywhere. Limits use connection and namespace, the units in which CAPI clusters, credential
+- **Several assignments per user**, like Kubernetes RoleBindings: a list `bindings` on
+  `NavigatorUser`, each with a role and optional `connections` and `namespaces`. Without limits an
+  assignment applies everywhere. Limits use connection and namespace, the units in which CAPI clusters, credential
   permissions and add-ons live. Limited assignments may only carry scopable permissions;
   platform permissions (providers, credentials, connections, repositories, presets, users,
   management node shell) need an unlimited assignment.
