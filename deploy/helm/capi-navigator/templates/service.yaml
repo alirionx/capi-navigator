@@ -5,8 +5,25 @@ metadata:
   labels:
     app.kubernetes.io/name: capi-navigator
     app.kubernetes.io/instance: {{ .Release.Name }}
+  {{- with .Values.service.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
+  {{- if eq .Values.service.type "LoadBalancer" }}
+  {{- with .Values.service.loadBalancerClass }}
+  loadBalancerClass: {{ . }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- if and (has .Values.service.type (list "LoadBalancer" "NodePort")) .Values.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- end }}
   selector:
     app.kubernetes.io/name: capi-navigator
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -14,3 +31,6 @@ spec:
     - name: http
       port: {{ .Values.service.port }}
       targetPort: http
+      {{- if and (has .Values.service.type (list "LoadBalancer" "NodePort")) .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
+      {{- end }}
