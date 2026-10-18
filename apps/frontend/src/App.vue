@@ -35,7 +35,7 @@ const navGroups = computed(() =>
         (r) =>
           r.meta?.titleKey &&
           r.meta.navGroup === group &&
-          (!r.meta.minRole || auth.can(r.meta.minRole)),
+          (!r.meta.permission || auth.can(r.meta.permission)),
       )
       .map((r) => ({
         to: r.path,

@@ -16,7 +16,7 @@ const props = defineProps<{ connection: string }>();
 const { t } = useI18n();
 const auth = useAuthStore();
 const repos = useHelmRepositoriesStore();
-const isAdmin = computed(() => auth.can('admin'));
+const isAdmin = computed(() => auth.can('presets.manage'));
 
 const presets = ref<AddonPresetView[]>([]);
 const error = ref<unknown>(null);

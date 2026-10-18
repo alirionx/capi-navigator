@@ -22,7 +22,7 @@ const { t } = useI18n();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
 const store = useOperatorStore();
-const isAdmin = computed(() => auth.can('admin'));
+const isAdmin = computed(() => auth.can('providers.manage'));
 
 // Follow the globally active management cluster (FP2-F-05); live updates via SSE (FP3-F-13).
 watch(

@@ -19,6 +19,7 @@ export const en = {
     credentials: 'Credentials',
     clusters: 'Clusters',
     users: 'Users',
+    roles: 'Roles',
     addons: 'Add-ons',
     helmRepositories: 'Helm repositories',
     groups: {
@@ -575,6 +576,7 @@ export const en = {
     nameHint:
       'Lowercase letters, digits and "-", at most 40 characters. Maps to Cluster.metadata.name.',
     namespace: 'Namespace',
+    namespaceLimited: 'Your role assignments allow creating clusters in these namespaces only.',
     namespaceHint: 'Namespace on the management cluster; created if missing. Default: default.',
     distribution: 'Kubernetes distribution',
     distributionHint:
@@ -921,13 +923,10 @@ export const en = {
   },
   users: {
     title: 'Users',
-    subtitle: 'Local user accounts and their roles. Admins only.',
+    subtitle: 'Local user accounts and their role assignments.',
     add: 'Add user',
     username: 'Username',
     usernameHint: 'Lowercase letters, digits and "-", 3–40 characters. Cannot be changed later.',
-    role: 'Role',
-    roleHint:
-      'Viewer: read only. Operator: also manage workload clusters and add-ons. Admin: also connections, providers and users. Default: viewer.',
     password: 'Initial password',
     passwordHint: 'At least {min} characters. The user must change it at first sign-in.',
     status: 'Status',
@@ -947,6 +946,71 @@ export const en = {
     deleteTitle: 'Delete {username}?',
     deleteText: 'The user and their password are removed. This cannot be undone.',
     empty: 'No users yet.',
+    bindings: 'Role assignments',
+    bindingsHint:
+      'Each assignment gives a role, everywhere or only in some management cluster connections and namespaces. Reading is never limited. Changes end the sessions of the user.',
+    noBindings: 'No access',
+    everywhere: 'everywhere',
+  },
+  bindings: {
+    role: 'Role',
+    connections: 'Connections',
+    allConnections: 'All connections (no limit)',
+    namespaces: 'Namespaces',
+    allNamespaces: 'All namespaces (no limit); type a name and press Enter',
+    add: 'Add assignment',
+    remove: 'Remove assignment',
+    platformLimited:
+      'This role contains {permissions}, which only work without limits. Remove the limits or choose another role.',
+  },
+  rolesPage: {
+    title: 'Roles',
+    subtitle:
+      'Roles are sets of permissions. Built-in roles cannot be changed; copy one to start a custom role.',
+    add: 'Add role',
+    name: 'Name',
+    nameHint:
+      'Lowercase letters, digits and "-". Used in role assignments; cannot be changed later.',
+    displayName: 'Display name',
+    description: 'Description',
+    permissions: 'Permissions',
+    permissionsHint:
+      'Reading is always included. Permissions marked as platform-wide only work in assignments without limits.',
+    platform: 'platform-wide',
+    users: 'Users',
+    builtin: 'built-in',
+    copy: 'Copy',
+    copyOf: 'Copy of {name}',
+    edit: 'Edit',
+    editTitle: 'Edit role {name}',
+    deleteTitle: 'Delete role {name}?',
+    deleteText: 'The role is removed. Roles that are still assigned cannot be deleted.',
+    inUse: 'Assigned to {users}',
+    unused: 'Not assigned',
+    learn: 'Stored as NavigatorRole {name} in the app namespace of the home cluster.',
+  },
+  permissions: {
+    groups: {
+      General: 'General',
+      'Workload clusters': 'Workload clusters',
+      'Add-ons': 'Add-ons',
+      Platform: 'Platform',
+      Administration: 'Administration',
+    },
+    view: 'Read everything: clusters, status, YAML, dashboard, providers, add-ons, events.',
+    clusters_create: 'Create workload clusters, incl. cloud lookups in the wizard.',
+    clusters_change: 'Day-2 changes, scaling, labels (assigns add-ons) and bastion.',
+    clusters_delete: 'Delete workload clusters.',
+    clusters_kubeconfig: 'View and download the admin kubeconfig of workload clusters.',
+    nodes_shell: 'Open a root shell on workload cluster nodes.',
+    addons_manage: 'Create, change and delete Helm add-ons; browse charts.',
+    presets_manage: 'Override and roll out the CCM, CSI and kured presets.',
+    providers_manage: 'Install, upgrade and remove ORC and the CAPI providers.',
+    credentials_manage: 'Manage and test cloud credentials.',
+    connections_manage: 'Connect and remove management clusters.',
+    helmRepositories_manage: 'Manage Helm repositories.',
+    managementNodes_shell: 'Open a root shell on management cluster nodes.',
+    users_manage: 'Manage users, roles and role assignments (effectively admin).',
   },
 };
 

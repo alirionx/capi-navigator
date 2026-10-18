@@ -1,3 +1,4 @@
+import { BUILTIN_ROLES } from '@capi-navigator/shared';
 import { createPinia, type Pinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAppRouter } from './index.js';
@@ -37,7 +38,7 @@ describe('router guards (FP1-F-07)', () => {
     mockMe(200, {
       username: 'admin',
       role: 'admin',
-      bindings: [{ role: 'admin', permissions: [] }],
+      bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
       mustChangePassword: true,
     });
     const router = createAppRouter(pinia);
@@ -49,7 +50,7 @@ describe('router guards (FP1-F-07)', () => {
     mockMe(200, {
       username: 'vera',
       role: 'viewer',
-      bindings: [{ role: 'viewer', permissions: [] }],
+      bindings: [{ role: 'viewer', permissions: [...BUILTIN_ROLES.viewer.permissions] }],
       mustChangePassword: false,
     });
     const router = createAppRouter(pinia);
@@ -61,7 +62,7 @@ describe('router guards (FP1-F-07)', () => {
     mockMe(200, {
       username: 'admin',
       role: 'admin',
-      bindings: [{ role: 'admin', permissions: [] }],
+      bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
       mustChangePassword: false,
     });
     const router = createAppRouter(pinia);
@@ -73,7 +74,7 @@ describe('router guards (FP1-F-07)', () => {
     mockMe(200, {
       username: 'otto',
       role: 'operator',
-      bindings: [{ role: 'operator', permissions: [] }],
+      bindings: [{ role: 'operator', permissions: [...BUILTIN_ROLES.operator.permissions] }],
       mustChangePassword: false,
     });
     const router = createAppRouter(pinia);

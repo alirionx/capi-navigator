@@ -12,7 +12,7 @@ import { useConnectionsStore } from '../stores/connections.js';
 const { t, d } = useI18n();
 const store = useConnectionsStore();
 const auth = useAuthStore();
-const isAdmin = computed(() => auth.can('admin'));
+const isAdmin = computed(() => auth.can('connections.manage'));
 
 const loadError = ref<unknown>(null);
 const actionError = ref<unknown>(null);

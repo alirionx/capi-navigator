@@ -75,7 +75,7 @@ function openShell(node: string): void {
               </td>
               <td class="text-right">
                 <v-btn
-                  v-if="auth.can('admin')"
+                  v-if="auth.can('managementNodes.shell')"
                   size="small"
                   variant="tonal"
                   prepend-icon="mdi-console"
@@ -87,7 +87,10 @@ function openShell(node: string): void {
             </tr>
           </tbody>
         </v-table>
-        <div v-if="!auth.can('admin')" class="text-caption text-medium-emphasis mt-2">
+        <div
+          v-if="!auth.can('managementNodes.shell')"
+          class="text-caption text-medium-emphasis mt-2"
+        >
           {{ t('shell.adminOnly') }}
         </div>
       </v-card-text>

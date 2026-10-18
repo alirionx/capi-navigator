@@ -20,6 +20,7 @@ import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../components/wizard/MachineGroupEditor.vue';
 import BastionEditor from '../components/BastionEditor.vue';
+import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
@@ -30,6 +31,7 @@ const router = useRouter();
 const connections = useConnectionsStore();
 const credentialsStore = useCredentialsStore();
 const clusters = useClustersStore();
+const auth = useAuthStore();
 
 const step = ref(1);
 const defaultVersion = (flavor: KubernetesFlavor) =>
@@ -117,6 +119,18 @@ const draft = reactive({
   maxUnavailable: 0,
   grantNamespace: false,
 });
+/** FP19-F-10: users limited to namespaces may only create clusters there. */
+const allowedNamespaces = computed(() =>
+  connections.activeName ? auth.namespacesFor('clusters.create', connections.activeName) : 'all',
+);
+watch(
+  allowedNamespaces,
+  (ns) => {
+    if (ns !== 'all' && !ns.includes(draft.namespace)) draft.namespace = ns[0] ?? '';
+  },
+  { immediate: true },
+);
+
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
 const flavorPlugin = computed(() => FLAVOR_PLUGINS[draft.flavor]);
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
@@ -486,10 +500,20 @@ const canPreview = computed(() => issues.value.length === 0);
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
+              v-if="allowedNamespaces === 'all'"
               v-model="draft.namespace"
               :label="t('wizard.namespace')"
               :hint="t('wizard.namespaceHint')"
               persistent-hint
+            />
+            <v-select
+              v-else
+              v-model="draft.namespace"
+              :items="allowedNamespaces"
+              :label="t('wizard.namespace')"
+              :hint="t('wizard.namespaceLimited')"
+              persistent-hint
+              data-testid="namespace-select"
             />
           </v-col>
           <v-col cols="12" md="6">

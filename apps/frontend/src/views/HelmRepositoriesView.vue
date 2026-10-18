@@ -20,7 +20,7 @@ import { useHelmRepositoriesStore } from '../stores/helm-repositories.js';
 const { t } = useI18n();
 const auth = useAuthStore();
 const store = useHelmRepositoriesStore();
-const isAdmin = computed(() => auth.can('admin'));
+const isAdmin = computed(() => auth.can('helmRepositories.manage'));
 const loadError = ref<unknown>(null);
 store.load().catch((err: unknown) => (loadError.value = err));
 

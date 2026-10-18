@@ -20,7 +20,12 @@ const connections = useConnectionsStore();
 const store = useAddonsStore();
 const clusters = useClustersStore();
 const repos = useHelmRepositoriesStore();
-const canChange = computed(() => auth.can('operator'));
+const canChange = computed(() =>
+  auth.can('addons.manage', { connection: connections.activeName ?? '' }),
+);
+/** Add-ons are changed in their namespace (FP19-F-10). */
+const canChangeIn = (namespace: string) =>
+  auth.can('addons.manage', { connection: connections.activeName ?? '', namespace });
 
 let release: (() => void) | null = null;
 watch(
@@ -206,7 +211,7 @@ const deleteOpen = ref(false);
                 }"
               />
               <v-btn
-                v-if="canChange && item.managed && item.spec"
+                v-if="canChangeIn(item.namespace) && item.managed && item.spec"
                 icon="mdi-pencil"
                 size="small"
                 variant="text"
@@ -215,7 +220,7 @@ const deleteOpen = ref(false);
                 @click="openEdit(item)"
               />
               <v-btn
-                v-if="canChange && item.managed"
+                v-if="canChangeIn(item.namespace) && item.managed"
                 icon="mdi-delete"
                 size="small"
                 variant="text"

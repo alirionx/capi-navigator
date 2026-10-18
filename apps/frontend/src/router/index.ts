@@ -1,4 +1,4 @@
-import { hasRole, type Role } from '@capi-navigator/shared';
+import type { Permission } from '@capi-navigator/shared';
 import type { Pinia } from 'pinia';
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { onUnauthorized } from '../api/client.js';
@@ -14,6 +14,7 @@ import HelmRepositoriesView from '../views/HelmRepositoriesView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
+import RolesView from '../views/RolesView.vue';
 import UsersView from '../views/UsersView.vue';
 
 declare module 'vue-router' {
@@ -21,7 +22,8 @@ declare module 'vue-router' {
     /** Reachable without a session. */
     public?: boolean;
     /** Minimum role; hides the route for others (FP1-F-07, cosmetic only). */
-    minRole?: Role;
+    /** Permission needed somewhere to open the page (FP19-F-10). */
+    permission?: Permission;
     /** Navigation entry. */
     titleKey?: string;
     icon?: string;
@@ -36,20 +38,22 @@ export const routes: RouteRecordRaw[] = [
     path: '/change-password',
     name: 'change-password',
     component: ChangePasswordView,
-    meta: { minRole: 'viewer' },
+    // Signed-in only: reachable while the password change is pending.
+    meta: {},
   },
   {
     path: '/',
     name: 'home',
     component: HomeView,
-    meta: { minRole: 'viewer', titleKey: 'nav.home', icon: 'mdi-home', navGroup: 'overview' },
+    // Signed-in only: the fallback for pages without permission (no redirect loop).
+    meta: { titleKey: 'nav.home', icon: 'mdi-home', navGroup: 'overview' },
   },
   {
     path: '/clusters',
     name: 'clusters',
     component: ClustersView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.clusters',
       icon: 'mdi-server-network',
       navGroup: 'overview',
@@ -59,21 +63,21 @@ export const routes: RouteRecordRaw[] = [
     path: '/clusters/new',
     name: 'cluster-new',
     component: ClusterWizardView,
-    meta: { minRole: 'operator' },
+    meta: { permission: 'clusters.create' },
   },
   {
     path: '/clusters/:namespace/:name',
     name: 'cluster',
     component: ClusterDetailView,
     props: true,
-    meta: { minRole: 'viewer' },
+    meta: { permission: 'view' },
   },
   {
     path: '/addons',
     name: 'addons',
     component: AddonsView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.addons',
       icon: 'mdi-package-variant-closed',
       navGroup: 'overview',
@@ -84,7 +88,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'connections',
     component: ConnectionsView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.connections',
       icon: 'mdi-lan-connect',
       navGroup: 'management',
@@ -95,7 +99,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'providers',
     component: ProvidersView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.providers',
       icon: 'mdi-puzzle',
       navGroup: 'management',
@@ -106,7 +110,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'credentials',
     component: CredentialsView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.credentials',
       icon: 'mdi-key-chain',
       navGroup: 'management',
@@ -117,7 +121,7 @@ export const routes: RouteRecordRaw[] = [
     name: 'helm-repositories',
     component: HelmRepositoriesView,
     meta: {
-      minRole: 'viewer',
+      permission: 'view',
       titleKey: 'nav.helmRepositories',
       icon: 'mdi-database-outline',
       navGroup: 'management',
@@ -128,9 +132,20 @@ export const routes: RouteRecordRaw[] = [
     name: 'users',
     component: UsersView,
     meta: {
-      minRole: 'admin',
+      permission: 'users.manage',
       titleKey: 'nav.users',
       icon: 'mdi-account-multiple',
+      navGroup: 'administration',
+    },
+  },
+  {
+    path: '/roles',
+    name: 'roles',
+    component: RolesView,
+    meta: {
+      permission: 'users.manage',
+      titleKey: 'nav.roles',
+      icon: 'mdi-shield-account',
       navGroup: 'administration',
     },
   },
@@ -153,7 +168,7 @@ export function createAppRouter(pinia: Pinia) {
     if (auth.me.mustChangePassword && to.name !== 'change-password') {
       return { name: 'change-password' };
     }
-    if (to.meta.minRole && !hasRole(auth.me.role, to.meta.minRole)) return { name: 'home' };
+    if (to.meta.permission && !auth.can(to.meta.permission)) return { name: 'home' };
     return true;
   });
 
