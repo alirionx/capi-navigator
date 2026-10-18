@@ -1,7 +1,7 @@
 import { Controller, Get, Module, Param, Sse, type MessageEvent } from '@nestjs/common';
 import type { Dashboard } from '@capi-navigator/shared';
 import { interval, map, merge, type Observable } from 'rxjs';
-import { Roles } from '../auth/decorators.js';
+import { Requires } from '../auth/decorators.js';
 import { ClustersModule } from '../clusters/clusters.module.js';
 import { DashboardService } from './dashboard.service.js';
 
@@ -12,7 +12,7 @@ const HEARTBEAT_MS = 25_000;
 export class DashboardController {
   constructor(private readonly dashboards: DashboardService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   get(
     @Param('connection') connection: string,
@@ -22,7 +22,7 @@ export class DashboardController {
     return this.dashboards.dashboard(connection, namespace, name);
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Sse('events')
   stream(
     @Param('connection') connection: string,

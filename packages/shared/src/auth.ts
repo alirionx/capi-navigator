@@ -1,9 +1,8 @@
 import { z } from 'zod';
 
-/** Roles from section 3 of the requirements, ordered from least to most privileged. */
-export const ROLES = ['viewer', 'operator', 'admin'] as const;
-export const RoleSchema = z.enum(ROLES);
-export type Role = z.infer<typeof RoleSchema>;
+import { EffectiveBindingSchema, ROLES, RoleSchema, type Role } from './permissions.js';
+
+export { ROLES, RoleSchema, type Role };
 
 /** True if `role` grants at least the permissions of `required` (FP1-F-04). */
 export function hasRole(role: Role, required: Role): boolean {
@@ -46,7 +45,13 @@ export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
 /** The signed-in user as returned by `GET /api/auth/me`. */
 export const MeSchema = z.object({
   username: z.string(),
+  /**
+   * Highest built-in role among the unlimited assignments, for display until the frontend checks
+   * permissions (FP-19 step 5); "viewer" otherwise.
+   */
   role: RoleSchema,
+  /** Role assignments with the permissions they grant (FP19-F-10). */
+  bindings: z.array(EffectiveBindingSchema),
   mustChangePassword: z.boolean(),
 });
 export type Me = z.infer<typeof MeSchema>;

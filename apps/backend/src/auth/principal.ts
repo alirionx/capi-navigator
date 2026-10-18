@@ -1,9 +1,10 @@
-import type { Role } from '@capi-navigator/shared';
+import type { RoleBinding } from '@capi-navigator/shared';
 
-/** The authenticated user of a request. */
+/** The authenticated user of a request. Holds no permissions: they are resolved per request. */
 export interface Principal {
   username: string;
-  role: Role;
+  /** Role assignments (FP19-F-03), read fresh from the user cache on every request. */
+  bindings: RoleBinding[];
   mustChangePassword: boolean;
 }
 

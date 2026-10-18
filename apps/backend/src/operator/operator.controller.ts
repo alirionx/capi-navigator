@@ -25,7 +25,7 @@ import {
 } from '@capi-navigator/shared';
 import { interval, map, merge, type Observable } from 'rxjs';
 import type { z } from 'zod';
-import { Audit, Roles } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { OperatorEventsService } from './operator-events.service.js';
 import { isProviderKind, OperatorService, type ProviderRef } from './operator.service.js';
@@ -47,14 +47,14 @@ export class OperatorController {
     private readonly events: OperatorEventsService,
   ) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   state(@Param('connection') connection: string): Promise<OperatorState> {
     return this.operator.state(connection);
   }
 
   /** FP3-F-13: live state via server-sent events. */
-  @Roles('viewer')
+  @Requires('view')
   @Sse('events')
   stream(@Param('connection') connection: string): Observable<MessageEvent> {
     return merge(
@@ -63,19 +63,19 @@ export class OperatorController {
     );
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('releases/orc')
   orcReleases(): Promise<ReleaseList> {
     return this.operator.orcReleases();
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('releases/:catalogId')
   releases(@Param('catalogId') catalogId: string): Promise<ReleaseList> {
     return this.operator.providerReleases(catalogId);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Post('orc/preview')
   @HttpCode(200)
   @Audit({ action: 'orc.preview', skip: true })
@@ -86,7 +86,7 @@ export class OperatorController {
     return this.operator.previewOrc(connection, body.version);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Post('orc')
   @HttpCode(200)
   @Audit({ action: 'orc.install', ...MC })
@@ -97,7 +97,7 @@ export class OperatorController {
     return this.operator.installOrc(connection, body.version);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Post('providers/preview')
   @HttpCode(200)
   @Audit({ action: 'provider.preview', skip: true })
@@ -108,7 +108,7 @@ export class OperatorController {
     return this.operator.previewInstall(connection, body);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Post('providers')
   @Audit({ action: 'provider.install', ...MC, targetKind: 'Provider', targetParam: 'catalogId' })
   install(
@@ -118,7 +118,7 @@ export class OperatorController {
     return this.operator.install(connection, body);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Put('providers/:kind/:namespace/:name/preview')
   @HttpCode(200)
   @Audit({ action: 'provider.preview-update', skip: true })
@@ -133,7 +133,7 @@ export class OperatorController {
     return this.operator.previewUpdate(connection, ref(kind, namespace, name), body);
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Put('providers/:kind/:namespace/:name')
   @Audit({ action: 'provider.update', ...PROVIDER_AUDIT })
   update(
@@ -147,7 +147,7 @@ export class OperatorController {
     return this.operator.update(connection, ref(kind, namespace, name), body);
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('providers/:kind/:namespace/:name/usage')
   usage(
     @Param('connection') connection: string,
@@ -158,7 +158,7 @@ export class OperatorController {
     return this.operator.usage(connection, ref(kind, namespace, name));
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Get('providers/:kind/:namespace/:name/variables')
   async variables(
     @Param('connection') connection: string,
@@ -169,7 +169,7 @@ export class OperatorController {
     return { names: await this.operator.variableNames(connection, ref(kind, namespace, name)) };
   }
 
-  @Roles('admin')
+  @Requires('providers.manage')
   @Delete('providers/:kind/:namespace/:name')
   @HttpCode(204)
   @Audit({ action: 'provider.delete', ...PROVIDER_AUDIT })

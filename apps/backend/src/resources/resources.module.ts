@@ -7,7 +7,7 @@ import {
 } from '@capi-navigator/shared';
 import { from, interval, map, merge, mergeMap, type Observable } from 'rxjs';
 import { z } from 'zod';
-import { Roles } from '../auth/decorators.js';
+import { Requires } from '../auth/decorators.js';
 import { ClustersModule } from '../clusters/clusters.module.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ConnectionsModule } from '../connections/connections.module.js';
@@ -48,7 +48,7 @@ type YamlQuery = { ref: ResourceRef; managedFields: boolean };
 export class ResourcesController {
   constructor(private readonly resources: ResourcesService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('resources/yaml')
   yaml(
     @Param('connection') connection: string,
@@ -58,7 +58,7 @@ export class ResourcesController {
   }
 
   /** FP7-F-02: live via watch on the object. */
-  @Roles('viewer')
+  @Requires('view')
   @Sse('resources/yaml/events')
   stream(
     @Param('connection') connection: string,
@@ -73,7 +73,7 @@ export class ResourcesController {
     );
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('clusters/:namespace/:name/resources')
   clusterResources(
     @Param('connection') connection: string,

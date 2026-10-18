@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { userBindings } from '@capi-navigator/shared';
 import type { Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isConflict } from '../kube/errors.js';
@@ -61,8 +62,7 @@ export class SessionService implements OnModuleInit {
     if (!user || user.spec.disabled || user.spec.sessionGeneration !== payload.g) return undefined;
     return {
       username: payload.u,
-      // Until the permission guard (FP-19 step 2): users without a legacy role are viewers.
-      role: user.spec.role ?? 'viewer',
+      bindings: userBindings(user.spec),
       mustChangePassword: user.spec.mustChangePassword,
     };
   }

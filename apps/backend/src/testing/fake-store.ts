@@ -4,8 +4,10 @@ import type {
   ManagementClusterSpec,
   ManagementClusterStatus,
   NavigatorResource,
+  NavigatorRoleSpec,
   NavigatorUserSpec,
 } from '@capi-navigator/shared';
+import { BUILTIN_ROLES, isBuiltinRole } from '@capi-navigator/shared';
 import type { StoreService } from '../store/store.service.js';
 
 const err = (code: number) => Object.assign(new Error(`HTTP ${code}`), { code });
@@ -22,6 +24,7 @@ export function createFakeStore() {
   >();
 
   const helmRepositories = new Map<string, NavigatorResource<HelmRepositorySpec>>();
+  const roles = new Map<string, NavigatorResource<NavigatorRoleSpec>>();
 
   let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
 
@@ -63,6 +66,52 @@ export function createFakeStore() {
       delete: async (name: string) => {
         if (!users.delete(name)) throw err(404);
       },
+    },
+    roles: {
+      create: async (meta: { name: string }, spec: NavigatorRoleSpec) => {
+        if (roles.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'NavigatorRole',
+          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          spec,
+        };
+        roles.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchSpec: async (
+        name: string,
+        spec: Partial<NavigatorRoleSpec>,
+        resourceVersion?: string,
+      ) => {
+        const current = roles.get(name);
+        if (!current) throw err(404);
+        if (resourceVersion && current.metadata.resourceVersion !== resourceVersion) throw err(409);
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          spec: { ...current.spec, ...spec },
+        };
+        roles.set(name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!roles.delete(name)) throw err(404);
+      },
+    },
+    roleCache: {
+      get: (name: string) => structuredClone(roles.get(name)),
+      list: () => [...roles.values()].map((r) => structuredClone(r)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
+    },
+    rolePermissions: (role: string) => {
+      if (isBuiltinRole(role)) return BUILTIN_ROLES[role].permissions;
+      const custom = roles.get(role);
+      return custom
+        ? ['view' as const, ...custom.spec.permissions.filter((p) => p !== 'view')]
+        : undefined;
     },
     userCache: {
       get: (name: string) => structuredClone(users.get(name)),

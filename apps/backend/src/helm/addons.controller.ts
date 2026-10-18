@@ -25,7 +25,7 @@ import {
 } from '@capi-navigator/shared';
 import { interval, map, merge, type Observable } from 'rxjs';
 import { z } from 'zod';
-import { Audit, Roles } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AddonPresetsService } from './addon-presets.service.js';
 import { AddonsService } from './addons.service.js';
@@ -50,14 +50,14 @@ export const PreviewRequestSchema = z.object({ spec: AddonSpecSchema });
 export class AddonsController {
   constructor(private readonly addons: AddonsService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   overview(@Param('connection') connection: string): Promise<AddonOverview> {
     return this.addons.overview(connection);
   }
 
   /** Live via watches on HelmChartProxies, HelmReleaseProxies and Clusters (NF-11). */
-  @Roles('viewer')
+  @Requires('view')
   @Sse('events')
   stream(@Param('connection') connection: string): Observable<MessageEvent> {
     return merge(
@@ -67,7 +67,7 @@ export class AddonsController {
   }
 
   /** FP8-F-07: clusters matching a selector while the form is edited; changes nothing. */
-  @Roles('operator')
+  @Requires('addons.manage', { namespaceFromBody: 'namespace' })
   @Post('matching')
   @HttpCode(200)
   @Audit({ action: 'addon.matching', skip: true })
@@ -79,7 +79,7 @@ export class AddonsController {
     return this.addons.matching(connection, body.namespace, body.selector);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage', { namespaceFromBody: 'spec.namespace' })
   @Post('preview')
   @HttpCode(200)
   @Audit({ action: 'addon.preview', skip: true })
@@ -91,7 +91,7 @@ export class AddonsController {
   }
 
   /** Creates or updates the HelmChartProxy after the preview (FP8-F-05, FP8-F-13). */
-  @Roles('operator')
+  @Requires('addons.manage')
   @Put(':namespace/:name')
   @Audit({ action: 'addon.apply', ...AUDIT })
   apply(
@@ -107,7 +107,7 @@ export class AddonsController {
     return this.addons.apply(connection, body.spec, body.takeOver);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage')
   @Get(':namespace/:name/delete-preview')
   deletePreview(
     @Param('connection') connection: string,
@@ -117,7 +117,7 @@ export class AddonsController {
     return this.addons.deletePreview(connection, namespace, name);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage')
   @Delete(':namespace/:name')
   @HttpCode(204)
   @Audit({ action: 'addon.delete', ...AUDIT })
@@ -139,13 +139,13 @@ export const PresetOverrideBodySchema = z.object({
 export class AddonPresetsController {
   constructor(private readonly presets: AddonPresetsService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get('connections/:connection/addon-presets')
   list(@Param('connection') connection: string): Promise<AddonPresetView[]> {
     return this.presets.list(connection);
   }
 
-  @Roles('admin')
+  @Requires('presets.manage')
   @Put('addon-presets/:id')
   @HttpCode(204)
   @Audit({ action: 'addon-preset.update', targetKind: 'AddonPreset', targetParam: 'id' })
@@ -157,7 +157,7 @@ export class AddonPresetsController {
     return this.presets.update(id, body.override);
   }
 
-  @Roles('admin')
+  @Requires('presets.manage')
   @Post('connections/:connection/addon-presets/:id/rollout/preview')
   @HttpCode(200)
   @Audit({ action: 'addon-preset.rollout-preview', skip: true })
@@ -168,7 +168,7 @@ export class AddonPresetsController {
     return this.presets.rolloutPreview(connection, id);
   }
 
-  @Roles('admin')
+  @Requires('presets.manage')
   @Post('connections/:connection/addon-presets/:id/rollout')
   @HttpCode(200)
   @Audit({

@@ -1,20 +1,46 @@
 import { createParamDecorator, SetMetadata, type ExecutionContext } from '@nestjs/common';
-import type { Role } from '@capi-navigator/shared';
+import type { Permission } from '@capi-navigator/shared';
 import type { Principal } from './principal.js';
 
 export const PUBLIC_KEY = 'capi-navigator:public';
-export const ROLES_KEY = 'capi-navigator:min-role';
 export const PASSWORD_CHANGE_PENDING_KEY = 'capi-navigator:password-change-pending';
 export const AUDIT_KEY = 'capi-navigator:audit';
 
 /** Endpoint is reachable without a session (health, login). */
 export const Public = () => SetMetadata(PUBLIC_KEY, true);
 
+export const PERMISSION_KEY = 'capi-navigator:permission';
+
+/** Access rule of an endpoint (FP19-F-05). */
+export interface PermissionRule {
+  /** One of these permissions is required. */
+  anyOf: Permission[];
+  /** Any signed-in user (own session and password), no permission needed. */
+  signedIn?: boolean;
+  /**
+   * Dotted path of the body field naming the namespace, for endpoints that create something
+   * (e.g. "spec.namespace"); otherwise the route parameter `namespace` is used.
+   */
+  namespaceFromBody?: string;
+}
+
 /**
- * Minimum role for an endpoint (FP1-F-04). Every endpoint must carry either `@Roles` or `@Public`;
- * the guard denies endpoints without one (fail closed).
+ * Permission an endpoint requires (FP19-F-05); the scope (connection, namespace) comes from the
+ * route or the body. Every endpoint must carry `@Requires`, `@SignedIn` or `@Public`; the guard
+ * denies endpoints without one (fail closed).
  */
-export const Roles = (minRole: Role) => SetMetadata(ROLES_KEY, minRole);
+export const Requires = (
+  permission: Permission | Permission[],
+  opts: { namespaceFromBody?: string } = {},
+) =>
+  SetMetadata(PERMISSION_KEY, {
+    anyOf: Array.isArray(permission) ? permission : [permission],
+    ...opts,
+  } satisfies PermissionRule);
+
+/** Endpoint for every signed-in user, e.g. the own profile and password (FP19-F-05). */
+export const SignedIn = () =>
+  SetMetadata(PERMISSION_KEY, { anyOf: [], signedIn: true } satisfies PermissionRule);
 
 /** Endpoint stays usable while the user still has to change the password (FP1-F-02). */
 export const AllowPendingPasswordChange = () => SetMetadata(PASSWORD_CHANGE_PENDING_KEY, true);

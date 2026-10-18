@@ -34,7 +34,7 @@ import {
 import type { Response } from 'express';
 import { interval, map, merge, type Observable } from 'rxjs';
 import type { z } from 'zod';
-import { Audit, Roles } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { LiveChannels } from '../kube/live-channels.js';
@@ -101,14 +101,14 @@ export class ClustersController {
     private readonly deletion: ClusterDeletionService,
   ) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   list(@Param('connection') connection: string): Promise<ClusterSummary[]> {
     return this.clusters.list(connection);
   }
 
   /** Live list (FP6-F-01); registered before ':namespace/:name' so "events" is not a namespace. */
-  @Roles('viewer')
+  @Requires('view')
   @Sse('events')
   listStream(@Param('connection') connection: string): Observable<MessageEvent> {
     return merge(
@@ -118,7 +118,7 @@ export class ClustersController {
   }
 
   /** Preview: generated YAML, dry run and blockers (hard rule 6, FP5-F-08). */
-  @Roles('operator')
+  @Requires('clusters.create', { namespaceFromBody: 'spec.namespace' })
   @Post('preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.preview', skip: true })
@@ -130,7 +130,7 @@ export class ClustersController {
   }
 
   /** FP-5 step 8; node customization is recorded with the request (FP5-F-14). */
-  @Roles('operator')
+  @Requires('clusters.create', { namespaceFromBody: 'spec.namespace' })
   @Post()
   @Audit({ action: 'cluster.create', ...AUDIT })
   create(
@@ -140,7 +140,7 @@ export class ClustersController {
     return this.clusters.create(connection, body.spec, body.grantCredentialNamespace);
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get(':namespace/:name')
   status(
     @Param('connection') connection: string,
@@ -153,7 +153,7 @@ export class ClustersController {
   // ---- spec changes: preview first, then apply (hard rule 6) ----
 
   /** The stored cluster spec for day-2 forms (FP-7); operators only (node customization). */
-  @Roles('operator')
+  @Requires('clusters.change')
   @Get(':namespace/:name/spec')
   spec(
     @Param('connection') connection: string,
@@ -164,7 +164,7 @@ export class ClustersController {
   }
 
   /** FP-7: every day-2 change of the stored spec (scale, pools, machines, upgrade, rebuild, …). */
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/changes/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.change.preview', skip: true })
@@ -184,7 +184,7 @@ export class ClustersController {
     );
   }
 
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/changes')
   @HttpCode(200)
   @Audit({
@@ -210,7 +210,7 @@ export class ClustersController {
     );
   }
 
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/scale/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.scale.preview', skip: true })
@@ -226,7 +226,7 @@ export class ClustersController {
   }
 
   /** FP6-F-05. */
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/scale')
   @HttpCode(200)
   @Audit({ action: 'cluster.scale', ...AUDIT, targetParam: 'name' })
@@ -245,7 +245,7 @@ export class ClustersController {
     );
   }
 
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/labels/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.labels.preview', skip: true })
@@ -261,7 +261,7 @@ export class ClustersController {
   }
 
   /** FP6-F-07. */
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/labels')
   @HttpCode(200)
   @Audit({ action: 'cluster.labels', ...AUDIT, targetParam: 'name' })
@@ -283,7 +283,7 @@ export class ClustersController {
   // ---- deletion (FP6-F-06) ----
 
   /** What a deletion removes, shown before confirming (hard rule 6). */
-  @Roles('operator')
+  @Requires('clusters.delete')
   @Get(':namespace/:name/delete-preview')
   deletePreview(
     @Param('connection') connection: string,
@@ -294,7 +294,7 @@ export class ClustersController {
   }
 
   /** Confirmed by typing the cluster name; cleanup inside the cluster first (default). */
-  @Roles('operator')
+  @Requires('clusters.delete')
   @Post(':namespace/:name/delete')
   @HttpCode(202)
   @Audit({ action: 'cluster.delete', ...AUDIT, targetParam: 'name' })
@@ -307,7 +307,7 @@ export class ClustersController {
     return this.deletion.delete(connection, namespace, name, body);
   }
 
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/bastion/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.bastion.preview', skip: true })
@@ -323,7 +323,7 @@ export class ClustersController {
   }
 
   /** FP5-F-20: enable, disable or reconfigure the bastion host. */
-  @Roles('operator')
+  @Requires('clusters.change')
   @Post(':namespace/:name/bastion')
   @HttpCode(200)
   @Audit({ action: 'cluster.bastion', ...AUDIT, targetParam: 'name' })
@@ -343,7 +343,7 @@ export class ClustersController {
   }
 
   /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */
-  @Roles('operator')
+  @Requires('clusters.kubeconfig')
   @Get(':namespace/:name/kubeconfig')
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Header('Cache-Control', 'no-store')
@@ -357,7 +357,7 @@ export class ClustersController {
   }
 
   /** FP6-F-04 / ADR-0005: download as `<cluster>.kubeconfig`. */
-  @Roles('operator')
+  @Requires('clusters.kubeconfig')
   @Get(':namespace/:name/kubeconfig/download')
   @Header('Content-Type', 'application/octet-stream')
   @Header('Cache-Control', 'no-store')
@@ -378,7 +378,7 @@ export class ClustersController {
     return value;
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Sse(':namespace/:name/events')
   stream(
     @Param('connection') connection: string,

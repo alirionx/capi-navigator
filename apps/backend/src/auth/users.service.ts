@@ -9,8 +9,12 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import {
+  displayRole,
+  effectiveBindings,
   passwordSecretName,
+  userBindings,
   type CreateUserRequest,
+  type Me,
   type NavigatorResource,
   type NavigatorUserSpec,
   type UpdateUserRequest,
@@ -60,8 +64,18 @@ export class UsersService implements OnApplicationBootstrap {
     if (!(await verifyPassword(password, hash))) return undefined;
     return {
       username,
-      role: user.spec.role ?? 'viewer',
+      bindings: userBindings(user.spec),
       mustChangePassword: user.spec.mustChangePassword,
+    };
+  }
+
+  /** The signed-in user with the permissions of each assignment (FP19-F-10). */
+  me(principal: Principal): Me {
+    return {
+      username: principal.username,
+      role: displayRole(principal.bindings),
+      bindings: effectiveBindings(principal.bindings, this.store.rolePermissions),
+      mustChangePassword: principal.mustChangePassword,
     };
   }
 

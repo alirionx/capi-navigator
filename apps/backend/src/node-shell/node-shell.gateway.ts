@@ -2,25 +2,34 @@ import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { Injectable, Logger, type OnApplicationBootstrap } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
-import { hasRole, ShellClientMessageSchema, type Role } from '@capi-navigator/shared';
+import {
+  allows,
+  ShellClientMessageSchema,
+  type Permission,
+  type PermissionScope,
+  type RolePermissions,
+} from '@capi-navigator/shared';
 import type { Request } from 'express';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { Principal } from '../auth/principal.js';
 import { SessionService } from '../auth/session.service.js';
+import { StoreService } from '../store/store.service.js';
 import { NodeShellService, type ShellPeer, type ShellTarget } from './node-shell.service.js';
 
 /**
  * WebSocket entry of the node shell (FP-17):
- *   /api/connections/:connection/clusters/:namespace/:name/nodes/:node/shell  (workload, operator)
- *   /api/connections/:connection/nodes/:node/shell                            (management, admin)
- * The upgrade is checked like the REST API: session cookie, role, and same-origin (CSRF).
+ *   /api/connections/:connection/clusters/:namespace/:name/nodes/:node/shell  (nodes.shell)
+ *   /api/connections/:connection/nodes/:node/shell                            (managementNodes.shell)
+ * The upgrade is checked like the REST API: session cookie, permission in the cluster's
+ * connection and namespace (FP19-F-05), and same-origin (CSRF).
  */
 const WORKLOAD = /^\/api\/connections\/([^/]+)\/clusters\/([^/]+)\/([^/]+)\/nodes\/([^/]+)\/shell$/;
 const MANAGEMENT = /^\/api\/connections\/([^/]+)\/nodes\/([^/]+)\/shell$/;
 
 export interface ShellRoute {
   target: ShellTarget;
-  minRole: Role;
+  permission: Permission;
+  scope: PermissionScope;
 }
 
 export function parseShellRoute(pathname: string): ShellRoute | undefined {
@@ -35,7 +44,8 @@ export function parseShellRoute(pathname: string): ShellRoute | undefined {
         cluster: d(w[3]!),
         node: d(w[4]!),
       },
-      minRole: 'operator',
+      permission: 'nodes.shell',
+      scope: { connection: d(w[1]!), namespace: d(w[2]!) },
     };
   }
   const m = MANAGEMENT.exec(pathname);
@@ -43,7 +53,8 @@ export function parseShellRoute(pathname: string): ShellRoute | undefined {
     // Root on the management cluster endangers all workload clusters (ADR-0008).
     return {
       target: { kind: 'management', connection: d(m[1]!), node: d(m[2]!) },
-      minRole: 'admin',
+      permission: 'managementNodes.shell',
+      scope: { connection: d(m[1]!) },
     };
   }
   return undefined;
@@ -54,13 +65,15 @@ export function checkUpgrade(
   req: IncomingMessage,
   principal: Principal | undefined,
   route: ShellRoute,
+  rolePermissions: RolePermissions,
 ): number | undefined {
   const origin = req.headers.origin;
   const host = req.headers.host;
   // Browsers always send Origin on WebSocket requests; it must be this host (CSRF, NF-04).
   if (!origin || !host || new URL(origin).host !== host) return 403;
   if (!principal) return 401;
-  if (principal.mustChangePassword || !hasRole(principal.role, route.minRole)) return 403;
+  if (principal.mustChangePassword) return 403;
+  if (!allows(principal.bindings, rolePermissions, route.permission, route.scope)) return 403;
   return undefined;
 }
 
@@ -73,6 +86,7 @@ export class NodeShellGateway implements OnApplicationBootstrap {
     private readonly adapterHost: HttpAdapterHost,
     private readonly sessions: SessionService,
     private readonly shells: NodeShellService,
+    private readonly store: StoreService,
   ) {}
 
   onApplicationBootstrap(): void {
@@ -92,7 +106,7 @@ export class NodeShellGateway implements OnApplicationBootstrap {
     const route = parseShellRoute(pathname);
     if (!route) return; // other upgrades (none today) are not ours
     const principal = this.sessions.authenticate(req as Request);
-    const denied = checkUpgrade(req, principal, route);
+    const denied = checkUpgrade(req, principal, route, this.store.rolePermissions);
     if (denied) {
       socket.write(`HTTP/1.1 ${denied} ${denied === 401 ? 'Unauthorized' : 'Forbidden'}\r\n\r\n`);
       socket.destroy();
