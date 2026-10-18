@@ -13,6 +13,7 @@ import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import ClusterAddons from '../components/addons/ClusterAddons.vue';
 import ClusterResources from '../components/ClusterResources.vue';
 import ClusterConfiguration from '../components/day2/ClusterConfiguration.vue';
 import YamlButton from '../components/YamlButton.vue';
@@ -297,6 +298,7 @@ const machineHeaders = computed(() => [
           <v-chip size="x-small" class="ml-2" variant="tonal">{{ s.machines.length }}</v-chip>
         </v-tab>
         <v-tab v-if="canChange" value="config" data-testid="tab-config">{{ t('day2.tab') }}</v-tab>
+        <v-tab value="addons" data-testid="tab-addons">{{ t('addons.tab') }}</v-tab>
         <v-tab value="resources" data-testid="tab-resources">{{ t('yamlView.resources') }}</v-tab>
         <v-tab value="events" data-testid="tab-events">
           {{ t('clusters.events') }}
@@ -664,6 +666,17 @@ const machineHeaders = computed(() => [
         </v-window-item>
 
         <!-- Resources with live YAML (FP7-F-01) -->
+        <!-- FP8-F-12: Helm add-ons of this cluster -->
+        <v-window-item value="addons">
+          <ClusterAddons
+            v-if="tab === 'addons'"
+            :connection="conn()"
+            :namespace="namespace"
+            :name="name"
+            :labels="s.summary.labels"
+          />
+        </v-window-item>
+
         <v-window-item value="resources">
           <ClusterResources
             v-if="tab === 'resources' && connections.activeName"
