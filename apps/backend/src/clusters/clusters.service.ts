@@ -672,10 +672,12 @@ export class ClustersService {
 
     // FP5-F-05, FP5-F-18: required providers installed and ready.
     const state = await this.operator.state(connection);
+    const distribution = distributionCatalog(spec.kubernetes.flavor);
     const needed = [
       'core',
-      `${spec.kubernetes.flavor}-bootstrap`,
-      `${spec.kubernetes.flavor}-control-plane`,
+      ...(distribution
+        ? [distribution.providers.bootstrap, distribution.providers.controlPlane]
+        : []),
       infra.provider,
     ];
     if (spec.addons.cloudControllerManager || spec.addons.csiDriver) needed.push('helm');

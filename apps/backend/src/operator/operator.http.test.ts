@@ -231,19 +231,13 @@ describe('operator API (FP-3)', () => {
     expect(warn.body.warnings.join(' ')).toMatch(/ORC v2\.6\.0/);
   });
 
-  it('rejects duplicates and providers of later packs', async () => {
+  it('rejects duplicates and unknown providers', async () => {
     k8s.providers = [CORE];
     await post('/providers', {
       catalogId: 'core',
       version: 'v1.14.3',
       namespace: 'capi-system',
     }).expect(409);
-    const later = await post('/providers', {
-      catalogId: 'k0smotron-bootstrap',
-      version: 'v2.2.0',
-      namespace: 'x',
-    }).expect(400);
-    expect(later.body.hint).toMatch(/FP-9/);
     await post('/providers', { catalogId: 'nope', version: 'v1.0.0', namespace: 'x' }).expect(404);
   });
 

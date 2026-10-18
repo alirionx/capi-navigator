@@ -20,7 +20,8 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
   machineTemplateKind: 'OpenStackMachineTemplate',
   apiVersion: OPENSTACK_API_VERSION,
 
-  infraCluster(spec, infra, ctx, labels): ManifestObject {
+  infraCluster(spec, infra, ctx, labels, network): ManifestObject {
+    const lbPorts = network.controlPlanePorts.filter((p) => p.viaLoadBalancer).map((p) => p.port);
     return {
       apiVersion: OPENSTACK_API_VERSION,
       kind: 'OpenStackCluster',
@@ -54,8 +55,15 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
                 }))
               : undefined,
         },
+        // Node traffic needs no rules (allowAllInClusterTraffic); the distribution's ports behind
+        // the API load balancer become listeners (ADR-0012).
         apiServer: infra.apiServerLoadBalancer
-          ? { managedLoadBalancer: { enabled: true } }
+          ? {
+              managedLoadBalancer: compact({
+                enabled: true,
+                additionalPorts: lbPorts.length ? lbPorts : undefined,
+              }),
+            }
           : { enableFloatingIP: true },
         controlPlaneAvailabilityZones: infra.failureDomain ? [infra.failureDomain] : undefined,
         // FP5-F-20: CAPO opens SSH to the bastion to everyone and SSH to the nodes from the

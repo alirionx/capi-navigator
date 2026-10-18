@@ -6,8 +6,8 @@ import { compact } from './util.js';
 
 /**
  * AWS (CAPA v2.13.1, infrastructure.cluster.x-k8s.io/v1beta2). Field names verified against
- * api/v1beta2/awscluster_types.go, awsmachine_types.go, network_types.go and types.go; security
- * rules for RKE2 follow the RKE2 provider's AWS example (v0.26.0, examples/templates/aws).
+ * api/v1beta2/awscluster_types.go, awsmachine_types.go, network_types.go and types.go; ports and
+ * CNI rules come from the Kubernetes distribution (ADR-0012).
  */
 export const AWS_API_VERSION = 'infrastructure.cluster.x-k8s.io/v1beta2';
 
@@ -25,10 +25,12 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
   machineTemplateKind: 'AWSMachineTemplate',
   apiVersion: AWS_API_VERSION,
 
-  infraCluster(spec, infra, _ctx, labels): ManifestObject {
-    const fromRke2Nodes = {
+  infraCluster(spec, infra, _ctx, labels, network): ManifestObject {
+    const fromNodes = {
       sourceSecurityGroupRoles: ['node', 'controlplane', 'apiserver-lb', 'lb'],
     };
+    const direct = network.controlPlanePorts.filter((p) => !p.viaLoadBalancer);
+    const viaLb = network.controlPlanePorts.filter((p) => p.viaLoadBalancer);
     return {
       apiVersion: AWS_API_VERSION,
       kind: 'AWSCluster',
@@ -39,33 +41,39 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
         identityRef: { kind: AWS_IDENTITY.kind, name: infra.credentialRef },
         // CAPA defaults a missing sshKeyName to "default"; an empty string means no key pair.
         sshKeyName: infra.sshKeyName ?? '',
-        network: {
+        network: compact({
           // Dedicated VPC per cluster (FP5-F-16).
           vpc: {
             cidrBlock: infra.network.vpcCidr,
             availabilityZoneUsageLimit: infra.network.availabilityZoneCount,
           },
-          // Calico (RKE2 serverConfig.cni) between nodes.
+          // CNI traffic of the distribution between nodes (ADR-0012).
           cni: {
-            cniIngressRules: [
-              tcp(179, 'BGP'),
-              { description: 'IP-in-IP', fromPort: -1, toPort: 65535, protocol: '4' },
-              tcp(5473, 'Calico Typha'),
-              tcp(9098, 'Calico Typha health check'),
-              tcp(9099, 'Calico health check'),
-            ],
+            cniIngressRules: network.nodeTraffic.map((r) => ({
+              description: r.description,
+              fromPort: r.fromPort,
+              toPort: r.toPort,
+              protocol: r.protocol,
+            })),
           },
-          // Only the RKE2 supervisor port: CAPA already allows etcd and the API between control
-          // plane nodes, and AWS rejects duplicate permissions in one security group.
-          additionalControlPlaneIngressRules: [tcp(9345, 'RKE2 supervisor', fromRke2Nodes)],
-        },
-        // NLB for the API server. CAPA copies NLB ingress rules into the control plane security
-        // group, so 9345 must only appear once (above); nodes register via internal IPs
-        // (registrationMethod internal-first), so the NLB needs no 9345 listener.
-        controlPlaneLoadBalancer: {
+          // Control plane ports reached directly: CAPA already allows etcd and the API between
+          // control plane nodes, and AWS rejects duplicate permissions in one security group.
+          additionalControlPlaneIngressRules: direct.length
+            ? direct.map((p) => tcp(p.port, p.description, fromNodes))
+            : undefined,
+        }),
+        // NLB for the API server and the distribution's ports behind it. CAPA copies NLB ingress
+        // rules into the control plane security group, so each port appears only once.
+        controlPlaneLoadBalancer: compact({
           loadBalancerType: 'nlb',
-          ingressRules: [tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] })],
-        },
+          ingressRules: [
+            tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] }),
+            ...viaLb.map((p) => tcp(p.port, p.description, fromNodes)),
+          ],
+          additionalListeners: viaLb.length
+            ? viaLb.map((p) => ({ port: p.port, protocol: 'TCP' }))
+            : undefined,
+        }),
         // FP5-F-20: CAPA restricts SSH to the bastion to the allowed networks and lets the
         // nodes accept SSH from the bastion.
         bastion: infra.bastion?.enabled

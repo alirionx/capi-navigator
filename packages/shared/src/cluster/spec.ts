@@ -197,6 +197,14 @@ export type Infrastructure = z.infer<typeof InfrastructureSchema>;
 
 export const KubernetesFlavorSchema = z.enum(['rke2', 'k0s', 'kubeadm']);
 
+/** Version format per available distribution; kubeadm follows in FP-10. */
+export const FLAVOR_VERSION_FORMATS: Partial<
+  Record<z.infer<typeof KubernetesFlavorSchema>, { pattern: RegExp; example: string; name: string }>
+> = {
+  rke2: { pattern: /\+rke2r\d+$/, example: 'v1.35.9+rke2r1', name: 'RKE2' },
+  k0s: { pattern: /\+k0s\.\d+$/, example: 'v1.35.8+k0s.1', name: 'k0s' },
+};
+
 export const ClusterSpecSchema = z
   .object({
     name: dnsLabel(40, 'Cluster name'),
@@ -253,13 +261,16 @@ export const ClusterSpecSchema = z
     const issue = (path: (string | number)[], message: string) =>
       ctx.addIssue({ code: 'custom', path, message });
 
-    if (spec.kubernetes.flavor !== 'rke2') {
-      issue(
-        ['kubernetes', 'flavor'],
-        'Only RKE2 is available yet (k0s from FP-9, kubeadm from FP-10)',
-      );
-    } else if (!/\+rke2r\d+$/.test(spec.kubernetes.version)) {
-      issue(['kubernetes', 'version'], 'An RKE2 version like v1.35.9+rke2r1');
+    const format = FLAVOR_VERSION_FORMATS[spec.kubernetes.flavor];
+    if (!format) {
+      issue(['kubernetes', 'flavor'], 'Only RKE2 and k0s are available yet (kubeadm from FP-10)');
+    } else {
+      for (const key of ['version', 'workerVersion'] as const) {
+        const v = spec.kubernetes[key];
+        if (v && !format.pattern.test(v)) {
+          issue(['kubernetes', key], `A ${format.name} version like ${format.example}`);
+        }
+      }
     }
 
     const { mode, controlPlane, workerPools } = spec.topology;
