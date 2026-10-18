@@ -1,11 +1,13 @@
 import { AuditEventCrd } from './audit-event.js';
 import { HelmRepositoryCrd } from './helm-repository.js';
 import { ManagementClusterCrd } from './management-cluster.js';
+import { NavigatorRoleCrd } from './navigator-role.js';
 import { NavigatorUserCrd } from './navigator-user.js';
 import type { CrdDefinition } from './types.js';
 
 export * from './types.js';
 export * from './navigator-user.js';
+export * from './navigator-role.js';
 export * from './audit-event.js';
 export * from './management-cluster.js';
 export * from './helm-repository.js';
@@ -17,4 +19,5 @@ export const ALL_CRDS: CrdDefinition[] = [
   AuditEventCrd,
   ManagementClusterCrd,
   HelmRepositoryCrd,
+  NavigatorRoleCrd,
 ];

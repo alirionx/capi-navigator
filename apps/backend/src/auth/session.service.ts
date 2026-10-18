@@ -61,7 +61,8 @@ export class SessionService implements OnModuleInit {
     if (!user || user.spec.disabled || user.spec.sessionGeneration !== payload.g) return undefined;
     return {
       username: payload.u,
-      role: user.spec.role,
+      // Until the permission guard (FP-19 step 2): users without a legacy role are viewers.
+      role: user.spec.role ?? 'viewer',
       mustChangePassword: user.spec.mustChangePassword,
     };
   }
