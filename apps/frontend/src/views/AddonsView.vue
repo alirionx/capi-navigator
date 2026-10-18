@@ -162,7 +162,7 @@ const deleteOpen = ref(false);
             >
           </template>
           <template #[`item.chartName`]="{ item }">
-            {{ item.chartName }}<span class="text-medium-emphasis"> {{ item.version }}</span>
+            {{ item.chartName }}<span class="text-medium-emphasis ml-1">{{ item.version }}</span>
             <div class="text-caption text-medium-emphasis">
               {{ item.repository ?? item.repoURL }}
             </div>
