@@ -71,13 +71,16 @@ export interface ApplyConflict {
 export function parseApplyConflict(message: string): ApplyConflict {
   const managers = new Set<string>();
   const fields = new Set<string>();
-  for (const m of message.matchAll(/conflicts? with "([^"]+)"(?: using [^:\n]+)?: ?(\.[^\n]+)?/g)) {
-    managers.add(m[1]!);
-    if (m[2]) fields.add(m[2].trim());
+  for (const m of message.matchAll(
+    /conflicts? with "([^"]+)"(?: with subresource "([^"]+)")?(?: using [^:\n]+)?: ?(\.[^\n]+)?/g,
+  )) {
+    // e.g. `kubectl scale` writes through the scale subresource.
+    managers.add(m[2] ? `${m[1]} (${m[2]})` : m[1]!);
+    if (m[3]) fields.add(m[3].trim());
   }
   // Several conflicts are listed as "- conflict with ...: .field" lines.
   for (const m of message.matchAll(
-    /^- (?:conflicts? with "[^"]+"(?: using [^:\n]+)?: )?(\.\S+)/gm,
+    /^- (?:conflicts? with "[^"]+"(?: with subresource "[^"]+")?(?: using [^:\n]+)?: )?(\.\S+)/gm,
   )) {
     fields.add(m[1]!);
   }
