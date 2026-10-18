@@ -7,9 +7,11 @@ import {
 } from '@nestjs/common';
 import {
   AuditEventCrd,
+  HelmRepositoryCrd,
   ManagementClusterCrd,
   NavigatorUserCrd,
   type AuditEventSpecSchema,
+  type HelmRepositorySpecSchema,
   type ManagementClusterSpecSchema,
   type NavigatorUserSpecSchema,
 } from '@capi-navigator/shared';
@@ -32,6 +34,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly auditEvents: CustomResourceClient<typeof AuditEventSpecSchema>;
   readonly connections: CustomResourceClient<typeof ManagementClusterSpecSchema>;
   readonly connectionCache: ResourceCache<typeof ManagementClusterSpecSchema>;
+  readonly helmRepositories: CustomResourceClient<typeof HelmRepositorySpecSchema>;
+  readonly helmRepositoryCache: ResourceCache<typeof HelmRepositorySpecSchema>;
   readonly secrets: SecretStore;
 
   constructor(kube: KubeClientFactory, @Inject(APP_CONFIG) config: AppConfig) {
@@ -42,6 +46,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.auditEvents = new CustomResourceClient(kc, ns, AuditEventCrd);
     this.connections = new CustomResourceClient(kc, ns, ManagementClusterCrd);
     this.connectionCache = new ResourceCache(kc, this.connections);
+    this.helmRepositories = new CustomResourceClient(kc, ns, HelmRepositoryCrd);
+    this.helmRepositoryCache = new ResourceCache(kc, this.helmRepositories);
     this.secrets = new SecretStore(kc, ns);
   }
 
@@ -51,12 +57,18 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
 
   /** True once all informer caches are synced; used by the readiness probe (NF-20). */
   get ready(): boolean {
-    return this.userCache.isSynced && this.connectionCache.isSynced;
+    return (
+      this.userCache.isSynced && this.connectionCache.isSynced && this.helmRepositoryCache.isSynced
+    );
   }
 
   async onModuleInit(): Promise<void> {
     try {
-      await Promise.all([this.userCache.start(), this.connectionCache.start()]);
+      await Promise.all([
+        this.userCache.start(),
+        this.connectionCache.start(),
+        this.helmRepositoryCache.start(),
+      ]);
       this.logger.log(`Caches synced (namespace ${this.namespace})`);
     } catch (err) {
       this.logger.error(
@@ -67,6 +79,10 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async onApplicationShutdown(): Promise<void> {
-    await Promise.all([this.userCache.stop(), this.connectionCache.stop()]);
+    await Promise.all([
+      this.userCache.stop(),
+      this.connectionCache.stop(),
+      this.helmRepositoryCache.stop(),
+    ]);
   }
 }

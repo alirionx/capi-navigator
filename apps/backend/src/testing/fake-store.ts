@@ -1,5 +1,6 @@
 import type {
   AuditEventSpec,
+  HelmRepositorySpec,
   ManagementClusterSpec,
   ManagementClusterStatus,
   NavigatorResource,
@@ -19,6 +20,8 @@ export function createFakeStore() {
     string,
     NavigatorResource<ManagementClusterSpec, ManagementClusterStatus>
   >();
+
+  const helmRepositories = new Map<string, NavigatorResource<HelmRepositorySpec>>();
 
   const store = {
     namespace: 'test',
@@ -128,6 +131,40 @@ export function createFakeStore() {
       remove: () => undefined,
       isSynced: true,
     },
+    helmRepositories: {
+      create: async (meta: { name: string }, spec: HelmRepositorySpec) => {
+        if (helmRepositories.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'HelmRepository',
+          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          spec,
+        };
+        helmRepositories.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchSpec: async (name: string, spec: Partial<HelmRepositorySpec>) => {
+        const current = helmRepositories.get(name);
+        if (!current) throw err(404);
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          spec: { ...current.spec, ...spec },
+        };
+        helmRepositories.set(name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!helmRepositories.delete(name)) throw err(404);
+      },
+    },
+    helmRepositoryCache: {
+      get: (name: string) => structuredClone(helmRepositories.get(name)),
+      list: () => [...helmRepositories.values()].map((c) => structuredClone(c)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
+    },
     auditEvents: {
       create: async (_meta: unknown, spec: AuditEventSpec) => {
         const obj = {
@@ -148,5 +185,12 @@ export function createFakeStore() {
     },
   };
 
-  return { store: store as unknown as StoreService, users, secrets, auditEvents, connections };
+  return {
+    store: store as unknown as StoreService,
+    users,
+    secrets,
+    auditEvents,
+    connections,
+    helmRepositories,
+  };
 }
