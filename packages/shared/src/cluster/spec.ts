@@ -198,12 +198,17 @@ export type Infrastructure = z.infer<typeof InfrastructureSchema>;
 export const KubernetesFlavorSchema = z.enum(['rke2', 'k0s', 'kubeadm']);
 export type KubernetesFlavor = z.infer<typeof KubernetesFlavorSchema>;
 
-/** Version format per available distribution; kubeadm follows in FP-10. */
+/** Version format per available distribution. */
 export const FLAVOR_VERSION_FORMATS: Partial<
   Record<z.infer<typeof KubernetesFlavorSchema>, { pattern: RegExp; example: string; name: string }>
 > = {
   rke2: { pattern: /\+rke2r\d+$/, example: 'v1.35.9+rke2r1', name: 'RKE2' },
   k0s: { pattern: /\+k0s\.\d+$/, example: 'v1.35.8+k0s.1', name: 'k0s' },
+  kubeadm: {
+    pattern: /^v\d+\.\d+\.\d+$/,
+    example: 'v1.35.9',
+    name: 'kubeadm (upstream Kubernetes)',
+  },
 };
 
 export const ClusterSpecSchema = z
@@ -214,14 +219,14 @@ export const ClusterSpecSchema = z
     labels: UserLabelsSchema.optional(),
     kubernetes: z.object({
       flavor: KubernetesFlavorSchema.default('rke2'),
-      version: z.string().regex(/^v\d+\.\d+\.\d+\+[a-z0-9.]+$/, 'A version like v1.35.9+rke2r1'),
+      version: z.string().regex(/^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/, 'A version like v1.35.9+rke2r1'),
       /**
        * During an upgrade the worker pools stay on this version until the control plane runs
        * the new one; the rollout controller then removes it (FP7-F-08).
        */
       workerVersion: z
         .string()
-        .regex(/^v\d+\.\d+\.\d+\+[a-z0-9.]+$/)
+        .regex(/^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/)
         .optional(),
       podCidr: CidrSchema.default('10.42.0.0/16'),
       serviceCidr: CidrSchema.default('10.43.0.0/16'),
@@ -266,7 +271,7 @@ export const ClusterSpecSchema = z
 
     const format = FLAVOR_VERSION_FORMATS[spec.kubernetes.flavor];
     if (!format) {
-      issue(['kubernetes', 'flavor'], 'Only RKE2 and k0s are available yet (kubeadm from FP-10)');
+      issue(['kubernetes', 'flavor'], 'This Kubernetes distribution is not available');
     } else {
       for (const key of ['version', 'workerVersion'] as const) {
         const v = spec.kubernetes[key];

@@ -49,6 +49,21 @@ export const KUBERNETES_VERSIONS: DistributionCatalog[] = [
       { version: 'v1.33.13+k0s.1', minor: '1.33', verifiedWithProvider: 'v2.2.0' },
     ],
   },
+
+  // Verified on 2026-10-18 against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and
+  // rpm repositories (FP10-F-02); Cluster API v1.14 supports Kubernetes v1.33 to v1.37 for kubeadm
+  // (docs/book reference/versions.md).
+  {
+    flavor: 'kubeadm',
+    providers: { bootstrap: 'kubeadm-bootstrap', controlPlane: 'kubeadm-control-plane' },
+    versions: [
+      { version: 'v1.37.1', minor: '1.37', verifiedWithProvider: 'v1.14.3' },
+      { version: 'v1.36.5', minor: '1.36', verifiedWithProvider: 'v1.14.3' },
+      { version: 'v1.35.9', minor: '1.35', verifiedWithProvider: 'v1.14.3', default: true },
+      { version: 'v1.34.12', minor: '1.34', verifiedWithProvider: 'v1.14.3' },
+      { version: 'v1.33.13', minor: '1.33', verifiedWithProvider: 'v1.14.3' },
+    ],
+  },
 ];
 
 export function distributionCatalog(flavor: DistributionCatalog['flavor']) {
