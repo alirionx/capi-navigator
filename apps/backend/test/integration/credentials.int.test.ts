@@ -215,7 +215,7 @@ describe('FP-4 credentials against kind', () => {
   it(
     'stores an AWS credential as Secret + AWSClusterStaticIdentity accepted by CAPA',
     async () => {
-      const res = await send('post', CRED, {
+      const body = {
         provider: 'aws',
         name: 'it-aws',
         allowedNamespaces: ['default'],
@@ -224,7 +224,14 @@ describe('FP-4 credentials against kind', () => {
           secretAccessKey: DUMMY_SECRET,
           region: 'eu-central-1',
         },
-      }).expect(201);
+      };
+      // CAPA reports Ready slightly before its webhook serves; the API answers 502 until then.
+      let res = await send('post', CRED, body);
+      for (let i = 0; res.status === 502 && i < 24; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        res = await send('post', CRED, body);
+      }
+      expect(res.status, JSON.stringify(res.body)).toBe(201);
       const cred = res.body as Credential;
       expect(cred).toMatchObject({
         provider: 'aws',
