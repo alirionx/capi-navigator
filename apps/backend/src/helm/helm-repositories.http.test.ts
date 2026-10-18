@@ -199,6 +199,64 @@ describe('Helm repositories API (FP8-F-02 to F-04)', () => {
     expect(seen.access[0]).toMatchObject({ username: 'robot', password: 'top-secret-pw', ca: PEM });
   });
 
+  it('lets only operators change add-ons (hard rule 9)', async () => {
+    const base = '/api/connections/home/addons';
+    const spec = {
+      name: 'podinfo',
+      namespace: 'team-a',
+      repository: 'podinfo',
+      chartName: 'podinfo',
+      version: '6.15.0',
+      clusterSelector: { 'addon/podinfo': 'true' },
+    };
+    await http().post(`${base}/preview`).set(CSRF).set('Cookie', viewer).send({ spec }).expect(403);
+    await http()
+      .put(`${base}/team-a/podinfo`)
+      .set(CSRF)
+      .set('Cookie', viewer)
+      .send({ spec })
+      .expect(403);
+    await http().delete(`${base}/team-a/podinfo`).set(CSRF).set('Cookie', viewer).expect(403);
+    // Name and namespace come from the URL as well and must match.
+    await http()
+      .put(`${base}/team-a/other`)
+      .set(CSRF)
+      .set('Cookie', operator)
+      .send({ spec })
+      .expect(400);
+  });
+
+  it('stores preset overrides for admins only (FP8-F-14)', async () => {
+    await http()
+      .put('/api/addon-presets/openstack-csi')
+      .set(CSRF)
+      .set('Cookie', operator)
+      .send({ override: { version: '2.38.0' } })
+      .expect(403);
+    await http()
+      .put('/api/addon-presets/openstack-csi')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ override: { version: '2.38.0' } })
+      .expect(204);
+    expect(await fake.store.addonPresetOverrides()).toEqual({
+      'openstack-csi': { version: '2.38.0' },
+    });
+    await http()
+      .put('/api/addon-presets/unknown')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ override: null })
+      .expect(404);
+    await http()
+      .put('/api/addon-presets/openstack-csi')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ override: null })
+      .expect(204);
+    expect(await fake.store.addonPresetOverrides()).toEqual({});
+  });
+
   it('removes credentials on update and deletes the repository', async () => {
     const res = await http()
       .patch('/api/helm-repositories/private')

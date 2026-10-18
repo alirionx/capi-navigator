@@ -5,18 +5,25 @@ import {
   type OnApplicationShutdown,
   type OnModuleInit,
 } from '@nestjs/common';
+import { CoreV1Api } from '@kubernetes/client-node';
 import {
+  ADDON_PRESETS_CONFIGMAP,
+  ADDON_PRESETS_CONFIGMAP_KEY,
+  AddonPresetOverridesSchema,
   AuditEventCrd,
   HelmRepositoryCrd,
   ManagementClusterCrd,
   NavigatorUserCrd,
+  type AddonPresetOverrides,
   type AuditEventSpecSchema,
   type HelmRepositorySpecSchema,
   type ManagementClusterSpecSchema,
   type NavigatorUserSpecSchema,
 } from '@capi-navigator/shared';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
+import { isNotFound } from '../kube/errors.js';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
+import { FIELD_MANAGER } from './custom-resource.client.js';
 import { CustomResourceClient } from './custom-resource.client.js';
 import { ResourceCache } from './resource-cache.js';
 import { SecretStore } from './secret.store.js';
@@ -37,6 +44,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly helmRepositories: CustomResourceClient<typeof HelmRepositorySpecSchema>;
   readonly helmRepositoryCache: ResourceCache<typeof HelmRepositorySpecSchema>;
   readonly secrets: SecretStore;
+  private readonly core: CoreV1Api;
 
   constructor(kube: KubeClientFactory, @Inject(APP_CONFIG) config: AppConfig) {
     const kc = kube.homeCluster();
@@ -49,10 +57,58 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.helmRepositories = new CustomResourceClient(kc, ns, HelmRepositoryCrd);
     this.helmRepositoryCache = new ResourceCache(kc, this.helmRepositories);
     this.secrets = new SecretStore(kc, ns);
+    this.core = kc.makeApiClient(CoreV1Api);
   }
 
   get namespace(): string {
     return this.users.namespace;
+  }
+
+  /** Admin overrides of the CCM/CSI presets (FP8-F-14); empty when none are stored. */
+  async addonPresetOverrides(): Promise<AddonPresetOverrides> {
+    try {
+      const cm = await this.core.readNamespacedConfigMap({
+        name: ADDON_PRESETS_CONFIGMAP,
+        namespace: this.namespace,
+      });
+      const parsed = AddonPresetOverridesSchema.safeParse(
+        JSON.parse(cm.data?.[ADDON_PRESETS_CONFIGMAP_KEY] ?? '{}'),
+      );
+      if (!parsed.success) {
+        this.logger.warn(`Ignoring ${ADDON_PRESETS_CONFIGMAP}: content does not match the schema`);
+        return {};
+      }
+      return parsed.data;
+    } catch (err) {
+      if (isNotFound(err)) return {};
+      throw err;
+    }
+  }
+
+  async putAddonPresetOverrides(overrides: AddonPresetOverrides): Promise<void> {
+    const body = {
+      metadata: {
+        name: ADDON_PRESETS_CONFIGMAP,
+        namespace: this.namespace,
+        labels: { 'app.kubernetes.io/part-of': 'capi-navigator' },
+      },
+      data: { [ADDON_PRESETS_CONFIGMAP_KEY]: JSON.stringify(overrides, null, 2) },
+    };
+    try {
+      await this.core.replaceNamespacedConfigMap({
+        name: ADDON_PRESETS_CONFIGMAP,
+        namespace: this.namespace,
+        fieldManager: FIELD_MANAGER,
+        body,
+      });
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
+      await this.core.createNamespacedConfigMap({
+        namespace: this.namespace,
+        fieldManager: FIELD_MANAGER,
+        body,
+      });
+    }
   }
 
   /** True once all informer caches are synced; used by the readiness probe (NF-20). */

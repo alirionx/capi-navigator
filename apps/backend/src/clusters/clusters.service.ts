@@ -54,6 +54,7 @@ import {
 } from '../kube/apply.js';
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
+import { StoreService } from '../store/store.service.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { ImageNameCache } from './image-names.js';
 import { analyzeRollouts, type PlannedObject } from './rollouts.js';
@@ -143,6 +144,7 @@ export class ClustersService {
     private readonly clients: ManagementClusterClients,
     private readonly credentials: CredentialsService,
     private readonly operator: OperatorService,
+    private readonly store: StoreService,
   ) {}
 
   /** FP5-F-08 and hard rule 6: generated YAML, dry run errors, blockers. */
@@ -760,7 +762,8 @@ export class ClustersService {
     // only the app manages are brought up to date, so fixes reach namespaces with older presets;
     // presets changed by someone else are left alone and reported.
     const clusterObj = objects.find((o) => o.kind === 'Cluster') as ManifestObject | undefined;
-    for (const preset of presetsFor(clusterObj?.metadata.labels ?? {})) {
+    const overrides = await this.store.addonPresetOverrides();
+    for (const preset of presetsFor(clusterObj?.metadata.labels ?? {}, overrides)) {
       const hcp = buildAddonPreset(preset, spec.namespace) as unknown as KubernetesObject & {
         spec: unknown;
       };

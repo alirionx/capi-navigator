@@ -23,8 +23,14 @@ export function createFakeStore() {
 
   const helmRepositories = new Map<string, NavigatorResource<HelmRepositorySpec>>();
 
+  let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
+
   const store = {
     namespace: 'test',
+    addonPresetOverrides: async () => structuredClone(presetOverrides),
+    putAddonPresetOverrides: async (o: typeof presetOverrides) => {
+      presetOverrides = structuredClone(o);
+    },
     ready: true,
     users: {
       create: async (meta: { name: string }, spec: NavigatorUserSpec) => {
