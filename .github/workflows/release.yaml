@@ -1,0 +1,121 @@
+# Release: a tag vX.Y.Z publishes the container image ghcr.io/<owner>/capi-navigator:X.Y.Z and
+# attaches the packaged Helm chart (capi-navigator-X.Y.Z.tgz + .sha256) to the GitHub release.
+#
+# To release: set `version` and `appVersion` in deploy/helm/capi-navigator/Chart.yaml to X.Y.Z,
+# commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+# Releases run one after another, never in parallel.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  CHART: deploy/helm/capi-navigator
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Tag matches Chart.yaml
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          chart="$(awk '/^version:/ {print $2}' "$CHART/Chart.yaml")"
+          app="$(awk '/^appVersion:/ {print $2}' "$CHART/Chart.yaml")"
+          if [ "$chart" != "$version" ] || [ "$app" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match Chart.yaml (version $chart, appVersion $app)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  image:
+    runs-on: ubuntu-latest
+    needs: version
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.title=capi-navigator
+            org.opencontainers.image.description=A lean web UI for Cluster API
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: APP_VERSION=${{ needs.version.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  chart:
+    runs-on: ubuntu-latest
+    # The release appears only once its image exists.
+    needs: [version, image]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+      - name: Lint and package
+        id: package
+        run: |
+          helm lint "$CHART" --strict
+          mkdir -p dist
+          helm package "$CHART" --destination dist
+          file="dist/capi-navigator-${{ needs.version.outputs.version }}.tgz"
+          (cd dist && sha256sum "$(basename "$file")" > "$(basename "$file").sha256")
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          FILE: ${{ steps.package.outputs.file }}
+        run: |
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          cat > notes.md <<NOTES
+          Container image: \`${IMAGE}:${VERSION}\`
+
+          Install the Helm chart from this release:
+
+          \`\`\`sh
+          helm install capi-navigator ${base}/$(basename "$FILE") \\
+            -n capi-navigator-system --create-namespace
+          \`\`\`
+
+          See the README for exposure options (Service, Ingress, HTTPRoute) and all values.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" "$FILE" "$FILE.sha256" \
+            --title "CAPI Navigator ${VERSION}" \
+            --notes-file notes.md \
+            --generate-notes \
+            --verify-tag

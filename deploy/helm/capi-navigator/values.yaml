@@ -1,5 +1,5 @@
 image:
-  repository: capi-navigator
+  repository: ghcr.io/alirionx/capi-navigator
   tag: ''
   pullPolicy: IfNotPresent
 

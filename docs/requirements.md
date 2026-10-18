@@ -196,6 +196,7 @@ CAPI Navigator keeps no database. All of its own state lives in the home cluster
 ### Operations
 
 - **MUST** ship as a single container image (the backend serves the built frontend statically).
+- **SHOULD** publish each release from a version tag: the image `ghcr.io/<owner>/capi-navigator:<version>` and the packaged Helm chart as a GitHub release asset, with chart version and app version equal to the tag.
 - **MUST** run locally with `pnpm dev` and a kind cluster as home and management cluster; the backend uses `KUBECONFIG` for the home cluster.
 - **MUST** be installable into a Kubernetes cluster via Helm chart, including CRDs, RBAC and the in-cluster service account as home cluster access.
 - **MUST** let the Helm chart expose the app through a Service of type `ClusterIP`, `NodePort` or `LoadBalancer` (with annotations and load balancer settings), an optional Ingress and an optional Gateway API `HTTPRoute`, alone or combined. When an Ingress or HTTPRoute is enabled, the app trusts `X-Forwarded-For` from private proxy addresses by default; the Secure cookie flag can be disabled only explicitly for plain-HTTP test setups.
