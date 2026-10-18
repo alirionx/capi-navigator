@@ -9,10 +9,13 @@ import {
   type OnApplicationBootstrap,
 } from '@nestjs/common';
 import {
+  bindingProblems,
   displayRole,
   effectiveBindings,
+  hasUserManager,
   passwordSecretName,
   userBindings,
+  type RoleBinding,
   type CreateUserRequest,
   type Me,
   type NavigatorResource,
@@ -87,10 +90,12 @@ export class UsersService implements OnApplicationBootstrap {
     if (this.store.userCache.get(req.username)) {
       throw new ConflictException(`User "${req.username}" already exists`);
     }
+    const bindings = req.bindings ?? [{ role: req.role! }];
+    this.assertValidBindings(bindings);
     const created = await this.kube(`Create user ${req.username}`, () =>
       this.store.users.create(
         { name: req.username, labels: { 'app.kubernetes.io/part-of': 'capi-navigator' } },
-        { role: req.role, disabled: false, mustChangePassword: true, sessionGeneration: 0 },
+        { bindings, disabled: false, mustChangePassword: true, sessionGeneration: 0 },
       ),
     );
     try {
@@ -108,22 +113,23 @@ export class UsersService implements OnApplicationBootstrap {
     if (username === actor.username) {
       throw new BadRequestException({
         statusCode: 400,
-        message: 'You cannot change your own role or disable yourself',
-        hint: 'Ask another admin to do it.',
+        message: 'You cannot change your own role assignments or disable yourself',
+        hint: 'Ask another user manager to do it.',
       });
     }
-    const losesAdmin =
-      user.spec.role === 'admin' &&
-      ((req.role !== undefined && req.role !== 'admin') || req.disabled === true);
-    if (losesAdmin) this.assertAnotherAdmin(username);
+    const current = userBindings(user.spec);
+    const bindings = req.bindings ?? (req.role !== undefined ? [{ role: req.role }] : undefined);
+    if (bindings) this.assertValidBindings(bindings);
+    const disabled = req.disabled ?? user.spec.disabled;
+    this.assertUserManagerRemains(username, { disabled, bindings: bindings ?? current });
 
-    const roleChanged = req.role !== undefined && req.role !== user.spec.role;
-    const disabledChanged = req.disabled !== undefined && req.disabled !== user.spec.disabled;
+    const bindingsChanged = bindings !== undefined && !sameBindings(bindings, current);
+    const disabledChanged = disabled !== user.spec.disabled;
     const patch: Partial<NavigatorUserSpec> = {
-      ...(req.role !== undefined ? { role: req.role } : {}),
-      ...(req.disabled !== undefined ? { disabled: req.disabled } : {}),
-      // Role changes and disabling end all sessions of the user.
-      ...(roleChanged || disabledChanged
+      ...(bindingsChanged ? { bindings } : {}),
+      ...(disabledChanged ? { disabled } : {}),
+      // Changed assignments and disabling end all sessions of the user (as in FP-1).
+      ...(bindingsChanged || disabledChanged
         ? { sessionGeneration: user.spec.sessionGeneration + 1 }
         : {}),
     };
@@ -131,7 +137,7 @@ export class UsersService implements OnApplicationBootstrap {
   }
 
   async delete(username: string, actor: Principal): Promise<void> {
-    const user = this.require(username);
+    this.require(username);
     if (username === actor.username) {
       throw new BadRequestException({
         statusCode: 400,
@@ -139,7 +145,7 @@ export class UsersService implements OnApplicationBootstrap {
         hint: 'Ask another admin to do it.',
       });
     }
-    if (user.spec.role === 'admin' && !user.spec.disabled) this.assertAnotherAdmin(username);
+    this.assertUserManagerRemains(username, undefined);
     await this.kube(`Delete user ${username}`, () => this.store.users.delete(username));
     this.store.userCache.remove(username);
     await this.store.secrets.delete(passwordSecretName(username));
@@ -199,7 +205,12 @@ export class UsersService implements OnApplicationBootstrap {
     try {
       const created = await this.store.users.create(
         { name: INITIAL_ADMIN_USERNAME, labels: { 'app.kubernetes.io/part-of': 'capi-navigator' } },
-        { role: 'admin', disabled: false, mustChangePassword: true, sessionGeneration: 0 },
+        {
+          bindings: [{ role: 'admin' }],
+          disabled: false,
+          mustChangePassword: true,
+          sessionGeneration: 0,
+        },
       );
       await this.writePassword(INITIAL_ADMIN_USERNAME, password);
       this.store.userCache.upsert(created);
@@ -217,15 +228,37 @@ export class UsersService implements OnApplicationBootstrap {
     return user;
   }
 
-  private assertAnotherAdmin(username: string): void {
-    const others = this.store.userCache
-      .list()
-      .filter((u) => u.metadata.name !== username && u.spec.role === 'admin' && !u.spec.disabled);
-    if (others.length === 0) {
+  /** Assignments must name existing roles and fit their limits (FP19-F-03). */
+  private assertValidBindings(bindings: readonly RoleBinding[]): void {
+    const problems = bindingProblems(bindings, this.store.rolePermissions);
+    if (problems.length > 0) {
       throw new BadRequestException({
         statusCode: 400,
-        message: 'At least one enabled admin must remain',
-        hint: 'Promote another user to admin first.',
+        message: problems[0],
+        hint: problems.slice(1).join(' ') || undefined,
+        fieldErrors: { bindings: problems },
+      });
+    }
+  }
+
+  /**
+   * FP19-F-08: at least one enabled user keeps an unlimited assignment with users.manage after
+   * `username` is changed to `next` (or deleted when `next` is undefined).
+   */
+  private assertUserManagerRemains(
+    username: string,
+    next: { disabled: boolean; bindings: RoleBinding[] } | undefined,
+  ): void {
+    const users = this.store.userCache
+      .list()
+      .filter((u) => u.metadata.name !== username)
+      .map((u) => ({ disabled: u.spec.disabled, bindings: userBindings(u.spec) }));
+    if (next) users.push(next);
+    if (!hasUserManager(users, this.store.rolePermissions)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'At least one enabled user must keep an unlimited assignment with users.manage',
+        hint: 'Give another user the admin role (or a role with users.manage) without limits first.',
       });
     }
   }
@@ -260,10 +293,15 @@ export class UsersService implements OnApplicationBootstrap {
   }
 }
 
+const sameBindings = (a: readonly RoleBinding[], b: readonly RoleBinding[]) =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 function toUser(u: UserResource): User {
+  const bindings = userBindings(u.spec);
   return {
     username: u.metadata.name,
-    role: u.spec.role ?? 'viewer',
+    role: displayRole(bindings),
+    bindings,
     disabled: u.spec.disabled,
     mustChangePassword: u.spec.mustChangePassword,
     ...(u.metadata.creationTimestamp ? { createdAt: String(u.metadata.creationTimestamp) } : {}),

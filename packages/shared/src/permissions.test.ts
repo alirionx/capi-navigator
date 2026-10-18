@@ -106,5 +106,7 @@ describe('permissions (FP-19, ADR-0015)', () => {
       { role: 'viewer' },
     ]);
     expect(userBindings({})).toEqual([]);
+    // Removing every assignment must not bring the legacy role back.
+    expect(userBindings({ role: 'admin', bindings: [] })).toEqual([]);
   });
 });

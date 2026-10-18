@@ -99,7 +99,7 @@ describe('authentication and authorization over HTTP (FP-1)', () => {
 
   it('creates the initial admin with a forced password change (FP1-F-02)', () => {
     const admin = fake.users.get('admin');
-    expect(admin?.spec).toMatchObject({ role: 'admin', mustChangePassword: true });
+    expect(admin?.spec).toMatchObject({ bindings: [{ role: 'admin' }], mustChangePassword: true });
     expect(fake.secrets.get('navigator-user-admin-password')?.hash).toMatch(/^\$argon2id\$/);
   });
 
