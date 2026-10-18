@@ -37,7 +37,8 @@ export const KUBERNETES_VERSIONS: DistributionCatalog[] = [
       { version: 'v1.33.13+rke2r3', minor: '1.33', verifiedWithProvider: 'v0.26.0' },
     ],
   },
-  // k0s entries are re-verified against the k0smotron e2e configuration in FP-9.
+  // Verified on 2026-10-18 against the k0sproject/k0s releases (latest patch per minor). k0smotron
+  // v2.2.0 runs its e2e tests with v1.31 only; 1.34 and 1.35 were verified live in FP-9.
   {
     flavor: 'k0s',
     providers: { bootstrap: 'k0smotron-bootstrap', controlPlane: 'k0smotron-control-plane' },

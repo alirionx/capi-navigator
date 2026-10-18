@@ -163,7 +163,6 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     repository: 'k0sproject/k0smotron',
     docsUrl: 'https://docs.k0smotron.io/',
     dependsOn: ['core'],
-    availableFrom: 'FP-9',
     contract: 'v1beta2',
   },
   {
@@ -177,7 +176,6 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     repository: 'k0sproject/k0smotron',
     docsUrl: 'https://docs.k0smotron.io/',
     dependsOn: ['core'],
-    availableFrom: 'FP-9',
     contract: 'v1beta2',
   },
   {
