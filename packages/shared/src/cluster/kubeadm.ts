@@ -98,7 +98,8 @@ if command -v apt-get >/dev/null; then
   curl -fsSL "\${PKGS}/deb/Release.key" | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes.gpg
   echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] \${PKGS}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
   apt-get update -q
-  pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 { print $3; exit }')
+  # Read the whole list (no early exit): an early exit would break the pipe under pipefail.
+  pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 && !found { print $3; found = 1 }')
   [ -n "$pkg" ] || { echo "kubeadm \${K8S_VERSION} not found in \${PKGS}" >&2; exit 1; }
   apt-get install -y -q "kubelet=\${pkg}" "kubeadm=\${pkg}" "kubectl=\${pkg}"
   apt-mark hold kubelet kubeadm kubectl
