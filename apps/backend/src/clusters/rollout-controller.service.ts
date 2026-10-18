@@ -52,6 +52,8 @@ export function controlPlaneAt(cp: K8sObj | undefined, version: string): boolean
   return (
     sameVersion(st.version as string | undefined, version) &&
     Number(st.upToDateReplicas ?? -1) === replicas &&
+    // Old machines must be gone, not only new ones be ready (seen with K0sControlPlane).
+    Number(st.replicas ?? replicas) === replicas &&
     Number(st.readyReplicas ?? st.availableReplicas ?? -1) >= replicas
   );
 }

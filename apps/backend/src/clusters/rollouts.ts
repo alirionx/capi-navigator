@@ -68,7 +68,8 @@ export function analyzeRollouts(args: {
     const status = (o.before?.status ?? {}) as Record<string, number | undefined>;
     const replicas = Number(spec(o.before).replicas ?? 0);
     const behind = (status.upToDateReplicas ?? replicas) < replicas;
-    if (o.before && behind && (isCp || deploymentRolling(o.name, status, replicas))) {
+    const cpRolling = behind || (status.replicas ?? replicas) !== replicas;
+    if (o.before && (isCp ? cpRolling : behind && deploymentRolling(o.name, status, replicas))) {
       running.push(`${o.kind} ${o.name}`);
     }
     if (!o.before || !o.after) continue;

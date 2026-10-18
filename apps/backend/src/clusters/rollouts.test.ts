@@ -40,6 +40,16 @@ describe('running rollouts (FP7-F-17)', () => {
     expect(run([md({ replicas: 2, readyReplicas: 1, upToDateReplicas: 1 })], [])).toHaveLength(1);
   });
 
+  it('reports a control plane while old machines still exist', () => {
+    const cp = {
+      kind: 'K0sControlPlane',
+      name: 'demo-control-plane',
+      before: { spec: { replicas: 1 }, status: { replicas: 2, upToDateReplicas: 1 } },
+      after: { spec: { replicas: 1 } },
+    };
+    expect(run([cp as never], [])).toEqual(['K0sControlPlane demo-control-plane']);
+  });
+
   it('does not block on ready machines that never count as up to date (FP9: kubelet version)', () => {
     expect(
       run(
