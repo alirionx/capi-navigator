@@ -14,6 +14,7 @@ interface MachineLike {
 
 const CP_LABEL = 'cluster.x-k8s.io/control-plane';
 const MD_LABEL = 'cluster.x-k8s.io/deployment-name';
+const SET_LABEL = 'cluster.x-k8s.io/set-name';
 const POOL_LABEL = 'capi-navigator.io/pool';
 
 const spec = (o?: Record<string, unknown>) => (o?.spec ?? {}) as Record<string, unknown>;
@@ -37,6 +38,24 @@ export function analyzeRollouts(args: {
 }): { rollouts: RolloutPlan[]; running: string[] } {
   const rollouts: RolloutPlan[] = [];
   const running: string[] = [];
+  /**
+   * A MachineDeployment rolls while machines of more than one MachineSet exist or machines are
+   * missing. Machines that are ready but never count as up to date (e.g. a kubelet version
+   * mismatch) do not block further changes, so the fix can be applied.
+   */
+  const deploymentRolling = (
+    name: string,
+    status: Record<string, number | undefined>,
+    replicas: number,
+  ) => {
+    const own = args.machines.filter((m) => m.metadata.labels?.[MD_LABEL] === name);
+    const sets = new Set(own.map((m) => m.metadata.labels?.[SET_LABEL]));
+    return (
+      sets.size > 1 ||
+      (status.replicas ?? replicas) !== replicas ||
+      (status.readyReplicas ?? replicas) < replicas
+    );
+  };
   const machinesOf = (pred: (m: MachineLike) => boolean) =>
     args.machines
       .filter(pred)
@@ -48,7 +67,8 @@ export function analyzeRollouts(args: {
     if (!isCp && o.kind !== 'MachineDeployment') continue;
     const status = (o.before?.status ?? {}) as Record<string, number | undefined>;
     const replicas = Number(spec(o.before).replicas ?? 0);
-    if (o.before && (status.upToDateReplicas ?? replicas) < replicas) {
+    const behind = (status.upToDateReplicas ?? replicas) < replicas;
+    if (o.before && behind && (isCp || deploymentRolling(o.name, status, replicas))) {
       running.push(`${o.kind} ${o.name}`);
     }
     if (!o.before || !o.after) continue;

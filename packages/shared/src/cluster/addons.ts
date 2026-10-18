@@ -56,7 +56,14 @@ export const ADDON_PRESETS: AddonPreset[] = [
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       'secret:\n  enabled: true\n  create: false\n  name: cloud-config\n  filename: cloud.conf\n',
-      'storageClass:\n  enabled: true\n  delete:\n    isDefault: true\n    allowVolumeExpansion: true\n',
+      // Default class binds when the pod is scheduled: Cinder volumes cannot be attached across
+      // availability zones (seen on Infomaniak), and the chart's own classes bind immediately.
+      'storageClass:\n  enabled: true\n  delete:\n    isDefault: false\n    allowVolumeExpansion: true\n',
+      '  custom: |-\n',
+      '    apiVersion: storage.k8s.io/v1\n    kind: StorageClass\n    metadata:\n      name: csi-cinder-sc-wait\n',
+      '      annotations:\n        storageclass.kubernetes.io/is-default-class: "true"\n',
+      '    provisioner: cinder.csi.openstack.org\n    reclaimPolicy: Delete\n',
+      '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n',
       'clusterID: {{ .Cluster.metadata.name }}\n',
     ].join(''),
   },

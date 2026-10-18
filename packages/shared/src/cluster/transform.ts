@@ -138,7 +138,10 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
             spec: {
               clusterName: spec.name,
               // FP7-F-08: workers follow the control plane only after it was upgraded.
-              version: spec.kubernetes.workerVersion ?? spec.kubernetes.version,
+              version: machineVersion(
+                flavor,
+                spec.kubernetes.workerVersion ?? spec.kubernetes.version,
+              ),
               bootstrap: {
                 configRef: {
                   apiGroup: flavor.bootstrapTemplate.apiGroup,
@@ -176,4 +179,8 @@ function machineTemplate(
 
 function sorted(record: Record<string, string>): Record<string, string> {
   return Object.fromEntries(Object.entries(record).sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function machineVersion(flavor: BootstrapFlavorPlugin, version: string): string {
+  return flavor.machineVersion?.(version) ?? version;
 }

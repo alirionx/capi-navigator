@@ -827,7 +827,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     // A running rollout blocks further machine changes.
     k8s.live.set('MachineDeployment/demo-default', {
       ...(k8s.live.get('MachineDeployment/demo-default') as object),
-      status: { upToDateReplicas: 1 },
+      status: { replicas: 3, readyReplicas: 2, upToDateReplicas: 1 },
     });
     const blocked = await post(`${url}/preview`, { type: 'rebuild', group: 'default' }).expect(200);
     expect(blocked.body.blockers.join()).toMatch(/rollout is still running/);

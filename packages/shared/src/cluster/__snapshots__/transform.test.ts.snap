@@ -338,7 +338,7 @@ spec:
         capi-navigator.io/pool: default
     spec:
       clusterName: demo-aws-k0s
-      version: v1.35.8+k0s.1
+      version: v1.35.8+k0s
       bootstrap:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
@@ -695,7 +695,7 @@ spec:
         capi-navigator.io/pool: default
     spec:
       clusterName: demo-k0s
-      version: v1.35.8+k0s.1
+      version: v1.35.8+k0s
       bootstrap:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
@@ -770,7 +770,7 @@ spec:
         capi-navigator.io/pool: gpu
     spec:
       clusterName: demo-k0s
-      version: v1.35.8+k0s.1
+      version: v1.35.8+k0s
       bootstrap:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io

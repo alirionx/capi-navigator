@@ -108,6 +108,11 @@ export interface BootstrapFlavorPlugin {
   /** Display name and the fields node customization maps to, for help texts (POS-04). */
   displayName: string;
   customizationFields: { preCommands: string; postCommands: string };
+  /**
+   * Version for Machine/MachineDeployment as the kubelet reports it; CAPI compares both exactly
+   * for the UpToDate condition. Defaults to the distribution version.
+   */
+  machineVersion?(version: string): string;
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {
     spec: ClusterSpec;
