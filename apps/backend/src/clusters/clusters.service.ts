@@ -689,7 +689,14 @@ export class ClustersService {
         : []),
       infra.provider,
     ];
-    if (spec.addons.cloudControllerManager || spec.addons.csiDriver || spec.addons.rebootDaemon) {
+    const cniPreset =
+      !!FLAVOR_PLUGINS[spec.kubernetes.flavor]?.needsCni && spec.addons.cni !== 'none';
+    if (
+      spec.addons.cloudControllerManager ||
+      spec.addons.csiDriver ||
+      spec.addons.rebootDaemon ||
+      cniPreset
+    ) {
       needed.push('helm');
     }
     for (const id of needed) {

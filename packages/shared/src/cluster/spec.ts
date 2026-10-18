@@ -228,6 +228,13 @@ export const ClusterSpecSchema = z
         .string()
         .regex(/^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/)
         .optional(),
+      /**
+       * Package repository instead of https://pkgs.k8s.io for distributions installed from
+       * packages (kubeadm, FP10-F-09); the minor version path is appended, as on pkgs.k8s.io.
+       */
+      packageRepository: z.url({ protocol: /^https?$/ }).optional(),
+      /** Base URL instead of https://github.com for the containerd and runc downloads (FP10-F-09). */
+      binaryDownloads: z.url({ protocol: /^https?$/ }).optional(),
       podCidr: CidrSchema.default('10.42.0.0/16'),
       serviceCidr: CidrSchema.default('10.43.0.0/16'),
     }),
@@ -250,6 +257,11 @@ export const ClusterSpecSchema = z
         csiDriver: z.boolean().default(true),
         /** kured: reboots nodes one at a time after OS updates (FP-9, ADR-0013). */
         rebootDaemon: z.boolean().optional(),
+        /**
+         * CNI for distributions without a built-in one (kubeadm, FP10-F-04): Calico by default,
+         * "none" to bring your own.
+         */
+        cni: z.enum(['calico', 'none']).optional(),
       })
       .default({ cloudControllerManager: true, csiDriver: true }),
     sshPublicKeys: z
