@@ -567,12 +567,14 @@ const canPreview = computed(() => issues.value.length === 0);
           <div class="d-flex align-center mb-2">
             <div class="text-subtitle-1">{{ t('wizard.controlPlane') }}</div>
             <v-spacer />
+            <span class="text-body-2 text-medium-emphasis mr-3">{{ t('wizard.cpNodes') }}</span>
             <v-btn-toggle
               v-model="draft.cp.replicas"
               mandatory
               density="compact"
               variant="outlined"
               :disabled="draft.mode === 'all-in-one'"
+              :aria-label="t('wizard.cpNodes')"
             >
               <v-btn :value="1">1</v-btn>
               <v-btn :value="3">3</v-btn>
