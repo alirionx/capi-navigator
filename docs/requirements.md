@@ -749,6 +749,12 @@ These requirements apply to all feature packs and are checked in every pack.
   - No proxy authentication (server-to-server in the data center); proxy URLs end up in the node user data and must not contain credentials.
   - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
   - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
+- **FP-19: Role management** (optional, scope to be refined before it starts). Today the three fixed roles from section 3 are hard-coded. Ideas:
+  - Admins define their own roles in the UI as a set of permissions (e.g. view, manage clusters, day-2 operations, node shell, kubeconfig download, assign add-ons, manage repositories, manage providers, manage users). The three built-in roles remain as non-deletable defaults.
+  - Optional scoping of a role assignment to management cluster connections and namespaces (e.g. operator only in `team-a`).
+  - Stored as an app CRD (e.g. `NavigatorRole`) in the home cluster; the NestJS guard checks permissions instead of fixed roles (hard rule 9 stays: enforcement in the backend, frontend hiding only cosmetic). Changes to roles and assignments write `AuditEvent`s.
+  - Fits FP-14: group claims from an identity provider map to these roles.
+  - To decide first: permission granularity, whether scoping is needed, and how lists (clusters, add-ons, events) are filtered by scope.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
