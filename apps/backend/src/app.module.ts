@@ -9,6 +9,7 @@ import { ResourcesModule } from './resources/resources.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { NodeShellModule } from './node-shell/node-shell.module.js';
 import { HealthModule } from './health/health.module.js';
+import { HelmModule } from './helm/helm.module.js';
 import { KubeModule } from './kube/kube.module.js';
 import { OperatorModule } from './operator/operator.module.js';
 import { StoreModule } from './store/store.module.js';
@@ -27,6 +28,7 @@ import { StoreModule } from './store/store.module.js';
     NodeShellModule,
     DashboardModule,
     ResourcesModule,
+    HelmModule,
     HealthModule,
   ],
 })
