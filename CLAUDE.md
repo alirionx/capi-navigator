@@ -11,6 +11,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 ## Source of truth
 
 - **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10, non-functional requirements, decisions). Always follow it.
+- **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
 
