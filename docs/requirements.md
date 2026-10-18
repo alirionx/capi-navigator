@@ -759,6 +759,10 @@ These requirements apply to all feature packs and are checked in every pack.
   - Stored as an app CRD (e.g. `NavigatorRole`) in the home cluster; the NestJS guard checks permissions instead of fixed roles (hard rule 9 stays: enforcement in the backend, frontend hiding only cosmetic). Changes to roles and assignments write `AuditEvent`s.
   - Fits FP-14: group claims from an identity provider map to these roles.
   - To decide first: permission granularity, whether scoping is needed, and how lists (clusters, add-ons, events) are filtered by scope.
+- **FP-20: Version maintenance** (optional, scope to be refined before it starts). About 30 versions are pinned in the code (provider catalog incl. ORC, Kubernetes version catalog, add-on preset charts, node shell image) plus the app's own npm dependencies. Ideas:
+  - Renovate keeps them current: standard managers for npm and the Helm chart, regex managers with `// renovate:` comments next to the pins in `packages/shared` (Helm, GitHub releases, container tags); grouped pull requests, checked by lint, typecheck, unit and snapshot tests.
+  - In-app hints for operators of older app versions: "newer chart version available" for presets and "newer release available" for providers, like the newer image hint of FP7-F-12.
+  - `docs/maintenance.md`: who approves updates, cadence, and what is verified before merging (patch updates by CI; minor updates of CAPI, providers, CCM/CSI additionally with a dry run on kind and a short live test, as the k0smotron findings of FP-9 showed).
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
