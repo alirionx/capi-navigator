@@ -13,7 +13,12 @@ import {
   AuditEventCrd,
   HelmRepositoryCrd,
   ManagementClusterCrd,
+  NavigatorRoleCrd,
   NavigatorUserCrd,
+  BUILTIN_ROLES,
+  isBuiltinRole,
+  type Permission,
+  type NavigatorRoleSpecSchema,
   type AddonPresetOverrides,
   type AuditEventSpecSchema,
   type HelmRepositorySpecSchema,
@@ -43,6 +48,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly connectionCache: ResourceCache<typeof ManagementClusterSpecSchema>;
   readonly helmRepositories: CustomResourceClient<typeof HelmRepositorySpecSchema>;
   readonly helmRepositoryCache: ResourceCache<typeof HelmRepositorySpecSchema>;
+  readonly roles: CustomResourceClient<typeof NavigatorRoleSpecSchema>;
+  readonly roleCache: ResourceCache<typeof NavigatorRoleSpecSchema>;
   readonly secrets: SecretStore;
   private readonly core: CoreV1Api;
 
@@ -56,6 +63,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.connectionCache = new ResourceCache(kc, this.connections);
     this.helmRepositories = new CustomResourceClient(kc, ns, HelmRepositoryCrd);
     this.helmRepositoryCache = new ResourceCache(kc, this.helmRepositories);
+    this.roles = new CustomResourceClient(kc, ns, NavigatorRoleCrd);
+    this.roleCache = new ResourceCache(kc, this.roles);
     this.secrets = new SecretStore(kc, ns);
     this.core = kc.makeApiClient(CoreV1Api);
   }
@@ -63,6 +72,17 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   get namespace(): string {
     return this.users.namespace;
   }
+
+  /**
+   * Permissions of a role (FP19-F-01, FP19-F-02): built-in roles from code, custom roles from the
+   * cache; `undefined` for an unknown role. Custom roles always grant `view`.
+   */
+  readonly rolePermissions = (role: string): readonly Permission[] | undefined => {
+    if (isBuiltinRole(role)) return BUILTIN_ROLES[role].permissions;
+    const custom = this.roleCache.get(role);
+    if (!custom) return undefined;
+    return ['view', ...custom.spec.permissions.filter((p) => p !== 'view')];
+  };
 
   /** Admin overrides of the CCM/CSI presets (FP8-F-14); empty when none are stored. */
   async addonPresetOverrides(): Promise<AddonPresetOverrides> {
@@ -114,7 +134,10 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   /** True once all informer caches are synced; used by the readiness probe (NF-20). */
   get ready(): boolean {
     return (
-      this.userCache.isSynced && this.connectionCache.isSynced && this.helmRepositoryCache.isSynced
+      this.userCache.isSynced &&
+      this.connectionCache.isSynced &&
+      this.helmRepositoryCache.isSynced &&
+      this.roleCache.isSynced
     );
   }
 
@@ -124,6 +147,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
         this.userCache.start(),
         this.connectionCache.start(),
         this.helmRepositoryCache.start(),
+        this.roleCache.start(),
       ]);
       this.logger.log(`Caches synced (namespace ${this.namespace})`);
     } catch (err) {
@@ -139,6 +163,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       this.userCache.stop(),
       this.connectionCache.stop(),
       this.helmRepositoryCache.stop(),
+      this.roleCache.stop(),
     ]);
   }
 }

@@ -11,7 +11,7 @@ import {
   type UpdateHelmRepositoryRequest,
 } from '@capi-navigator/shared';
 import { z } from 'zod';
-import { Audit, Roles } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { HelmRepositoriesService } from './helm-repositories.service.js';
 
@@ -29,13 +29,13 @@ type Create = CreateHelmRepositoryRequest & { url: string };
 export class HelmRepositoriesController {
   constructor(private readonly repos: HelmRepositoriesService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   list(): HelmRepository[] {
     return this.repos.list();
   }
 
-  @Roles('admin')
+  @Requires('helmRepositories.manage')
   @Post()
   @Audit({ action: 'helm-repository.create', ...AUDIT })
   create(
@@ -45,7 +45,7 @@ export class HelmRepositoriesController {
   }
 
   /** Connection test from the form before saving; changes nothing. */
-  @Roles('admin')
+  @Requires('helmRepositories.manage')
   @Post('test')
   @HttpCode(200)
   @Audit({ action: 'helm-repository.test-draft', skip: true })
@@ -55,13 +55,13 @@ export class HelmRepositoriesController {
     return this.repos.testDraft(body);
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get(':name')
   get(@Param('name') name: string): HelmRepository {
     return this.repos.get(name);
   }
 
-  @Roles('admin')
+  @Requires('helmRepositories.manage')
   @Patch(':name')
   @Audit({ action: 'helm-repository.update', ...AUDIT })
   update(
@@ -72,7 +72,7 @@ export class HelmRepositoriesController {
     return this.repos.update(name, body);
   }
 
-  @Roles('admin')
+  @Requires('helmRepositories.manage')
   @Delete(':name')
   @HttpCode(204)
   @Audit({ action: 'helm-repository.delete', ...AUDIT })
@@ -80,7 +80,7 @@ export class HelmRepositoriesController {
     return this.repos.delete(name);
   }
 
-  @Roles('admin')
+  @Requires('helmRepositories.manage')
   @Post(':name/test')
   @HttpCode(200)
   @Audit({ action: 'helm-repository.test', ...AUDIT })
@@ -88,13 +88,13 @@ export class HelmRepositoriesController {
     return this.repos.test(name);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage')
   @Get(':name/charts')
   charts(@Param('name') name: string): Promise<ChartSummary[]> {
     return this.repos.charts(name);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage')
   @Get(':name/versions')
   versions(
     @Param('name') name: string,
@@ -103,7 +103,7 @@ export class HelmRepositoriesController {
     return this.repos.versions(name, q.chart);
   }
 
-  @Roles('operator')
+  @Requires('addons.manage')
   @Get(':name/values')
   values(
     @Param('name') name: string,

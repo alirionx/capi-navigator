@@ -10,7 +10,7 @@ import {
   type ManifestPreview,
   type UpdateCredentialRequest,
 } from '@capi-navigator/shared';
-import { Audit, Roles } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { CredentialsService } from './credentials.service.js';
 
@@ -25,14 +25,14 @@ const AUDIT = {
 export class CredentialsController {
   constructor(private readonly credentials: CredentialsService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   list(@Param('connection') connection: string): Promise<Credential[]> {
     return this.credentials.list(connection);
   }
 
   /** Lists the clouds of an uploaded clouds.yaml; returns no secrets. */
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Post('clouds-yaml-info')
   @HttpCode(200)
   @Audit({ action: 'credential.parse-clouds-yaml', skip: true })
@@ -42,7 +42,7 @@ export class CredentialsController {
     return this.credentials.cloudsYamlInfo(body.cloudsYaml);
   }
 
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Post('preview')
   @HttpCode(200)
   @Audit({ action: 'credential.preview', skip: true })
@@ -53,7 +53,7 @@ export class CredentialsController {
     return this.credentials.preview(connection, body);
   }
 
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Post()
   @Audit({ action: 'credential.create', ...AUDIT })
   create(
@@ -63,7 +63,7 @@ export class CredentialsController {
     return this.credentials.create(connection, body);
   }
 
-  @Roles('viewer')
+  @Requires('view')
   @Get(':provider/:name')
   get(
     @Param('connection') connection: string,
@@ -73,7 +73,7 @@ export class CredentialsController {
     return this.credentials.get(connection, provider, name);
   }
 
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Patch(':provider/:name')
   @Audit({ action: 'credential.update', ...AUDIT })
   update(
@@ -85,7 +85,7 @@ export class CredentialsController {
     return this.credentials.update(connection, provider, name, body);
   }
 
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Delete(':provider/:name')
   @HttpCode(204)
   @Audit({ action: 'credential.delete', ...AUDIT })
@@ -97,7 +97,7 @@ export class CredentialsController {
     return this.credentials.remove(connection, provider, name);
   }
 
-  @Roles('admin')
+  @Requires('credentials.manage')
   @Post(':provider/:name/test')
   @HttpCode(200)
   @Audit({ action: 'credential.test', ...AUDIT })
@@ -110,7 +110,7 @@ export class CredentialsController {
   }
 
   /** Selection lists for the cluster wizard; operators create clusters (FP-5). */
-  @Roles('operator')
+  @Requires(['clusters.create', 'clusters.change'])
   @Get(':provider/:name/lookups/:kind')
   lookup(
     @Param('connection') connection: string,

@@ -13,13 +13,14 @@ import { StoreModule } from '../store/store.module.js';
 import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { AuthModule } from './auth.module.js';
-import { Roles } from './decorators.js';
+import { BUILTIN_ROLES } from '@capi-navigator/shared';
+import { Requires } from './decorators.js';
 import { SESSION_COOKIE } from './session.service.js';
 
 const ADMIN_PW = 'Initial-Admin-Pw-1';
 const CSRF = { 'x-capi-navigator': '1' };
 
-/** Endpoints to check the fail-closed behaviour and the role levels of the guard. */
+/** Endpoints to check the fail-closed behaviour and the permission check of the guard. */
 @Controller('api/test')
 class TestController {
   @Get('no-rule')
@@ -27,7 +28,7 @@ class TestController {
     return 'should never be reachable';
   }
 
-  @Roles('operator')
+  @Requires('clusters.create')
   @Post('operator-action')
   operatorAction() {
     return { ok: true };
@@ -154,7 +155,12 @@ describe('authentication and authorization over HTTP (FP-1)', () => {
     expect(cookie).toContain('HttpOnly');
     expect(cookie).toContain('Secure');
     expect(cookie).toContain('SameSite=Strict');
-    expect(res.body).toEqual({ username: 'admin', role: 'admin', mustChangePassword: true });
+    expect(res.body).toEqual({
+      username: 'admin',
+      role: 'admin',
+      bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
+      mustChangePassword: true,
+    });
   });
 
   it('allows only /me and change-password until the password is changed (FP1-F-02)', async () => {

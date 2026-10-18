@@ -2,7 +2,7 @@ import { Controller, Get, Module, Param } from '@nestjs/common';
 import type { ClusterNode } from '@capi-navigator/shared';
 import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
-import { Roles } from '../auth/decorators.js';
+import { Requires } from '../auth/decorators.js';
 import { ClustersModule } from '../clusters/clusters.module.js';
 import { ConnectionsModule } from '../connections/connections.module.js';
 import { NodeShellGateway } from './node-shell.gateway.js';
@@ -13,7 +13,7 @@ import { NodeShellService } from './node-shell.service.js';
 export class ManagementNodesController {
   constructor(private readonly shells: NodeShellService) {}
 
-  @Roles('viewer')
+  @Requires('view')
   @Get()
   list(@Param('connection') connection: string): Promise<ClusterNode[]> {
     return this.shells.managementNodes(connection);

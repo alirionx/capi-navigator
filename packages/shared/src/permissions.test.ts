@@ -55,6 +55,10 @@ describe('permissions (FP-19, ADR-0015)', () => {
     // Endpoints of a connection without namespace (e.g. cloud lookups): any namespace there.
     expect(allows(teamA, roles, 'clusters.create', { connection: 'home' })).toBe(true);
     expect(allows(teamA, roles, 'clusters.create', { connection: 'aws' })).toBe(false);
+    // An empty or forged namespace never counts as "somewhere".
+    expect(allows(teamA, roles, 'clusters.create', { connection: 'home', namespace: '' })).toBe(
+      false,
+    );
     // Endpoints without connection (e.g. chart browsing).
     expect(allows(teamA, roles, 'addons.manage')).toBe(true);
   });

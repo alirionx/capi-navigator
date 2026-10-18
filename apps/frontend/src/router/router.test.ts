@@ -34,28 +34,48 @@ describe('router guards (FP1-F-07)', () => {
   });
 
   it('forces the password change before anything else', async () => {
-    mockMe(200, { username: 'admin', role: 'admin', mustChangePassword: true });
+    mockMe(200, {
+      username: 'admin',
+      role: 'admin',
+      bindings: [{ role: 'admin', permissions: [] }],
+      mustChangePassword: true,
+    });
     const router = createAppRouter(pinia);
     await router.push('/users');
     expect(router.currentRoute.value.name).toBe('change-password');
   });
 
   it('keeps viewers out of admin routes', async () => {
-    mockMe(200, { username: 'vera', role: 'viewer', mustChangePassword: false });
+    mockMe(200, {
+      username: 'vera',
+      role: 'viewer',
+      bindings: [{ role: 'viewer', permissions: [] }],
+      mustChangePassword: false,
+    });
     const router = createAppRouter(pinia);
     await router.push('/users');
     expect(router.currentRoute.value.name).toBe('home');
   });
 
   it('lets admins open the user management', async () => {
-    mockMe(200, { username: 'admin', role: 'admin', mustChangePassword: false });
+    mockMe(200, {
+      username: 'admin',
+      role: 'admin',
+      bindings: [{ role: 'admin', permissions: [] }],
+      mustChangePassword: false,
+    });
     const router = createAppRouter(pinia);
     await router.push('/users');
     expect(router.currentRoute.value.name).toBe('users');
   });
 
   it('redirects signed-in users away from the login page', async () => {
-    mockMe(200, { username: 'otto', role: 'operator', mustChangePassword: false });
+    mockMe(200, {
+      username: 'otto',
+      role: 'operator',
+      bindings: [{ role: 'operator', permissions: [] }],
+      mustChangePassword: false,
+    });
     const router = createAppRouter(pinia);
     await router.push('/login');
     expect(router.currentRoute.value.name).toBe('home');

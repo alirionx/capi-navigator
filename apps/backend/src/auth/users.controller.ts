@@ -9,13 +9,13 @@ import {
   type User,
 } from '@capi-navigator/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
-import { Audit, CurrentUser, Roles } from './decorators.js';
+import { Audit, CurrentUser, Requires } from './decorators.js';
 import type { Principal } from './principal.js';
 import { UsersService } from './users.service.js';
 
 /** User management for admins (FP1-F-05). */
 @Controller('api/users')
-@Roles('admin')
+@Requires('users.manage')
 export class UsersController {
   constructor(private readonly users: UsersService) {}
 

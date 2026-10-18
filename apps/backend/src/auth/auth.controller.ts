@@ -22,7 +22,7 @@ import type { Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.js';
-import { AllowPendingPasswordChange, Audit, CurrentUser, Public, Roles } from './decorators.js';
+import { AllowPendingPasswordChange, Audit, CurrentUser, Public, SignedIn } from './decorators.js';
 import { LoginRateLimiter } from './login-rate-limiter.js';
 import type { AuthenticatedRequest, Principal } from './principal.js';
 import { SessionService } from './session.service.js';
@@ -78,7 +78,7 @@ export class AuthController {
     this.limiter.recordSuccess(ip, body.username);
     req.principal = principal;
     this.sessions.issue(res, principal.username, this.users.sessionGeneration(principal.username));
-    return principal;
+    return this.users.me(principal);
   }
 
   @Public()
@@ -89,14 +89,14 @@ export class AuthController {
     this.sessions.clear(res);
   }
 
-  @Roles('viewer')
+  @SignedIn()
   @AllowPendingPasswordChange()
   @Get('me')
   me(@CurrentUser() principal: Principal): Me {
-    return principal;
+    return this.users.me(principal);
   }
 
-  @Roles('viewer')
+  @SignedIn()
   @AllowPendingPasswordChange()
   @Post('change-password')
   @HttpCode(200)
@@ -113,6 +113,6 @@ export class AuthController {
     );
     // All other sessions are invalidated; this one continues with a fresh cookie.
     this.sessions.issue(res, principal.username, generation);
-    return { ...principal, mustChangePassword: false };
+    return this.users.me({ ...principal, mustChangePassword: false });
   }
 }

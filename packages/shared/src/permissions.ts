@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ROLES, type Role } from './auth.js';
+
+/** Built-in roles from section 3 of the requirements, from least to most privileged. */
+export const ROLES = ['viewer', 'operator', 'admin'] as const;
+export const RoleSchema = z.enum(ROLES);
+export type Role = z.infer<typeof RoleSchema>;
 
 /** Permissions of FP-19 (requirements section 6, ADR-0015). */
 export const PERMISSIONS = [
@@ -123,6 +127,29 @@ export type RoleBinding = z.infer<typeof RoleBindingSchema>;
 
 export const isUnlimited = (b: RoleBinding) => !b.connections && !b.namespaces;
 
+/** An assignment together with the permissions its role grants, for the frontend (FP19-F-10). */
+export const EffectiveBindingSchema = RoleBindingSchema.extend({
+  permissions: z.array(PermissionSchema),
+});
+export type EffectiveBinding = z.infer<typeof EffectiveBindingSchema>;
+
+/** Assignments with their permissions; assignments of unknown roles grant nothing. */
+export function effectiveBindings(
+  bindings: readonly RoleBinding[],
+  rolePermissions: RolePermissions,
+): EffectiveBinding[] {
+  return bindings.map((b) => ({ ...b, permissions: [...(rolePermissions(b.role) ?? [])] }));
+}
+
+/** Highest built-in role among the unlimited assignments (display only, see MeSchema). */
+export function displayRole(bindings: readonly RoleBinding[]): Role {
+  const builtin = bindings
+    .filter(isUnlimited)
+    .map((b) => b.role)
+    .filter((r): r is Role => (ROLES as readonly string[]).includes(r));
+  return [...ROLES].reverse().find((r) => builtin.includes(r)) ?? 'viewer';
+}
+
 /** Where an action takes place; missing parts mean "somewhere" (FP19-F-05). */
 export interface PermissionScope {
   connection?: string;
@@ -149,9 +176,15 @@ export function allows(
     if (!granted?.includes(permission) && !(permission === 'view' && granted)) return false;
     if (isUnlimited(b) || permission === 'view') return true;
     if (!isScopable(permission)) return false;
-    if (b.connections && scope.connection && !b.connections.includes(scope.connection))
+    // `undefined` means "somewhere"; any given value, also an empty one, must match exactly.
+    if (
+      b.connections &&
+      scope.connection !== undefined &&
+      !b.connections.includes(scope.connection)
+    )
       return false;
-    if (b.namespaces && scope.namespace && !b.namespaces.includes(scope.namespace)) return false;
+    if (b.namespaces && scope.namespace !== undefined && !b.namespaces.includes(scope.namespace))
+      return false;
     return true;
   });
 }
