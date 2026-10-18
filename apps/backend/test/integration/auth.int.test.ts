@@ -111,7 +111,12 @@ describe('FP-1 acceptance against kind', () => {
       .get('/api/auth/me')
       .set('Cookie', adminCookie)
       .expect(200);
-    expect(me.body).toEqual({ username: 'admin', role: 'admin', mustChangePassword: false });
+    expect(me.body).toMatchObject({
+      username: 'admin',
+      role: 'admin',
+      bindings: [{ role: 'admin' }],
+      mustChangePassword: false,
+    });
     await request(app.getHttpServer())
       .post('/api/auth/login')
       .set(CSRF)
