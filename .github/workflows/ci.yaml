@@ -51,7 +51,8 @@ jobs:
           install_only: true
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm kind:up --bare
+      # Full setup: the FP-3 and FP-4 tests install providers through the CAPI Operator.
+      - run: pnpm kind:up
       - run: pnpm test:int
 
   image:

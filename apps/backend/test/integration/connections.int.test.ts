@@ -18,16 +18,13 @@ import { AppModule } from '../../src/app.module.js';
 import { SESSION_COOKIE } from '../../src/auth/session.service.js';
 import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
+import { requireKindCluster } from './kind-guard.js';
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const ADMIN_PW = 'It-Admin-Pw-1';
 const CSRF = { 'x-capi-navigator': '1' };
 
-if (!process.env.KUBECONFIG?.endsWith('kind-capi-navigator.yaml')) {
-  throw new Error(
-    'Refusing to run: KUBECONFIG must point to the local kind cluster (pnpm test:int)',
-  );
-}
+requireKindCluster();
 
 describe('FP-2 acceptance against kind', () => {
   const kc = new KubeConfig();
@@ -91,7 +88,9 @@ describe('FP-2 acceptance against kind', () => {
   it('adds the kind cluster via kubeconfig; the test shows version and "Reachable"', async () => {
     const kubeconfig = readFileSync(process.env.KUBECONFIG!, 'utf8');
     const contexts = await post('/api/connections/kubeconfig-contexts', { kubeconfig }).expect(200);
-    expect(contexts.body.contexts[0].name).toBe('kind-capi-navigator');
+    expect(contexts.body.contexts[0].name).toBe(
+      `kind-${process.env.KIND_CLUSTER_NAME ?? 'capi-navigator'}`,
+    );
 
     const res = await post('/api/connections', {
       name: 'kind-kubeconfig',
