@@ -763,6 +763,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - Renovate keeps them current: standard managers for npm and the Helm chart, regex managers with `// renovate:` comments next to the pins in `packages/shared` (Helm, GitHub releases, container tags); grouped pull requests, checked by lint, typecheck, unit and snapshot tests.
   - In-app hints for operators of older app versions: "newer chart version available" for presets and "newer release available" for providers, like the newer image hint of FP7-F-12.
   - `docs/maintenance.md`: who approves updates, cadence, and what is verified before merging (patch updates by CI; minor updates of CAPI, providers, CCM/CSI additionally with a dry run on kind and a short live test, as the k0smotron findings of FP-9 showed).
+- **FP-21: CNI selection** (optional, low priority). Calico with VXLAN is the default for all distributions (RKE2 and k0s built in, kubeadm via a preset, FP-10). Later the wizard could offer a choice (e.g. Cilium or Flannel) per cluster, where each distribution supports it; the flavor plugins would then declare the CNIs they support and the node traffic each one needs (ADR-0012).
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
