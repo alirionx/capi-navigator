@@ -85,6 +85,8 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   flavor: 'k0s',
   displayName: 'k0s',
   customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
+  // The k0s kubelet reports "v1.35.8+k0s" for k0s "v1.35.8+k0s.1" (seen live with CAPI v1.14.3).
+  machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
     controlPlanePorts: [
