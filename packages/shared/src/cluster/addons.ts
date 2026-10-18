@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
 
 /**
@@ -124,7 +125,67 @@ export function buildAddonPreset(preset: AddonPreset, namespace: string): Manife
   };
 }
 
-/** Presets a cluster needs, from its add-on labels. */
-export function presetsFor(clusterLabels: Record<string, string>): AddonPreset[] {
-  return ADDON_PRESETS.filter((p) => clusterLabels[`capi-navigator.io/${p.kind}`] === p.provider);
+/**
+ * Admin changes to a preset (FP8-F-14), stored in the ConfigMap {@link ADDON_PRESETS_CONFIGMAP} of
+ * the home cluster. The defaults above stay in the code; an override replaces version and values.
+ */
+export const AddonPresetOverrideSchema = z.object({
+  version: z.string().trim().min(1).max(128).optional(),
+  valuesTemplate: z
+    .string()
+    .max(256 * 1024)
+    .optional(),
+});
+export type AddonPresetOverride = z.infer<typeof AddonPresetOverrideSchema>;
+export const AddonPresetOverridesSchema = z.record(z.string(), AddonPresetOverrideSchema);
+export type AddonPresetOverrides = z.infer<typeof AddonPresetOverridesSchema>;
+export const ADDON_PRESETS_CONFIGMAP = 'capi-navigator-addon-presets';
+export const ADDON_PRESETS_CONFIGMAP_KEY = 'overrides.json';
+
+/** A preset with the admin's override applied. */
+export function effectivePreset(
+  preset: AddonPreset,
+  overrides: AddonPresetOverrides = {},
+): AddonPreset {
+  const o = overrides[preset.id];
+  return {
+    ...preset,
+    ...(o?.version ? { version: o.version } : {}),
+    ...(o?.valuesTemplate !== undefined ? { valuesTemplate: o.valuesTemplate } : {}),
+  };
 }
+
+/** Presets a cluster needs, from its add-on labels (with overrides applied). */
+export function presetsFor(
+  clusterLabels: Record<string, string>,
+  overrides: AddonPresetOverrides = {},
+): AddonPreset[] {
+  return ADDON_PRESETS.filter(
+    (p) => clusterLabels[`capi-navigator.io/${p.kind}`] === p.provider,
+  ).map((p) => effectivePreset(p, overrides));
+}
+
+/** A preset in one namespace of a management cluster (FP8-F-14). */
+export const AddonPresetNamespaceSchema = z.object({
+  namespace: z.string(),
+  /** Matches the effective preset. */
+  upToDate: z.boolean(),
+  /** Only the app changed it; otherwise it is left alone. */
+  managedByApp: z.boolean(),
+  clusters: z.number(),
+});
+
+export const AddonPresetViewSchema = z.object({
+  id: z.string(),
+  provider: z.string(),
+  kind: z.string(),
+  displayName: z.string(),
+  repoURL: z.string(),
+  chartName: z.string(),
+  releaseNamespace: z.string(),
+  defaults: z.object({ version: z.string(), valuesTemplate: z.string() }),
+  override: AddonPresetOverrideSchema.optional(),
+  effective: z.object({ version: z.string(), valuesTemplate: z.string() }),
+  namespaces: z.array(AddonPresetNamespaceSchema),
+});
+export type AddonPresetView = z.infer<typeof AddonPresetViewSchema>;

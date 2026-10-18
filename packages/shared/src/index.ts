@@ -11,3 +11,4 @@ export * from './operator.js';
 export * from './operator-manifests.js';
 export * from './node-shell.js';
 export * from './resource-view.js';
+export * from './helm/index.js';

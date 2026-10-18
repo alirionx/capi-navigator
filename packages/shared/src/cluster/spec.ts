@@ -28,7 +28,7 @@ export const RESERVED_LABEL_PREFIXES = ['capi-navigator.io/', 'cluster.x-k8s.io/
 export const isReservedLabel = (key: string) =>
   RESERVED_LABEL_PREFIXES.some((p) => key.startsWith(p));
 
-const LabelsSchema = z.record(
+export const LabelsSchema = z.record(
   z
     .string()
     .regex(/^([a-z0-9.-]+\/)?[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$/, 'Invalid label key'),

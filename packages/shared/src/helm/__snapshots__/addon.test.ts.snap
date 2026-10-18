@@ -1,0 +1,72 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Helm add-ons (FP-8) > builds a HelmChartProxy from an HTTP repository (FP8-F-05) 1`] = `
+"apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: podinfo
+  namespace: capi-test
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  annotations:
+    capi-navigator.io/helm-repository: podinfo
+spec:
+  clusterSelector:
+    matchLabels:
+      addon/podinfo: "true"
+  repoURL: https://stefanprodan.github.io/podinfo
+  chartName: podinfo
+  version: 6.9.2
+  releaseName: podinfo
+  namespace: podinfo
+  valuesTemplate: |
+    ui:
+      message: "Hello from {{ .Cluster.metadata.name }}"
+  reconcileStrategy: Continuous
+  options:
+    wait: true
+    timeout: 10m0s
+    install:
+      createNamespace: true
+"
+`;
+
+exports[`Helm add-ons (FP-8) > builds a HelmChartProxy with OCI credentials and CA (FP8-F-03) 1`] = `
+"apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: podinfo
+  namespace: capi-test
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  annotations:
+    capi-navigator.io/helm-repository: private
+spec:
+  clusterSelector:
+    matchLabels:
+      addon/podinfo: "true"
+  repoURL: oci://172.18.0.9:5000/charts
+  chartName: podinfo
+  version: 6.9.2
+  releaseName: podinfo
+  namespace: podinfo
+  valuesTemplate: |
+    ui:
+      message: "Hello from {{ .Cluster.metadata.name }}"
+  reconcileStrategy: InstallOnce
+  options:
+    wait: true
+    timeout: 10m0s
+    install:
+      createNamespace: true
+  credentials:
+    secret:
+      name: capi-navigator-helm-private
+      namespace: capi-test
+    key: config.json
+  tlsConfig:
+    caSecret:
+      name: capi-navigator-helm-private
+      namespace: capi-test
+"
+`;

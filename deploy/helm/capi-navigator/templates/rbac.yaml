@@ -20,7 +20,7 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 rules:
   - apiGroups: [navigator.capi-navigator.io]
-    resources: [navigatorusers, auditevents, managementclusters]
+    resources: [navigatorusers, auditevents, managementclusters, helmrepositories]
     verbs: [get, list, watch, create, update, patch, delete]
   - apiGroups: [navigator.capi-navigator.io]
     resources: [managementclusters/status]
@@ -28,6 +28,10 @@ rules:
   - apiGroups: ['']
     resources: [secrets]
     verbs: [get, create, update, delete]
+  # Add-on preset overrides (FP8-F-14)
+  - apiGroups: ['']
+    resources: [configmaps]
+    verbs: [get, create, update]
   - apiGroups: [coordination.k8s.io]
     resources: [leases]
     verbs: [get, create, update]
