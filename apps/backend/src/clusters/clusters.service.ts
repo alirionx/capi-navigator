@@ -689,7 +689,9 @@ export class ClustersService {
         : []),
       infra.provider,
     ];
-    if (spec.addons.cloudControllerManager || spec.addons.csiDriver) needed.push('helm');
+    if (spec.addons.cloudControllerManager || spec.addons.csiDriver || spec.addons.rebootDaemon) {
+      needed.push('helm');
+    }
     for (const id of needed) {
       const p = state.providers.find((x) => x.catalogId === id);
       if (!p || p.phase !== 'Ready') {

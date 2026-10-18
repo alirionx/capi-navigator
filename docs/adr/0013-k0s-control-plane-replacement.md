@@ -36,6 +36,10 @@ path. Worker machines are not affected: Cluster API replaces them through Machin
 
 ## Consequences
 
+- OS updates of k0s control plane nodes run on the nodes: the Ubuntu cloud images apply security
+  updates with `unattended-upgrades`, and the optional kured preset (`addons.rebootDaemon`, chart
+  kured 6.1.0) reboots nodes one at a time with drain when `/var/run/reboot-required` exists. A new
+  OS release (e.g. 22.04 → 24.04) for the control plane needs a new cluster for now.
 - k0s control plane nodes keep their image; a new image reaches them only by recreating the
   cluster, until k0smotron replaces machines safely. FP-9's acceptance criterion "rebuilt from a new
   image" is met for worker pools only.

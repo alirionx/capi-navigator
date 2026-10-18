@@ -637,9 +637,11 @@ Verified on 2026-10-18 with podinfo 6.15.0 instead of ingress-nginx (retired in 
 
 **Acceptance criteria**
 
-- [ ] Snapshot tests cover k0s for the standard topology and all-in-one.
-- [ ] A k0s standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CCM and CSI working.
-- [ ] A k0s cluster can be upgraded by one minor version and rebuilt from a new image via FP-7.
+- [x] Snapshot tests cover k0s for the standard topology and all-in-one.
+- [x] A k0s standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CCM and CSI working.
+- [ ] A k0s cluster can be upgraded by one minor version and rebuilt from a new image via FP-7. **Partly met, blocked upstream:** the upgrade works (control plane in place via k0s autopilot, workers replaced); a new image reaches the worker pools only, because k0smotron v2.2.0 cannot replace control plane machines without losing etcd quorum (ADR-0013). OS updates of control plane nodes run via unattended-upgrades and the kured preset.
+
+Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11+k0s.1 → v1.35.8+k0s.1, Ubuntu 22.04 → 24.04 for workers). Deviations: ADR-0012 (distributions declare their network needs), ADR-0013 (in-place control plane upgrades, no control plane replacement).
 
 ### FP-10: Vanilla Kubernetes with kubeadm on stock images (experimental)
 

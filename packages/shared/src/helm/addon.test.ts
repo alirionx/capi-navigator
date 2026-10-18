@@ -152,3 +152,31 @@ describe('editable presets (FP8-F-14)', () => {
     });
   });
 });
+
+describe('kured reboot daemon preset (FP-9, ADR-0013)', () => {
+  it('is selected by its own label, independent of the cloud', async () => {
+    const { transform } = await import('../cluster/transform.js');
+    const { ClusterSpecSchema } = await import('../cluster/spec.js');
+    const spec = ClusterSpecSchema.parse({
+      name: 'demo',
+      kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+      addons: { cloudControllerManager: false, csiDriver: false, rebootDaemon: true },
+      topology: {
+        mode: 'all-in-one',
+        controlPlane: { replicas: 1, machineSize: 't3.large' },
+        workerPools: [],
+      },
+      infrastructure: {
+        provider: 'aws',
+        credentialRef: 'aws-dev',
+        region: 'eu-central-1',
+        image: 'ami-0e27250725fa51794',
+      },
+    });
+    const cluster = transform(spec, { credential: {} }).find((o) => o.kind === 'Cluster')!;
+    expect(cluster.metadata.labels?.['capi-navigator.io/reboot']).toBe('kured');
+    const presets = presetsFor(cluster.metadata.labels ?? {});
+    expect(presets.map((p) => p.id)).toEqual(['kured']);
+    expect(stringify(buildAddonPreset(presets[0]!, 'default'))).toMatchSnapshot();
+  });
+});

@@ -659,6 +659,9 @@ export const en = {
     ccmHint: 'Initializes nodes and provides LoadBalancer services. Default: on.',
     csi: 'CSI driver',
     csiHint: 'Persistent volumes (Cinder or EBS) with a default storage class. Default: on.',
+    reboot: 'Reboot daemon (kured)',
+    rebootHint:
+      'Reboots nodes one at a time after OS updates (unattended-upgrades), with drain; the way to apply OS updates to k0s control planes. Default: off.',
     addon: 'Add-on',
     chartVersion: 'Version',
     addonValuesLater:

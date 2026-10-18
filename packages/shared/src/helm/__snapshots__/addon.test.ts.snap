@@ -70,3 +70,38 @@ spec:
       namespace: capi-test
 "
 `;
+
+exports[`kured reboot daemon preset (FP-9, ADR-0013) > is selected by its own label, independent of the cloud 1`] = `
+"apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: capi-navigator-kured
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/preset: kured
+spec:
+  clusterSelector:
+    matchLabels:
+      capi-navigator.io/reboot: kured
+  repoURL: https://kubereboot.github.io/charts
+  chartName: kured
+  version: 6.1.0
+  releaseName: kured
+  namespace: kube-system
+  valuesTemplate: |
+    configuration:
+      concurrency: 1
+      rebootSentinel: /var/run/reboot-required
+    tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+  reconcileStrategy: Continuous
+  options:
+    wait: true
+    timeout: 10m0s
+    install:
+      createNamespace: true
+"
+`;
