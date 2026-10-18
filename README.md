@@ -285,6 +285,7 @@ stored in the home cluster (the app has no database).
 | Lint and format check                                                                                                                 | `pnpm lint`                                |
 | Type check                                                                                                                            | `pnpm typecheck`                           |
 | Unit and snapshot tests                                                                                                               | `pnpm test`                                |
+| Backend unit tests with the coverage threshold (70 % lines, as in CI)                                                                 | `pnpm test:coverage`                       |
 | Integration tests against kind (own throwaway namespace; opt-in read-only cloud tests with `OPENSTACK_CLOUDS_YAML=…` or `AWS_LIVE_*`) | `pnpm test:int`                            |
 | End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                            |
 | kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`          |
@@ -337,7 +338,8 @@ The project is driven by a requirements specification, one feature pack at a tim
 - English everywhere: UI, API messages, logs, documentation and code comments.
 - Never commit secrets, `clouds.yaml` files, kubeconfigs or tokens.
 
-Before opening a pull request, run `pnpm lint`, `pnpm typecheck` and `pnpm test`, and for UI
+Before opening a pull request, run `pnpm lint`, `pnpm typecheck`, `pnpm test` and
+`pnpm test:coverage` (backend line coverage at least 70 %), and for UI
 changes the end-to-end tests. npm dependencies are kept current by Renovate (`renovate.json`).
 
 ## License
