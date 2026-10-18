@@ -745,13 +745,15 @@ Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes
 
 **Acceptance criteria**
 
-- [ ] A test lists every endpoint with its permission and checks that viewer, operator and admin get exactly the access they had before FP-19; all existing tests pass unchanged.
-- [ ] A custom role with `view` and `clusters.change` can scale a cluster but cannot create or delete clusters or read the kubeconfig: the backend answers 403 also to direct API calls, and the UI hides these actions.
-- [ ] An assignment "operator in `home/team-a`" can change clusters in `team-a` and gets 403 in another namespace, also for the node shell; the wizard offers only `team-a`.
-- [ ] Changing a role takes effect without signing in again; an assigned role and the built-in roles cannot be deleted; the last user with unlimited `users.manage` cannot be removed or limited.
-- [ ] Existing users keep their access after the update without manual steps.
-- [ ] Role and assignment changes appear as `AuditEvent`s.
-- [ ] A Playwright test covers the custom role case.
+- [x] A test lists every endpoint with its permission and checks that viewer, operator and admin get exactly the access they had before FP-19; all existing tests pass unchanged.
+- [x] A custom role with `view` and `clusters.change` can scale a cluster but cannot create or delete clusters or read the kubeconfig: the backend answers 403 also to direct API calls, and the UI hides these actions.
+- [x] An assignment "operator in `home/team-a`" can change clusters in `team-a` and gets 403 in another namespace, also for the node shell; the wizard offers only `team-a`.
+- [x] Changing a role takes effect without signing in again; an assigned role and the built-in roles cannot be deleted; the last user with unlimited `users.manage` cannot be removed or limited.
+- [x] Existing users keep their access after the update without manual steps.
+- [x] Role and assignment changes appear as `AuditEvent`s.
+- [x] A Playwright test covers the custom role case.
+
+Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kind cluster (users from before FP-19 keep their access; screenshots of the roles page, the assignment editor and the wizard with limited namespaces). The endpoint matrix test was checked to fail on a deliberate change. Open for later: filtering what users can read by their scope, and group claims of FP-14 (FP19-F-12).
 
 ## 7. Non-functional requirements
 

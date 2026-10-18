@@ -39,7 +39,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-8 | Helm add-ons via CAAPH | done |
 | FP-9 | k0s as second Kubernetes distribution | done (control plane image rebuild blocked upstream, ADR-0013) |
 | FP-10 | kubeadm on stock images (experimental) | done |
-| FP-19 | Role management: custom roles, scoped role assignments (optional) | in progress |
+| FP-19 | Role management: custom roles, scoped role assignments (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 
@@ -87,7 +87,7 @@ These come from the requirements and must not be broken:
 6. **Preview before apply.** Every mutating action shows the generated YAML or diff first and applies only after confirmation, via server-side apply with field manager `capi-navigator`.
 7. **Stay upstream and removable.** Create only standard upstream resources for workload clusters. Never set owner references or finalizers from app resources on CAPI resources. Use only neutral labels and annotations under `capi-navigator.io/`.
 8. **Secrets stay secret.** Credentials (passwords, kubeconfigs, tokens, `clouds.yaml`, registry credentials) live only in Kubernetes Secrets and never appear in logs, API responses or the frontend.
-9. **Roles are enforced in the backend.** Viewer, operator and admin are checked by a NestJS guard on every endpoint. Frontend hiding is only cosmetic. Every mutating action writes an `AuditEvent`.
+9. **Permissions are enforced in the backend.** Every endpoint declares a permission (`@Requires`, FP-19); a NestJS guard checks it against the user's role assignments in the scope of the request. The built-in roles viewer, operator and admin keep their FP-1 access (pinned by a test). Frontend hiding is only cosmetic. Every mutating action writes an `AuditEvent`.
 10. **Plugins, not special cases.** Infrastructure providers implement `InfraProviderPlugin`, Kubernetes distributions implement `BootstrapFlavorPlugin` (see section 5 of the requirements). Do not hard-code OpenStack or RKE2 logic into generic modules.
 
 ## Verify, don't guess
