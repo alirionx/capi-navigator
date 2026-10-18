@@ -105,6 +105,10 @@ export interface BootstrapFlavorPlugin {
   flavor: ClusterSpec['kubernetes']['flavor'];
   /** Ports and node traffic the distribution needs (ADR-0012). */
   network: FlavorNetwork;
+  /** The distribution ships no CNI; a CNI preset is rolled out unless switched off (FP10-F-04). */
+  needsCni?: boolean;
+  /** Marked as experimental in the wizard, with its trade-offs (FP10-F-08). */
+  experimental?: boolean;
   /** Display name and the fields node customization maps to, for help texts (POS-04). */
   displayName: string;
   customizationFields: { preCommands: string; postCommands: string };

@@ -6,14 +6,14 @@ import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../oper
  * namespace, selecting clusters by add-on label (FP5-F-09, FP5-F-17). Chart versions verified on
  * 2026-10-17 against the chart repositories; value keys against the charts' values.yaml.
  *
- * RKE2 labels control plane nodes with node-role.kubernetes.io/control-plane="true", while the
- * charts default to "" – hence the nodeSelector overrides.
+ * RKE2 and k0s label control plane nodes with node-role.kubernetes.io/control-plane="true",
+ * kubeadm with "" – the selector value is rendered per cluster from its control plane kind.
  */
 export interface AddonPreset {
   id: string;
   /** Cloud of the preset; `any` for cloud-independent presets (kured). */
   provider: 'openstack' | 'aws' | 'any';
-  kind: 'ccm' | 'csi' | 'reboot';
+  kind: 'ccm' | 'csi' | 'reboot' | 'cni';
   displayName: string;
   repoURL: string;
   chartName: string;
@@ -23,7 +23,9 @@ export interface AddonPreset {
   valuesTemplate: string;
 }
 
-const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: "true"\n`;
+/** Value of the control plane node label per distribution (CAAPH template, FP10-F-06). */
+const CP_LABEL_VALUE = `'{{ if eq .ControlPlane.kind "KubeadmControlPlane" }}{{ else }}true{{ end }}'`;
+const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: ${CP_LABEL_VALUE}\n`;
 
 export const ADDON_PRESETS: AddonPreset[] = [
   {
@@ -97,7 +99,7 @@ export const ADDON_PRESETS: AddonPreset[] = [
     valuesTemplate: [
       // The controller runs on control plane nodes, whose instance profile may manage volumes.
       // The region comes from the AWSCluster instead of an IMDS lookup.
-      'controller:\n  region: {{ .InfraCluster.spec.region }}\n  nodeSelector:\n    node-role.kubernetes.io/control-plane: "true"\n',
+      `controller:\n  region: {{ .InfraCluster.spec.region }}\n  nodeSelector:\n    node-role.kubernetes.io/control-plane: ${CP_LABEL_VALUE}\n`,
       '  tolerations:\n    - key: node-role.kubernetes.io/control-plane\n      operator: Exists\n      effect: NoSchedule\n',
       'storageClasses:\n  - name: ebs-gp3\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
@@ -121,6 +123,25 @@ export const ADDON_PRESETS: AddonPreset[] = [
       'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
     ].join(''),
   },
+  {
+    // FP10-F-04: Calico for distributions without a built-in CNI (kubeadm), the same CNI and VXLAN
+    // overlay that RKE2 and k0s use. tigera-operator v3.33.0; values verified against its
+    // values.yaml on 2026-10-18. Optional components (API server, Goldmane, Whisker) stay off.
+    id: 'calico',
+    provider: 'any',
+    kind: 'cni',
+    displayName: 'Calico CNI',
+    repoURL: 'https://docs.tigera.io/calico/charts',
+    chartName: 'tigera-operator',
+    version: 'v3.33.0',
+    releaseNamespace: 'tigera-operator',
+    valuesTemplate: [
+      'installation:\n  calicoNetwork:\n    bgp: Disabled\n    ipPools:\n',
+      '      - cidr: {{ index .Cluster.spec.clusterNetwork.pods.cidrBlocks 0 }}\n',
+      '        encapsulation: VXLAN\n        natOutgoing: Enabled\n        nodeSelector: all()\n',
+      'apiServer:\n  enabled: false\ngoldmane:\n  enabled: false\nwhisker:\n  enabled: false\n',
+    ].join(''),
+  },
 ];
 
 /** Cluster label that selects a preset, e.g. capi-navigator.io/ccm=openstack. */
@@ -130,6 +151,9 @@ export function presetSelector(preset: AddonPreset): [string, string] {
     preset.provider === 'any' ? preset.id : preset.provider,
   ];
 }
+
+/** Label for the CNI preset of distributions without a built-in CNI (FP10-F-04). */
+export const CNI_LABEL: [string, string] = ['capi-navigator.io/cni', 'calico'];
 
 /** Label for the reboot daemon preset, set by the transformation when enabled (FP9, ADR-0013). */
 export const REBOOT_DAEMON_LABEL: [string, string] = ['capi-navigator.io/reboot', 'kured'];

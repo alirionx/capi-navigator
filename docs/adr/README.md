@@ -17,3 +17,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0011](0011-helm-addons.md)                                 | Helm add-ons with the HelmChartProxy as source of truth                          | accepted |
 | [0012](0012-flavor-network-requirements.md)                 | Kubernetes distributions declare their network needs                             | accepted |
 | [0013](0013-k0s-control-plane-replacement.md)               | k0s control planes are upgraded in place and never replaced                      | accepted |
+| [0014](0014-kubeadm-on-stock-images.md)                     | kubeadm on stock images with release binaries for the container runtime          | accepted |

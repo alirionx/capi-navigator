@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderManifests } from '../operator-manifests.js';
 import { ClusterSpecSchema, type ClusterSpecInput } from './spec.js';
+import { kubeadmInstallScript } from './kubeadm.js';
 import { transform, type TransformContext } from './transform.js';
 
 const ctx: TransformContext = { credential: { cloudName: 'infomaniak' } };
@@ -367,5 +368,88 @@ describe('k0s flavor (FP-9)', () => {
       kubernetes: { flavor: 'k0s', version: 'v1.35.9+rke2r1' },
     });
     expect(bad.error?.issues[0]?.path.join('.')).toBe('kubernetes.version');
+  });
+});
+
+describe('kubeadm flavor (FP-10)', () => {
+  const kubeadm = (base: ClusterSpecInput): ClusterSpecInput => ({
+    ...base,
+    name: `${base.name}-kubeadm`,
+    kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+  });
+
+  it('OpenStack standard with CNI, CCM and CSI (FP10-F-01, FP10-F-04, FP10-F-06)', () => {
+    expect(render(kubeadm(openstack()))).toMatchSnapshot();
+  });
+  it('OpenStack all-in-one: no control plane taint', () => {
+    const objects = transform(ClusterSpecSchema.parse(allInOne(kubeadm(openstack()))), ctx);
+    const kcp = objects.find((o) => o.kind === 'KubeadmControlPlane')!;
+    const reg = (
+      kcp.spec as {
+        kubeadmConfigSpec: { initConfiguration: { nodeRegistration: { taints?: unknown[] } } };
+      }
+    ).kubeadmConfigSpec.initConfiguration.nodeRegistration;
+    expect(reg.taints).toEqual([]);
+    expect(render(allInOne(kubeadm(openstack())))).toMatchSnapshot();
+  });
+  it('AWS standard', () => {
+    expect(render(kubeadm(aws()))).toMatchSnapshot();
+  });
+  it('install script with mirrors (FP10-F-02, FP10-F-09)', () => {
+    const spec = ClusterSpecSchema.parse({
+      ...kubeadm(openstack()),
+      kubernetes: {
+        flavor: 'kubeadm',
+        version: 'v1.34.12',
+        packageRepository: 'https://mirror.example/k8s/',
+        binaryDownloads: 'https://mirror.example/github',
+      },
+    });
+    const script = kubeadmInstallScript(spec, spec.kubernetes.version);
+    expect(script).toContain('PKGS="https://mirror.example/k8s/core:/stable:/v1.34"');
+    expect(script).toContain('DOWNLOADS="https://mirror.example/github"');
+    expect(script).toContain('K8S_VERSION="1.34.12"');
+    expect(script).toMatchSnapshot();
+  });
+  it('node customization runs after the install script (FP10-F-05)', () => {
+    const spec = kubeadm(openstack());
+    spec.topology.workerPools![0]!.customization = {
+      files: [{ path: '/etc/motd', content: 'managed\n', permissions: '0644' }],
+      preCommands: ['echo before'],
+      postCommands: ['echo after'],
+    };
+    const t = transform(ClusterSpecSchema.parse(spec), ctx).find(
+      (o) => o.kind === 'KubeadmConfigTemplate' && o.metadata.name.includes('-default-'),
+    )!;
+    const s = (t.spec as { template: { spec: Record<string, string[]> } }).template.spec;
+    expect(s.preKubeadmCommands).toEqual([
+      '/usr/local/bin/capi-navigator-install-kubernetes.sh',
+      'echo before',
+    ]);
+    expect(s.postKubeadmCommands).toEqual(['echo after']);
+  });
+  it('labels the cluster for the Calico preset unless the CNI is switched off', () => {
+    const labels = (input: ClusterSpecInput) =>
+      transform(ClusterSpecSchema.parse(input), ctx).find((o) => o.kind === 'Cluster')!.metadata
+        .labels!;
+    expect(labels(kubeadm(openstack()))['capi-navigator.io/cni']).toBe('calico');
+    expect(
+      labels({ ...kubeadm(openstack()), addons: { cni: 'none' } })['capi-navigator.io/cni'],
+    ).toBeUndefined();
+    // RKE2 brings its own CNI.
+    expect(labels(openstack())['capi-navigator.io/cni']).toBeUndefined();
+  });
+  it('rotates worker templates on upgrade (FP10-F-07)', () => {
+    const names = (version: string) =>
+      transform(
+        ClusterSpecSchema.parse({
+          ...kubeadm(openstack()),
+          kubernetes: { flavor: 'kubeadm', version },
+        }),
+        ctx,
+      )
+        .filter((o) => o.kind === 'KubeadmConfigTemplate')
+        .map((o) => o.metadata.name);
+    expect(names('v1.36.5')).not.toEqual(names('v1.35.9'));
   });
 });

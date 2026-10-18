@@ -1,5 +1,5 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
-import { REBOOT_DAEMON_LABEL } from './addons.js';
+import { CNI_LABEL, REBOOT_DAEMON_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
 import { openstackPlugin } from './openstack.js';
 import type {
@@ -9,6 +9,7 @@ import type {
   TransformContext,
 } from './plugins.js';
 import { k0sPlugin } from './k0s.js';
+import { kubeadmPlugin } from './kubeadm.js';
 import { rke2Plugin } from './rke2.js';
 import { CLUSTER_SPEC_ANNOTATION, type ClusterSpec, type Infrastructure } from './spec.js';
 import { shortHash, stableStringify } from './util.js';
@@ -25,6 +26,7 @@ export const FLAVOR_PLUGINS: Partial<
 > = {
   rke2: rke2Plugin,
   k0s: k0sPlugin,
+  kubeadm: kubeadmPlugin,
 };
 
 const CAPI_API = 'cluster.x-k8s.io/v1beta2';
@@ -60,6 +62,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
         ...sorted(spec.labels ?? {}),
         ...infra.addonLabels(spec),
         ...(spec.addons.rebootDaemon ? Object.fromEntries([REBOOT_DAEMON_LABEL]) : {}),
+        ...(flavor.needsCni && spec.addons.cni !== 'none' ? Object.fromEntries([CNI_LABEL]) : {}),
         ...labels,
       },
       annotations: { [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec) },
