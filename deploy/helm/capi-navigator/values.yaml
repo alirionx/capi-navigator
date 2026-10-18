@@ -5,15 +5,61 @@ image:
 
 replicaCount: 1
 
+# Exposure: the Service is always created; Ingress and HTTPRoute are optional and can be
+# combined with it (e.g. type LoadBalancer for direct access plus an Ingress with TLS).
 service:
+  # ClusterIP (default), NodePort or LoadBalancer.
   type: ClusterIP
   port: 80
+  annotations: {}
+  # Only for type NodePort or LoadBalancer:
+  nodePort: ''
+  externalTrafficPolicy: ''
+  # Only for type LoadBalancer:
+  loadBalancerClass: ''
+  loadBalancerIP: ''
+  loadBalancerSourceRanges: []
+
+# Ingress (networking.k8s.io/v1). TLS should terminate here: sessions use Secure cookies.
+ingress:
+  enabled: false
+  className: ''
+  annotations: {}
+  hosts: []
+  #  - capi-navigator.example.com
+  path: /
+  pathType: Prefix
+  tls: []
+  #  - secretName: capi-navigator-tls
+  #    hosts: [capi-navigator.example.com]
+
+# Gateway API HTTPRoute (gateway.networking.k8s.io/v1); needs an existing Gateway.
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  #  - name: shared-gateway
+  #    namespace: gateway-system
+  #    sectionName: https
+  hostnames: []
+  #  - capi-navigator.example.com
+  path: /
+  # Optional rule timeouts, e.g. { request: 0s } where the gateway would cut live updates (SSE).
+  timeouts: {}
+
+# Express "trust proxy" (TRUST_PROXY): which proxies may set X-Forwarded-For, needed for the
+# client IP of the login rate limit. Empty: "loopback,linklocal,uniquelocal" when the Ingress or
+# HTTPRoute is enabled, otherwise the app default "loopback".
+trustProxy: ''
 
 resources: {}
 
 auth:
   # FP1-F-03: absolute session lifetime in hours.
   sessionTtlHours: 8
+  # Secure flag of the session cookie (COOKIE_SECURE). Browsers only store it over HTTPS or on
+  # localhost; set false only for plain-HTTP access in test setups (e.g. LoadBalancer without TLS).
+  cookieSecure: true
   # FP1-F-02: the initial admin password is read from the Secret capi-navigator-initial-admin
   # (key "password") in the release namespace. If it does not exist, a random password is
   # generated into that Secret on first start.

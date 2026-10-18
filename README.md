@@ -136,6 +136,60 @@ The chart installs the app's CRDs, RBAC and one replica. The initial admin passw
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
 there on first start.
 
+### Exposing the app
+
+The chart always creates a Service; an Ingress and a Gateway API `HTTPRoute` are optional and can
+be combined with it and with each other:
+
+| Option            | Values                                                                                                                                                                                                                                          | Notes                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Service           | `service.type` (`ClusterIP`, `NodePort`, `LoadBalancer`), `service.port`, `service.annotations`, `service.nodePort`, `service.externalTrafficPolicy`, `service.loadBalancerClass`, `service.loadBalancerIP`, `service.loadBalancerSourceRanges` | Annotations configure the cloud load balancer, e.g. Octavia or AWS NLB settings      |
+| Ingress           | `ingress.enabled`, `ingress.className`, `ingress.annotations`, `ingress.hosts`, `ingress.path`, `ingress.pathType`, `ingress.tls`                                                                                                               | `networking.k8s.io/v1`; at least one host                                            |
+| HTTPRoute         | `httpRoute.enabled`, `httpRoute.parentRefs`, `httpRoute.hostnames`, `httpRoute.path`, `httpRoute.timeouts`, `httpRoute.annotations`                                                                                                             | `gateway.networking.k8s.io/v1`; needs an existing Gateway (at least one `parentRef`) |
+| Proxy and cookies | `trustProxy`, `auth.cookieSecure`                                                                                                                                                                                                               | See below                                                                            |
+
+```yaml
+# values-ingress.yaml: Ingress with TLS from cert-manager
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts: [capi-navigator.example.com]
+  tls:
+    - secretName: capi-navigator-tls
+      hosts: [capi-navigator.example.com]
+```
+
+```yaml
+# values-gateway.yaml: HTTPRoute on a shared Gateway that terminates TLS
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: shared-gateway
+      namespace: gateway-system
+      sectionName: https
+  hostnames: [capi-navigator.example.com]
+```
+
+```yaml
+# values-lb.yaml: cloud load balancer, restricted to an admin network
+service:
+  type: LoadBalancer
+  loadBalancerSourceRanges: [203.0.113.0/24]
+```
+
+- **TLS:** sessions use Secure cookies, which browsers store only over HTTPS (or on `localhost`, as
+  with `port-forward`). Terminate TLS at the Ingress, the Gateway or the load balancer. Only for
+  plain-HTTP test setups, e.g. a LoadBalancer without TLS, set `auth.cookieSecure=false`.
+- **Client IPs:** with the Ingress or HTTPRoute enabled, the chart trusts `X-Forwarded-For` from
+  private addresses (`trustProxy` defaults to `loopback,linklocal,uniquelocal`), so the login rate
+  limit sees the real client. Set `trustProxy` explicitly for other setups (Express "trust proxy"
+  syntax).
+- **Live updates** use server-sent events (long-lived HTTP responses). The app disables proxy
+  buffering (`X-Accel-Buffering: no`); if a gateway cuts the stream after a fixed time, raise its
+  timeout, e.g. `httpRoute.timeouts.request: 0s` where supported.
+
 > [!IMPORTANT]
 > The app manages clusters and stores cloud credentials. Expose it only via HTTPS (sessions use
 > Secure cookies) and give the admin role to few people: admins can install providers and open

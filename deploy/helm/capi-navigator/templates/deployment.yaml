@@ -36,6 +36,16 @@ spec:
               value: {{ .Values.audit.retentionDays | quote }}
             - name: NODE_SHELL_IMAGE
               value: {{ .Values.nodeShell.image | quote }}
+            - name: COOKIE_SECURE
+              value: {{ .Values.auth.cookieSecure | quote }}
+            {{- $trustProxy := .Values.trustProxy }}
+            {{- if and (not $trustProxy) (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
+            {{- $trustProxy = "loopback,linklocal,uniquelocal" }}
+            {{- end }}
+            {{- with $trustProxy }}
+            - name: TRUST_PROXY
+              value: {{ . | quote }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 3000
