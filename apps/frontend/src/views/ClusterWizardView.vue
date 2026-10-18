@@ -106,6 +106,10 @@ const draft = reactive({
   /** FP5-F-20: bastion host. */
   bastion: { enabled: false, machineSize: '', allowedCidrs: [] as string[] },
   addons: { ccm: true, csi: true, reboot: false },
+  /** FP10-F-04: CNI preset for distributions without one; FP10-F-09: mirrors. */
+  cni: true,
+  packageRepository: '',
+  binaryDownloads: '',
   podCidr: '10.42.0.0/16',
   serviceCidr: '10.43.0.0/16',
   sshKeys: '',
@@ -114,6 +118,7 @@ const draft = reactive({
   grantNamespace: false,
 });
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
+const flavorPlugin = computed(() => FLAVOR_PLUGINS[draft.flavor]);
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
 /** ADR-0013: the distribution cannot replace control plane machines later. */
 const cpReplacementWarning = computed(() => {
@@ -284,6 +289,12 @@ const spec = computed<ClusterSpecInput>(() => ({
     version: draft.version,
     podCidr: draft.podCidr.trim(),
     serviceCidr: draft.serviceCidr.trim(),
+    ...(flavorPlugin.value?.installsPackages && draft.packageRepository.trim()
+      ? { packageRepository: draft.packageRepository.trim() }
+      : {}),
+    ...(flavorPlugin.value?.installsPackages && draft.binaryDownloads.trim()
+      ? { binaryDownloads: draft.binaryDownloads.trim() }
+      : {}),
   },
   topology: {
     mode: draft.mode,
@@ -303,6 +314,7 @@ const spec = computed<ClusterSpecInput>(() => ({
     cloudControllerManager: draft.addons.ccm,
     csiDriver: draft.addons.csi,
     ...(draft.addons.reboot ? { rebootDaemon: true } : {}),
+    ...(flavorPlugin.value?.needsCni && !draft.cni ? { cni: 'none' as const } : {}),
   },
   sshPublicKeys: draft.sshKeys
     .split('\n')
@@ -434,7 +446,10 @@ const steps = computed(() => [
 ]);
 const presets = computed(() =>
   ADDON_PRESETS.filter(
-    (p) => p.provider === draft.provider || (p.provider === 'any' && draft.addons.reboot),
+    (p) =>
+      p.provider === draft.provider ||
+      (p.id === 'kured' && draft.addons.reboot) ||
+      (p.id === 'calico' && !!flavorPlugin.value?.needsCni && draft.cni),
   ),
 );
 const canPreview = computed(() => issues.value.length === 0);
@@ -483,13 +498,25 @@ const canPreview = computed(() => issues.value.length === 0);
               :items="[
                 { title: 'RKE2', value: 'rke2' },
                 { title: 'k0s', value: 'k0s' },
-                { title: t('wizard.kubeadmLater'), value: 'kubeadm', props: { disabled: true } },
+                { title: t('wizard.kubeadmExperimental'), value: 'kubeadm' },
               ]"
               data-testid="wizard-flavor"
               :label="t('wizard.distribution')"
               :hint="t('wizard.distributionHint')"
               persistent-hint
             />
+            <!-- FP10-F-08: experimental, with its trade-offs before creation -->
+            <v-alert
+              v-if="flavorPlugin?.experimental"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+              data-testid="wizard-experimental"
+            >
+              <div class="font-weight-medium">{{ t('wizard.experimentalTitle') }}</div>
+              <div class="text-body-2">{{ t('wizard.kubeadmTradeoffs') }}</div>
+            </v-alert>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
@@ -855,6 +882,16 @@ const canPreview = computed(() => issues.value.length === 0);
           class="mt-2"
         />
         <v-switch
+          v-if="flavorPlugin?.needsCni"
+          v-model="draft.cni"
+          color="primary"
+          :label="t('wizard.cni')"
+          :hint="t('wizard.cniHint')"
+          persistent-hint
+          class="mt-2"
+          data-testid="wizard-cni"
+        />
+        <v-switch
           v-model="draft.addons.reboot"
           color="primary"
           :label="t('wizard.reboot')"
@@ -912,6 +949,24 @@ const canPreview = computed(() => issues.value.length === 0);
       <!-- 6 Advanced -->
       <template #[`item.6`]>
         <v-row>
+          <template v-if="flavorPlugin?.installsPackages">
+            <v-col cols="12" md="6"
+              ><v-text-field
+                v-model="draft.packageRepository"
+                :label="t('wizard.packageRepository')"
+                :hint="t('wizard.packageRepositoryHint')"
+                persistent-hint
+                placeholder="https://pkgs.k8s.io"
+            /></v-col>
+            <v-col cols="12" md="6"
+              ><v-text-field
+                v-model="draft.binaryDownloads"
+                :label="t('wizard.binaryDownloads')"
+                :hint="t('wizard.binaryDownloadsHint')"
+                persistent-hint
+                placeholder="https://github.com"
+            /></v-col>
+          </template>
           <v-col cols="12" md="6"
             ><v-text-field
               v-model="draft.podCidr"

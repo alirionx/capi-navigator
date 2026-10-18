@@ -107,6 +107,8 @@ export interface BootstrapFlavorPlugin {
   network: FlavorNetwork;
   /** The distribution ships no CNI; a CNI preset is rolled out unless switched off (FP10-F-04). */
   needsCni?: boolean;
+  /** Installs Kubernetes from packages and release binaries at first boot; mirrors apply (FP10-F-09). */
+  installsPackages?: boolean;
   /** Marked as experimental in the wizard, with its trade-offs (FP10-F-08). */
   experimental?: boolean;
   /** Display name and the fields node customization maps to, for help texts (POS-04). */
