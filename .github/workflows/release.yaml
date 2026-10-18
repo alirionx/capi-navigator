@@ -112,6 +112,14 @@ jobs:
             -n capi-navigator-system --create-namespace
           \`\`\`
 
+          Upgrading: Helm does not update CRDs on \`helm upgrade\`; apply them first:
+
+          \`\`\`sh
+          helm show crds ${base}/$(basename "$FILE") | kubectl apply --server-side -f -
+          helm upgrade capi-navigator ${base}/$(basename "$FILE") \\
+            -n capi-navigator-system --reuse-values
+          \`\`\`
+
           See the README for exposure options (Service, Ingress, HTTPRoute) and all values.
           NOTES
           gh release create "$GITHUB_REF_NAME" "$FILE" "$FILE.sha256" \

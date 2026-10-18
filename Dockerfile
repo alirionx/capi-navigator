@@ -20,7 +20,8 @@ RUN pnpm --filter @capi-navigator/shared build \
  && cp -r apps/frontend/dist /out/public
 
 FROM node:24-bookworm-slim AS runtime
-ARG APP_VERSION=0.1.0
+# Set by the release workflow from the tag; local builds are development versions.
+ARG APP_VERSION=0.0.0-dev
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \
     PORT=3000 \
