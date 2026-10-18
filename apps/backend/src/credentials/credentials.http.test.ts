@@ -39,6 +39,8 @@ type Obj = {
 const mc = vi.hoisted(() => ({
   secrets: new Map<string, Obj>(),
   identities: new Map<string, Obj>(),
+  /** Simulates a provider webhook that is not ready yet: identities are refused. */
+  refuseIdentities: false,
   providers: [] as { kind: string; metadata: { name: string; namespace: string } }[],
   clusters: [] as {
     metadata: { name: string; namespace: string };
@@ -50,9 +52,19 @@ vi.mock('../kube/apply.js', () => ({
     for (const o of objects) {
       if (o.kind === 'Secret')
         mc.secrets.set(`${o.metadata.namespace}/${o.metadata.name}`, structuredClone(o));
+      else if (mc.refuseIdentities)
+        throw Object.assign(new Error('failed calling webhook: connection refused'), {
+          code: 500,
+        });
       else mc.identities.set(`${o.kind}/${o.metadata.name}`, structuredClone(o));
     }
     return objects;
+  },
+  deleteObjects: async (_kc: unknown, objects: Obj[]) => {
+    for (const o of objects) {
+      if (o.kind === 'Secret') mc.secrets.delete(`${o.metadata.namespace}/${o.metadata.name}`);
+      else mc.identities.delete(`${o.kind}/${o.metadata.name}`);
+    }
   },
 }));
 vi.mock('../operator/providers.js', () => ({ listProviders: async () => mc.providers }));
@@ -254,6 +266,29 @@ describe('credentials API (FP-4)', () => {
     expect(list.body).toHaveLength(1);
     expect(JSON.stringify(list.body)).not.toContain('TOP-SECRET');
     await post('', osBody()).expect(409);
+  });
+
+  it('leaves nothing behind when the identity is refused, so a retry works', async () => {
+    const body = {
+      provider: 'aws',
+      name: 'aws-retry',
+      aws: {
+        accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+        secretAccessKey: AWS_SECRET,
+        region: 'eu-central-1',
+      },
+    };
+    mc.refuseIdentities = true;
+    try {
+      await post('', body).expect(502);
+    } finally {
+      mc.refuseIdentities = false;
+    }
+    expect(
+      [...mc.secrets.keys()].some((k) => k.endsWith('capi-navigator-credential-aws-retry')),
+    ).toBe(false);
+    await post('', body).expect(201);
+    await req().delete(`${base}/aws/aws-retry`).set(CSRF).set('Cookie', admin).expect(204);
   });
 
   it('creates an AWS credential and reports a rejected key', async () => {

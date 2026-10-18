@@ -35,7 +35,7 @@ import {
 } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
-import { serverSideApply } from '../kube/apply.js';
+import { deleteObjects, serverSideApply } from '../kube/apply.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { listProviders } from '../operator/providers.js';
 import {
@@ -151,7 +151,17 @@ export class CredentialsService {
       });
     }
     const { objects, data, summary } = this.build(plugin, req, namespace);
-    await this.kube(`Store credential ${req.name}`, () => serverSideApply(kc, objects));
+    await this.kube(`Store credential ${req.name}`, async () => {
+      try {
+        await serverSideApply(kc, objects);
+      } catch (err) {
+        // Secret and identity belong together: if the identity is refused (e.g. the provider's
+        // webhook is still starting), remove what was stored, so a retry does not fail with
+        // "already exists" and no Secret without identity is left behind.
+        await deleteObjects(kc, objects).catch(() => undefined);
+        throw err;
+      }
+    });
     return this.runTest(kc, plugin, req.name, namespace, data, summary);
   }
 
