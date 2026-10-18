@@ -86,7 +86,10 @@ function once(url: URL, opts: FetchOptions): Promise<Omit<FetchResult, 'url'>> {
         res.on('data', (c: Buffer) => {
           size += c.length;
           if (size > max) {
-            req.destroy(new FetchError(`Response from ${url.host} is larger than ${max} bytes`));
+            // Reject directly: destroying the request with an error once the response has
+            // started raises it on the response stream, where it would crash the process.
+            res.destroy();
+            reject(new FetchError(`Response from ${url.host} is larger than ${max} bytes`));
             return;
           }
           chunks.push(c);
