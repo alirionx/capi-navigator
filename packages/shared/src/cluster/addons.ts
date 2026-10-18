@@ -11,8 +11,9 @@ import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../oper
  */
 export interface AddonPreset {
   id: string;
-  provider: 'openstack' | 'aws';
-  kind: 'ccm' | 'csi';
+  /** Cloud of the preset; `any` for cloud-independent presets (kured). */
+  provider: 'openstack' | 'aws' | 'any';
+  kind: 'ccm' | 'csi' | 'reboot';
   displayName: string;
   repoURL: string;
   chartName: string;
@@ -102,7 +103,36 @@ export const ADDON_PRESETS: AddonPreset[] = [
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
     ].join(''),
   },
+  {
+    // Reboots nodes after OS updates (unattended-upgrades writes /var/run/reboot-required), one
+    // node at a time with drain, also control plane nodes. The OS update path for distributions
+    // whose control plane machines cannot be replaced (ADR-0013). Chart 6.1.0 (kured 1.23.0),
+    // values verified against its values.yaml on 2026-10-18.
+    id: 'kured',
+    provider: 'any',
+    kind: 'reboot',
+    displayName: 'kured reboot daemon',
+    repoURL: 'https://kubereboot.github.io/charts',
+    chartName: 'kured',
+    version: '6.1.0',
+    releaseNamespace: 'kube-system',
+    valuesTemplate: [
+      'configuration:\n  concurrency: 1\n  rebootSentinel: /var/run/reboot-required\n',
+      'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
+    ].join(''),
+  },
 ];
+
+/** Cluster label that selects a preset, e.g. capi-navigator.io/ccm=openstack. */
+export function presetSelector(preset: AddonPreset): [string, string] {
+  return [
+    `capi-navigator.io/${preset.kind}`,
+    preset.provider === 'any' ? preset.id : preset.provider,
+  ];
+}
+
+/** Label for the reboot daemon preset, set by the transformation when enabled (FP9, ADR-0013). */
+export const REBOOT_DAEMON_LABEL: [string, string] = ['capi-navigator.io/reboot', 'kured'];
 
 export function addonPresetName(preset: AddonPreset): string {
   return `capi-navigator-${preset.id}`;
@@ -119,7 +149,7 @@ export function buildAddonPreset(preset: AddonPreset, namespace: string): Manife
       labels: { [MANAGED_BY_LABEL]: MANAGED_BY_VALUE, 'capi-navigator.io/preset': preset.id },
     },
     spec: {
-      clusterSelector: { matchLabels: { [`capi-navigator.io/${preset.kind}`]: preset.provider } },
+      clusterSelector: { matchLabels: Object.fromEntries([presetSelector(preset)]) },
       repoURL: preset.repoURL,
       chartName: preset.chartName,
       version: preset.version,
@@ -167,9 +197,10 @@ export function presetsFor(
   clusterLabels: Record<string, string>,
   overrides: AddonPresetOverrides = {},
 ): AddonPreset[] {
-  return ADDON_PRESETS.filter(
-    (p) => clusterLabels[`capi-navigator.io/${p.kind}`] === p.provider,
-  ).map((p) => effectivePreset(p, overrides));
+  return ADDON_PRESETS.filter((p) => {
+    const [key, value] = presetSelector(p);
+    return clusterLabels[key] === value;
+  }).map((p) => effectivePreset(p, overrides));
 }
 
 /** A preset in one namespace of a management cluster (FP8-F-14). */

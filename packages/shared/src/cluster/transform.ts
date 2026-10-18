@@ -1,4 +1,5 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
+import { REBOOT_DAEMON_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
 import { openstackPlugin } from './openstack.js';
 import type {
@@ -55,7 +56,12 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     metadata: {
       name: spec.name,
       namespace: spec.namespace,
-      labels: { ...sorted(spec.labels ?? {}), ...infra.addonLabels(spec), ...labels },
+      labels: {
+        ...sorted(spec.labels ?? {}),
+        ...infra.addonLabels(spec),
+        ...(spec.addons.rebootDaemon ? Object.fromEntries([REBOOT_DAEMON_LABEL]) : {}),
+        ...labels,
+      },
       annotations: { [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec) },
     },
     spec: {

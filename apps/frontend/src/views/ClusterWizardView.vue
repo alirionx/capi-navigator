@@ -105,7 +105,7 @@ const draft = reactive({
   },
   /** FP5-F-20: bastion host. */
   bastion: { enabled: false, machineSize: '', allowedCidrs: [] as string[] },
-  addons: { ccm: true, csi: true },
+  addons: { ccm: true, csi: true, reboot: false },
   podCidr: '10.42.0.0/16',
   serviceCidr: '10.43.0.0/16',
   sshKeys: '',
@@ -299,7 +299,11 @@ const spec = computed<ClusterSpecInput>(() => ({
         : [],
   },
   rollout: { maxSurge: Number(draft.maxSurge), maxUnavailable: Number(draft.maxUnavailable) },
-  addons: { cloudControllerManager: draft.addons.ccm, csiDriver: draft.addons.csi },
+  addons: {
+    cloudControllerManager: draft.addons.ccm,
+    csiDriver: draft.addons.csi,
+    ...(draft.addons.reboot ? { rebootDaemon: true } : {}),
+  },
   sshPublicKeys: draft.sshKeys
     .split('\n')
     .map((l) => l.trim())
@@ -428,7 +432,11 @@ const steps = computed(() => [
   t('wizard.steps.preview'),
   t('wizard.steps.create'),
 ]);
-const presets = computed(() => ADDON_PRESETS.filter((p) => p.provider === draft.provider));
+const presets = computed(() =>
+  ADDON_PRESETS.filter(
+    (p) => p.provider === draft.provider || (p.provider === 'any' && draft.addons.reboot),
+  ),
+);
 const canPreview = computed(() => issues.value.length === 0);
 </script>
 
@@ -843,6 +851,15 @@ const canPreview = computed(() => issues.value.length === 0);
           :hint="t('wizard.csiHint')"
           persistent-hint
           class="mt-2"
+        />
+        <v-switch
+          v-model="draft.addons.reboot"
+          color="primary"
+          :label="t('wizard.reboot')"
+          :hint="t('wizard.rebootHint')"
+          persistent-hint
+          class="mt-2"
+          data-testid="wizard-reboot-daemon"
         />
         <v-table density="compact" class="mt-4">
           <thead>

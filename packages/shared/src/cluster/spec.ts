@@ -243,6 +243,8 @@ export const ClusterSpecSchema = z
       .object({
         cloudControllerManager: z.boolean().default(true),
         csiDriver: z.boolean().default(true),
+        /** kured: reboots nodes one at a time after OS updates (FP-9, ADR-0013). */
+        rebootDaemon: z.boolean().optional(),
       })
       .default({ cloudControllerManager: true, csiDriver: true }),
     sshPublicKeys: z

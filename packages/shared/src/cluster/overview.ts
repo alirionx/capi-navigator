@@ -4,7 +4,7 @@ import type { ClusterSpec, MachineGroup } from './spec.js';
 import { INFRA_PLUGINS } from './transform.js';
 
 /** Labels that make CAAPH roll out add-ons to a cluster (FP5-F-09; FP-8 adds user charts). */
-const ADDON_LABELS = ['capi-navigator.io/ccm', 'capi-navigator.io/csi'];
+const ADDON_LABELS = ['capi-navigator.io/ccm', 'capi-navigator.io/csi', 'capi-navigator.io/reboot'];
 
 /**
  * Clusters that use an installed provider (FP6-F-08, US-10), by provider name as the CAPI
