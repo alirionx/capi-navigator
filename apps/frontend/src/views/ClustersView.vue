@@ -95,7 +95,9 @@ const phaseColor = (c: ClusterSummary) =>
         style="max-width: 20rem"
       />
       <v-btn
-        v-if="auth.can('operator') && connections.active"
+        v-if="
+          connections.active && auth.can('clusters.create', { connection: connections.active.name })
+        "
         color="primary"
         variant="flat"
         prepend-icon="mdi-plus"

@@ -1,12 +1,15 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
-  hasRole,
+  allows,
+  isScopable,
+  isUnlimited,
   MeSchema,
   type ChangePasswordRequest,
   type LoginRequest,
   type Me,
-  type Role,
+  type Permission,
+  type PermissionScope,
 } from '@capi-navigator/shared';
 import { api, ApiError, apiVoid } from '../api/client.js';
 
@@ -17,9 +20,38 @@ export const useAuthStore = defineStore('auth', () => {
 
   const signedIn = computed(() => me.value !== null);
 
-  /** Role check for showing and hiding controls; enforcement happens in the backend (FP1-F-07). */
-  function can(role: Role): boolean {
-    return me.value !== null && !me.value.mustChangePassword && hasRole(me.value.role, role);
+  /**
+   * Permission check for showing and hiding controls (FP19-F-10); the same rule as the backend,
+   * which enforces it. Without scope: the permission somewhere.
+   */
+  function can(permission: Permission, scope: PermissionScope = {}): boolean {
+    const m = me.value;
+    if (!m || m.mustChangePassword) return false;
+    return allows(
+      m.bindings,
+      (role) => m.bindings.find((b) => b.role === role)?.permissions,
+      permission,
+      scope,
+    );
+  }
+
+  /**
+   * Namespaces of a connection where the user has a permission (FP19-F-10), e.g. for the
+   * namespace field of the wizard: 'all' when an assignment is not limited to namespaces.
+   */
+  function namespacesFor(permission: Permission, connection: string): 'all' | string[] {
+    const m = me.value;
+    if (!m || m.mustChangePassword) return [];
+    const result = new Set<string>();
+    for (const b of m.bindings) {
+      if (!b.permissions.includes(permission)) continue;
+      if (isUnlimited(b)) return 'all';
+      if (!isScopable(permission)) continue;
+      if (b.connections && !b.connections.includes(connection)) continue;
+      if (!b.namespaces) return 'all';
+      b.namespaces.forEach((n) => result.add(n));
+    }
+    return [...result].sort();
   }
 
   async function fetchMe(): Promise<void> {
@@ -56,5 +88,16 @@ export const useAuthStore = defineStore('auth', () => {
     me.value = null;
   }
 
-  return { me, checked, signedIn, can, fetchMe, login, logout, changePassword, clear };
+  return {
+    me,
+    checked,
+    signedIn,
+    can,
+    namespacesFor,
+    fetchMe,
+    login,
+    logout,
+    changePassword,
+    clear,
+  };
 });

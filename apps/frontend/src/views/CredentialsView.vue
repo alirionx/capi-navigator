@@ -18,8 +18,12 @@ const { t, d } = useI18n();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
 const store = useCredentialsStore();
-const isAdmin = computed(() => auth.can('admin'));
-const isOperator = computed(() => auth.can('operator'));
+const isAdmin = computed(() => auth.can('credentials.manage'));
+// Cloud lookups serve the wizard and day-2 changes (FP19-F-05).
+const isOperator = computed(() => {
+  const scope = { connection: connections.activeName ?? '' };
+  return auth.can('clusters.create', scope) || auth.can('clusters.change', scope);
+});
 
 const loadError = ref<unknown>(null);
 const actionError = ref<unknown>(null);

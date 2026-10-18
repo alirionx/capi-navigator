@@ -36,13 +36,15 @@ const now = useNow();
 const deleteOpen = ref(false);
 
 // ---- spec changes (FP6-F-05, FP6-F-07): managed clusters, operators only ----
+const scope = () => ({ connection: connections.activeName ?? '', namespace: props.namespace });
 const canChange = computed(
-  () => auth.can('operator') && !!s.value?.summary.managed && !s.value.summary.deletion,
+  () =>
+    auth.can('clusters.change', scope()) && !!s.value?.summary.managed && !s.value.summary.deletion,
 );
 /** Deleting again is possible when nothing runs or the cleanup timed out. */
 const canDelete = computed(
   () =>
-    auth.can('operator') &&
+    auth.can('clusters.delete', scope()) &&
     !!s.value?.summary.managed &&
     (!s.value.summary.deletion || s.value.summary.deletion.phase === 'cleanup-timeout'),
 );
@@ -247,7 +249,7 @@ const machineHeaders = computed(() => [
         >{{ t('changes.labels') }}</v-btn
       >
       <v-btn
-        v-if="s?.kubeconfigAvailable && auth.can('operator')"
+        v-if="s?.kubeconfigAvailable && auth.can('clusters.kubeconfig', scope())"
         variant="tonal"
         prepend-icon="mdi-file-key-outline"
         data-testid="show-kubeconfig"
@@ -584,7 +586,7 @@ const machineHeaders = computed(() => [
                   }"
                 />
                 <v-btn
-                  v-if="item.nodeName && auth.can('operator')"
+                  v-if="item.nodeName && auth.can('nodes.shell', scope())"
                   size="small"
                   variant="tonal"
                   prepend-icon="mdi-console"
