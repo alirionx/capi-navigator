@@ -577,15 +577,15 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 
 **Acceptance criteria**
 
-- [ ] The YAML of every listed resource type opens, updates live and offers no edit option.
-- [ ] Changing worker pool replicas from 2 to 3 via form creates a new machine that appears in the view.
-- [ ] Upgrading RKE2 by one minor version replaces control plane nodes first, then workers, and the cluster stays available.
-- [ ] Selecting a newer Ubuntu cloud image rebuilds all nodes of the group; no existing template is modified.
-- [ ] “Rebuild nodes” replaces all workers of a pool with fresh machines.
-- [ ] A file added via node customization exists on all new nodes of that pool after the rollout.
-- [ ] A downgrade or a jump of two minor versions is rejected in the form.
-- [ ] A replica change made with `kubectl` shows up as drift.
-- [ ] A viewer sees the YAML but no edit forms.
+- [x] The YAML of every listed resource type opens, updates live and offers no edit option.
+- [x] Changing worker pool replicas from 2 to 3 via form creates a new machine that appears in the view.
+- [x] Upgrading RKE2 by one minor version replaces control plane nodes first, then workers, and the cluster stays available.
+- [x] Selecting a newer Ubuntu cloud image rebuilds all nodes of the group; no existing template is modified.
+- [x] “Rebuild nodes” replaces all workers of a pool with fresh machines.
+- [x] A file added via node customization exists on all new nodes of that pool after the rollout.
+- [x] A downgrade or a jump of two minor versions is rejected in the form.
+- [x] A replica change made with `kubectl` shows up as drift.
+- [x] A viewer sees the YAML but no edit forms.
 
 ### FP-8: Helm add-ons via CAAPH
 
