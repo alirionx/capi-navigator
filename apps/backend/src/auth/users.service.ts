@@ -58,7 +58,11 @@ export class UsersService implements OnApplicationBootstrap {
       return undefined;
     }
     if (!(await verifyPassword(password, hash))) return undefined;
-    return { username, role: user.spec.role, mustChangePassword: user.spec.mustChangePassword };
+    return {
+      username,
+      role: user.spec.role ?? 'viewer',
+      mustChangePassword: user.spec.mustChangePassword,
+    };
   }
 
   sessionGeneration(username: string): number {
@@ -245,7 +249,7 @@ export class UsersService implements OnApplicationBootstrap {
 function toUser(u: UserResource): User {
   return {
     username: u.metadata.name,
-    role: u.spec.role,
+    role: u.spec.role ?? 'viewer',
     disabled: u.spec.disabled,
     mustChangePassword: u.spec.mustChangePassword,
     ...(u.metadata.creationTimestamp ? { createdAt: String(u.metadata.creationTimestamp) } : {}),

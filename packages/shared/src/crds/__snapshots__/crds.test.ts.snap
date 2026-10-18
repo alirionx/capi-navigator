@@ -151,9 +151,9 @@ spec:
       served: true
       storage: true
       additionalPrinterColumns:
-        - name: Role
+        - name: Roles
           type: string
-          jsonPath: .spec.role
+          jsonPath: .spec.bindings[*].role
         - name: Disabled
           type: boolean
           jsonPath: .spec.disabled
@@ -181,6 +181,33 @@ spec:
                     - viewer
                     - operator
                     - admin
+                bindings:
+                  maxItems: 50
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        minLength: 2
+                        maxLength: 40
+                        pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                      connections:
+                        minItems: 1
+                        type: array
+                        items:
+                          type: string
+                          minLength: 1
+                          maxLength: 63
+                      namespaces:
+                        minItems: 1
+                        type: array
+                        items:
+                          type: string
+                          maxLength: 63
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                    required:
+                      - role
                 disabled:
                   default: false
                   type: boolean
@@ -191,7 +218,5 @@ spec:
                   default: 0
                   type: integer
                   minimum: 0
-              required:
-                - role
 "
 `;

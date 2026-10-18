@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RoleSchema } from '../auth.js';
+import { RoleBindingSchema } from '../permissions.js';
 import type { CrdDefinition } from './types.js';
 
 /**
@@ -7,7 +8,10 @@ import type { CrdDefinition } from './types.js';
  * Secret named by {@link passwordSecretName}.
  */
 export const NavigatorUserSpecSchema = z.object({
-  role: RoleSchema,
+  /** Role of users created before FP-19; read as one unlimited assignment (FP19-F-07). */
+  role: RoleSchema.optional(),
+  /** Role assignments (FP19-F-03); replace `role` on the next change of the user. */
+  bindings: z.array(RoleBindingSchema).max(50).optional(),
   disabled: z.boolean().default(false),
   mustChangePassword: z.boolean().default(false),
   /**
@@ -26,7 +30,7 @@ export const NavigatorUserCrd: CrdDefinition<typeof NavigatorUserSpecSchema> = {
   scope: 'Namespaced',
   spec: NavigatorUserSpecSchema,
   printerColumns: [
-    { name: 'Role', type: 'string', jsonPath: '.spec.role' },
+    { name: 'Roles', type: 'string', jsonPath: '.spec.bindings[*].role' },
     { name: 'Disabled', type: 'boolean', jsonPath: '.spec.disabled' },
     { name: 'Age', type: 'date', jsonPath: '.metadata.creationTimestamp' },
   ],
