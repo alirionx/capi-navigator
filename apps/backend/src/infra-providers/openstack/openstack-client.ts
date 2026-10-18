@@ -178,9 +178,20 @@ export async function authenticate(
   };
 }
 
+/**
+ * Historical aliases of service types (OpenStack Service Types Authority): Kolla 2026.1 registers
+ * Cinder as block-storage, older clouds as volumev3.
+ */
+const SERVICE_TYPE_ALIASES: Record<string, string[]> = {
+  'block-storage': ['block-storage', 'volumev3', 'volume'],
+};
+
 /** Versioned base URL of a service; catalogs may omit the version (e.g. Infomaniak). */
 export function endpoint(session: OpenStackSession, type: string): string {
-  const svc = session.catalog.find((s) => s.type === type);
+  const types = SERVICE_TYPE_ALIASES[type] ?? [type];
+  const svc = types
+    .map((t) => session.catalog.find((s) => s.type === t))
+    .find((s) => s !== undefined);
   const ep = svc?.endpoints.find(
     (e) =>
       e.interface === session.interface &&

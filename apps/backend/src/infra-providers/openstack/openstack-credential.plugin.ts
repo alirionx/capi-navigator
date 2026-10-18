@@ -101,7 +101,7 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
       ['network', 'Network (Neutron)'],
       ['image', 'Image (Glance)'],
       ['load-balancer', 'Load balancer (Octavia)'],
-      ['volumev3', 'Block storage (Cinder)'],
+      ['block-storage', 'Block storage (Cinder)'],
     ];
     for (const [type, label] of services) {
       try {
@@ -262,10 +262,8 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
             .map((z) => ({ value: z.zoneName, label: z.zoneName }));
         }
         case 'volumeTypes': {
-          // FP5-F-19: Cinder volume types for the root disk; older catalogs name it block-storage.
-          const service = session.catalog.some((s) => s.type === 'volumev3')
-            ? 'volumev3'
-            : 'block-storage';
+          // FP5-F-19: Cinder volume types for the root disk (block-storage or its alias volumev3).
+          const service = 'block-storage';
           const res = await getJson<{
             volume_types: { id: string; name: string; description?: string | null }[];
           }>(session, service, '/types', opts);
