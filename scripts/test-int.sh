@@ -4,6 +4,6 @@
 source "$(dirname "$0")/lib.sh"
 [[ -f "${KIND_KUBECONFIG}" ]] || die "No kind cluster found. Run 'pnpm kind:up' first."
 
-cd "${ROOT_DIR}"
+cd "${ROOT_DIR}" || exit 1
 bash scripts/crds-install.sh >/dev/null
 exec pnpm --filter @capi-navigator/backend exec vitest run --config vitest.int.config.ts "$@"
