@@ -29,8 +29,9 @@ principle of the project.
   control plane, the k0smotron providers, ORC per CAPO minor) are checked by tests.
 - **Renovate as a lookup tool, not as a bot.** `pnpm versions:report` runs Renovate in a pinned
   container with `--platform=local` on a read-only mount of the repository. A custom manager in
-  `renovate.json` teaches it `versions.yaml`; npm, Docker and GitHub Actions it knows anyway. A
-  script turns Renovate's report into `docs/versions-report.md`. The maintainers run it by hand
+  `renovate.json` teaches it `versions.yaml`; Docker and GitHub Actions it knows anyway. A script
+  turns Renovate's report into `docs/versions-report.md`. npm packages stay out of the report:
+  they live in the standard `package.json` files, and `pnpm outdated -r` / `pnpm up` handle them. The maintainers run it by hand
   (e.g. before a release) and commit the result. No schedule, no pull requests, no stored token:
   the local `gh` login is passed for GitHub lookups during the run only.
 - Updating stays a deliberate, manual step documented in `docs/maintenance.md`.
