@@ -116,6 +116,10 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       rootVolume: { size: group.rootVolumeSizeGB ?? 50, type: group.rootVolumeType ?? 'gp3' },
       // ADR-0003: stock AMIs lack the aws CLI for the Secrets Manager boothook.
       cloudInit: { insecureSkipSecretsManager: true },
+      // So the user data goes to EC2 directly, limited to 16 KB; a kubeadm control plane with
+      // its CA keys and install script needs about 18 KB. CAPA gzips only with an explicit
+      // false (unset means uncompressed); cloud-init unpacks it.
+      uncompressedUserData: false,
       instanceMetadataOptions: {
         httpEndpoint: 'enabled',
         httpTokens: 'required',

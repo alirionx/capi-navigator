@@ -85,6 +85,9 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 - **Snapshot tests**: if generated manifests change, review the diff line by line. Update the
   snapshots (`pnpm --filter @capi-navigator/shared exec vitest run -u`) only when every change is
   intended.
+  A changed machine or bootstrap template gets a new name (template rotation): existing clusters
+  keep running unchanged, but their next change in the app rolls these machines, and the preview
+  shows it. Say so in the release notes.
 - **Medium and high risk**: `pnpm test:int` on a fresh kind cluster (installs and upgrades the
   providers), then a short live test on a cloud: create a cluster, check CCM and CSI, delete it.
 - **UI**: `pnpm test:e2e` for frontend dependency updates. The provider spec installs and removes
