@@ -3,7 +3,7 @@
   "info": {
     "title": "CAPI Navigator API",
     "version": "0.0.0-dev",
-    "description": "REST API of CAPI Navigator. Sign in with `POST /api/auth/login`; the session cookie authenticates later requests. Mutating requests need the header `x-capi-navigator: 1` (CSRF protection). Every operation names the permission it needs; changes are audited."
+    "description": "REST API of CAPI Navigator. Authenticate either with the session cookie (`POST /api/auth/login`; mutating requests then need the header `x-capi-navigator: 1` against CSRF) or with an API token of a technical user (`Authorization: Bearer capin_…`). Every operation names the permission it needs; changes are audited."
   },
   "servers": [
     {
@@ -13,6 +13,9 @@
   "security": [
     {
       "session": []
+    },
+    {
+      "bearer": []
     }
   ],
   "paths": {
@@ -5438,6 +5441,159 @@
         ]
       }
     },
+    "/api/users/{username}/tokens": {
+      "get": {
+        "operationId": "Tokens_list",
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "List the API tokens of a technical user (never the token values)",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TokenInfo"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      },
+      "post": {
+        "operationId": "Tokens_create",
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Generate an API token for a technical user",
+        "description": "The response is the only time the token is returned; only its SHA-256 hash is stored. Use it as `Authorization: Bearer <token>`.\n\nRequires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTokenRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedToken"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
+    "/api/users/{username}/tokens/{id}": {
+      "delete": {
+        "operationId": "Tokens_revoke",
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Revoke an API token; it stops working at once",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
     "/healthz": {
       "get": {
         "operationId": "Health_liveness",
@@ -5514,14 +5670,19 @@
         "in": "cookie",
         "name": "capi_navigator_session",
         "description": "Session cookie set by POST /api/auth/login."
+      },
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API token of a technical user (capin_…), generated in the user management. Requests with a token need no CSRF header and cannot manage users, roles or tokens."
       }
     },
     "parameters": {
       "Csrf": {
         "name": "x-capi-navigator",
         "in": "header",
-        "required": true,
-        "description": "CSRF protection for mutating requests.",
+        "required": false,
+        "description": "CSRF protection for mutating requests with the session cookie; not needed with an API token.",
         "schema": {
           "type": "string",
           "enum": [
@@ -6976,6 +7137,48 @@
         "required": [
           "machineSize",
           "replicas"
+        ],
+        "additionalProperties": false
+      },
+      "CreatedToken": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string"
+          },
+          "expired": {
+            "type": "boolean"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "createdBy",
+          "expiresAt",
+          "expired",
+          "token"
         ],
         "additionalProperties": false
       },
@@ -8952,6 +9155,44 @@
         ],
         "additionalProperties": false
       },
+      "TokenInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "createdBy",
+          "expiresAt",
+          "expired"
+        ],
+        "additionalProperties": false
+      },
       "User": {
         "type": "object",
         "properties": {
@@ -8970,6 +9211,9 @@
           "disabled": {
             "type": "boolean"
           },
+          "apiOnly": {
+            "type": "boolean"
+          },
           "mustChangePassword": {
             "type": "boolean"
           },
@@ -8982,6 +9226,7 @@
           "role",
           "bindings",
           "disabled",
+          "apiOnly",
           "mustChangePassword"
         ],
         "additionalProperties": false
@@ -9796,6 +10041,27 @@
           "name"
         ]
       },
+      "CreateTokenRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/TokenNameInput"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "expiresInDays": {
+            "default": 90,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
       "CreateUserRequestInput": {
         "type": "object",
         "properties": {
@@ -9812,13 +10078,16 @@
               "$ref": "#/components/schemas/RoleBindingInput"
             }
           },
+          "apiOnly": {
+            "default": false,
+            "type": "boolean"
+          },
           "password": {
             "$ref": "#/components/schemas/PasswordInput"
           }
         },
         "required": [
-          "username",
-          "password"
+          "username"
         ]
       },
       "DeleteRequestInput": {
@@ -10606,6 +10875,12 @@
             ]
           }
         ]
+      },
+      "TokenNameInput": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 40,
+        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
       },
       "UpdateConnectionRequestInput": {
         "type": "object",

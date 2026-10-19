@@ -335,10 +335,11 @@ export function buildOpenApi(controllers: Type[], opts: { version: string }): Js
       title: 'CAPI Navigator API',
       version: opts.version,
       description:
-        'REST API of CAPI Navigator. Sign in with `POST /api/auth/login`; the session cookie authenticates later requests. Mutating requests need the header `x-capi-navigator: 1` (CSRF protection). Every operation names the permission it needs; changes are audited.',
+        'REST API of CAPI Navigator. Authenticate either with the session cookie (`POST /api/auth/login`; mutating requests then need the header `x-capi-navigator: 1` against CSRF) or with an API token of a technical user (`Authorization: Bearer capin_…`). Every operation names the permission it needs; changes are audited.',
     },
     servers: [{ url: '/' }],
-    security: [{ session: [] }],
+    // Either the session cookie or an API token of a technical user (FP-22).
+    security: [{ session: [] }, { bearer: [] }],
     paths: rewriteRefs(paths, 'input', components.inputName),
     components: {
       securitySchemes: {
@@ -348,13 +349,21 @@ export function buildOpenApi(controllers: Type[], opts: { version: string }): Js
           name: SESSION_COOKIE,
           description: 'Session cookie set by POST /api/auth/login.',
         },
+        bearer: {
+          type: 'http',
+          scheme: 'bearer',
+          description:
+            'API token of a technical user (capin_…), generated in the user management. Requests with a token need no CSRF header and cannot manage users, roles or tokens.',
+        },
       },
       parameters: {
         Csrf: {
           name: CSRF_HEADER,
           in: 'header',
-          required: true,
-          description: 'CSRF protection for mutating requests.',
+          // Required with the session cookie only; the security middleware enforces it.
+          required: false,
+          description:
+            'CSRF protection for mutating requests with the session cookie; not needed with an API token.',
           // enum + default: Swagger UI prefills the field (FP23-F-04).
           schema: { type: 'string', enum: [CSRF_HEADER_VALUE], default: CSRF_HEADER_VALUE },
         },

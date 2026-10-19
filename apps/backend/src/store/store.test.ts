@@ -34,6 +34,7 @@ describe('CustomResourceClient', () => {
     expect(created.spec).toEqual({
       role: 'admin',
       disabled: false,
+      apiOnly: false,
       mustChangePassword: false,
       sessionGeneration: 0,
     });

@@ -9,7 +9,6 @@ import {
   type PermissionScope,
   type RolePermissions,
 } from '@capi-navigator/shared';
-import type { Request } from 'express';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { Principal } from '../auth/principal.js';
 import { SessionService } from '../auth/session.service.js';
@@ -105,7 +104,8 @@ export class NodeShellGateway implements OnApplicationBootstrap {
     const pathname = new URL(req.url ?? '/', 'http://localhost').pathname;
     const route = parseShellRoute(pathname);
     if (!route) return; // other upgrades (none today) are not ours
-    const principal = this.sessions.authenticate(req as Request);
+    // Sessions only: API tokens never open a node shell (FP22-F-05).
+    const principal = this.sessions.authenticateSession(req);
     const denied = checkUpgrade(req, principal, route, this.store.rolePermissions);
     if (denied) {
       socket.write(`HTTP/1.1 ${denied} ${denied === 401 ? 'Unauthorized' : 'Forbidden'}\r\n\r\n`);

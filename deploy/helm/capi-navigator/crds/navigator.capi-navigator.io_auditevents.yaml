@@ -82,6 +82,8 @@ spec:
                     - name
                 managementCluster:
                   type: string
+                token:
+                  type: string
                 message:
                   type: string
               required:

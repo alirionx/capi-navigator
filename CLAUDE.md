@@ -40,7 +40,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-9 | k0s as second Kubernetes distribution | done (control plane image rebuild blocked upstream, ADR-0013) |
 | FP-10 | kubeadm on stock images (experimental) | done |
 | FP-19 | Role management: custom roles, scoped role assignments (optional) | done |
-| FP-22 | API tokens for technical users (optional) | in progress |
+| FP-22 | API tokens for technical users (optional) | done |
 | FP-23 | OpenAPI description and Swagger UI (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |

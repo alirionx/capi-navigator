@@ -7,15 +7,18 @@ import { LocalAuthProvider } from './local-auth.provider.js';
 import { SessionService } from './session.service.js';
 import { RolesController } from './roles.controller.js';
 import { RolesService } from './roles.service.js';
+import { TokensController } from './tokens.controller.js';
+import { TokensService } from './tokens.service.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
 
 /** FP-1: local users, sessions and roles. */
 @Module({
-  controllers: [AuthController, UsersController, RolesController],
+  controllers: [AuthController, UsersController, RolesController, TokensController],
   providers: [
     RolesService,
     SessionService,
+    TokensService,
     UsersService,
     { provide: AUTH_PROVIDER, useClass: LocalAuthProvider },
     { provide: APP_GUARD, useClass: AuthGuard },

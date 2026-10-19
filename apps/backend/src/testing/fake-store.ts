@@ -5,6 +5,7 @@ import type {
   ManagementClusterStatus,
   NavigatorResource,
   NavigatorRoleSpec,
+  NavigatorTokenSpec,
   NavigatorUserSpec,
 } from '@capi-navigator/shared';
 import { BUILTIN_ROLES, isBuiltinRole } from '@capi-navigator/shared';
@@ -25,6 +26,7 @@ export function createFakeStore() {
 
   const helmRepositories = new Map<string, NavigatorResource<HelmRepositorySpec>>();
   const roles = new Map<string, NavigatorResource<NavigatorRoleSpec>>();
+  const tokens = new Map<string, NavigatorResource<NavigatorTokenSpec, { lastUsedAt?: string }>>();
 
   let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
 
@@ -98,6 +100,44 @@ export function createFakeStore() {
       delete: async (name: string) => {
         if (!roles.delete(name)) throw err(404);
       },
+    },
+    tokens: {
+      create: async (
+        meta: { name: string; labels?: Record<string, string> },
+        spec: NavigatorTokenSpec,
+      ) => {
+        if (tokens.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'NavigatorToken',
+          metadata: {
+            name: meta.name,
+            resourceVersion: String(rv++),
+            creationTimestamp: new Date().toISOString(),
+          },
+          spec,
+          status: {} as { lastUsedAt?: string },
+        };
+        tokens.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchStatus: async (name: string, status: { lastUsedAt?: string }) => {
+        const current = tokens.get(name);
+        if (!current) throw err(404);
+        const updated = { ...current, status: { ...current.status, ...status } };
+        tokens.set(name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!tokens.delete(name)) throw err(404);
+      },
+    },
+    tokenCache: {
+      get: (name: string) => structuredClone(tokens.get(name)),
+      list: () => [...tokens.values()].map((t) => structuredClone(t)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
     },
     roleCache: {
       get: (name: string) => structuredClone(roles.get(name)),
@@ -247,5 +287,6 @@ export function createFakeStore() {
     auditEvents,
     connections,
     helmRepositories,
+    tokens,
   };
 }

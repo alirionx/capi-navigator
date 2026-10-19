@@ -37,8 +37,12 @@ namespaces, so the question is mainly how a machine authenticates.
   so CSRF does not apply and the `x-capi-navigator` header is not required for bearer requests.
 - **Limits.** Token requests to endpoints that need `users.manage` (users, roles, tokens) are
   refused, so a stolen token can never extend its access; the node shell WebSocket accepts only
-  sessions. Failed token attempts are slowed down per client like failed logins. Expiry is
-  mandatory (default 90 days, at most 365).
+  sessions. Expiry is mandatory (default 90 days, at most 365).
+- **Throttling failed attempts.** Failed token attempts are counted per client and answered with
+  429 once over the login limit (NF-04). Unlike the login, a valid token always passes: a client's
+  own mistakes (e.g. an expired token in one job) or a neighbour behind the same NAT must not lock
+  out working automation. Guessing gains nothing from this, because a token carries 256 bits of
+  randomness; the throttle reduces noise and makes failures visible.
 - **Audit.** Mutating token requests record the technical user as actor and the token name in a new
   `token` field; generating and revoking tokens are audited actions.
 - **Last use** is written at most once per hour per token, to avoid a write to the home cluster on

@@ -213,7 +213,13 @@ describe('custom roles and scoped assignments over HTTP (FP-19)', () => {
       apiVersion: 'navigator.capi-navigator.io/v1alpha1',
       kind: 'NavigatorUser',
       metadata: { name: 'leo', resourceVersion: '1' },
-      spec: { role: 'operator', disabled: false, mustChangePassword: false, sessionGeneration: 0 },
+      spec: {
+        role: 'operator',
+        disabled: false,
+        apiOnly: false,
+        mustChangePassword: false,
+        sessionGeneration: 0,
+      },
     });
     const before = await http().get('/api/users/leo').set('Cookie', admin).expect(200);
     expect(before.body).toMatchObject({ role: 'operator', bindings: [{ role: 'operator' }] });

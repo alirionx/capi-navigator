@@ -24,6 +24,9 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
   // Endpoints added since: the built-in roles get the access stated here.
   const added: Record<string, Role | 'public'> = {
     'GET /api/openapi.json': 'public',
+    'GET /api/users/:username/tokens': 'admin',
+    'POST /api/users/:username/tokens': 'admin',
+    'DELETE /api/users/:username/tokens/:id': 'admin',
     'GET /api/roles': 'admin',
     'POST /api/roles': 'admin',
     'PATCH /api/roles/:name': 'admin',

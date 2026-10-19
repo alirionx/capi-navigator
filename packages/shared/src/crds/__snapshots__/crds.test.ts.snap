@@ -211,6 +211,9 @@ spec:
                 disabled:
                   default: false
                   type: boolean
+                apiOnly:
+                  default: false
+                  type: boolean
                 mustChangePassword:
                   default: false
                   type: boolean

@@ -1,5 +1,7 @@
 import {
   ForbiddenException,
+  HttpException,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -9,6 +11,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { allows, type PermissionScope } from '@capi-navigator/shared';
 import type { Request } from 'express';
+import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { StoreService } from '../store/store.service.js';
 import {
   PASSWORD_CHANGE_PENDING_KEY,
@@ -17,7 +20,9 @@ import {
   type PermissionRule,
 } from './decorators.js';
 import type { AuthenticatedRequest } from './principal.js';
-import { SessionService } from './session.service.js';
+import { LoginRateLimiter } from './login-rate-limiter.js';
+import { bearerToken, SessionService } from './session.service.js';
+import { sha256 } from './tokens.service.js';
 
 /** Value at a dotted path of the request body; '' if it is not a string (never "somewhere"). */
 function bodyField(body: unknown, path: string): string {
@@ -54,11 +59,20 @@ export function requestScope(
 export class AuthGuard implements CanActivate {
   private readonly logger = new Logger(AuthGuard.name);
 
+  /** Failed API token attempts per client (FP22-F-06), like failed logins (NF-04). */
+  private readonly tokenFailures: LoginRateLimiter;
+
   constructor(
     private readonly reflector: Reflector,
     private readonly sessions: SessionService,
     private readonly store: StoreService,
-  ) {}
+    @Inject(APP_CONFIG) config: AppConfig,
+  ) {
+    this.tokenFailures = new LoginRateLimiter(
+      config.LOGIN_RATE_LIMIT,
+      config.LOGIN_RATE_WINDOW_MINUTES * 60_000,
+    );
+  }
 
   canActivate(ctx: ExecutionContext): boolean {
     if (ctx.getType() !== 'http') return false;
@@ -72,8 +86,32 @@ export class AuthGuard implements CanActivate {
       this.reflector.getAllAndOverride<boolean>(PASSWORD_CHANGE_PENDING_KEY, targets) ?? false;
 
     const req = ctx.switchToHttp().getRequest<Request & AuthenticatedRequest>();
+    const bearer = bearerToken(req);
     const principal = this.sessions.authenticate(req);
     if (principal) req.principal = principal;
+    if (bearer !== undefined && !principal) {
+      // FP22-F-06: count failed token attempts per client and throttle them. Valid tokens always
+      // pass, so a client's own mistakes or a neighbour behind the same NAT never lock it out;
+      // guessing is hopeless anyway with 256 bits per token (ADR-0017).
+      const ip = req.ip ?? '';
+      const key = `token:${sha256(bearer).slice(0, 16)}`;
+      const wait = this.tokenFailures.retryAfter(ip, key);
+      this.tokenFailures.recordFailure(ip, key);
+      if (wait > 0) {
+        ctx
+          .switchToHttp()
+          .getResponse<{ setHeader(k: string, v: string): void }>()
+          .setHeader('Retry-After', String(wait));
+        throw new HttpException(
+          {
+            statusCode: 429,
+            message: 'Too many failed API token attempts',
+            hint: `Try again in ${wait} s.`,
+          },
+          429,
+        );
+      }
+    }
 
     if (isPublic) return true;
     if (!rule) {
@@ -81,11 +119,19 @@ export class AuthGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
     if (!principal) {
-      throw new UnauthorizedException({
-        statusCode: 401,
-        message: 'Not signed in or session expired',
-        hint: 'Sign in again.',
-      });
+      throw new UnauthorizedException(
+        bearer !== undefined
+          ? {
+              statusCode: 401,
+              message: 'Invalid, expired or revoked API token',
+              hint: 'Ask an admin for a new token of the technical user.',
+            }
+          : {
+              statusCode: 401,
+              message: 'Not signed in or session expired',
+              hint: 'Sign in again.',
+            },
+      );
     }
     if (principal.mustChangePassword && !allowPending) {
       throw new ForbiddenException({
@@ -95,6 +141,14 @@ export class AuthGuard implements CanActivate {
       });
     }
     if (rule.signedIn) return true;
+    // A token can never extend its own access: no users, roles or tokens (FP22-F-05).
+    if (principal.token && rule.anyOf.includes('users.manage')) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'API tokens cannot manage users, roles or tokens',
+        hint: 'Use the app with a signed-in user for this.',
+      });
+    }
     const scope = requestScope(req, rule);
     if (!rule.anyOf.some((p) => allows(principal.bindings, this.store.rolePermissions, p, scope))) {
       const where = scope.namespace ? ` in namespace ${scope.namespace}` : '';

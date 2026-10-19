@@ -11,6 +11,7 @@ import {
 import { ApiError } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import BindingsEditor from '../components/users/BindingsEditor.vue';
+import TokensDialog from '../components/users/TokensDialog.vue';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
@@ -65,6 +66,15 @@ const form = ref({
   bindings: [{ role: 'viewer' }] as RoleBinding[],
   password: '',
   disabled: false,
+  apiOnly: false,
+});
+/** Technical user whose API tokens are shown (FP22-F-02). */
+const tokensFor = ref<string | null>(null);
+const tokensOpen = computed({
+  get: () => tokensFor.value !== null,
+  set: (v: boolean) => {
+    if (!v) tokensFor.value = null;
+  },
 });
 const serverFieldErrors = computed(() =>
   dialogError.value instanceof ApiError ? dialogError.value.fieldErrors : undefined,
@@ -79,6 +89,7 @@ function open(kind: DialogKind, user?: User): void {
     bindings: JSON.parse(JSON.stringify(user?.bindings ?? [{ role: 'viewer' }])) as RoleBinding[],
     password: '',
     disabled: user?.disabled ?? false,
+    apiOnly: user?.apiOnly ?? false,
   };
   dialog.value = kind;
 }
@@ -93,7 +104,8 @@ async function confirm(): Promise<void> {
         await store.create({
           username: form.value.username,
           bindings: form.value.bindings,
-          password: form.value.password,
+          // Technical users have no password (FP22-F-01).
+          ...(form.value.apiOnly ? { apiOnly: true } : { password: form.value.password }),
         });
         break;
       case 'edit':
@@ -145,6 +157,15 @@ async function confirm(): Promise<void> {
         <template #[`item.username`]="{ item }">
           {{ item.username }}
           <v-chip v-if="isSelf(item)" size="x-small" class="ml-1">{{ t('users.you') }}</v-chip>
+          <v-chip
+            v-if="item.apiOnly"
+            size="x-small"
+            color="info"
+            variant="tonal"
+            prepend-icon="mdi-robot-outline"
+            class="ml-1"
+            >{{ t('users.technical') }}</v-chip
+          >
         </template>
         <template #[`item.bindings`]="{ item }">
           <v-chip
@@ -183,6 +204,17 @@ async function confirm(): Promise<void> {
             @click="open('edit', item)"
           />
           <v-btn
+            v-if="item.apiOnly"
+            icon="mdi-key-chain-variant"
+            variant="text"
+            size="small"
+            :title="t('users.tokens')"
+            :aria-label="t('users.tokens')"
+            :data-testid="`tokens-${item.username}`"
+            @click="tokensFor = item.username"
+          />
+          <v-btn
+            v-else
             icon="mdi-lock-reset"
             variant="text"
             size="small"
@@ -248,8 +280,18 @@ async function confirm(): Promise<void> {
               color="error"
               class="mb-2"
             />
+            <v-switch
+              v-if="dialog === 'create'"
+              v-model="form.apiOnly"
+              :label="t('users.apiOnly')"
+              :hint="t('users.apiOnlyHint')"
+              persistent-hint
+              color="primary"
+              class="mb-2"
+              data-testid="user-api-only"
+            />
             <v-text-field
-              v-if="dialog === 'create' || dialog === 'reset'"
+              v-if="(dialog === 'create' && !form.apiOnly) || dialog === 'reset'"
               v-model="form.password"
               :label="t('users.password')"
               type="password"
@@ -290,5 +332,6 @@ async function confirm(): Promise<void> {
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <TokensDialog v-if="tokensFor" v-model="tokensOpen" :username="tokensFor" />
   </v-container>
 </template>
