@@ -14,12 +14,13 @@ export const VERSIONS: VersionsFile = {
       "note": "CAPI contract v1beta2."
     },
     "rke2": {
-      "version": "v0.26.0",
+      "version": "v0.27.0",
       "source": {
         "datasource": "github-releases",
         "package": "rancher/cluster-api-provider-rke2"
       },
-      "verified": "2026-10-17"
+      "verified": "2026-10-20",
+      "note": "v0.27.0 was taken one day after its release, before the minimum release age, to test the update and rollback procedure. No API changes from v0.26.0; built on CAPI v1.14.3."
     },
     "k0smotron": {
       "version": "v2.2.0",
@@ -94,31 +95,31 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "rancher/rke2"
       },
-      "verified": "2026-10-17",
+      "verified": "2026-10-20",
       "note": "Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35.",
       "versions": [
         {
           "version": "v1.37.1+rke2r1",
-          "verifiedWithProvider": "v0.26.0",
+          "verifiedWithProvider": "v0.27.0",
           "untested": true
         },
         {
           "version": "v1.36.5+rke2r1",
-          "verifiedWithProvider": "v0.26.0",
+          "verifiedWithProvider": "v0.27.0",
           "untested": true
         },
         {
           "version": "v1.35.9+rke2r1",
-          "verifiedWithProvider": "v0.26.0",
+          "verifiedWithProvider": "v0.27.0",
           "default": true
         },
         {
           "version": "v1.34.12+rke2r1",
-          "verifiedWithProvider": "v0.26.0"
+          "verifiedWithProvider": "v0.27.0"
         },
         {
           "version": "v1.33.13+rke2r3",
-          "verifiedWithProvider": "v0.26.0"
+          "verifiedWithProvider": "v0.27.0"
         }
       ]
     },

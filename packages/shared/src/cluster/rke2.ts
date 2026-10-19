@@ -3,7 +3,7 @@ import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
 /**
- * RKE2 (cluster-api-provider-rke2 v0.26.0, v1beta2 APIs). Field names verified against
+ * RKE2 (cluster-api-provider-rke2 v0.27.0, v1beta2 APIs). Field names verified against
  * controlplane/api/v1beta2/rke2controlplane_types.go and bootstrap/api/v1beta2/rke2config_types.go.
  * User data is rendered as cloud-init Jinja (`## template: jinja`), so instance data like
  * `{{ v1.instance_id }}` can be used (ADR-0004).
@@ -81,7 +81,7 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   flavor: 'rke2',
   displayName: 'RKE2',
   customizationFields: { preCommands: 'preRKE2Commands', postCommands: 'postRKE2Commands' },
-  // Rules from the RKE2 provider's AWS example (v0.26.0, examples/templates/aws). Nodes register
+  // Rules from the RKE2 provider's AWS example (v0.27.0, examples/templates/aws). Nodes register
   // via internal IPs (registrationMethod internal-first): the supervisor needs no LB listener.
   network: {
     controlPlanePorts: [{ port: 9345, description: 'RKE2 supervisor', viaLoadBalancer: false }],
