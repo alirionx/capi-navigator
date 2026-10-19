@@ -80,6 +80,7 @@ One NestJS module per domain:
 | State                              | Stored as                                                                                                                                                                                  | Where                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
 | Custom roles                       | `NavigatorRole` CR                                                                                                                                                                         | Home cluster            |
+| API tokens of technical users      | `NavigatorToken` CR with the SHA-256 hash of the token (never the token)                                                                                                                   | Home cluster            |
 | Users and role assignments         | `NavigatorUser` CR, password hash in a Secret                                                                                                                                              | Home cluster            |
 | Sessions                           | Signed cookie in the browser; the signing key is a Secret                                                                                                                                  | Home cluster (key only) |
 | Management cluster connections     | `ManagementCluster` CR, kubeconfig or token in a Secret                                                                                                                                    | Home cluster            |
@@ -153,6 +154,12 @@ subscriber of that channel. Watches stop when nobody listens
    live in code; custom roles are `NavigatorRole` resources
    ([ADR-0015](adr/0015-permissions-and-scoped-role-assignments.md)). An endpoint without a rule
    is denied. The frontend runs the same check to hide buttons, which is cosmetic only.
+   Scripts and pipelines authenticate with an **API token** of a technical user instead
+   (`Authorization: Bearer capin_…`, [ADR-0017](adr/0017-api-tokens-for-technical-users.md)): the
+   guard looks up the SHA-256 hash of the token in the cached `NavigatorToken` resources, checks
+   expiry and the user, and continues with the role assignments of that user. A request with a
+   token ignores the session cookie and needs no CSRF header; tokens never reach endpoints that need
+   `users.manage` or the node shell.
 2. The audit interceptor ([audit.interceptor.ts](../apps/backend/src/audit/audit.interceptor.ts))
    writes an `AuditEvent` with actor, action, target and outcome for every mutating request.
 3. Kubernetes errors are translated into a message with a hint; the original stays expandable.

@@ -44,6 +44,7 @@ export class AuditInterceptor implements NestInterceptor {
         request: { method: req.method, path: req.path },
         ...(meta?.targetKind && name ? { target: { kind: meta.targetKind, name } } : {}),
         ...(managementCluster ? { managementCluster } : {}),
+        ...(req.principal?.token ? { token: req.principal.token.name } : {}),
         ...(message ? { message } : {}),
       });
     };

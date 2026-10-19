@@ -70,6 +70,8 @@ export const UserSchema = z.object({
   /** Role assignments (FP19-F-03). */
   bindings: z.array(RoleBindingSchema),
   disabled: z.boolean(),
+  /** Technical user: no password, no sign-in, API tokens only (FP22-F-01). */
+  apiOnly: z.boolean(),
   mustChangePassword: z.boolean(),
   createdAt: z.string().optional(),
 });
@@ -85,14 +87,21 @@ export const CreateUserRequestSchema = z
     role: RoleSchema.optional(),
     /** Role assignments (FP19-F-03). */
     bindings: BindingsSchema.optional(),
-    /** Initial password; the user must change it on first login. */
-    password: PasswordSchema,
+    /** Technical user without password and sign-in, for API tokens (FP22-F-01). */
+    apiOnly: z.boolean().default(false),
+    /** Initial password; the user must change it on first login. Not for technical users. */
+    password: PasswordSchema.optional(),
   })
   .refine((v) => v.role !== undefined || v.bindings !== undefined, {
     message: 'A role or role assignments are required',
     path: ['bindings'],
+  })
+  .refine((v) => (v.apiOnly ? v.password === undefined : v.password !== undefined), {
+    message: 'Users need an initial password; technical users have none',
+    path: ['password'],
   });
-export type CreateUserRequest = z.infer<typeof CreateUserRequestSchema>;
+/** Input shape: `apiOnly` may be left out (default false). */
+export type CreateUserRequest = z.input<typeof CreateUserRequestSchema>;
 
 export const UpdateUserRequestSchema = z
   .object({
@@ -111,3 +120,48 @@ export const ResetPasswordRequestSchema = z.object({
   password: PasswordSchema,
 });
 export type ResetPasswordRequest = z.infer<typeof ResetPasswordRequestSchema>;
+
+// ---- API tokens of technical users (FP-22, ADR-0017) ----
+
+/** Prefix of API tokens; lets secret scanners recognise leaked tokens (FP22-F-03). */
+export const API_TOKEN_PREFIX = 'capin_';
+export const API_TOKEN_MAX_DAYS = 365;
+
+export const TokenNameSchema = z
+  .string()
+  .min(2, 'At least 2 characters')
+  .max(40, 'At most 40 characters')
+  .regex(
+    /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/,
+    'Lowercase letters, digits and "-" only; must start and end with a letter or digit',
+  );
+
+/** A token as listed in the user management; never contains the token or its hash. */
+export const TokenInfoSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  createdAt: z.string(),
+  createdBy: z.string(),
+  expiresAt: z.string(),
+  lastUsedAt: z.string().optional(),
+  expired: z.boolean(),
+});
+export type TokenInfo = z.infer<typeof TokenInfoSchema>;
+export const TokenInfoListSchema = z.array(TokenInfoSchema);
+
+export const CreateTokenRequestSchema = z.object({
+  name: TokenNameSchema,
+  description: z.string().trim().max(200, 'At most 200 characters').optional(),
+  /** Validity in days (FP22-F-02). Default: 90. */
+  expiresInDays: z
+    .int()
+    .min(1, 'At least 1 day')
+    .max(API_TOKEN_MAX_DAYS, `At most ${API_TOKEN_MAX_DAYS} days`)
+    .default(90),
+});
+export type CreateTokenRequest = z.input<typeof CreateTokenRequestSchema>;
+
+/** Answer after generating a token: the only time the token value is returned (FP22-F-03). */
+export const CreatedTokenSchema = TokenInfoSchema.extend({ token: z.string() });
+export type CreatedToken = z.infer<typeof CreatedTokenSchema>;

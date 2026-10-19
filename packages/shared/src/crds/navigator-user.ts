@@ -13,6 +13,8 @@ export const NavigatorUserSpecSchema = z.object({
   /** Role assignments (FP19-F-03); replace `role` on the next change of the user. */
   bindings: z.array(RoleBindingSchema).max(50).optional(),
   disabled: z.boolean().default(false),
+  /** Technical user (FP22-F-01): no password, no sign-in; uses API tokens. */
+  apiOnly: z.boolean().default(false),
   mustChangePassword: z.boolean().default(false),
   /**
    * Incremented on password change, reset, disable and role change. Session cookies carry the

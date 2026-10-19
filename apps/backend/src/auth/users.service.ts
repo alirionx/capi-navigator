@@ -28,6 +28,7 @@ import { isConflict, isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
 import { burnVerifyTime, hashPassword, verifyPassword } from './password-hasher.js';
 import type { Principal } from './principal.js';
+import { TokensService } from './tokens.service.js';
 
 export const INITIAL_ADMIN_USERNAME = 'admin';
 export const INITIAL_ADMIN_SECRET = 'capi-navigator-initial-admin';
@@ -41,6 +42,7 @@ export class UsersService implements OnApplicationBootstrap {
 
   constructor(
     private readonly store: StoreService,
+    private readonly tokens: TokensService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -59,7 +61,9 @@ export class UsersService implements OnApplicationBootstrap {
   /** Returns the principal for valid credentials of an enabled user. */
   async verifyCredentials(username: string, password: string): Promise<Principal | undefined> {
     const user = this.store.userCache.get(username);
-    const hash = user && !user.spec.disabled ? await this.passwordHash(username) : undefined;
+    // Technical users never sign in (FP22-F-01); same timing as a wrong password.
+    const canSignIn = user && !user.spec.disabled && user.spec.apiOnly !== true;
+    const hash = canSignIn ? await this.passwordHash(username) : undefined;
     if (!user || !hash) {
       await burnVerifyTime(password);
       return undefined;
@@ -95,11 +99,18 @@ export class UsersService implements OnApplicationBootstrap {
     const created = await this.kube(`Create user ${req.username}`, () =>
       this.store.users.create(
         { name: req.username, labels: { 'app.kubernetes.io/part-of': 'capi-navigator' } },
-        { bindings, disabled: false, mustChangePassword: true, sessionGeneration: 0 },
+        {
+          bindings,
+          disabled: false,
+          // Technical users have no password and nothing to change (FP22-F-01).
+          apiOnly: req.apiOnly === true,
+          mustChangePassword: req.apiOnly !== true,
+          sessionGeneration: 0,
+        },
       ),
     );
     try {
-      await this.writePassword(req.username, req.password);
+      if (req.password !== undefined) await this.writePassword(req.username, req.password);
     } catch (err) {
       await this.store.users.delete(req.username).catch(() => undefined);
       throw toHttpException(err, `Store password of ${req.username}`);
@@ -149,11 +160,19 @@ export class UsersService implements OnApplicationBootstrap {
     await this.kube(`Delete user ${username}`, () => this.store.users.delete(username));
     this.store.userCache.remove(username);
     await this.store.secrets.delete(passwordSecretName(username));
+    await this.tokens.removeAll(username);
   }
 
   /** Admin sets a temporary password; the user must change it at next login (FP1-F-05). */
   async resetPassword(username: string, password: string): Promise<User> {
     const user = this.require(username);
+    if (user.spec.apiOnly === true) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: `"${username}" is a technical user without password`,
+        hint: 'Technical users authenticate with API tokens.',
+      });
+    }
     await this.kube(`Store password of ${username}`, () => this.writePassword(username, password));
     return toUser(
       await this.patch(user, {
@@ -208,6 +227,7 @@ export class UsersService implements OnApplicationBootstrap {
         {
           bindings: [{ role: 'admin' }],
           disabled: false,
+          apiOnly: false,
           mustChangePassword: true,
           sessionGeneration: 0,
         },
@@ -303,6 +323,7 @@ function toUser(u: UserResource): User {
     role: displayRole(bindings),
     bindings,
     disabled: u.spec.disabled,
+    apiOnly: u.spec.apiOnly === true,
     mustChangePassword: u.spec.mustChangePassword,
     ...(u.metadata.creationTimestamp ? { createdAt: String(u.metadata.creationTimestamp) } : {}),
   };

@@ -14,11 +14,13 @@ import {
   HelmRepositoryCrd,
   ManagementClusterCrd,
   NavigatorRoleCrd,
+  NavigatorTokenCrd,
   NavigatorUserCrd,
   BUILTIN_ROLES,
   isBuiltinRole,
   type Permission,
   type NavigatorRoleSpecSchema,
+  type NavigatorTokenSpecSchema,
   type AddonPresetOverrides,
   type AuditEventSpecSchema,
   type HelmRepositorySpecSchema,
@@ -50,6 +52,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly helmRepositoryCache: ResourceCache<typeof HelmRepositorySpecSchema>;
   readonly roles: CustomResourceClient<typeof NavigatorRoleSpecSchema>;
   readonly roleCache: ResourceCache<typeof NavigatorRoleSpecSchema>;
+  readonly tokens: CustomResourceClient<typeof NavigatorTokenSpecSchema>;
+  readonly tokenCache: ResourceCache<typeof NavigatorTokenSpecSchema>;
   readonly secrets: SecretStore;
   private readonly core: CoreV1Api;
 
@@ -65,6 +69,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.helmRepositoryCache = new ResourceCache(kc, this.helmRepositories);
     this.roles = new CustomResourceClient(kc, ns, NavigatorRoleCrd);
     this.roleCache = new ResourceCache(kc, this.roles);
+    this.tokens = new CustomResourceClient(kc, ns, NavigatorTokenCrd);
+    this.tokenCache = new ResourceCache(kc, this.tokens);
     this.secrets = new SecretStore(kc, ns);
     this.core = kc.makeApiClient(CoreV1Api);
   }
@@ -137,7 +143,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       this.userCache.isSynced &&
       this.connectionCache.isSynced &&
       this.helmRepositoryCache.isSynced &&
-      this.roleCache.isSynced
+      this.roleCache.isSynced &&
+      this.tokenCache.isSynced
     );
   }
 
@@ -148,6 +155,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
         this.connectionCache.start(),
         this.helmRepositoryCache.start(),
         this.roleCache.start(),
+        this.tokenCache.start(),
       ]);
       this.logger.log(`Caches synced (namespace ${this.namespace})`);
     } catch (err) {
@@ -164,6 +172,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       this.connectionCache.stop(),
       this.helmRepositoryCache.stop(),
       this.roleCache.stop(),
+      this.tokenCache.stop(),
     ]);
   }
 }

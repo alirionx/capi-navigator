@@ -20,10 +20,10 @@ metadata:
     app.kubernetes.io/instance: {{ .Release.Name }}
 rules:
   - apiGroups: [navigator.capi-navigator.io]
-    resources: [navigatorusers, navigatorroles, auditevents, managementclusters, helmrepositories]
+    resources: [navigatorusers, navigatorroles, navigatortokens, auditevents, managementclusters, helmrepositories]
     verbs: [get, list, watch, create, update, patch, delete]
   - apiGroups: [navigator.capi-navigator.io]
-    resources: [managementclusters/status]
+    resources: [managementclusters/status, navigatortokens/status]
     verbs: [get, update, patch]
   - apiGroups: ['']
     resources: [secrets]

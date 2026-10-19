@@ -68,6 +68,8 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
   left in the cloud.
 - **REST API** described as OpenAPI 3.1 and generated from the same Zod schemas that validate
   requests; Swagger UI in the app to explore and try it.
+- **API tokens** for technical users, so pipelines and GitOps tools call the API with their own
+  role assignments.
 - **Users and roles**: built-in roles viewer, operator and admin plus custom roles from 14
   permissions; role assignments can be limited to management cluster connections and namespaces
   (e.g. operator only in `team-a`). Enforced in the backend; every change is written
@@ -248,6 +250,21 @@ service:
    Swagger UI at `/api/docs` (user menu → API documentation), with the session of the browser.
    The description is also committed as [docs/api/openapi.json](docs/api/openapi.json).
 
+### Using the API from scripts and pipelines
+
+Scripts, CI pipelines and GitOps tools use API tokens of **technical users**: in **Users**, add a
+user with "API only" and give it a role assignment (e.g. operator in `home/team-a`), then generate
+a token with the key button. The token (`capin_…`) is shown once; it acts with the role
+assignments of the technical user, expires after at most 365 days and can be revoked at any time.
+
+```sh
+TOKEN=capin_…   # from the user management
+curl -H "Authorization: Bearer $TOKEN" https://capi-navigator.example.com/api/connections/home/clusters
+```
+
+Requests with a token need no CSRF header, cannot manage users, roles or tokens and are audited
+with the token name. Swagger UI accepts a token under "Authorize".
+
 ## Where configuration lives
 
 | What                                                                                                                                                    | Where                                                                                                                                            | When it is set                 | Who changes it                                                   |
@@ -255,7 +272,7 @@ service:
 | Catalogs and defaults: provider versions, Kubernetes versions, add-on presets (charts, versions), Calico version and checksum, containerd/runc versions | `packages/shared/src/catalog/`, `packages/shared/src/cluster/` (e.g. `addons.ts`, `kubeadm.ts`, `cni.ts`)                                        | At build time, per app version | Developers (later Renovate via a central `versions.yaml`, FP-20) |
 | Schemas and types (cluster spec, API requests, CRDs), all as Zod                                                                                        | `packages/shared/src/`                                                                                                                           | At build time                  | Developers                                                       |
 | Operation of the backend: app namespace, node shell image, port, sessions, initial admin                                                                | Environment variables, validated in `apps/backend/src/config/config.ts`; set through the Helm values in `deploy/helm/capi-navigator/values.yaml` | At deployment                  | Operators (Helm)                                                 |
-| Runtime settings: preset overrides, Helm repositories, connections, credentials, users, roles                                                           | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Users with the matching permission                               |
+| Runtime settings: preset overrides, Helm repositories, connections, credentials, users, roles, API tokens                                               | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Users with the matching permission                               |
 | Large backend-only artifacts: Calico manifest                                                                                                           | `apps/backend/assets/`                                                                                                                           | At build time                  | Developers                                                       |
 | UI texts                                                                                                                                                | `apps/frontend/src/i18n/`                                                                                                                        | At build time                  | Developers                                                       |
 

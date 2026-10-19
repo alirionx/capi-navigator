@@ -37,6 +37,9 @@ export class SecurityMiddleware implements NestMiddleware {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
 
     if (SAFE_METHODS.has(req.method) || !req.path.startsWith('/api/')) return next();
+    // Bearer requests are authenticated by the token only, never by the cookie (ADR-0017), and
+    // browsers do not add Authorization headers to cross-site requests: CSRF does not apply.
+    if (/^Bearer(\s|$)/i.test(req.get('authorization') ?? '')) return next();
 
     if (req.get(CSRF_HEADER) !== CSRF_HEADER_VALUE) return reject(res, 'Missing CSRF header');
     const origin = req.get('origin');

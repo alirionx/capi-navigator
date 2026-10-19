@@ -7,6 +7,7 @@ import { isConflict } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
 import type { Principal } from './principal.js';
 import { parseCookies, signSession, verifySession } from './session-token.js';
+import { TokensService } from './tokens.service.js';
 
 export const SESSION_COOKIE = 'capi_navigator_session';
 export const SESSION_KEY_SECRET = 'capi-navigator-session-key';
@@ -22,6 +23,7 @@ export class SessionService implements OnModuleInit {
 
   constructor(
     private readonly store: StoreService,
+    private readonly tokens: TokensService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -53,7 +55,19 @@ export class SessionService implements OnModuleInit {
   }
 
   /** Resolves the session cookie to a principal; the user's current state decides (FP1-F-04). */
+  /**
+   * The principal of a request: an API token if the request carries `Authorization: Bearer`
+   * (FP22-F-04), otherwise the session cookie. With a bearer header the cookie is ignored, so a
+   * browser can never combine both (ADR-0017).
+   */
   authenticate(req: Request): Principal | undefined {
+    const bearer = bearerToken(req);
+    if (bearer !== undefined) return this.tokens.authenticate(bearer);
+    return this.authenticateSession(req);
+  }
+
+  /** Session cookie only, e.g. for the node shell WebSocket, which refuses tokens (FP22-F-05). */
+  authenticateSession(req: Pick<Request, 'headers'>): Principal | undefined {
     const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
     if (!token) return undefined;
     const payload = verifySession(token, this.signingKey);
@@ -89,4 +103,16 @@ export class SessionService implements OnModuleInit {
       path: '/',
     };
   }
+}
+
+/**
+ * The bearer token of a request (FP-22): undefined without a Bearer Authorization header, ''
+ * for a malformed one. Other schemes (e.g. Basic auth added by an ingress) are ignored, so the
+ * session cookie keeps working behind such proxies.
+ */
+export function bearerToken(req: Pick<Request, 'headers'>): string | undefined {
+  const header = req.headers.authorization;
+  if (!header || !/^Bearer(\s|$)/i.test(header)) return undefined;
+  // A malformed Bearer header must not fall back to the session cookie.
+  return /^Bearer\s+(\S+)\s*$/i.exec(header)?.[1] ?? '';
 }

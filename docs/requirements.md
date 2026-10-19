@@ -773,13 +773,15 @@ Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kin
 
 **Acceptance criteria**
 
-- [ ] An admin creates a technical user with the role "operator in `home/team-a`", generates a token in the UI and sees it once.
-- [ ] With the token, `curl -H "Authorization: Bearer …"` reads clusters and changes a cluster in `team-a` without CSRF header and gets 403 in another namespace and on `/api/users`.
-- [ ] A revoked or expired token, and the token of a disabled technical user, answer 401; the technical user cannot sign in to the UI.
-- [ ] Tokens are stored only as hashes; the token value appears in no API response except the one after generating, and in no log or audit event.
-- [ ] Audit events of token requests name the technical user and the token.
-- [ ] Swagger UI "Authorize" with a token runs a request.
-- [ ] A Playwright test covers creating the technical user and the token in the UI and using the token.
+- [x] An admin creates a technical user with the role "operator in `home/team-a`", generates a token in the UI and sees it once.
+- [x] With the token, `curl -H "Authorization: Bearer …"` reads clusters and changes a cluster in `team-a` without CSRF header and gets 403 in another namespace and on `/api/users`.
+- [x] A revoked or expired token, and the token of a disabled technical user, answer 401; the technical user cannot sign in to the UI.
+- [x] Tokens are stored only as hashes; the token value appears in no API response except the one after generating, and in no log or audit event.
+- [x] Audit events of token requests name the technical user and the token.
+- [x] Swagger UI "Authorize" with a token runs a request.
+- [x] A Playwright test covers creating the technical user and the token in the UI and using the token.
+
+Verified on 2026-10-19 with unit, HTTP and Playwright tests and with `curl` against the dev backend: reading 200, a change in `team-a` passed the permission check, `team-b` and `/api/users` 403, the token of a deleted user 401; the cluster held only the hash. Failed token attempts are throttled per client, but a valid token always passes (ADR-0017).
 
 ### FP-23: OpenAPI description and Swagger UI (optional)
 
@@ -787,7 +789,7 @@ Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kin
 
 - **FP23-F-01** MUST generate an OpenAPI 3.1 document from the backend's controllers at runtime: paths, methods and parameters from the NestJS route metadata, request bodies and query parameters from the Zod schemas of the validation pipes (no second definition, hard rule 2), JSON Schema output of Zod 4, no new generator dependency.
 - **FP23-F-02** MUST describe every operation with a short summary, a tag per domain, the required permission and its scope (FP-19), and the response: a named Zod schema from `packages/shared` for JSON responses, `text/event-stream` for live updates, no body for 204; errors use the common error body.
-- **FP23-F-03** MUST describe the authentication: session cookie plus the CSRF header `x-capi-navigator: 1` for mutating requests; API tokens are added with FP-22.
+- **FP23-F-03** MUST describe the authentication: session cookie plus the CSRF header `x-capi-navigator: 1` for mutating requests, and API tokens of technical users (FP-22).
 - **FP23-F-04** MUST serve the document at `GET /api/openapi.json` and Swagger UI at `GET /api/docs`, both without sign-in. Swagger UI is shipped with the app (`swagger-ui-dist`, no CDN, no inline scripts, unchanged Content Security Policy). "Try it out" uses the browser's session and adds the CSRF header to mutating requests; permissions, preview and audit apply unchanged.
 - **FP23-F-05** MUST commit the generated document as `docs/api/openapi.json` (`pnpm openapi:generate`); a test fails when it is outdated or when an endpoint lacks summary, permission or (for JSON responses) response schema.
 - **FP23-F-06** MUST be switchable off with the Helm value `apiDocs.enabled` (environment variable `API_DOCS_ENABLED`, default on); when off, both paths answer 404.
