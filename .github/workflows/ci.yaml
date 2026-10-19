@@ -26,6 +26,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+      # FP20-F-07: development scripts and the node script templates (preinstalled on the runner).
+      - name: shellcheck
+        run: shellcheck -S warning -x scripts/*.sh packages/shared/src/cluster/templates/*.sh.tmpl
       - name: Helm chart (lint and render all exposure options)
         run: |
           helm lint deploy/helm/capi-navigator

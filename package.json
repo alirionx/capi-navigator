@@ -20,6 +20,7 @@
     "kind:down": "bash scripts/kind-down.sh",
     "crds:install": "bash scripts/crds-install.sh",
     "versions:report": "bash scripts/versions-report.sh",
+    "templates:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/cluster/templates/generate-cli.js",
     "versions:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/versions/generate-cli.js",
     "openapi:generate": "pnpm --filter @capi-navigator/backend build && node apps/backend/dist/openapi/generate-cli.js",
     "crds:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/crds/generate-cli.js"
