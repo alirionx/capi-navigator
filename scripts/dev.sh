@@ -16,6 +16,6 @@ fi
 
 export LOG_JSON="${LOG_JSON:-false}"
 
-cd "${ROOT_DIR}"
+cd "${ROOT_DIR}" || exit 1
 pnpm --filter @capi-navigator/shared build
 exec pnpm -r --parallel dev

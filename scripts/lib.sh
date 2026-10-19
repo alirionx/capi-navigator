@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shared settings for the local development scripts. Source, do not execute.
 #
 # All scripts work exclusively against the local kind cluster. KUBECONFIG is always

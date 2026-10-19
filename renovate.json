@@ -17,6 +17,34 @@
       "matchUpdateTypes": ["minor", "patch"],
       "matchDepTypes": ["devDependencies"],
       "groupName": "dev dependencies (non-major)"
+    },
+    {
+      "description": "RKE2 versions carry the release number after '+' (v1.35.9+rke2r1).",
+      "matchDepNames": ["/^kubernetes\\.rke2 /"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+rke2r(?<build>\\d+)$"
+    },
+    {
+      "description": "k0s versions carry the release number after '+' (v1.35.8+k0s.1).",
+      "matchDepNames": ["/^kubernetes\\.k0s /"],
+      "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k0s\\.(?<build>\\d+)$"
+    },
+    {
+      "description": "Kubernetes catalogs keep one entry per minor: report patches of that minor separately.",
+      "matchDepNames": ["/^kubernetes\\./"],
+      "separateMinorPatch": true
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "versions.yaml: every version the app pins (FP-20, ADR-0018).",
+      "customType": "jsonata",
+      "fileFormat": "yaml",
+      "managerFilePatterns": ["/^versions\\.yaml$/"],
+      "matchStrings": [
+        "(\n  $doc := $type($) = \"array\" ? $[0] : $;\n  $reduce([$each($doc, function($group, $gk) {\n    ($type($group) = \"object\" and $gk != \"kubernetes\") ? $each($group, function($e, $ek) {\n      ($type($e) = \"object\" and $exists($e.version) and $exists($e.source)) ? {\n        \"depName\": $gk & \".\" & $ek,\n        \"packageName\": $e.source.package,\n        \"currentValue\": $string($e.version),\n        \"datasource\": $e.source.datasource,\n        \"registryUrl\": $e.source.registry\n      }\n    })\n  })], function($a, $v) { $append($a, $v) }, [])\n)",
+        "(\n  $doc := $type($) = \"array\" ? $[0] : $;\n  $reduce([$each($doc.kubernetes, function($c, $flavor) {\n    $c.versions.{\n      \"depName\": \"kubernetes.\" & $flavor & \" \" & $join($split($substringAfter(version, \"v\"), \".\")[[0..1]], \".\"),\n      \"packageName\": $c.source.package,\n      \"currentValue\": version,\n      \"datasource\": $c.source.datasource\n    }\n  })], function($a, $v) { $append($a, $v) }, [])\n)",
+        "(\n  $doc := $type($) = \"array\" ? $[0] : $;\n  $minor := \"v\" & $join($split($substringAfter($doc.providers.openstack.version, \"v\"), \".\")[[0..1]], \".\");\n  {\n    \"depName\": \"prerequisites.orc (CAPO \" & $minor & \")\",\n    \"packageName\": $doc.prerequisites.orc.source.package,\n    \"currentValue\": $lookup($doc.prerequisites.orc.byCapoMinor, $minor),\n    \"datasource\": $doc.prerequisites.orc.source.datasource\n  }\n)"
+      ]
     }
   ]
 }
