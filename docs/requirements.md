@@ -773,12 +773,14 @@ Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kin
 
 **Acceptance criteria**
 
-- [ ] `versions.yaml` holds every pinned version; searching the code, scripts and Helm values finds no second copy.
-- [ ] Changing a version in `versions.yaml` and running `pnpm versions:generate` changes the app; the tests detect an outdated generated module and broken couplings.
-- [ ] All snapshot tests pass unchanged after the move.
-- [ ] `pnpm versions:report` writes `docs/versions-report.md` with the app versions and the Actions/Docker appendix, without changing anything else in the repository.
-- [ ] The kubeadm install script is a template file and passes `shellcheck` in CI.
-- [ ] `docs/maintenance.md` exists and the README links to it.
+- [x] `versions.yaml` holds every pinned version; searching the code, scripts and Helm values finds no second copy.
+- [x] Changing a version in `versions.yaml` and running `pnpm versions:generate` changes the app; the tests detect an outdated generated module and broken couplings.
+- [x] All snapshot tests pass unchanged after the move.
+- [x] `pnpm versions:report` writes `docs/versions-report.md` with the app versions and the Actions/Docker appendix, without changing anything else in the repository.
+- [x] The kubeadm install script is a template file and passes `shellcheck` in CI.
+- [x] `docs/maintenance.md` exists and the README links to it.
+
+Verified on 2026-10-19: all 36 pinned versions (32 entries) moved to `versions.yaml`, checked to equal the previous values; no snapshot changed (the generated manifests and node scripts are byte-identical). Renovate 44.133.0 finds all entries; the first report showed the RKE2 provider v0.27.0, containerd 2.4.2, alpine 3.24 and all GitHub Actions one or two majors behind. A test that a provider update without re-verified Kubernetes versions fails was checked to fail. Remaining version strings in code are comments naming what an implementation was verified against (see `docs/maintenance.md`).
 
 ### FP-22: API tokens for technical users (optional)
 

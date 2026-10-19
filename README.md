@@ -267,16 +267,16 @@ with the token name. Swagger UI accepts a token under "Authorize".
 
 ## Where configuration lives
 
-| What                                                                                                                                                    | Where                                                                                                                                            | When it is set                 | Who changes it                                                   |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------------- |
-| Catalogs and defaults: provider versions, Kubernetes versions, add-on presets (charts, versions), Calico version and checksum, containerd/runc versions | `packages/shared/src/catalog/`, `packages/shared/src/cluster/` (e.g. `addons.ts`, `kubeadm.ts`, `cni.ts`)                                        | At build time, per app version | Developers (later Renovate via a central `versions.yaml`, FP-20) |
-| Schemas and types (cluster spec, API requests, CRDs), all as Zod                                                                                        | `packages/shared/src/`                                                                                                                           | At build time                  | Developers                                                       |
-| Operation of the backend: app namespace, node shell image, port, sessions, initial admin                                                                | Environment variables, validated in `apps/backend/src/config/config.ts`; set through the Helm values in `deploy/helm/capi-navigator/values.yaml` | At deployment                  | Operators (Helm)                                                 |
-| Runtime settings: preset overrides, Helm repositories, connections, credentials, users, roles, API tokens                                               | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Users with the matching permission                               |
-| Large backend-only artifacts: Calico manifest                                                                                                           | `apps/backend/assets/`                                                                                                                           | At build time                  | Developers                                                       |
-| UI texts                                                                                                                                                | `apps/frontend/src/i18n/`                                                                                                                        | At build time                  | Developers                                                       |
+| What                                                                                                               | Where                                                                                                                                            | When it is set                 | Who changes it                                             |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ---------------------------------------------------------- |
+| Versions: providers, Kubernetes versions, preset charts, Calico (with checksum), containerd/runc, node shell image | [versions.yaml](versions.yaml), generated into `packages/shared/src/versions.generated.ts`                                                       | At build time, per app version | Developers, see [docs/maintenance.md](docs/maintenance.md) |
+| Schemas and types (cluster spec, API requests, CRDs), all as Zod                                                   | `packages/shared/src/`                                                                                                                           | At build time                  | Developers                                                 |
+| Operation of the backend: app namespace, node shell image, port, sessions, initial admin                           | Environment variables, validated in `apps/backend/src/config/config.ts`; set through the Helm values in `deploy/helm/capi-navigator/values.yaml` | At deployment                  | Operators (Helm)                                           |
+| Runtime settings: preset overrides, Helm repositories, connections, credentials, users, roles, API tokens          | ConfigMaps, custom resources and Secrets in the home cluster                                                                                     | During operation, in the UI    | Users with the matching permission                         |
+| Large backend-only artifacts: Calico manifest                                                                      | `apps/backend/assets/`                                                                                                                           | At build time                  | Developers                                                 |
+| UI texts                                                                                                           | `apps/frontend/src/i18n/`                                                                                                                        | At build time                  | Developers                                                 |
 
-Versions and domain defaults live in code because each app version is tested with them; values
+Versions (in `versions.yaml`, generated into the code) and domain defaults are fixed per app version because each app version is tested with them; values
 that differ per installation are deployment settings; what admins change while the app runs is
 stored in the home cluster (the app has no database).
 
@@ -317,20 +317,22 @@ stored in the home cluster (the app has no database).
 
 ### Commands
 
-| What                                                                                                                                  | Command                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Install all workspaces                                                                                                                | `pnpm install`                             |
-| Backend and frontend in watch mode                                                                                                    | `pnpm dev`                                 |
-| Lint and format check                                                                                                                 | `pnpm lint`                                |
-| Type check                                                                                                                            | `pnpm typecheck`                           |
-| Unit and snapshot tests                                                                                                               | `pnpm test`                                |
-| Backend unit tests with the coverage threshold (70 % lines, as in CI)                                                                 | `pnpm test:coverage`                       |
-| Integration tests against kind (own throwaway namespace; opt-in read-only cloud tests with `OPENSTACK_CLOUDS_YAML=…` or `AWS_LIVE_*`) | `pnpm test:int`                            |
-| End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                            |
-| kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`          |
-| Regenerate / install the app's CRDs from the Zod schemas                                                                              | `pnpm crds:generate` / `pnpm crds:install` |
-| Regenerate the committed OpenAPI document from the routes and Zod schemas                                                             | `pnpm openapi:generate`                    |
-| Container image                                                                                                                       | `docker build -t capi-navigator .`         |
+| What                                                                                                                                  | Command                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Install all workspaces                                                                                                                | `pnpm install`                                       |
+| Backend and frontend in watch mode                                                                                                    | `pnpm dev`                                           |
+| Lint and format check                                                                                                                 | `pnpm lint`                                          |
+| Type check                                                                                                                            | `pnpm typecheck`                                     |
+| Unit and snapshot tests                                                                                                               | `pnpm test`                                          |
+| Backend unit tests with the coverage threshold (70 % lines, as in CI)                                                                 | `pnpm test:coverage`                                 |
+| Integration tests against kind (own throwaway namespace; opt-in read-only cloud tests with `OPENSTACK_CLOUDS_YAML=…` or `AWS_LIVE_*`) | `pnpm test:int`                                      |
+| End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                                      |
+| kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`                    |
+| Regenerate / install the app's CRDs from the Zod schemas                                                                              | `pnpm crds:generate` / `pnpm crds:install`           |
+| Regenerate the pinned versions / node script templates after editing them                                                             | `pnpm versions:generate` / `pnpm templates:generate` |
+| Report newer versions of `versions.yaml`, Actions and Docker images (needs Docker)                                                    | `pnpm versions:report`                               |
+| Regenerate the committed OpenAPI document from the routes and Zod schemas                                                             | `pnpm openapi:generate`                              |
+| Container image                                                                                                                       | `docker build -t capi-navigator .`                   |
 
 ### Repository layout
 
@@ -341,10 +343,18 @@ packages/shared/    Zod schemas, catalogs, transformation (cluster spec → CAPI
 deploy/helm/        Helm chart incl. CRDs
 deploy/crds/        Generated CRDs of the app
 deploy/management-cluster/  Access manifests for management clusters (full and minimal)
-docs/               Requirements specification, architecture overview, architecture decisions (ADRs)
+docs/               Requirements, architecture overview, ADRs, maintenance guide, version report
 e2e/                Playwright end-to-end tests
-scripts/            kind, development and integration test helpers
+scripts/            kind, development, integration test and version report helpers
+versions.yaml       Every version the app pins (providers, Kubernetes, charts, runtime, images)
 ```
+
+### Updating versions
+
+All versions the app pins live in [versions.yaml](versions.yaml); `pnpm versions:report` shows
+which newer versions exist in [docs/versions-report.md](docs/versions-report.md). Updating is a
+deliberate, manual step with tests and, for providers, a live check. The procedure, the couplings
+between versions and a checklist are in **[docs/maintenance.md](docs/maintenance.md)**.
 
 ### Releases
 
@@ -404,7 +414,8 @@ release is fixed by the next patch version.
 
 **Steps:**
 
-1. Make sure `main` is green in CI.
+1. Make sure `main` is green in CI and the versions are current
+   ([docs/maintenance.md](docs/maintenance.md)).
 2. Set `version` and `appVersion` in `Chart.yaml`, commit and push:
    `git commit -am "chore(release): version X.Y.Z" && git push`
 3. Tag that commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`

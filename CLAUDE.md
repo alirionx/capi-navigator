@@ -40,7 +40,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-9 | k0s as second Kubernetes distribution | done (control plane image rebuild blocked upstream, ADR-0013) |
 | FP-10 | kubeadm on stock images (experimental) | done |
 | FP-19 | Role management: custom roles, scoped role assignments (optional) | done |
-| FP-20 | Version maintenance: versions.yaml and update report (optional) | in progress |
+| FP-20 | Version maintenance: versions.yaml and update report (optional) | done |
 | FP-22 | API tokens for technical users (optional) | done |
 | FP-23 | OpenAPI description and Swagger UI (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
@@ -99,7 +99,7 @@ CRD fields and API versions of Cluster API, the CAPI Operator, CAPO, ORC, the RK
 
 - Check the current official documentation or the provider's CRD definitions.
 - Never rely on remembered field names.
-- Record the provider versions you verified against in the provider and version catalogs in `packages/shared`.
+- Record the versions you verified against in `versions.yaml` (with `verified` date and notes), never as a second copy in code; see `docs/maintenance.md`.
 
 If something in the requirements turns out to be technically wrong for the current provider versions, stop, explain the issue, and propose an ADR instead of working around it silently.
 
@@ -120,6 +120,9 @@ pnpm test:e2e         # Playwright
 pnpm kind:up          # local kind cluster as home + management cluster
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
+pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP-20)
+pnpm templates:generate  # regenerate the node script templates (kubeadm install script)
+pnpm versions:report     # newer versions of versions.yaml, Actions and Docker → docs/versions-report.md
 pnpm crds:install     # install the app's CRDs into the current cluster
 ```
 
