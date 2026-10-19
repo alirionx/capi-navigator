@@ -1,8 +1,10 @@
+import { VERSIONS } from '../versions.generated.js';
+
 /**
- * Prerequisites of the CAPI Operator and CAPO (FP3-F-01..04a). Versions verified on 2026-10-17.
+ * Prerequisites of the CAPI Operator and CAPO (FP3-F-01..04a). Versions in versions.yaml (FP-20).
  */
 export const CERT_MANAGER = {
-  recommendedVersion: 'v1.21.2',
+  recommendedVersion: VERSIONS.prerequisites['cert-manager'].version,
   crd: 'certificates.cert-manager.io',
   /** Deployments that must be available, matched by app.kubernetes.io/name. */
   deployments: ['cert-manager', 'cainjector', 'webhook'],
@@ -16,7 +18,7 @@ export const CERT_MANAGER = {
 };
 
 export const CAPI_OPERATOR = {
-  recommendedVersion: 'v0.29.0',
+  recommendedVersion: VERSIONS.prerequisites['capi-operator'].version,
   crd: 'coreproviders.operator.cluster.x-k8s.io',
   /** Matched by app.kubernetes.io/name on the operator deployment (Helm chart). */
   deploymentName: 'cluster-api-operator',
@@ -48,13 +50,9 @@ export const ORC = {
 
 /**
  * ORC version per CAPO minor version: the ORC module version CAPO is built against (go.mod).
- * CAPO v0.15.0 → ORC v2.6.0, v0.14.8 → v2.4.0, v0.13.10 → v2.3.0.
+ * The pairs live in versions.yaml (prerequisites.orc.byCapoMinor).
  */
-export const ORC_FOR_CAPO: Record<string, string> = {
-  'v0.15': 'v2.6.0',
-  'v0.14': 'v2.4.0',
-  'v0.13': 'v2.3.0',
-};
+export const ORC_FOR_CAPO: Record<string, string> = VERSIONS.prerequisites.orc.byCapoMinor;
 
 export function orcVersionForCapo(capoVersion: string): string | undefined {
   const minor = /^(v\d+\.\d+)/.exec(capoVersion)?.[1];

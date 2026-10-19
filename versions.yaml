@@ -98,6 +98,7 @@ kubernetes:
       datasource: github-releases
       package: rancher/rke2
     verified: 2026-10-17
+    note: Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35.
     versions:
       - { version: v1.37.1+rke2r1, verifiedWithProvider: v0.26.0, untested: true }
       - { version: v1.36.5+rke2r1, verifiedWithProvider: v0.26.0, untested: true }
@@ -108,7 +109,8 @@ kubernetes:
     source:
       datasource: github-releases
       package: k0sproject/k0s
-    verified: 2026-10-17
+    verified: 2026-10-18
+    note: Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9.
     versions:
       - { version: v1.36.4+k0s.1, verifiedWithProvider: v2.2.0, untested: true }
       - { version: v1.35.8+k0s.1, verifiedWithProvider: v2.2.0, default: true }
@@ -119,6 +121,7 @@ kubernetes:
       datasource: github-releases
       package: kubernetes/kubernetes
     verified: 2026-10-18
+    note: Checked against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and rpm repositories (FP10-F-02); Cluster API v1.14 supports v1.33 to v1.37 for kubeadm.
     versions:
       - { version: v1.37.1, verifiedWithProvider: v1.14.3 }
       - { version: v1.36.5, verifiedWithProvider: v1.14.3 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from './operator-manifests.js';
+import { VERSIONS } from './versions.generated.js';
 
 /**
  * Node shell (FP-17, ADR-0008): a short-lived privileged pod on the node; the terminal runs
@@ -8,7 +9,7 @@ import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from './opera
 export const SHELL_LABEL = 'capi-navigator.io/node-shell';
 export const SHELL_NAMESPACE = 'kube-system';
 /** Default image; override with NODE_SHELL_IMAGE (e.g. for a registry mirror, FP-16). */
-export const SHELL_DEFAULT_IMAGE = 'alpine:3.22';
+export const SHELL_DEFAULT_IMAGE = `${VERSIONS.images['node-shell'].source.package}:${VERSIONS.images['node-shell'].version}`;
 /** Hard limit of a session; the pod ends even if the backend dies. */
 export const SHELL_MAX_SECONDS = 3600;
 /** A session without input ends after this time. */

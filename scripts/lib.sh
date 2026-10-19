@@ -9,9 +9,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-capi-navigator}"
 KIND_KUBECONFIG="${ROOT_DIR}/.kube/kind-${KIND_CLUSTER_NAME}.yaml"
 
-# Versions verified on 2026-10-17 against the official releases.
-CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.2}"
-CAPI_OPERATOR_VERSION="${CAPI_OPERATOR_VERSION:-0.29.0}"
+# Defaults from versions.yaml (pnpm versions:generate writes scripts/versions.generated.env).
+# shellcheck source=versions.generated.env
+source "${ROOT_DIR}/scripts/versions.generated.env"
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-${CERT_MANAGER_VERSION_DEFAULT}}"
+CAPI_OPERATOR_VERSION="${CAPI_OPERATOR_VERSION:-${CAPI_OPERATOR_VERSION_DEFAULT}}"
 
 export KUBECONFIG="${KIND_KUBECONFIG}"
 
