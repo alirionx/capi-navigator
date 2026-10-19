@@ -34,8 +34,10 @@ spec:
               value: {{ .Values.auth.sessionTtlHours | quote }}
             - name: AUDIT_RETENTION_DAYS
               value: {{ .Values.audit.retentionDays | quote }}
+            {{- with .Values.nodeShell.image }}
             - name: NODE_SHELL_IMAGE
-              value: {{ .Values.nodeShell.image | quote }}
+              value: {{ . | quote }}
+            {{- end }}
             - name: API_DOCS_ENABLED
               value: {{ .Values.apiDocs.enabled | quote }}
             - name: COOKIE_SECURE

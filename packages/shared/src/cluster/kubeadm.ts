@@ -1,6 +1,7 @@
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
+import { VERSIONS } from '../versions.generated.js';
 
 /**
  * Upstream Kubernetes with kubeadm (Cluster API v1.14.3 kubeadm bootstrap and control plane,
@@ -14,7 +15,10 @@ export const KUBEADM_CONTROL_PLANE_API = 'controlplane.cluster.x-k8s.io/v1beta2'
 export const KUBEADM_BOOTSTRAP_API = 'bootstrap.cluster.x-k8s.io/v1beta2';
 
 /** Verified on 2026-10-18: containerd 2.3 is recommended for Kubernetes 1.35 to 1.37. */
-export const KUBEADM_RUNTIME = { containerd: '2.3.7', runc: '1.5.2' };
+export const KUBEADM_RUNTIME = {
+  containerd: VERSIONS.kubeadmRuntime.containerd.version,
+  runc: VERSIONS.kubeadmRuntime.runc.version,
+};
 
 const INSTALL_SCRIPT_PATH = '/usr/local/bin/capi-navigator-install-kubernetes.sh';
 const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';

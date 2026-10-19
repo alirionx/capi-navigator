@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
+import { VERSIONS } from '../versions.generated.js';
 
 /**
- * CCM and CSI presets as HelmChartProxy (CAAPH v0.6.4, addons.cluster.x-k8s.io/v1alpha1), one set per
- * namespace, selecting clusters by add-on label (FP5-F-09, FP5-F-17). Chart versions verified on
- * 2026-10-17 against the chart repositories; value keys against the charts' values.yaml.
+ * CCM and CSI presets as HelmChartProxy (CAAPH, addons.cluster.x-k8s.io/v1alpha1), one set per
+ * namespace, selecting clusters by add-on label (FP5-F-09, FP5-F-17). Charts and versions live in
+ * versions.yaml (addonPresets); value keys were verified against the charts' values.yaml.
  *
  * RKE2 and k0s label control plane nodes with node-role.kubernetes.io/control-plane="true",
  * kubeadm with "" – the selector value is rendered per cluster from its control plane kind.
@@ -35,9 +36,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     provider: 'openstack',
     kind: 'ccm',
     displayName: 'OpenStack Cloud Controller Manager',
-    repoURL: 'https://kubernetes.github.io/cloud-provider-openstack',
-    chartName: 'openstack-cloud-controller-manager',
-    version: '2.37.1',
+    repoURL: VERSIONS.addonPresets['openstack-ccm'].source.registry!,
+    chartName: VERSIONS.addonPresets['openstack-ccm'].source.package,
+    version: VERSIONS.addonPresets['openstack-ccm'].version,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       CP_SELECTOR,
@@ -55,9 +56,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     provider: 'openstack',
     kind: 'csi',
     displayName: 'OpenStack Cinder CSI',
-    repoURL: 'https://kubernetes.github.io/cloud-provider-openstack',
-    chartName: 'openstack-cinder-csi',
-    version: '2.37.1',
+    repoURL: VERSIONS.addonPresets['openstack-csi'].source.registry!,
+    chartName: VERSIONS.addonPresets['openstack-csi'].source.package,
+    version: VERSIONS.addonPresets['openstack-csi'].version,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       'secret:\n  enabled: true\n  create: false\n  name: cloud-config\n  filename: cloud.conf\n',
@@ -77,9 +78,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     provider: 'aws',
     kind: 'ccm',
     displayName: 'AWS Cloud Controller Manager',
-    repoURL: 'https://kubernetes.github.io/cloud-provider-aws',
-    chartName: 'aws-cloud-controller-manager',
-    version: '0.0.12',
+    repoURL: VERSIONS.addonPresets['aws-ccm'].source.registry!,
+    chartName: VERSIONS.addonPresets['aws-ccm'].source.package,
+    version: VERSIONS.addonPresets['aws-ccm'].version,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       CP_SELECTOR,
@@ -94,9 +95,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     provider: 'aws',
     kind: 'csi',
     displayName: 'AWS EBS CSI driver',
-    repoURL: 'https://kubernetes-sigs.github.io/aws-ebs-csi-driver',
-    chartName: 'aws-ebs-csi-driver',
-    version: '2.67.0',
+    repoURL: VERSIONS.addonPresets['aws-csi'].source.registry!,
+    chartName: VERSIONS.addonPresets['aws-csi'].source.package,
+    version: VERSIONS.addonPresets['aws-csi'].version,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       // The controller runs on control plane nodes, whose instance profile may manage volumes.
@@ -116,9 +117,9 @@ export const ADDON_PRESETS: AddonPreset[] = [
     provider: 'any',
     kind: 'reboot',
     displayName: 'kured reboot daemon',
-    repoURL: 'https://kubereboot.github.io/charts',
-    chartName: 'kured',
-    version: '6.1.0',
+    repoURL: VERSIONS.addonPresets['kured'].source.registry!,
+    chartName: VERSIONS.addonPresets['kured'].source.package,
+    version: VERSIONS.addonPresets['kured'].version,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       'configuration:\n  concurrency: 1\n  rebootSentinel: /var/run/reboot-required\n',

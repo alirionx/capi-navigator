@@ -1,5 +1,6 @@
 import { hostname } from 'node:os';
 import { PASSWORD_MIN_LENGTH } from '@capi-navigator/shared';
+import { SHELL_DEFAULT_IMAGE } from '@capi-navigator/shared';
 import { z } from 'zod';
 
 const bool = (defaultValue: 'true' | 'false') =>
@@ -41,7 +42,7 @@ const EnvSchema = z.object({
   /** Section 4, State storage: AuditEvent retention. */
   AUDIT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
   /** Image of the node shell pod (FP-17); e.g. a registry mirror in air-gapped setups. */
-  NODE_SHELL_IMAGE: z.string().min(1).default('alpine:3.22'),
+  NODE_SHELL_IMAGE: z.string().min(1).default(SHELL_DEFAULT_IMAGE),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;

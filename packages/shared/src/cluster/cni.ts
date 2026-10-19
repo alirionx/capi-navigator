@@ -1,6 +1,7 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
 import { CNI_LABEL } from './addons.js';
 import { shortHash } from './util.js';
+import { VERSIONS } from '../versions.generated.js';
 
 /**
  * Calico for distributions without a built-in CNI (kubeadm, FP10-F-04; ADR-0014). The official
@@ -10,10 +11,10 @@ import { shortHash } from './util.js';
  * The manifest is shipped with the backend (assets/calico) and verified by its checksum.
  */
 export const CALICO_MANIFEST = {
-  version: 'v3.33.0',
-  file: 'calico-vxlan-v3.33.0.yaml',
-  /** sha256 of https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/calico-vxlan.yaml */
-  sha256: '202d70b43e38b60ebc60736c96e64e6de683053aab2e89da84ea9d904a9ef24c',
+  version: VERSIONS.cni.calico.version,
+  file: VERSIONS.cni.calico.manifest,
+  /** sha256 of manifests/calico-vxlan.yaml of the Calico release (versions.yaml, cni.calico). */
+  sha256: VERSIONS.cni.calico.sha256,
 };
 
 /**
