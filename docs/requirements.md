@@ -336,7 +336,7 @@ Kubernetes distributions are likewise interchangeable through an analogous `Boot
 
 ## 6. Feature packs
 
-Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
+Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19, FP-23) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
 
 | Pack | Content | Depends on |
 | --- | --- | --- |
@@ -352,6 +352,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-9 | k0s as second Kubernetes distribution | FP-7 |
 | FP-10 | Vanilla Kubernetes with kubeadm on stock images (experimental) | FP-8 |
 | FP-19 | Role management: custom roles and scoped role assignments (optional) | FP-1 |
+| FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
 
 ### FP-0: Project scaffold
 
@@ -755,6 +756,28 @@ Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes
 
 Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kind cluster (users from before FP-19 keep their access; screenshots of the roles page, the assignment editor and the wizard with limited namespaces). The endpoint matrix test was checked to fail on a deliberate change. Open for later: filtering what users can read by their scope, and group claims of FP-14 (FP19-F-12).
 
+### FP-23: OpenAPI description and Swagger UI (optional)
+
+**Goal:** a machine-readable OpenAPI 3.1 description of the REST API and a Swagger UI in the app, so users and scripts can explore and try the API, generated from the same Zod schemas that validate the requests (ADR-0016).
+
+- **FP23-F-01** MUST generate an OpenAPI 3.1 document from the backend's controllers at runtime: paths, methods and parameters from the NestJS route metadata, request bodies and query parameters from the Zod schemas of the validation pipes (no second definition, hard rule 2), JSON Schema output of Zod 4, no new generator dependency.
+- **FP23-F-02** MUST describe every operation with a short summary, a tag per domain, the required permission and its scope (FP-19), and the response: a named Zod schema from `packages/shared` for JSON responses, `text/event-stream` for live updates, no body for 204; errors use the common error body.
+- **FP23-F-03** MUST describe the authentication: session cookie plus the CSRF header `x-capi-navigator: 1` for mutating requests; API tokens are added with FP-22.
+- **FP23-F-04** MUST serve the document at `GET /api/openapi.json` and Swagger UI at `GET /api/docs`, both without sign-in. Swagger UI is shipped with the app (`swagger-ui-dist`, no CDN, no inline scripts, unchanged Content Security Policy). "Try it out" uses the browser's session and adds the CSRF header to mutating requests; permissions, preview and audit apply unchanged.
+- **FP23-F-05** MUST commit the generated document as `docs/api/openapi.json` (`pnpm openapi:generate`); a test fails when it is outdated or when an endpoint lacks summary, permission or (for JSON responses) response schema.
+- **FP23-F-06** MUST be switchable off with the Helm value `apiDocs.enabled` (environment variable `API_DOCS_ENABLED`, default on); when off, both paths answer 404.
+- **FP23-F-07** SHOULD link the API documentation from the user menu of the app.
+
+**Acceptance criteria**
+
+- [ ] `/api/openapi.json` is a valid OpenAPI 3.1 document covering every endpoint; a test fails for an endpoint without summary, permission or response schema.
+- [ ] For a sample endpoint, a test shows that the documented request schema is the one the validation uses.
+- [ ] `docs/api/openapi.json` is committed and checked to be current.
+- [ ] `/api/docs` shows Swagger UI without external sources; "Try it out" works with the session for reading and mutating requests, and missing permissions still answer 403.
+- [ ] Every operation shows its required permission.
+- [ ] With `apiDocs.enabled=false` both paths answer 404.
+- [ ] A Playwright test opens Swagger UI and runs `GET /api/auth/me` with "Try it out".
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -823,10 +846,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - Sent as `Authorization: Bearer <token>`. Only a hash (e.g. SHA-256 of a long random value) is stored in a Secret of the home cluster; the token is shown once on creation. A prefix (e.g. `capin_`) makes leaked tokens detectable by secret scanners.
   - Bearer requests need no CSRF header (no cookie involved) and are refused on the node shell WebSocket and the login endpoints. Revoking a token takes effect on the next request; the last use is recorded (timestamp, not per request in the audit log, only mutating actions).
   - UI: own tokens under the user menu, all tokens for `users.manage`. Every creation, use for a mutating action and revocation is an `AuditEvent` with the token name as actor detail.
-- **FP-23: OpenAPI description and Swagger UI** (optional). Ideas:
-  - Generate an OpenAPI 3.1 document from the existing Zod schemas in `packages/shared` (request and response bodies, Zod 4 JSON Schema output) plus a route table of the NestJS controllers, so the API description cannot drift from the validation (hard rule 2); a test fails when an endpoint has no description.
-  - Serve it at `/api/openapi.json` and Swagger UI at `/api/docs` for signed-in users; requests from Swagger UI use the session cookie and the CSRF header (and API tokens once FP-22 exists). Each operation names its required permission (FP-19).
-  - Dependencies to check before starting (lean stack): `@nestjs/swagger` (decorator-based, would duplicate the Zod schemas) versus a small generator from Zod plus `swagger-ui-dist` as static files.
+- **FP-23: OpenAPI description and Swagger UI**: specified in section 6.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
