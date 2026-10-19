@@ -336,7 +336,7 @@ Kubernetes distributions are likewise interchangeable through an analogous `Boot
 
 ## 6. Feature packs
 
-Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19, FP-22, FP-23) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
+Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-20, FP-22, FP-23) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
 
 | Pack | Content | Depends on |
 | --- | --- | --- |
@@ -352,6 +352,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-9 | k0s as second Kubernetes distribution | FP-7 |
 | FP-10 | Vanilla Kubernetes with kubeadm on stock images (experimental) | FP-8 |
 | FP-19 | Role management: custom roles and scoped role assignments (optional) | FP-1 |
+| FP-20 | Version maintenance: versions.yaml and update report (optional) | FP-10 |
 | FP-22 | API tokens for technical users (optional) | FP-19, FP-23 |
 | FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
 
@@ -757,6 +758,28 @@ Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes
 
 Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kind cluster (users from before FP-19 keep their access; screenshots of the roles page, the assignment editor and the wizard with limited namespaces). The endpoint matrix test was checked to fail on a deliberate change. Open for later: filtering what users can read by their scope, and group claims of FP-14 (FP19-F-12).
 
+### FP-20: Version maintenance (optional)
+
+**Goal:** every version the app pins lives in one human-readable file, and a report on demand shows which newer versions exist, so the maintainers can update deliberately. No bot opens pull requests: the app has no team that reviews updates daily, and blind provider updates are risky (ADR-0018).
+
+- **FP20-F-01** MUST keep all pinned versions of the app in `versions.yaml` at the repository root: CAPI providers, cert-manager, CAPI Operator, ORC per CAPO minor, the Kubernetes versions per distribution, the charts of the add-on presets, containerd and runc, the Calico manifest (version and SHA-256), and the node shell image. Each entry names its source (GitHub releases, Helm repository, container registry) and may carry a note (verified on, coupled with).
+- **FP20-F-02** MUST validate `versions.yaml` with a Zod schema and turn it into a typed TypeScript module in `packages/shared` at build time (`pnpm versions:generate`); the app reads no file at runtime, so an app version stays reproducible. A test fails when the generated module is outdated.
+- **FP20-F-03** MUST remove every other copy of these versions from the code, scripts and Helm values; the generated module is their only source. The generated manifests stay byte-identical (existing snapshot tests unchanged).
+- **FP20-F-04** MUST check coupled versions with tests: the CAPI core and kubeadm providers share one version, the RKE2 bootstrap and control plane providers share one, the k0smotron providers share one, ORC exists for the CAPO minor version, and every distribution has exactly one default Kubernetes version.
+- **FP20-F-05** MUST provide `pnpm versions:report`: Renovate in a pinned container image, `--platform=local`, read-only on the repository, finds newer versions for `versions.yaml` (custom manager in `renovate.json`) and for the npm, Docker and GitHub Actions dependencies. The script writes `docs/versions-report.md` with the date and two sections, "App versions" (from `versions.yaml`, grouped) and "Development dependencies", each with current version, newest version and update type (patch, minor, major). Run by hand and committed; no scheduled job, no pull requests.
+- **FP20-F-06** MUST use the local GitHub CLI login (`gh auth token`) for GitHub release lookups only for the duration of the run, never store it, and note sources that could not be checked without it in the report.
+- **FP20-F-07** MUST turn the kubeadm install script into a template file (`kubeadm-install.sh.tmpl`) with placeholders, turned into a TypeScript module at build time and checked by `shellcheck` in CI; the transformation stays pure and the snapshots unchanged.
+- **FP20-F-08** MUST document the procedure in `docs/maintenance.md` (when to run the report, how to update a version, what to verify: tests and snapshots for every update; for minor updates of CAPI, providers, CCM and CSI additionally a dry run on kind and a short live test) and link it from the README.
+
+**Acceptance criteria**
+
+- [ ] `versions.yaml` holds every pinned version; searching the code, scripts and Helm values finds no second copy.
+- [ ] Changing a version in `versions.yaml` and running `pnpm versions:generate` changes the app; the tests detect an outdated generated module and broken couplings.
+- [ ] All snapshot tests pass unchanged after the move.
+- [ ] `pnpm versions:report` writes `docs/versions-report.md` with app versions and development dependencies, without changing anything else in the repository.
+- [ ] The kubeadm install script is a template file and passes `shellcheck` in CI.
+- [ ] `docs/maintenance.md` exists and the README links to it.
+
 ### FP-22: API tokens for technical users (optional)
 
 **Goal:** CI pipelines, GitOps tools and scripts call the REST API without a browser session. Admins create technical users ("API only") with role assignments (FP-19) and generate tokens for them in the user management (ADR-0017). Tokens for human users may follow later.
@@ -863,12 +886,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - Stages: (a) workload clusters, (b) management side, (c) custom CA for TLS interception. Fully air-gapped operation (registry mirror, `airGapped` installs, FP10-F-09) is a separate topic.
   - Tests: snapshot tests per flavor with and without proxy; integration test with a TLS-intercepting proxy (Squid with SSL bump) and a network without direct internet access.
 - **FP-19: Role management**: specified in section 6 (custom roles and assignments limited to connections and namespaces). Possible later: filtering what users can read by their scope.
-- **FP-20: Version maintenance** (optional, scope to be refined before it starts). About 30 versions are pinned in the code (provider catalog incl. ORC, Kubernetes version catalog, add-on preset charts, kubeadm container runtime, Calico manifest, node shell image) plus the app's own npm dependencies. Ideas:
-  - A central, human-readable `versions.yaml` as the app's bill of materials: every pinned version with its source (Helm repository, GitHub releases, container registry), checksums of shipped artifacts (e.g. the Calico manifest) and "verified on / against" notes. It is validated by a Zod schema at build time and turned into a typed TypeScript module in `packages/shared` (no file reads at runtime; an app version stays reproducible). It holds versions and origins only; behaviour (values templates, install script, network rules) stays in code under snapshot tests. Coupled versions are grouped (CAPO and ORC, CAPI contract and providers, Kubernetes versions and `verifiedWithProvider`, containerd and Kubernetes) and checked by tests. Large artifacts stay separate files referenced by version and SHA-256. Runtime overrides by operators (mirrors, node shell image, preset overrides) stay separate (Helm values, ConfigMap).
-  - Renovate keeps them current: standard managers for npm and the Helm chart, one manager for `versions.yaml`; grouped pull requests per coupled group, checked by lint, typecheck, unit and snapshot tests. Running Renovate (GitHub App or GitHub Actions) is decided when FP-20 starts.
-  - Node scripts as real files: the kubeadm install script (today a TypeScript template string in `packages/shared/src/cluster/kubeadm.ts`) becomes `kubeadm-install.sh.tmpl` with placeholders, turned into a TypeScript module at build time like `versions.yaml`; checked by `shellcheck` in CI, no double escaping. The transformation stays pure and the snapshots unchanged.
-  - In-app hints for operators of older app versions: "newer chart version available" for presets and "newer release available" for providers, like the newer image hint of FP7-F-12.
-  - `docs/maintenance.md`: who approves updates, cadence, and what is verified before merging (patch updates by CI; minor updates of CAPI, providers, CCM/CSI additionally with a dry run on kind and a short live test, as the k0smotron findings of FP-9 showed).
+- **FP-20: Version maintenance**: specified in section 6 (`versions.yaml` and an update report on demand). Possible later: Renovate pull requests from a scheduled workflow, and in-app hints for newer preset charts and provider releases.
 - **FP-21: CNI selection** (optional, low priority). Calico with VXLAN is the default for all distributions (RKE2 and k0s built in, kubeadm via a preset, FP-10). Later the wizard could offer a choice (e.g. Cilium or Flannel) per cluster, where each distribution supports it; the flavor plugins would then declare the CNIs they support and the node traffic each one needs (ADR-0012).
 - **FP-22: API tokens**: specified in section 6 for technical users; tokens for human users, scoped tokens and Kubernetes ServiceAccount tokens (TokenReview) may follow.
 - **FP-23: OpenAPI description and Swagger UI**: specified in section 6.

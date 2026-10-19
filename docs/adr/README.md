@@ -21,3 +21,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0015](0015-permissions-and-scoped-role-assignments.md)     | Permissions and scoped role assignments                                          | accepted |
 | [0016](0016-openapi-from-zod-and-route-metadata.md)         | OpenAPI generated from Zod schemas and route metadata                            | accepted |
 | [0017](0017-api-tokens-for-technical-users.md)              | API tokens for technical users                                                   | accepted |
+| [0018](0018-versions-yaml-and-update-report.md)             | versions.yaml and an update report instead of update bots                        | accepted |
