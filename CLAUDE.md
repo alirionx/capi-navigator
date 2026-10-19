@@ -40,7 +40,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-9 | k0s as second Kubernetes distribution | done (control plane image rebuild blocked upstream, ADR-0013) |
 | FP-10 | kubeadm on stock images (experimental) | done |
 | FP-19 | Role management: custom roles, scoped role assignments (optional) | done |
-| FP-23 | OpenAPI description and Swagger UI (optional) | in progress |
+| FP-23 | OpenAPI description and Swagger UI (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 
@@ -117,6 +117,7 @@ pnpm test:int         # Vitest integration tests against the kind cluster; opt-i
 pnpm test:e2e         # Playwright
 pnpm kind:up          # local kind cluster as home + management cluster
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
+pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
 pnpm crds:install     # install the app's CRDs into the current cluster
 ```
 
@@ -126,6 +127,7 @@ The backend uses `KUBECONFIG` for the home cluster in local development.
 
 - Code, comments, commit messages, UI strings and docs are in **English**. UI texts go through vue-i18n; the MVP ships English only (no German), further languages may follow later.
 - Requirement IDs (e.g. `FP5-F-09`, `NF-13`, `POS-02`) go into commit messages, test names and code comments where a piece of code implements a specific requirement.
+- Every endpoint carries `@Api({ summary, response })` (FP-23); run `pnpm openapi:generate` after API changes.
 - Conventional commits: `feat(fp5): generate RKE2ControlPlane from cluster spec (FP5-F-01)`.
 - One NestJS module per domain, one Pinia store per domain.
 - Every form field has short help text including its default value, and in learn mode shows which CAPI resource and field it maps to (POS-04).

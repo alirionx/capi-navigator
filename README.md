@@ -66,6 +66,8 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Kubeconfig**: view and download the admin kubeconfig of a workload cluster (audited).
 - **Deletion** with cleanup of load balancers and volumes inside the cluster first, so nothing is
   left in the cloud.
+- **REST API** described as OpenAPI 3.1 and generated from the same Zod schemas that validate
+  requests; Swagger UI in the app to explore and try it.
 - **Users and roles**: built-in roles viewer, operator and admin plus custom roles from 14
   permissions; role assignments can be limited to management cluster connections and namespaces
   (e.g. operator only in `team-a`). Enforced in the backend; every change is written
@@ -242,6 +244,9 @@ service:
 7. **Users and roles**: create users and give them role assignments, everywhere or limited to
    connections and namespaces (e.g. operator in `team-a`); custom roles are combined from 14
    permissions on the **Roles** page. Every user can read everything; limits apply to actions.
+8. **API**: the REST API is described as OpenAPI 3.1 at `/api/openapi.json` and can be tried in
+   Swagger UI at `/api/docs` (user menu → API documentation), with the session of the browser.
+   The description is also committed as [docs/api/openapi.json](docs/api/openapi.json).
 
 ## Where configuration lives
 
@@ -260,21 +265,22 @@ stored in the home cluster (the app has no database).
 
 ### Environment variables
 
-| Variable                                        | Default                 | Description                                                                        |
-| ----------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| `PORT`, `HOST`                                  | `3000`, `0.0.0.0`       | Listen address of the backend                                                      |
-| `NAVIGATOR_NAMESPACE`                           | `capi-navigator-system` | Namespace of the app's own state in the home cluster                               |
-| `STATIC_DIR`                                    | –                       | Serve the built frontend from this directory (set in the image)                    |
-| `INITIAL_ADMIN_PASSWORD`                        | –                       | Password of the initial admin; otherwise the Secret `capi-navigator-initial-admin` |
-| `SESSION_TTL_HOURS`                             | `8`                     | Absolute session lifetime                                                          |
-| `COOKIE_SECURE`                                 | `true`                  | Secure flag of the session cookie                                                  |
-| `TRUST_PROXY`                                   | `loopback`              | Express trust proxy setting, needed behind an ingress                              |
-| `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW_MINUTES` | `10`, `15`              | Failed logins per client and user within the window                                |
-| `AUDIT_RETENTION_DAYS`                          | `90`                    | Retention of audit events                                                          |
-| `NODE_SHELL_IMAGE`                              | `alpine:3.22`           | Image of the node shell pod, e.g. a registry mirror                                |
-| `LOG_LEVEL`, `LOG_JSON`                         | `log`, `true`           | Log level; JSON logs by default                                                    |
-| `POD_NAME`                                      | host name               | Identity of the replica for leader election                                        |
-| `KUBECONFIG`                                    | in-cluster              | Access to the home cluster in local development                                    |
+| Variable                                        | Default                 | Description                                                                                         |
+| ----------------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `PORT`, `HOST`                                  | `3000`, `0.0.0.0`       | Listen address of the backend                                                                       |
+| `NAVIGATOR_NAMESPACE`                           | `capi-navigator-system` | Namespace of the app's own state in the home cluster                                                |
+| `STATIC_DIR`                                    | –                       | Serve the built frontend from this directory (set in the image)                                     |
+| `INITIAL_ADMIN_PASSWORD`                        | –                       | Password of the initial admin; otherwise the Secret `capi-navigator-initial-admin`                  |
+| `SESSION_TTL_HOURS`                             | `8`                     | Absolute session lifetime                                                                           |
+| `COOKIE_SECURE`                                 | `true`                  | Secure flag of the session cookie                                                                   |
+| `TRUST_PROXY`                                   | `loopback`              | Express trust proxy setting, needed behind an ingress                                               |
+| `API_DOCS_ENABLED`                              | `true`                  | Serve `/api/openapi.json` and Swagger UI at `/api/docs` (both public; Helm value `apiDocs.enabled`) |
+| `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW_MINUTES` | `10`, `15`              | Failed logins per client and user within the window                                                 |
+| `AUDIT_RETENTION_DAYS`                          | `90`                    | Retention of audit events                                                                           |
+| `NODE_SHELL_IMAGE`                              | `alpine:3.22`           | Image of the node shell pod, e.g. a registry mirror                                                 |
+| `LOG_LEVEL`, `LOG_JSON`                         | `log`, `true`           | Log level; JSON logs by default                                                                     |
+| `POD_NAME`                                      | host name               | Identity of the replica for leader election                                                         |
+| `KUBECONFIG`                                    | in-cluster              | Access to the home cluster in local development                                                     |
 
 ## Technology
 
@@ -306,6 +312,7 @@ stored in the home cluster (the app has no database).
 | End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                            |
 | kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`          |
 | Regenerate / install the app's CRDs from the Zod schemas                                                                              | `pnpm crds:generate` / `pnpm crds:install` |
+| Regenerate the committed OpenAPI document from the routes and Zod schemas                                                             | `pnpm openapi:generate`                    |
 | Container image                                                                                                                       | `docker build -t capi-navigator .`         |
 
 ### Repository layout

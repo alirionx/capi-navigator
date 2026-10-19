@@ -4,6 +4,8 @@ import { interval, map, merge, type Observable } from 'rxjs';
 import { Requires } from '../auth/decorators.js';
 import { ClustersModule } from '../clusters/clusters.module.js';
 import { DashboardService } from './dashboard.service.js';
+import { Api, liveEvents } from '../openapi/api.decorator.js';
+import { DashboardSchema } from '@capi-navigator/shared';
 
 const HEARTBEAT_MS = 25_000;
 
@@ -13,6 +15,12 @@ export class DashboardController {
   constructor(private readonly dashboards: DashboardService) {}
 
   @Requires('view')
+  @Api({
+    summary: 'Read-only dashboard of a workload cluster: nodes, workloads, services, events',
+    description:
+      'Read with the cluster kubeconfig; Secrets and ConfigMaps are never read (ADR-0009).',
+    response: DashboardSchema,
+  })
   @Get()
   get(
     @Param('connection') connection: string,
@@ -23,6 +31,10 @@ export class DashboardController {
   }
 
   @Requires('view')
+  @Api({
+    summary: 'Dashboard refreshed every 15 seconds while open',
+    response: { events: liveEvents(DashboardSchema) },
+  })
   @Sse('events')
   stream(
     @Param('connection') connection: string,

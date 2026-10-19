@@ -4,6 +4,7 @@ import {
   ManifestPreviewSchema,
   OperatorStateSchema,
   ProviderUsageSchema,
+  ProviderVariablesSchema,
   ReleaseListSchema,
   type InstalledProvider,
   type ManifestPreview,
@@ -120,13 +121,8 @@ export const useOperatorStore = defineStore('operator', () => {
     api('GET', `${providerPath(connection.value!, p)}/usage`, ProviderUsageSchema);
 
   const variableNames = async (p: InstalledProvider): Promise<string[]> =>
-    (
-      await api(
-        'GET',
-        `${providerPath(connection.value!, p)}/variables`,
-        z.object({ names: z.array(z.string()) }),
-      )
-    ).names;
+    (await api('GET', `${providerPath(connection.value!, p)}/variables`, ProviderVariablesSchema))
+      .names;
 
   const remove = (p: InstalledProvider, force: boolean): Promise<void> =>
     apiVoid('DELETE', `${providerPath(connection.value!, p)}${force ? '?force=true' : ''}`);

@@ -1,5 +1,10 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import {
+  ChartSummarySchema,
+  ChartValuesSchema,
+  ChartVersionSchema,
+  HelmRepositorySchema,
+  HelmRepositoryTestResultSchema,
   CreateHelmRepositoryRequestSchema,
   UpdateHelmRepositoryRequestSchema,
   type ChartSummary,
@@ -14,6 +19,7 @@ import { z } from 'zod';
 import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { HelmRepositoriesService } from './helm-repositories.service.js';
+import { Api } from '../openapi/api.decorator.js';
 
 const AUDIT = { targetKind: 'HelmRepository', targetParam: 'name' };
 export const ChartQuerySchema = z.object({ chart: z.string().min(1).max(253) });
@@ -30,12 +36,21 @@ export class HelmRepositoriesController {
   constructor(private readonly repos: HelmRepositoriesService) {}
 
   @Requires('view')
+  @Api({
+    summary: 'List Helm repositories (never credentials)',
+    response: z.array(HelmRepositorySchema),
+  })
   @Get()
   list(): HelmRepository[] {
     return this.repos.list();
   }
 
   @Requires('helmRepositories.manage')
+  @Api({
+    summary: 'Add a Helm repository (HTTP or OCI)',
+    description: 'Credentials and CA certificate are stored in a Secret.',
+    response: HelmRepositorySchema,
+  })
   @Post()
   @Audit({ action: 'helm-repository.create', ...AUDIT })
   create(
@@ -46,6 +61,10 @@ export class HelmRepositoriesController {
 
   /** Connection test from the form before saving; changes nothing. */
   @Requires('helmRepositories.manage')
+  @Api({
+    summary: 'Test repository settings before saving',
+    response: HelmRepositoryTestResultSchema,
+  })
   @Post('test')
   @HttpCode(200)
   @Audit({ action: 'helm-repository.test-draft', skip: true })
@@ -56,12 +75,14 @@ export class HelmRepositoriesController {
   }
 
   @Requires('view')
+  @Api({ summary: 'Get a Helm repository', response: HelmRepositorySchema })
   @Get(':name')
   get(@Param('name') name: string): HelmRepository {
     return this.repos.get(name);
   }
 
   @Requires('helmRepositories.manage')
+  @Api({ summary: 'Change a Helm repository', response: HelmRepositorySchema })
   @Patch(':name')
   @Audit({ action: 'helm-repository.update', ...AUDIT })
   update(
@@ -73,6 +94,11 @@ export class HelmRepositoriesController {
   }
 
   @Requires('helmRepositories.manage')
+  @Api({
+    summary: 'Remove a Helm repository',
+    description: 'Refused while add-ons use it.',
+    response: 'empty',
+  })
   @Delete(':name')
   @HttpCode(204)
   @Audit({ action: 'helm-repository.delete', ...AUDIT })
@@ -81,6 +107,7 @@ export class HelmRepositoriesController {
   }
 
   @Requires('helmRepositories.manage')
+  @Api({ summary: 'Test a stored Helm repository', response: HelmRepositoryTestResultSchema })
   @Post(':name/test')
   @HttpCode(200)
   @Audit({ action: 'helm-repository.test', ...AUDIT })
@@ -89,12 +116,18 @@ export class HelmRepositoriesController {
   }
 
   @Requires('addons.manage')
+  @Api({
+    summary: 'Charts of an HTTP repository',
+    description: 'OCI registries cannot list charts; enter the chart name.',
+    response: z.array(ChartSummarySchema),
+  })
   @Get(':name/charts')
   charts(@Param('name') name: string): Promise<ChartSummary[]> {
     return this.repos.charts(name);
   }
 
   @Requires('addons.manage')
+  @Api({ summary: 'Versions of a chart', response: z.array(ChartVersionSchema) })
   @Get(':name/versions')
   versions(
     @Param('name') name: string,
@@ -104,6 +137,7 @@ export class HelmRepositoriesController {
   }
 
   @Requires('addons.manage')
+  @Api({ summary: 'Default values.yaml of a chart version', response: ChartValuesSchema })
   @Get(':name/values')
   values(
     @Param('name') name: string,

@@ -1,5 +1,7 @@
 import { Controller, Get, Module, Param, Query, Sse, type MessageEvent } from '@nestjs/common';
 import {
+  ClusterResourceListSchema,
+  ResourceYamlSchema,
   ResourceRefSchema,
   type ClusterResourceList,
   type ResourceRef,
@@ -12,6 +14,7 @@ import { ClustersModule } from '../clusters/clusters.module.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ConnectionsModule } from '../connections/connections.module.js';
 import { ResourcesService } from './resources.service.js';
+import { Api, liveEvents } from '../openapi/api.decorator.js';
 
 const HEARTBEAT_MS = 25_000;
 
@@ -49,6 +52,7 @@ export class ResourcesController {
   constructor(private readonly resources: ResourcesService) {}
 
   @Requires('view')
+  @Api({ summary: 'Live YAML of one resource (Secrets masked)', response: ResourceYamlSchema })
   @Get('resources/yaml')
   yaml(
     @Param('connection') connection: string,
@@ -59,6 +63,10 @@ export class ResourcesController {
 
   /** FP7-F-02: live via watch on the object. */
   @Requires('view')
+  @Api({
+    summary: 'Live updates of the YAML of one resource',
+    response: { events: liveEvents(ResourceYamlSchema) },
+  })
   @Sse('resources/yaml/events')
   stream(
     @Param('connection') connection: string,
@@ -74,6 +82,7 @@ export class ResourcesController {
   }
 
   @Requires('view')
+  @Api({ summary: 'Resource tree of a cluster', response: ClusterResourceListSchema })
   @Get('clusters/:namespace/:name/resources')
   clusterResources(
     @Param('connection') connection: string,

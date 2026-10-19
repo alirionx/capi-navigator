@@ -127,3 +127,7 @@ export const ProviderUsageSchema = z.object({
   clusters: z.array(z.object({ name: z.string(), namespace: z.string() })),
 });
 export type ProviderUsage = z.infer<typeof ProviderUsageSchema>;
+
+/** Names of the variables a provider reads from its configuration Secret (values are never returned). */
+export const ProviderVariablesSchema = z.object({ names: z.array(z.string()) });
+export type ProviderVariables = z.infer<typeof ProviderVariablesSchema>;

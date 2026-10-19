@@ -36,6 +36,8 @@ spec:
               value: {{ .Values.audit.retentionDays | quote }}
             - name: NODE_SHELL_IMAGE
               value: {{ .Values.nodeShell.image | quote }}
+            - name: API_DOCS_ENABLED
+              value: {{ .Values.apiDocs.enabled | quote }}
             - name: COOKIE_SECURE
               value: {{ .Values.auth.cookieSecure | quote }}
             {{- $trustProxy := .Values.trustProxy }}

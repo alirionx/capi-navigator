@@ -17,3 +17,7 @@ export const HealthResponseSchema = z.object({
   homeCluster: HomeClusterStatusSchema,
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+
+/** Answer of the liveness and readiness probes (/healthz, /readyz). */
+export const ProbeStatusSchema = z.object({ status: z.literal('ok') });
+export type ProbeStatus = z.infer<typeof ProbeStatusSchema>;

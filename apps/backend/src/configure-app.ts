@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Logger } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import express from 'express';
@@ -15,7 +17,27 @@ export function configureApp(app: NestExpressApplication, config: AppConfig): vo
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) =>
     security.use(req, res, next),
   );
+  if (config.API_DOCS_ENABLED) serveApiDocs(app);
   if (config.STATIC_DIR) serveFrontend(app, resolve(config.STATIC_DIR));
+}
+
+/**
+ * Swagger UI under /api/docs (FP23-F-04): our start page and script from assets/swagger-ui, the
+ * Swagger UI files from the swagger-ui-dist package. Public like /api/openapi.json (ADR-0016).
+ */
+function serveApiDocs(app: NestExpressApplication): void {
+  const assets = join(dirname(fileURLToPath(import.meta.url)), '../assets/swagger-ui');
+  const vendor = dirname(createRequire(import.meta.url).resolve('swagger-ui-dist/package.json'));
+  app.use('/api/docs/vendor', express.static(vendor, { index: false }));
+  app.use(
+    '/api/docs',
+    (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      // "/api/docs" without slash: relative URLs in the page need the trailing slash.
+      if (req.originalUrl === '/api/docs') return res.redirect(301, '/api/docs/');
+      next();
+    },
+  );
+  app.use('/api/docs', express.static(assets, { index: 'index.html' }));
 }
 
 /** Single image: the backend serves the built SPA, with fallback to index.html (section 4). */

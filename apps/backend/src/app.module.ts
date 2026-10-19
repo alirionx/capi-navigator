@@ -11,6 +11,7 @@ import { NodeShellModule } from './node-shell/node-shell.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HelmModule } from './helm/helm.module.js';
 import { KubeModule } from './kube/kube.module.js';
+import { OpenApiModule } from './openapi/openapi.module.js';
 import { OperatorModule } from './operator/operator.module.js';
 import { StoreModule } from './store/store.module.js';
 
@@ -30,6 +31,7 @@ import { StoreModule } from './store/store.module.js';
     ResourcesModule,
     HelmModule,
     HealthModule,
+    OpenApiModule,
   ],
 })
 export class AppModule {}

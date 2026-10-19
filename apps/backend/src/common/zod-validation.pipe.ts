@@ -4,7 +4,8 @@ import type { z } from 'zod';
 
 /** Validates request input with the shared Zod schema (single source of truth, hard rule 2). */
 export class ZodValidationPipe<T extends z.ZodType> implements PipeTransform<unknown, z.infer<T>> {
-  constructor(private readonly schema: T) {}
+  /** Also read by the OpenAPI generator (FP23-F-01). */
+  constructor(readonly schema: T) {}
 
   transform(value: unknown): z.infer<T> {
     const result = this.schema.safeParse(value);
