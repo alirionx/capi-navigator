@@ -336,7 +336,7 @@ Kubernetes distributions are likewise interchangeable through an analogous `Boot
 
 ## 6. Feature packs
 
-Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19, FP-23) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
+Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build on each other, plus optional packs (FP-17 to FP-19, FP-22, FP-23) specified below; further ideas are in the outlook (section 8). Each pack ends in a working, tested state.
 
 | Pack | Content | Depends on |
 | --- | --- | --- |
@@ -352,6 +352,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-9 | k0s as second Kubernetes distribution | FP-7 |
 | FP-10 | Vanilla Kubernetes with kubeadm on stock images (experimental) | FP-8 |
 | FP-19 | Role management: custom roles and scoped role assignments (optional) | FP-1 |
+| FP-22 | API tokens for technical users (optional) | FP-19, FP-23 |
 | FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
 
 ### FP-0: Project scaffold
@@ -756,6 +757,30 @@ Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes
 
 Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kind cluster (users from before FP-19 keep their access; screenshots of the roles page, the assignment editor and the wizard with limited namespaces). The endpoint matrix test was checked to fail on a deliberate change. Open for later: filtering what users can read by their scope, and group claims of FP-14 (FP19-F-12).
 
+### FP-22: API tokens for technical users (optional)
+
+**Goal:** CI pipelines, GitOps tools and scripts call the REST API without a browser session. Admins create technical users ("API only") with role assignments (FP-19) and generate tokens for them in the user management (ADR-0017). Tokens for human users may follow later.
+
+- **FP22-F-01** MUST let users with `users.manage` create technical users ("API only"): no password, sign-in refused, marked as technical in the user list; their access comes from role assignments like for every user.
+- **FP22-F-02** MUST let users with `users.manage` generate, list and revoke tokens of technical users in the user management; tokens for human users are refused. A token has a name, an optional description, an expiry date (default 90 days, at most 365 days) and shows when it was last used.
+- **FP22-F-03** MUST show a token exactly once after generating it. Tokens start with the prefix `capin_` (detectable by secret scanners) and carry 256 bits of randomness; only their SHA-256 hash is stored.
+- **FP22-F-04** MUST accept `Authorization: Bearer <token>` on the REST API. A token acts with the role assignments of its technical user, resolved on every request (FP19-F-06); an expired or revoked token, or one of a disabled or deleted user, is refused with 401. Requests with a bearer token use no session cookie and need no CSRF header.
+- **FP22-F-05** MUST refuse token requests to endpoints that need `users.manage` (users, roles, tokens), so a token can never extend its own access, and MUST refuse tokens on the node shell WebSocket.
+- **FP22-F-06** MUST slow down repeated failed token attempts per client like failed logins (NF-04).
+- **FP22-F-07** MUST record the token in the audit log of every mutating request (`actor` is the technical user, `token` the token name) and audit generating and revoking tokens.
+- **FP22-F-08** MUST describe the bearer authentication in the OpenAPI document; Swagger UI accepts a token via "Authorize".
+- **FP22-F-09** SHOULD update "last used" at most once per hour per token, so API calls do not cause constant writes to the home cluster.
+
+**Acceptance criteria**
+
+- [ ] An admin creates a technical user with the role "operator in `home/team-a`", generates a token in the UI and sees it once.
+- [ ] With the token, `curl -H "Authorization: Bearer …"` reads clusters and changes a cluster in `team-a` without CSRF header and gets 403 in another namespace and on `/api/users`.
+- [ ] A revoked or expired token, and the token of a disabled technical user, answer 401; the technical user cannot sign in to the UI.
+- [ ] Tokens are stored only as hashes; the token value appears in no API response except the one after generating, and in no log or audit event.
+- [ ] Audit events of token requests name the technical user and the token.
+- [ ] Swagger UI "Authorize" with a token runs a request.
+- [ ] A Playwright test covers creating the technical user and the token in the UI and using the token.
+
 ### FP-23: OpenAPI description and Swagger UI (optional)
 
 **Goal:** a machine-readable OpenAPI 3.1 description of the REST API and a Swagger UI in the app, so users and scripts can explore and try the API, generated from the same Zod schemas that validate the requests (ADR-0016).
@@ -843,11 +868,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - In-app hints for operators of older app versions: "newer chart version available" for presets and "newer release available" for providers, like the newer image hint of FP7-F-12.
   - `docs/maintenance.md`: who approves updates, cadence, and what is verified before merging (patch updates by CI; minor updates of CAPI, providers, CCM/CSI additionally with a dry run on kind and a short live test, as the k0smotron findings of FP-9 showed).
 - **FP-21: CNI selection** (optional, low priority). Calico with VXLAN is the default for all distributions (RKE2 and k0s built in, kubeadm via a preset, FP-10). Later the wizard could offer a choice (e.g. Cilium or Flannel) per cluster, where each distribution supports it; the flavor plugins would then declare the CNIs they support and the node traffic each one needs (ADR-0012).
-- **FP-22: API tokens** (optional, after FP-19), for CI pipelines and GitOps scripts that call the REST API without a browser session. Ideas:
-  - A token belongs to a user or to a dedicated service account user and carries its own role assignments (FP-19 bindings), never more than its creator has; optional expiry date (default e.g. 90 days), name and description.
-  - Sent as `Authorization: Bearer <token>`. Only a hash (e.g. SHA-256 of a long random value) is stored in a Secret of the home cluster; the token is shown once on creation. A prefix (e.g. `capin_`) makes leaked tokens detectable by secret scanners.
-  - Bearer requests need no CSRF header (no cookie involved) and are refused on the node shell WebSocket and the login endpoints. Revoking a token takes effect on the next request; the last use is recorded (timestamp, not per request in the audit log, only mutating actions).
-  - UI: own tokens under the user menu, all tokens for `users.manage`. Every creation, use for a mutating action and revocation is an `AuditEvent` with the token name as actor detail.
+- **FP-22: API tokens**: specified in section 6 for technical users; tokens for human users, scoped tokens and Kubernetes ServiceAccount tokens (TokenReview) may follow.
 - **FP-23: OpenAPI description and Swagger UI**: specified in section 6.
 - Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
 
