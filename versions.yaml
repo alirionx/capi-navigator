@@ -172,11 +172,14 @@ addonPresets:
 kubeadmRuntime:
   containerd:
     # Release binary; the checksum is downloaded and verified on the node at first boot.
-    version: 2.3.7
+    version: 2.4.2
     source:
       datasource: github-releases
       package: containerd/containerd
-    verified: 2026-10-18
+    verified: 2026-10-20
+    note: >-
+      containerd's compatibility table lists 2.4 for Kubernetes 1.37 and 2.3 for 1.36+; the older
+      catalog minors run on it through CRI v1 as well. Its own runc pin is 1.5.2, like ours.
   runc:
     version: 1.5.2
     source:
