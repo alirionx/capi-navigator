@@ -315,6 +315,36 @@ describe('AWS specifics', () => {
       ).toBe('');
     }
   });
+
+  it('never repeats a rule CAPA already creates in the node security group', () => {
+    // CAPA v2.13.1 (securitygroups.go) gives the node group "Kubelet API" tcp/10250 from control
+    // plane and nodes; CNI rules go into both groups, and AWS rejects a permission given twice.
+    for (const flavor of [
+      { flavor: 'rke2', version: 'v1.35.9+rke2r1' },
+      { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+      { flavor: 'kubeadm', version: 'v1.35.9' },
+    ] as const) {
+      const objects = transform(ClusterSpecSchema.parse({ ...aws(), kubernetes: flavor }), ctx);
+      const network = (
+        objects.find((o) => o.kind === 'AWSCluster')!.spec as {
+          network: {
+            cni: { cniIngressRules: { fromPort: number; protocol: string }[] };
+            additionalControlPlaneIngressRules?: { fromPort: number; protocol: string }[];
+          };
+        }
+      ).network;
+      const kubelet = (r: { fromPort: number; protocol: string }) =>
+        r.protocol === 'tcp' && r.fromPort === 10250;
+      expect(network.cni.cniIngressRules.filter(kubelet), flavor.flavor).toEqual([]);
+      if (flavor.flavor !== 'rke2') {
+        // The control plane group has no such rule; the kubelet there stays reachable.
+        expect(
+          (network.additionalControlPlaneIngressRules ?? []).filter(kubelet),
+          flavor.flavor,
+        ).toHaveLength(1);
+      }
+    }
+  });
 });
 
 describe('k0s flavor (FP-9)', () => {

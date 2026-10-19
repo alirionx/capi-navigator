@@ -160,10 +160,14 @@ spec:
           fromPort: 4789
           toPort: 4789
           protocol: udp
-        - description: Kubelet API
-          fromPort: 10250
-          toPort: 10250
-          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: Kubelet API
+        fromPort: 10250
+        toPort: 10250
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
   controlPlaneLoadBalancer:
     loadBalancerType: nlb
     ingressRules:
@@ -918,10 +922,14 @@ spec:
           fromPort: 5473
           toPort: 5473
           protocol: tcp
-        - description: Kubelet API
-          fromPort: 10250
-          toPort: 10250
-          protocol: tcp
+    additionalControlPlaneIngressRules:
+      - description: Kubelet API
+        fromPort: 10250
+        toPort: 10250
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
   controlPlaneLoadBalancer:
     loadBalancerType: nlb
     ingressRules:

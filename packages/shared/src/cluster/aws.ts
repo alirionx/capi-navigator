@@ -19,6 +19,14 @@ const tcp = (port: number, description: string, extra: Record<string, unknown> =
   ...extra,
 });
 
+/**
+ * Rules CAPA v2.13.1 already creates in the node security group (securitygroups.go: "Kubelet API"
+ * from control plane and nodes). CNI rules go into the node and control plane groups, and AWS
+ * rejects a permission given twice, so these only go to the control plane group.
+ */
+const inNodeGroup = (r: { protocol: string; fromPort: number; toPort: number }) =>
+  r.protocol === 'tcp' && r.fromPort === 10250 && r.toPort === 10250;
+
 export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
   provider: 'aws',
   infraClusterKind: 'AWSCluster',
@@ -31,6 +39,13 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     };
     const direct = network.controlPlanePorts.filter((p) => !p.viaLoadBalancer);
     const viaLb = network.controlPlanePorts.filter((p) => p.viaLoadBalancer);
+    const controlPlaneOnly = network.nodeTraffic.filter(inNodeGroup);
+    const controlPlaneRules = [
+      ...direct.map((p) => tcp(p.port, p.description, fromNodes)),
+      ...controlPlaneOnly.map((r) =>
+        tcp(r.fromPort, r.description, { sourceSecurityGroupRoles: ['node', 'controlplane'] }),
+      ),
+    ];
     return {
       apiVersion: AWS_API_VERSION,
       kind: 'AWSCluster',
@@ -49,17 +64,19 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
           },
           // CNI traffic of the distribution between nodes (ADR-0012).
           cni: {
-            cniIngressRules: network.nodeTraffic.map((r) => ({
-              description: r.description,
-              fromPort: r.fromPort,
-              toPort: r.toPort,
-              protocol: r.protocol,
-            })),
+            cniIngressRules: network.nodeTraffic
+              .filter((r) => !inNodeGroup(r))
+              .map((r) => ({
+                description: r.description,
+                fromPort: r.fromPort,
+                toPort: r.toPort,
+                protocol: r.protocol,
+              })),
           },
           // Control plane ports reached directly: CAPA already allows etcd and the API between
           // control plane nodes, and AWS rejects duplicate permissions in one security group.
-          additionalControlPlaneIngressRules: direct.length
-            ? direct.map((p) => tcp(p.port, p.description, fromNodes))
+          additionalControlPlaneIngressRules: controlPlaneRules.length
+            ? controlPlaneRules
             : undefined,
         }),
         // NLB for the API server and the distribution's ports behind it. CAPA copies NLB ingress

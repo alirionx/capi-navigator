@@ -22,7 +22,10 @@ as soon as a second distribution exists.
     node traffic needs no rules because of `allowAllInClusterTraffic`.
   - AWS: ports behind the load balancer become NLB listeners plus ingress rules from the nodes;
     direct ports become `additionalControlPlaneIngressRules`; node traffic becomes
-    `cniIngressRules`.
+    `cniIngressRules`. CAPA puts CNI rules into the node and control plane security groups and
+    already allows the kubelet port (tcp/10250) in the node group; AWS rejects a permission given
+    twice, so the kubelet port goes to `additionalControlPlaneIngressRules` instead (found live
+    on 2026-10-20 with kubeadm on AWS).
 - RKE2 declares 9345 (direct) and its Calico rules; the generated manifests stay byte-identical
   (existing snapshots unchanged). k0s declares 8132 and 9443 (via load balancer), Calico VXLAN
   (UDP 4789) and the kubelet port.
