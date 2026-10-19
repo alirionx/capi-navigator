@@ -65,5 +65,12 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: capi-navigator:ci
           build-args: APP_VERSION=${{ github.sha }}
+      # Files outside dist/ reach the image only through "files" in apps/backend/package.json.
+      - name: Image contains the backend assets (Calico manifest)
+        run: |
+          docker run --rm --entrypoint node capi-navigator:ci -e "
+            await (await import('/app/dist/clusters/cni-manifest.js')).calicoManifest();
+          " --input-type=module
