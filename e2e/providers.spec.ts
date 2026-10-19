@@ -1,17 +1,22 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// FP-3 acceptance through the UI against the local kind cluster (`pnpm kind:up`).
-// Needs an admin account and a connection to kind:
-//   E2E_ADMIN_PASSWORD=... E2E_CONNECTION=home pnpm test:e2e e2e/providers.spec.ts
-// Installs ORC and providers for real and removes them again afterwards.
+// FP-3 acceptance through the UI against a management cluster WITHOUT providers, e.g. a new kind
+// cluster from `pnpm kind:up`. Installs ORC and providers for real and removes all of them
+// afterwards, so it only runs when asked for explicitly:
+//   E2E_PROVIDERS=1 E2E_ADMIN_PASSWORD=... E2E_CONNECTION=home pnpm test:e2e e2e/providers.spec.ts
+// If providers are installed already, the first test fails and the serial mode skips the removal.
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+const enabled = process.env.E2E_PROVIDERS === '1';
 const connection = process.env.E2E_CONNECTION ?? 'home';
 const MIN = 60_000;
 
 test.describe.configure({ mode: 'serial' });
 
 test.describe('providers via the UI (FP-3)', () => {
-  test.skip(!adminPassword, 'set E2E_ADMIN_PASSWORD to run');
+  test.skip(
+    !adminPassword || !enabled,
+    'set E2E_PROVIDERS=1 and E2E_ADMIN_PASSWORD on a cluster without providers',
+  );
   test.setTimeout(30 * MIN);
 
   async function signIn(page: Page): Promise<void> {

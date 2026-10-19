@@ -87,7 +87,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
   intended.
 - **Medium and high risk**: `pnpm test:int` on a fresh kind cluster (installs and upgrades the
   providers), then a short live test on a cloud: create a cluster, check CCM and CSI, delete it.
-- **UI**: `pnpm test:e2e` for frontend dependency updates.
+- **UI**: `pnpm test:e2e` for frontend dependency updates. The provider spec installs and removes
+  all providers; it runs only with `E2E_PROVIDERS=1` on a management cluster without providers.
 
 ## 5. Finish
 
