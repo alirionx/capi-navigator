@@ -118,6 +118,19 @@ async function signOut(): Promise<void> {
       <v-app-bar-nav-icon v-if="!mdAndUp" @click="drawer = !drawer" />
       <v-spacer />
       <ConnectionSelector v-if="!auth.me?.mustChangePassword" />
+      <!-- FP23-F-07: Swagger UI of the REST API in a new tab; on small screens in the user menu. -->
+      <v-btn
+        v-if="mdAndUp && auth.me && !auth.me.mustChangePassword"
+        href="/api/docs/"
+        target="_blank"
+        rel="noopener"
+        variant="text"
+        prepend-icon="mdi-api"
+        :title="t('app.apiDocsHint')"
+        class="ml-2"
+        data-testid="api-docs-button"
+        >{{ t('app.api') }}</v-btn
+      >
       <v-menu v-if="auth.me">
         <template #activator="{ props }">
           <v-btn

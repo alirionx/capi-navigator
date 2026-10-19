@@ -12,6 +12,8 @@ export const en = {
     changePassword: 'Change password',
     signOut: 'Sign out',
     apiDocs: 'API documentation',
+    api: 'API',
+    apiDocsHint: 'REST API documentation (Swagger UI) in a new tab',
   },
   nav: {
     home: 'Home',
