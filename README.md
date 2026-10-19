@@ -294,7 +294,7 @@ stored in the home cluster (the app has no database).
 | `API_DOCS_ENABLED`                              | `true`                  | Serve `/api/openapi.json` and Swagger UI at `/api/docs` (both public; Helm value `apiDocs.enabled`) |
 | `LOGIN_RATE_LIMIT`, `LOGIN_RATE_WINDOW_MINUTES` | `10`, `15`              | Failed logins per client and user within the window                                                 |
 | `AUDIT_RETENTION_DAYS`                          | `90`                    | Retention of audit events                                                                           |
-| `NODE_SHELL_IMAGE`                              | `alpine:3.22`           | Image of the node shell pod, e.g. a registry mirror                                                 |
+| `NODE_SHELL_IMAGE`                              | `alpine:3.24`           | Image of the node shell pod, e.g. a registry mirror                                                 |
 | `LOG_LEVEL`, `LOG_JSON`                         | `log`, `true`           | Log level; JSON logs by default                                                                     |
 | `POD_NAME`                                      | host name               | Identity of the replica for leader election                                                         |
 | `KUBECONFIG`                                    | in-cluster              | Access to the home cluster in local development                                                     |

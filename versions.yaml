@@ -201,9 +201,9 @@ cni:
 images:
   node-shell:
     # Privileged pod for the node shell (FP-17); NODE_SHELL_IMAGE / Helm nodeShell.image override it.
-    version: '3.22'
+    version: '3.24'
     source:
       datasource: docker
       package: alpine
       registry: docker.io
-    verified: 2026-10-17
+    verified: 2026-10-20

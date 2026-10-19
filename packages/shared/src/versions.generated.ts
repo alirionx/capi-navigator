@@ -262,13 +262,13 @@ export const VERSIONS: VersionsFile = {
   },
   "images": {
     "node-shell": {
-      "version": "3.22",
+      "version": "3.24",
       "source": {
         "datasource": "docker",
         "package": "alpine",
         "registry": "docker.io"
       },
-      "verified": "2026-10-17"
+      "verified": "2026-10-20"
     }
   }
 };
