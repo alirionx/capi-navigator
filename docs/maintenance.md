@@ -77,6 +77,11 @@ Couplings to keep in mind (the tests check most of them):
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 ```
 
+- **Generated files**: `pnpm test` also checks that every generated file is current and names the
+  command to run if not: `pnpm versions:generate` (`versions.generated.ts`, script variables),
+  `pnpm templates:generate` (node script templates), `pnpm openapi:generate`
+  (`docs/api/openapi.json`) and `pnpm crds:generate` (CRDs, access manifests). No extra check is
+  needed.
 - **Snapshot tests**: if generated manifests change, review the diff line by line. Update the
   snapshots (`pnpm --filter @capi-navigator/shared exec vitest run -u`) only when every change is
   intended.
