@@ -67,6 +67,11 @@ auth:
 audit:
   retentionDays: 90
 
+# API documentation (FP-23): OpenAPI document at /api/openapi.json and Swagger UI at /api/docs,
+# both reachable without sign-in (they describe the API, calling it still needs a session).
+apiDocs:
+  enabled: true
+
 # Node shell (FP-17): image of the privileged pod; use a mirror in air-gapped setups.
 nodeShell:
   image: alpine:3.22

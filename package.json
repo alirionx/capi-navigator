@@ -19,6 +19,7 @@
     "kind:up": "bash scripts/kind-up.sh",
     "kind:down": "bash scripts/kind-down.sh",
     "crds:install": "bash scripts/crds-install.sh",
+    "openapi:generate": "pnpm --filter @capi-navigator/backend build && node apps/backend/dist/openapi/generate-cli.js",
     "crds:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/crds/generate-cli.js"
   },
   "devDependencies": {

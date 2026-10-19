@@ -141,6 +141,15 @@ async function signOut(): Promise<void> {
             :title="t('app.changePassword')"
             :to="{ name: 'change-password' }"
           />
+          <!-- FP23-F-07: Swagger UI of the REST API, served by the backend. -->
+          <v-list-item
+            prepend-icon="mdi-api"
+            :title="t('app.apiDocs')"
+            href="/api/docs/"
+            target="_blank"
+            rel="noopener"
+            data-testid="api-docs"
+          />
           <v-list-item
             prepend-icon="mdi-logout"
             :title="t('app.signOut')"

@@ -770,13 +770,15 @@ Verified on 2026-10-18 with unit, HTTP and Playwright tests and on the local kin
 
 **Acceptance criteria**
 
-- [ ] `/api/openapi.json` is a valid OpenAPI 3.1 document covering every endpoint; a test fails for an endpoint without summary, permission or response schema.
-- [ ] For a sample endpoint, a test shows that the documented request schema is the one the validation uses.
-- [ ] `docs/api/openapi.json` is committed and checked to be current.
-- [ ] `/api/docs` shows Swagger UI without external sources; "Try it out" works with the session for reading and mutating requests, and missing permissions still answer 403.
-- [ ] Every operation shows its required permission.
-- [ ] With `apiDocs.enabled=false` both paths answer 404.
-- [ ] A Playwright test opens Swagger UI and runs `GET /api/auth/me` with "Try it out".
+- [x] `/api/openapi.json` is a valid OpenAPI 3.1 document covering every endpoint; a test fails for an endpoint without summary, permission or response schema.
+- [x] For a sample endpoint, a test shows that the documented request schema is the one the validation uses.
+- [x] `docs/api/openapi.json` is committed and checked to be current.
+- [x] `/api/docs` shows Swagger UI without external sources; "Try it out" works with the session for reading and mutating requests, and missing permissions still answer 403.
+- [x] Every operation shows its required permission.
+- [x] With `apiDocs.enabled=false` both paths answer 404.
+- [x] A Playwright test opens Swagger UI and runs `GET /api/auth/me` with "Try it out".
+
+Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and in the built container image (document, Swagger UI, CSP unchanged). The image test also showed that `apps/backend/assets` was missing from the published images (Calico manifest of FP-10); fixed separately. Swagger UI sends the CSRF header from the documented parameter; its start script adds it as a fallback.
 
 ## 7. Non-functional requirements
 

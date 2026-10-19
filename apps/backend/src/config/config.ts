@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   COOKIE_SECURE: bool('true'),
   /** Express "trust proxy" setting, needed behind an ingress for correct client IPs. */
   TRUST_PROXY: z.string().default('loopback'),
+  /** FP23-F-06: serve /api/openapi.json and Swagger UI under /api/docs. */
+  API_DOCS_ENABLED: bool('true'),
   /** NF-04: failed login attempts per client and username within the window. */
   LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(10),
   LOGIN_RATE_WINDOW_MINUTES: z.coerce.number().positive().default(15),

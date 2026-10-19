@@ -242,6 +242,45 @@ the `Cluster`; CAPI cascades to machines and infrastructure. Progress is kept in
 the `Cluster` ([cluster-deletion.service.ts](../apps/backend/src/clusters/cluster-deletion.service.ts),
 [ADR-0006](adr/0006-cluster-deletion-with-cleanup.md)).
 
+### OpenAPI description and Swagger UI
+
+The API description is generated from the code, not written by hand
+([ADR-0016](adr/0016-openapi-from-zod-and-route-metadata.md),
+[openapi.ts](../apps/backend/src/openapi/openapi.ts)). Nothing has to be kept in sync manually:
+
+1. **Find the controllers.** `collectControllers(AppModule)` walks the static `@Module` metadata
+   (`imports`, `controllers`) from the root module. No app instance is needed, so the same code
+   runs in the backend, in tests and in `pnpm openapi:generate`.
+2. **Read each route from its decorators.** For every handler method, NestJS has stored
+   `@Get`/`@Post`/… (method and path), `@HttpCode` (status), `@Sse` (live updates), and our own
+   `@Requires`/`@SignedIn`/`@Public` (access rule). The parameter decorators keep their pipes: a
+   `@Body(new ZodValidationPipe(CreateUserRequestSchema))` tells the generator the request schema,
+   a `@Query(new ZodValidationPipe(…))` the query parameters. These are the very schemas that
+   validate the request, so the description cannot drift from the validation.
+3. **Add what only the author knows.** `@Api({ summary, description, response })` on each
+   endpoint gives a one-line summary and the response: a Zod schema from `packages/shared` for
+   JSON, `liveEvents(schema)` for server-sent events, a content type for downloads, or `'empty'`.
+   A test fails for any endpoint without it.
+4. **Turn Zod into JSON Schema.** Zod 4's `z.toJSONSchema` (draft 2020-12, the dialect of OpenAPI
+   3.1) converts the schemas. Every schema exported from `packages/shared` as `…Schema` is
+   registered under its name, so it becomes a named component (`UserSchema` →
+   `#/components/schemas/User`) and nested shared schemas become `$ref`s. Requests are converted
+   as input (fields with defaults are optional), responses as output; where the two shapes differ,
+   the input gets its own component (`…Input`).
+5. **Assemble the document.** Paths use OpenAPI syntax (`:name` → `{name}`); each operation gets
+   tag (controller), summary, the access rule in words plus `x-permission`, the CSRF header for
+   mutating requests, the response and a common error body. `info.version` is the app version.
+6. **Serve and commit it.** The backend renders the document once per process at
+   `GET /api/openapi.json`. `pnpm openapi:generate` writes the same document to
+   [docs/api/openapi.json](api/openapi.json) (with version `0.0.0-dev`), and a test fails when the
+   committed file differs from what the code produces, so API changes show in pull requests.
+
+Swagger UI under `/api/docs` is a small page of our own
+([assets/swagger-ui](../apps/backend/assets/swagger-ui)) that loads the `swagger-ui-dist` files from
+the same server, so the Content Security Policy stays `script-src 'self'`. "Try it out" sends
+requests from the browser with its session cookie and the CSRF header; permissions, preview and
+audit apply as for the app. Both paths are public and can be switched off (`API_DOCS_ENABLED`).
+
 ### Dashboard, node shell and kubeconfig
 
 These are the only features that touch the workload cluster directly, always with the kubeconfig

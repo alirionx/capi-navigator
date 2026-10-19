@@ -22,7 +22,8 @@ const meta = <T>(key: string, ...targets: object[]): T | undefined =>
 describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
   const routes = await listRoutes();
   // Endpoints added since: the built-in roles get the access stated here.
-  const added: Record<string, Role> = {
+  const added: Record<string, Role | 'public'> = {
+    'GET /api/openapi.json': 'public',
     'GET /api/roles': 'admin',
     'POST /api/roles': 'admin',
     'PATCH /api/roles/:name': 'admin',

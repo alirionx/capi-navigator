@@ -12,6 +12,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import {
+  MeSchema,
   ChangePasswordRequestSchema,
   LoginRequestSchema,
   type ChangePasswordRequest,
@@ -27,6 +28,7 @@ import { LoginRateLimiter } from './login-rate-limiter.js';
 import type { AuthenticatedRequest, Principal } from './principal.js';
 import { SessionService } from './session.service.js';
 import { UsersService } from './users.service.js';
+import { Api } from '../openapi/api.decorator.js';
 
 @Controller('api/auth')
 export class AuthController {
@@ -45,6 +47,11 @@ export class AuthController {
   }
 
   @Public()
+  @Api({
+    summary: 'Sign in with username and password; sets the session cookie',
+    description: 'Rate-limited per client and username (NF-04). Failed attempts are audited.',
+    response: MeSchema,
+  })
   @Post('login')
   @HttpCode(200)
   @Audit({ action: 'auth.login' })
@@ -82,6 +89,7 @@ export class AuthController {
   }
 
   @Public()
+  @Api({ summary: 'Sign out; clears the session cookie', response: 'empty' })
   @Post('logout')
   @HttpCode(204)
   @Audit({ action: 'auth.logout' })
@@ -91,6 +99,7 @@ export class AuthController {
 
   @SignedIn()
   @AllowPendingPasswordChange()
+  @Api({ summary: 'The signed-in user with role assignments and permissions', response: MeSchema })
   @Get('me')
   me(@CurrentUser() principal: Principal): Me {
     return this.users.me(principal);
@@ -98,6 +107,7 @@ export class AuthController {
 
   @SignedIn()
   @AllowPendingPasswordChange()
+  @Api({ summary: 'Change the own password; ends all other sessions', response: MeSchema })
   @Post('change-password')
   @HttpCode(200)
   @Audit({ action: 'auth.change-password' })

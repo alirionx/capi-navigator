@@ -12,6 +12,10 @@ import {
   type MessageEvent,
 } from '@nestjs/common';
 import {
+  AddonDeletePreviewSchema,
+  AddonOverviewSchema,
+  AddonPresetViewSchema,
+  AddonPreviewSchema,
   AddonApplyRequestSchema,
   AddonPresetOverrideSchema,
   AddonSpecSchema,
@@ -29,6 +33,7 @@ import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AddonPresetsService } from './addon-presets.service.js';
 import { AddonsService } from './addons.service.js';
+import { Api, liveEvents } from '../openapi/api.decorator.js';
 
 const HEARTBEAT_MS = 25_000;
 const AUDIT = {
@@ -51,6 +56,10 @@ export class AddonsController {
   constructor(private readonly addons: AddonsService) {}
 
   @Requires('view')
+  @Api({
+    summary: 'Add-ons (HelmChartProxies) with their releases per cluster',
+    response: AddonOverviewSchema,
+  })
   @Get()
   overview(@Param('connection') connection: string): Promise<AddonOverview> {
     return this.addons.overview(connection);
@@ -58,6 +67,10 @@ export class AddonsController {
 
   /** Live via watches on HelmChartProxies, HelmReleaseProxies and Clusters (NF-11). */
   @Requires('view')
+  @Api({
+    summary: 'Live updates of the add-ons',
+    response: { events: liveEvents(AddonOverviewSchema) },
+  })
   @Sse('events')
   stream(@Param('connection') connection: string): Observable<MessageEvent> {
     return merge(
@@ -68,6 +81,10 @@ export class AddonsController {
 
   /** FP8-F-07: clusters matching a selector while the form is edited; changes nothing. */
   @Requires('addons.manage', { namespaceFromBody: 'namespace' })
+  @Api({
+    summary: 'Clusters of a namespace that a label selector matches',
+    response: z.array(z.string()),
+  })
   @Post('matching')
   @HttpCode(200)
   @Audit({ action: 'addon.matching', skip: true })
@@ -80,6 +97,12 @@ export class AddonsController {
   }
 
   @Requires('addons.manage', { namespaceFromBody: 'spec.namespace' })
+  @Api({
+    summary: 'Preview creating or changing an add-on',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: AddonPreviewSchema,
+  })
   @Post('preview')
   @HttpCode(200)
   @Audit({ action: 'addon.preview', skip: true })
@@ -92,6 +115,12 @@ export class AddonsController {
 
   /** Creates or updates the HelmChartProxy after the preview (FP8-F-05, FP8-F-13). */
   @Requires('addons.manage')
+  @Api({
+    summary: 'Create or change an add-on (HelmChartProxy)',
+    description:
+      'Drift must be taken over explicitly. Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: AddonPreviewSchema,
+  })
   @Put(':namespace/:name')
   @Audit({ action: 'addon.apply', ...AUDIT })
   apply(
@@ -108,6 +137,7 @@ export class AddonsController {
   }
 
   @Requires('addons.manage')
+  @Api({ summary: 'What deleting an add-on uninstalls', response: AddonDeletePreviewSchema })
   @Get(':namespace/:name/delete-preview')
   deletePreview(
     @Param('connection') connection: string,
@@ -118,6 +148,7 @@ export class AddonsController {
   }
 
   @Requires('addons.manage')
+  @Api({ summary: 'Delete an add-on; CAAPH uninstalls its releases', response: 'empty' })
   @Delete(':namespace/:name')
   @HttpCode(204)
   @Audit({ action: 'addon.delete', ...AUDIT })
@@ -140,12 +171,22 @@ export class AddonPresetsController {
   constructor(private readonly presets: AddonPresetsService) {}
 
   @Requires('view')
+  @Api({
+    summary: 'CCM, CSI and kured presets with overrides and rollout state',
+    response: z.array(AddonPresetViewSchema),
+  })
   @Get('connections/:connection/addon-presets')
   list(@Param('connection') connection: string): Promise<AddonPresetView[]> {
     return this.presets.list(connection);
   }
 
   @Requires('presets.manage')
+  @Api({
+    summary: 'Override version or values of a preset',
+    description:
+      'Stored in a ConfigMap of the home cluster; existing namespaces change only with a rollout.',
+    response: 'empty',
+  })
   @Put('addon-presets/:id')
   @HttpCode(204)
   @Audit({ action: 'addon-preset.update', targetKind: 'AddonPreset', targetParam: 'id' })
@@ -158,6 +199,12 @@ export class AddonPresetsController {
   }
 
   @Requires('presets.manage')
+  @Api({
+    summary: 'Preview rolling out a preset override',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: AddonPreviewSchema,
+  })
   @Post('connections/:connection/addon-presets/:id/rollout/preview')
   @HttpCode(200)
   @Audit({ action: 'addon-preset.rollout-preview', skip: true })
@@ -169,6 +216,11 @@ export class AddonPresetsController {
   }
 
   @Requires('presets.manage')
+  @Api({
+    summary: 'Roll out a preset override to all namespaces',
+    description: 'Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: AddonPreviewSchema,
+  })
   @Post('connections/:connection/addon-presets/:id/rollout')
   @HttpCode(200)
   @Audit({

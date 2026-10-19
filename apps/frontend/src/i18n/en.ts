@@ -11,6 +11,7 @@ export const en = {
     signedInAs: 'Signed in as {username}',
     changePassword: 'Change password',
     signOut: 'Sign out',
+    apiDocs: 'API documentation',
   },
   nav: {
     home: 'Home',

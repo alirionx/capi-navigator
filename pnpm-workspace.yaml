@@ -3,3 +3,5 @@ packages:
   - packages/*
 allowBuilds:
   '@swc/core': true
+  # Telemetry install script pulled in by swagger-ui-dist (FP-23); never run it.
+  '@scarf/scarf': false

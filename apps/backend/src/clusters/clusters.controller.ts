@@ -13,6 +13,13 @@ import {
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import {
+  ClusterChangePreviewSchema,
+  ClusterPreviewSchema,
+  ClusterSpecSchema,
+  ClusterStatusSchema,
+  ClusterSummarySchema,
+  DeletePreviewSchema,
+  DeletionStatusSchema,
   applySpecChange,
   ChangeRequestSchema,
   BastionRequestSchema,
@@ -33,13 +40,14 @@ import {
 } from '@capi-navigator/shared';
 import type { Response } from 'express';
 import { interval, map, merge, type Observable } from 'rxjs';
-import type { z } from 'zod';
 import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { LiveChannels } from '../kube/live-channels.js';
 import { ClusterDeletionService } from './cluster-deletion.service.js';
 import { ClustersService, listWatchPaths, namespaceWatchPaths } from './clusters.service.js';
+import { Api, liveEvents } from '../openapi/api.decorator.js';
+import { z } from 'zod';
 
 type CreateBody = z.output<typeof ClusterCreateRequestSchema>;
 type ScaleBody = z.output<typeof ScaleRequestSchema>;
@@ -102,6 +110,7 @@ export class ClustersController {
   ) {}
 
   @Requires('view')
+  @Api({ summary: 'List workload clusters with status', response: z.array(ClusterSummarySchema) })
   @Get()
   list(@Param('connection') connection: string): Promise<ClusterSummary[]> {
     return this.clusters.list(connection);
@@ -109,6 +118,10 @@ export class ClustersController {
 
   /** Live list (FP6-F-01); registered before ':namespace/:name' so "events" is not a namespace. */
   @Requires('view')
+  @Api({
+    summary: 'Live updates of the cluster list',
+    response: { events: liveEvents(z.array(ClusterSummarySchema)) },
+  })
   @Sse('events')
   listStream(@Param('connection') connection: string): Observable<MessageEvent> {
     return merge(
@@ -119,6 +132,12 @@ export class ClustersController {
 
   /** Preview: generated YAML, dry run and blockers (hard rule 6, FP5-F-08). */
   @Requires('clusters.create', { namespaceFromBody: 'spec.namespace' })
+  @Api({
+    summary: 'Preview creating a cluster from a cluster spec',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: ClusterPreviewSchema,
+  })
   @Post('preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.preview', skip: true })
@@ -131,6 +150,11 @@ export class ClustersController {
 
   /** FP-5 step 8; node customization is recorded with the request (FP5-F-14). */
   @Requires('clusters.create', { namespaceFromBody: 'spec.namespace' })
+  @Api({
+    summary: 'Create a workload cluster from a cluster spec',
+    description: 'Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: ClusterSummarySchema,
+  })
   @Post()
   @Audit({ action: 'cluster.create', ...AUDIT })
   create(
@@ -141,6 +165,10 @@ export class ClustersController {
   }
 
   @Requires('view')
+  @Api({
+    summary: 'Status of a cluster: phase, control plane, machines, conditions',
+    response: ClusterStatusSchema,
+  })
   @Get(':namespace/:name')
   status(
     @Param('connection') connection: string,
@@ -154,6 +182,7 @@ export class ClustersController {
 
   /** The stored cluster spec for day-2 forms (FP-7); operators only (node customization). */
   @Requires('clusters.change')
+  @Api({ summary: 'The stored cluster spec', response: ClusterSpecSchema })
   @Get(':namespace/:name/spec')
   spec(
     @Param('connection') connection: string,
@@ -165,6 +194,12 @@ export class ClustersController {
 
   /** FP-7: every day-2 change of the stored spec (scale, pools, machines, upgrade, rebuild, …). */
   @Requires('clusters.change')
+  @Api({
+    summary: 'Preview a day-2 change (diff, rollouts, drift)',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/changes/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.change.preview', skip: true })
@@ -185,6 +220,12 @@ export class ClustersController {
   }
 
   @Requires('clusters.change')
+  @Api({
+    summary: 'Apply a day-2 change',
+    description:
+      'Template rotation for machine changes (hard rule 5); drift must be taken over explicitly. Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/changes')
   @HttpCode(200)
   @Audit({
@@ -211,6 +252,12 @@ export class ClustersController {
   }
 
   @Requires('clusters.change')
+  @Api({
+    summary: 'Preview scaling a node group',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/scale/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.scale.preview', skip: true })
@@ -227,6 +274,11 @@ export class ClustersController {
 
   /** FP6-F-05. */
   @Requires('clusters.change')
+  @Api({
+    summary: 'Scale a node group',
+    description: 'Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/scale')
   @HttpCode(200)
   @Audit({ action: 'cluster.scale', ...AUDIT, targetParam: 'name' })
@@ -246,6 +298,12 @@ export class ClustersController {
   }
 
   @Requires('clusters.change')
+  @Api({
+    summary: 'Preview changing the cluster labels',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/labels/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.labels.preview', skip: true })
@@ -262,6 +320,11 @@ export class ClustersController {
 
   /** FP6-F-07. */
   @Requires('clusters.change')
+  @Api({
+    summary: 'Change the cluster labels (also assigns add-ons)',
+    description: 'Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/labels')
   @HttpCode(200)
   @Audit({ action: 'cluster.labels', ...AUDIT, targetParam: 'name' })
@@ -284,6 +347,10 @@ export class ClustersController {
 
   /** What a deletion removes, shown before confirming (hard rule 6). */
   @Requires('clusters.delete')
+  @Api({
+    summary: 'What deleting a cluster removes (cloud resources, objects)',
+    response: DeletePreviewSchema,
+  })
   @Get(':namespace/:name/delete-preview')
   deletePreview(
     @Param('connection') connection: string,
@@ -295,6 +362,11 @@ export class ClustersController {
 
   /** Confirmed by typing the cluster name; cleanup inside the cluster first (default). */
   @Requires('clusters.delete')
+  @Api({
+    summary: 'Delete a cluster, with cleanup inside it first',
+    description: 'Confirmed by the cluster name. Progress is reported in the cluster status.',
+    response: DeletionStatusSchema,
+  })
   @Post(':namespace/:name/delete')
   @HttpCode(202)
   @Audit({ action: 'cluster.delete', ...AUDIT, targetParam: 'name' })
@@ -308,6 +380,12 @@ export class ClustersController {
   }
 
   @Requires('clusters.change')
+  @Api({
+    summary: 'Preview switching the bastion host',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated objects or diff first (hard rule 6).',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/bastion/preview')
   @HttpCode(200)
   @Audit({ action: 'cluster.bastion.preview', skip: true })
@@ -324,6 +402,11 @@ export class ClustersController {
 
   /** FP5-F-20: enable, disable or reconfigure the bastion host. */
   @Requires('clusters.change')
+  @Api({
+    summary: 'Switch the bastion host on or off',
+    description: 'Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: ClusterChangePreviewSchema,
+  })
   @Post(':namespace/:name/bastion')
   @HttpCode(200)
   @Audit({ action: 'cluster.bastion', ...AUDIT, targetParam: 'name' })
@@ -344,6 +427,11 @@ export class ClustersController {
 
   /** FP6-F-04 / ADR-0005: shown in a dialog; operator and admin only, audited, not cached. */
   @Requires('clusters.kubeconfig')
+  @Api({
+    summary: 'Admin kubeconfig of a workload cluster',
+    description: 'Every access is audited (ADR-0005); not cached.',
+    response: { contentType: 'text/plain', description: 'kubeconfig' },
+  })
   @Get(':namespace/:name/kubeconfig')
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Header('Cache-Control', 'no-store')
@@ -358,6 +446,11 @@ export class ClustersController {
 
   /** FP6-F-04 / ADR-0005: download as `<cluster>.kubeconfig`. */
   @Requires('clusters.kubeconfig')
+  @Api({
+    summary: 'Admin kubeconfig of a workload cluster as file',
+    description: 'Every access is audited (ADR-0005); not cached.',
+    response: { contentType: 'application/octet-stream', description: 'kubeconfig file' },
+  })
   @Get(':namespace/:name/kubeconfig/download')
   @Header('Content-Type', 'application/octet-stream')
   @Header('Cache-Control', 'no-store')
@@ -379,6 +472,10 @@ export class ClustersController {
   }
 
   @Requires('view')
+  @Api({
+    summary: 'Live updates of a cluster status',
+    response: { events: liveEvents(ClusterStatusSchema) },
+  })
   @Sse(':namespace/:name/events')
   stream(
     @Param('connection') connection: string,
