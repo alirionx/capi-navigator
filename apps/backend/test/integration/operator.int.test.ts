@@ -10,7 +10,12 @@ import {
   KubernetesObjectApi,
   type KubernetesObject,
 } from '@kubernetes/client-node';
-import type { InstalledProvider, OperatorState } from '@capi-navigator/shared';
+import {
+  orcVersionForCapo,
+  PROVIDER_CATALOG,
+  type InstalledProvider,
+  type OperatorState,
+} from '@capi-navigator/shared';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -21,6 +26,14 @@ import { APP_CONFIG, loadConfig } from '../../src/config/config.js';
 import { configureApp } from '../../src/configure-app.js';
 import { requireKindCluster } from './kind-guard.js';
 import { removeOrc } from './orc.js';
+
+// Pinned versions from versions.yaml (FP-20), so an update is tested without editing this file.
+const pinned = (id: string) => PROVIDER_CATALOG.find((p) => p.id === id)!.recommendedVersion;
+const CORE = pinned('core');
+const RKE2 = pinned('rke2-bootstrap');
+const CAPO = pinned('openstack');
+const ORC = orcVersionForCapo(CAPO)!;
+const CAAPH = pinned('helm');
 
 const NAMESPACE = `capi-navigator-it-${randomBytes(3).toString('hex')}`;
 const CSRF = { 'x-capi-navigator': '1' };
@@ -154,7 +167,7 @@ describe('FP-3 acceptance against kind', () => {
     // the ORC rule once core is ready (see below). Here: the dependency rule (FP3-F-11).
     const res = await send('post', `${BASE}/providers`, {
       catalogId: 'openstack',
-      version: 'v0.15.0',
+      version: CAPO,
       namespace: 'capo-system',
     }).expect(409);
     expect(res.body.message).toMatch(/core/i);
@@ -163,14 +176,14 @@ describe('FP-3 acceptance against kind', () => {
   it(
     'installs ORC from its release manifest (FP3-F-04a)',
     async () => {
-      const preview = await send('post', `${BASE}/orc/preview`, { version: 'v2.6.0' }).expect(200);
+      const preview = await send('post', `${BASE}/orc/preview`, { version: ORC }).expect(200);
       expect(preview.body.objects).toEqual(
         expect.arrayContaining([
           { kind: 'Deployment', name: 'orc-controller-manager', namespace: 'orc-system' },
         ]),
       );
       expect(preview.body.yaml).toContain('clusterctl.cluster.x-k8s.io/move');
-      await send('post', `${BASE}/orc`, { version: 'v2.6.0' }).expect(200);
+      await send('post', `${BASE}/orc`, { version: ORC }).expect(200);
       const orc = await waitFor(
         'ORC ready',
         async () => {
@@ -179,7 +192,7 @@ describe('FP-3 acceptance against kind', () => {
         },
         5 * MIN,
       );
-      expect(orc.version).toBe('v2.6.0');
+      expect(orc.version).toBe(ORC);
     },
     6 * MIN,
   );
@@ -189,16 +202,16 @@ describe('FP-3 acceptance against kind', () => {
     async () => {
       const preview = await send('post', `${BASE}/providers/preview`, {
         catalogId: 'core',
-        version: 'v1.14.3',
+        version: CORE,
         namespace: 'capi-system',
       }).expect(200);
       expect(preview.body.yaml).toContain('kind: CoreProvider');
       await send('post', `${BASE}/providers`, {
         catalogId: 'core',
-        version: 'v1.14.3',
+        version: CORE,
         namespace: 'capi-system',
       }).expect(201);
-      await waitFor('core Ready', providerReady('core', 'v1.14.3'), 6 * MIN);
+      await waitFor('core Ready', providerReady('core', CORE), 6 * MIN);
     },
     7 * MIN,
   );
@@ -207,13 +220,13 @@ describe('FP-3 acceptance against kind', () => {
     'installs RKE2, OpenStack and CAAPH and all reach Ready (acceptance FP-3)',
     async () => {
       const installs = [
-        { catalogId: 'rke2-bootstrap', version: 'v0.26.0', namespace: 'rke2-bootstrap-system' },
+        { catalogId: 'rke2-bootstrap', version: RKE2, namespace: 'rke2-bootstrap-system' },
         {
           catalogId: 'rke2-control-plane',
-          version: 'v0.26.0',
+          version: RKE2,
           namespace: 'rke2-control-plane-system',
         },
-        { catalogId: 'openstack', version: 'v0.15.0', namespace: 'capo-system' },
+        { catalogId: 'openstack', version: CAPO, namespace: 'capo-system' },
         // Older CAAPH on purpose: upgraded in the next test.
         { catalogId: 'helm', version: 'v0.6.2', namespace: 'caaph-system' },
       ];
@@ -237,13 +250,13 @@ describe('FP-3 acceptance against kind', () => {
     'upgrades a provider through the operator (acceptance FP-3)',
     async () => {
       const path = `${BASE}/providers/AddonProvider/caaph-system/helm`;
-      const preview = await send('put', `${path}/preview`, { version: 'v0.6.4' }).expect(200);
-      expect(preview.body.yaml).toContain('version: v0.6.4');
+      const preview = await send('put', `${path}/preview`, { version: CAAPH }).expect(200);
+      expect(preview.body.yaml).toContain(`version: ${CAAPH}`);
       await send('put', path, { version: 'v0.6.2' }).expect(200); // same version is allowed
       const down = await send('put', path, { version: 'v0.6.1' }).expect(400);
       expect(down.body.message).toMatch(/Downgrades/);
-      await send('put', path, { version: 'v0.6.4' }).expect(200);
-      await waitFor('CAAPH upgraded', providerReady('helm', 'v0.6.4'), 6 * MIN);
+      await send('put', path, { version: CAAPH }).expect(200);
+      await waitFor('CAAPH upgraded', providerReady('helm', CAAPH), 6 * MIN);
     },
     7 * MIN,
   );
@@ -304,7 +317,7 @@ describe('FP-3 acceptance against kind', () => {
   it(
     'cleans up ORC',
     async () => {
-      await removeOrc(kc, 'v2.6.0');
+      await removeOrc(kc, ORC);
     },
     4 * MIN,
   );
