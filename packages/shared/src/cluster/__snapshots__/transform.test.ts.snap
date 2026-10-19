@@ -1001,7 +1001,7 @@ spec:
           K8S_VERSION="1.35.9"
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
-          CONTAINERD_VERSION="2.3.7"
+          CONTAINERD_VERSION="2.4.2"
           RUNC_VERSION="1.5.2"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -1137,7 +1137,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-aws-kubeadm-default-2291a3de
+  name: demo-aws-kubeadm-default-482881f4
   namespace: default
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1155,7 +1155,7 @@ spec:
             K8S_VERSION="1.35.9"
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
-            CONTAINERD_VERSION="2.3.7"
+            CONTAINERD_VERSION="2.4.2"
             RUNC_VERSION="1.5.2"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -1287,7 +1287,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-aws-kubeadm-default-2291a3de
+          name: demo-aws-kubeadm-default-482881f4
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: AWSMachineTemplate
@@ -1423,7 +1423,7 @@ spec:
           K8S_VERSION="1.35.9"
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
-          CONTAINERD_VERSION="2.3.7"
+          CONTAINERD_VERSION="2.4.2"
           RUNC_VERSION="1.5.2"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -1662,7 +1662,7 @@ spec:
           K8S_VERSION="1.35.9"
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
-          CONTAINERD_VERSION="2.3.7"
+          CONTAINERD_VERSION="2.4.2"
           RUNC_VERSION="1.5.2"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -1790,7 +1790,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-kubeadm-default-f5593019
+  name: demo-kubeadm-default-7c734e93
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1808,7 +1808,7 @@ spec:
             K8S_VERSION="1.35.9"
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
-            CONTAINERD_VERSION="2.3.7"
+            CONTAINERD_VERSION="2.4.2"
             RUNC_VERSION="1.5.2"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -1940,7 +1940,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-kubeadm-default-f5593019
+          name: demo-kubeadm-default-7c734e93
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
@@ -1967,7 +1967,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-kubeadm-gpu-27260cfa
+  name: demo-kubeadm-gpu-95fef3e8
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1985,7 +1985,7 @@ spec:
             K8S_VERSION="1.35.9"
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
-            CONTAINERD_VERSION="2.3.7"
+            CONTAINERD_VERSION="2.4.2"
             RUNC_VERSION="1.5.2"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
@@ -2119,7 +2119,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-kubeadm-gpu-27260cfa
+          name: demo-kubeadm-gpu-95fef3e8
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
@@ -2151,7 +2151,7 @@ set -euo pipefail
 K8S_VERSION="1.34.12"
 PKGS="https://mirror.example/k8s/core:/stable:/v1.34"
 DOWNLOADS="https://mirror.example/github"
-CONTAINERD_VERSION="2.3.7"
+CONTAINERD_VERSION="2.4.2"
 RUNC_VERSION="1.5.2"
 case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
