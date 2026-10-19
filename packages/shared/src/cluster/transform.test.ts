@@ -316,6 +316,23 @@ describe('AWS specifics', () => {
     }
   });
 
+  it('gzips the user data: EC2 allows 16 KB, a kubeadm control plane needs about 18 KB', () => {
+    // CAPA v2.13.1 compresses only when uncompressedUserData is false, not when it is unset
+    // (MachineScope.CompressUserData); without Secrets Manager (ADR-0003) the data goes to EC2.
+    const objects = transform(
+      ClusterSpecSchema.parse({ ...aws(), kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' } }),
+      ctx,
+    );
+    const templates = objects.filter((o) => o.kind === 'AWSMachineTemplate');
+    expect(templates.length).toBeGreaterThan(1);
+    for (const t of templates) {
+      expect(
+        (t.spec as { template: { spec: { uncompressedUserData?: boolean } } }).template.spec
+          .uncompressedUserData,
+      ).toBe(false);
+    }
+  });
+
   it('never repeats a rule CAPA already creates in the node security group', () => {
     // CAPA v2.13.1 (securitygroups.go) gives the node group "Kubelet API" tcp/10250 from control
     // plane and nodes; CNI rules go into both groups, and AWS rejects a permission given twice.

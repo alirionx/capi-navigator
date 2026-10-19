@@ -28,6 +28,10 @@ this trade-off.
 - Pods on the nodes can read the user data (including the join token) and the node's instance
   profile credentials. Restrict untrusted workloads with a network policy that blocks
   `169.254.169.254`, or use dedicated nodes for them.
+- The user data goes to EC2 directly, which limits it to 16 KB. A kubeadm control plane carries
+  its CA keys and the install script (about 18 KB), so the templates set
+  `uncompressedUserData: false`: CAPA gzips only with this explicit value, and cloud-init
+  unpacks it (found live on 2026-10-20).
 - The EBS CSI preset takes the region from the `AWSCluster` instead of IMDS.
 - The AWS CCM preset runs with host networking: it must start before the pod network, since
   it removes the `uninitialized` taint that Calico Typha does not tolerate.
