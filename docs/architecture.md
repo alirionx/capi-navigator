@@ -112,6 +112,17 @@ audit cleanup) run on one replica at a time, elected with a `Lease`
 | `HelmChartProxy`                                                                                       | Management cluster | CAAPH                                        | One `HelmReleaseProxy` and one Helm release per matching workload cluster                                                                                                                                                   |
 | Secret + identity (`OpenStackClusterIdentity`, `AWSClusterStaticIdentity`)                             | Management cluster | CAPO / CAPA (when a cluster references them) | Cloud API access for the provider                                                                                                                                                                                           |
 
+## Pinned versions
+
+Every version the app installs or offers (CAPI providers, cert-manager, the CAPI Operator, ORC,
+Kubernetes versions per distribution, the preset charts, containerd, runc, Calico, the node shell
+image) comes from [versions.yaml](../versions.yaml). `pnpm versions:generate` validates it with a Zod
+schema and writes `packages/shared/src/versions.generated.ts`, which the catalogs and the
+transformation import, so the app never reads the file at runtime and each app version is
+reproducible. Node scripts such as the kubeadm install script are template files
+(`packages/shared/src/cluster/templates`), likewise turned into modules. How to update them:
+[maintenance.md](maintenance.md) ([ADR-0018](adr/0018-versions-yaml-and-update-report.md)).
+
 ## The cluster spec and the transformation
 
 A workload cluster is described by a small typed **cluster spec**
