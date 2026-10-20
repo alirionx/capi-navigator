@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { LookupOption } from '@capi-navigator/shared';
+import { INFRA_PLUGINS, type Infrastructure, type LookupOption } from '@capi-navigator/shared';
 
 /** Machine size, root disk and image override of one group (FP-5 step 2, FP5-F-19). */
 interface Group {
@@ -12,7 +12,7 @@ interface Group {
 }
 const group = defineModel<Group>({ required: true });
 const props = defineProps<{
-  provider: 'openstack' | 'aws';
+  provider: Infrastructure['provider'];
   sizes: LookupOption[];
   images: LookupOption[];
   volumeTypes: LookupOption[];
@@ -23,34 +23,32 @@ const props = defineProps<{
 }>();
 const { t } = useI18n();
 
+/** The provider's form description (FP25-F-05). */
+const form = computed(() => INFRA_PLUGINS[props.provider].form.machine);
+const root = computed(() => form.value.rootVolume);
 const selected = computed(() => props.sizes.find((s) => s.value === group.value.machineSize));
-/** OpenStack flavors without local disk (e.g. Infomaniak "-disk0") need a root volume. */
+/** Sizes without local disk (e.g. Infomaniak "-disk0" flavors) need a root volume. */
 const needsVolume = computed(
-  () => props.provider === 'openstack' && selected.value?.details?.diskGB === 0,
+  () => !!root.value.neededWithoutLocalDisk && selected.value?.details?.diskGB === 0,
 );
 
 watch(needsVolume, (need) => {
   if (need && !group.value.rootVolumeSizeGB && !props.rootDiskLocked)
     group.value.rootVolumeSizeGB = 50;
 });
-// An OpenStack volume type needs a size (validated in the spec as well).
+// A volume type that only applies with a size is dropped with it (validated in the spec as well).
 watch(
   () => group.value.rootVolumeSizeGB,
   (size) => {
-    if (!size && props.provider === 'openstack') group.value.rootVolumeType = undefined;
+    if (!size && root.value.typeNeedsSize) group.value.rootVolumeType = undefined;
   },
 );
 
-const target = computed(() =>
-  props.provider === 'openstack' ? 'OpenStackMachineTemplate' : 'AWSMachineTemplate',
-);
-const sizeField = computed(() =>
-  props.provider === 'openstack' ? 'flavor.filter.name' : 'instanceType',
-);
+const target = computed(() => form.value.target);
 const rootHint = computed(() => {
   if (props.rootDiskLocked) return t('wizard.rootDiskLocked');
-  if (props.provider === 'aws')
-    return t('wizard.rootVolumeHint', { def: 50, target: target.value });
+  if (root.value.defaultGB)
+    return t('wizard.rootVolumeHint', { def: root.value.defaultGB, target: target.value });
   if (needsVolume.value) return t('wizard.rootVolumeNeeded', { target: target.value });
   return t('wizard.rootVolumeLocal', {
     size: selected.value ? ` (${selected.value.details?.diskGB} GB)` : '',
@@ -73,8 +71,8 @@ const rootRules = [
       item-title="label"
       item-value="value"
       :loading="sizesLoading"
-      :label="t(`wizard.machineSize.${provider}`)"
-      :hint="t('wizard.machineSizeHint', { target, field: sizeField })"
+      :label="t(form.sizeLabel)"
+      :hint="t('wizard.machineSizeHint', { target, field: form.sizeField })"
       persistent-hint
       :rules="[(v: string) => !!v || t('wizard.required')]"
       style="min-width: 320px; flex: 2"
@@ -99,12 +97,12 @@ const rootRules = [
       min="10"
       max="4000"
       :label="t('wizard.rootVolume')"
-      :placeholder="provider === 'aws' ? '50' : undefined"
+      :placeholder="root.defaultGB ? String(root.defaultGB) : undefined"
       :hint="rootHint"
       persistent-hint
       :rules="rootRules"
       :disabled="rootDiskLocked"
-      :clearable="provider === 'openstack' && !needsVolume"
+      :clearable="!root.defaultGB && !needsVolume"
       suffix="GB"
       style="min-width: 260px; flex: 2"
       :data-testid="`root-size-${role}`"
@@ -120,14 +118,10 @@ const rootRules = [
       item-value="value"
       clearable
       :label="t('wizard.rootVolumeType')"
-      :placeholder="provider === 'aws' ? 'gp3' : undefined"
-      :hint="
-        rootDiskLocked
-          ? t('wizard.rootDiskLocked')
-          : t(provider === 'aws' ? 'wizard.rootVolumeTypeAws' : 'wizard.rootVolumeTypeOpenStack')
-      "
+      :placeholder="root.defaultType"
+      :hint="rootDiskLocked ? t('wizard.rootDiskLocked') : t(root.typeHint)"
       persistent-hint
-      :disabled="rootDiskLocked || (provider === 'openstack' && !group.rootVolumeSizeGB)"
+      :disabled="rootDiskLocked || (!!root.typeNeedsSize && !group.rootVolumeSizeGB)"
       style="min-width: 220px; flex: 1"
       :data-testid="`root-type-${role}`"
     />

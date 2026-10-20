@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { LookupOption } from '@capi-navigator/shared';
+import { INFRA_PLUGINS, type Infrastructure, type LookupOption } from '@capi-navigator/shared';
 
 /**
- * Bastion host settings (FP5-F-20), used in the wizard and as day-2 change. OpenStack (CAPO)
- * opens SSH to the bastion to everyone; AWS (CAPA) restricts it to the allowed networks.
+ * Bastion host settings (FP5-F-20), used in the wizard and as day-2 change. The provider's form
+ * description says whether SSH is restricted to source networks or open to everyone (FP25-F-05).
  */
 export interface BastionDraft {
   enabled: boolean;
@@ -14,21 +14,23 @@ export interface BastionDraft {
 }
 const model = defineModel<BastionDraft>({ required: true });
 const props = defineProps<{
-  provider: 'openstack' | 'aws';
+  provider: Infrastructure['provider'];
   sizes: LookupOption[];
   hasKeyPair: boolean;
   /** Size cannot change while the bastion runs (day-2). */
   sizeLocked?: boolean;
-  /** The credential test found broken Neutron paging links (OpenStack). */
+  /** A failed credential test check that breaks the bastion (OpenStack: Neutron paging). */
   pagingWarning?: string;
 }>();
 const { t } = useI18n();
 
+const form = computed(() => INFRA_PLUGINS[props.provider].form.bastion);
 const cidrPattern = /^(\d{1,3}\.){3}\d{1,3}\/(\d|[12]\d|3[0-2])$/;
 const cidrRule = (v: string[]) =>
   (v ?? []).every((c) => cidrPattern.test(c.trim())) || t('bastion.cidrInvalid');
 const openToAll = computed(
-  () => props.provider === 'aws' && model.value.allowedCidrs.some((c) => c.trim() === '0.0.0.0/0'),
+  () =>
+    !!form.value?.allowedCidrs && model.value.allowedCidrs.some((c) => c.trim() === '0.0.0.0/0'),
 );
 </script>
 
@@ -56,14 +58,14 @@ const openToAll = computed(
         {{ t('bastion.pagingBroken') }} {{ pagingWarning }}
       </v-alert>
       <v-alert
-        v-if="provider === 'openstack'"
+        v-if="form?.openWarning"
         type="warning"
         variant="tonal"
         density="compact"
         class="mt-3"
         data-testid="bastion-open-warning"
       >
-        {{ t('bastion.openStackOpen') }}
+        {{ t(form.openWarning) }}
       </v-alert>
       <v-row class="mt-1">
         <v-col cols="12" md="5">
@@ -74,18 +76,14 @@ const openToAll = computed(
             item-value="value"
             clearable
             :disabled="sizeLocked"
-            :label="t(`bastion.size.${provider}`)"
-            :hint="
-              sizeLocked
-                ? t('bastion.sizeLocked')
-                : t(provider === 'openstack' ? 'bastion.sizeHintOs' : 'bastion.sizeHintAws')
-            "
+            :label="form ? t(form.sizeLabel) : ''"
+            :hint="sizeLocked ? t('bastion.sizeLocked') : form ? t(form.sizeHint) : ''"
             persistent-hint
-            :rules="[(v: string) => provider !== 'openstack' || !!v || t('wizard.required')]"
+            :rules="[(v: string) => !form?.sizeRequired || !!v || t('wizard.required')]"
             data-testid="bastion-size"
           />
         </v-col>
-        <v-col v-if="provider === 'aws'" cols="12" md="7">
+        <v-col v-if="form?.allowedCidrs" cols="12" md="7">
           <v-combobox
             v-model="model.allowedCidrs"
             multiple

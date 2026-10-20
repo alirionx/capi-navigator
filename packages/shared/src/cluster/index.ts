@@ -1,6 +1,7 @@
 export * from './cidr.js';
 export * from './spec.js';
 export * from './plugins.js';
+export * from './infra-form.js';
 export * from './openstack.js';
 export * from './aws.js';
 export * from './rke2.js';

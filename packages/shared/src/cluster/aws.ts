@@ -1,7 +1,8 @@
 import { AWS_IDENTITY, CAPA_IAM } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
+import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
-import type { AwsInfra, MachineGroup } from './spec.js';
+import { AWS_ROOT_VOLUME_TYPES, type AwsInfra, type MachineGroup } from './spec.js';
 import { compact } from './util.js';
 
 /**
@@ -32,6 +33,87 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
   infraClusterKind: 'AWSCluster',
   machineTemplateKind: 'AWSMachineTemplate',
   apiVersion: AWS_API_VERSION,
+
+  form: {
+    displayName: 'AWS',
+    lookups: [
+      { kind: 'instanceTypes' },
+      { kind: 'images' },
+      { kind: 'keyPairs' },
+      { kind: 'regions' },
+    ],
+    regionField: 'region',
+    fields: [
+      {
+        path: 'region',
+        kind: 'autocomplete',
+        lookup: 'regions',
+        label: 'wizard.region',
+        hint: 'wizard.regionHint',
+        fromCredential: (summary) => summary.region,
+        resets: ['image'],
+        cols: 4,
+      },
+      {
+        path: 'image',
+        kind: 'autocomplete',
+        lookup: 'images',
+        label: 'wizard.ami',
+        hint: 'wizard.amiHint',
+        preselect: ubuntuImage,
+        cols: 8,
+        testId: 'image',
+      },
+      {
+        path: 'network.vpcCidr',
+        kind: 'text',
+        label: 'wizard.vpcCidr',
+        hint: 'wizard.vpcCidrHint',
+        default: '10.0.0.0/16',
+        cols: 4,
+      },
+      {
+        path: 'network.availabilityZoneCount',
+        kind: 'select',
+        options: [1, 2, 3],
+        label: 'wizard.azCount',
+        hint: 'wizard.azCountHint',
+        default: 1,
+        cols: 4,
+      },
+      {
+        path: 'sshKeyName',
+        kind: 'select',
+        lookup: 'keyPairs',
+        label: 'wizard.sshKey',
+        hint: 'wizard.sshKeyHint',
+        clearable: true,
+        cols: 4,
+      },
+    ],
+    notes: ['wizard.awsLbInfo'],
+    keyPairField: 'sshKeyName',
+    machine: {
+      sizeLookup: 'instanceTypes',
+      sizeLabel: 'wizard.machineSize.aws',
+      target: 'AWSMachineTemplate',
+      sizeField: 'instanceType',
+      rootVolume: {
+        defaultGB: 50,
+        defaultType: 'gp3',
+        types: { options: AWS_ROOT_VOLUME_TYPES },
+        typeHint: 'wizard.rootVolumeTypeAws',
+      },
+    },
+    bastion: {
+      sizeLabel: 'bastion.size.aws',
+      sizeHint: 'bastion.sizeHintAws',
+      sizeRequired: false,
+      allowedCidrs: true,
+      // CAPA's default bastion AMI is Ubuntu.
+      sshUser: 'ubuntu',
+    },
+  },
 
   infraCluster(spec, infra, _ctx, labels, network): ManifestObject {
     const fromNodes = {

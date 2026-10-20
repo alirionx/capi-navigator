@@ -728,9 +728,7 @@ export const en = {
     title: 'Credentials',
     subtitle:
       'OpenStack, AWS and Google Cloud credentials on the active management cluster. Stored once as Secret (plus a cluster-wide identity where the provider has one); clusters only reference them.',
-    addOpenStack: 'Add OpenStack',
-    addAws: 'Add AWS',
-    addGcp: 'Add Google Cloud',
+    add: { openstack: 'Add OpenStack', aws: 'Add AWS', gcp: 'Add Google Cloud' },
     addTitle: {
       openstack: 'Add OpenStack credentials',
       aws: 'Add AWS credentials',
@@ -744,10 +742,13 @@ export const en = {
     displayNameHint: 'Optional label shown in the app. Default: the name.',
     provider: 'Provider',
     providers: { openstack: 'OpenStack', aws: 'AWS', gcp: 'Google Cloud' },
-    projectLabel: 'Project',
     target: 'Cloud',
-    regionLabel: 'Region',
-    keyEnding: 'Access key …{suffix}',
+    /** One line per row of the cloud column, from the credential summary. */
+    summary: {
+      openstack: '{authUrl}\nRegion: {region} · {authType}',
+      aws: 'Region: {region}\nAccess key …{accessKeyIdSuffix}',
+      gcp: 'Project: {projectId} · Region: {region}\n{serviceAccount}',
+    },
     allowedNamespaces: 'Allowed namespaces',
     allowedNamespacesHint: {
       openstack:

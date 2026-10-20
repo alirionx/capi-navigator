@@ -1,4 +1,5 @@
 import type { ManifestObject } from '../operator-manifests.js';
+import type { InfraForm } from './infra-form.js';
 import type { ClusterSpec, Infrastructure, MachineGroup } from './spec.js';
 
 /** Resolved, non-secret facts the transformation needs besides the spec. */
@@ -47,6 +48,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   infraClusterKind: string;
   machineTemplateKind: string;
   apiVersion: string;
+  /** The provider's forms in wizard, details and day 2 (FP25-F-05). */
+  form: InfraForm;
   /** OpenStackCluster / AWSCluster. */
   infraCluster(
     spec: ClusterSpec,

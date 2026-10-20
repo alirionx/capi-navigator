@@ -1,3 +1,5 @@
+import type { InfraForm } from '@capi-navigator/shared';
+
 /** Problems of the cluster wizard per step, from the shared schema (FP5-F-02). */
 export interface StepIssue {
   /** Dotted path in the cluster spec, e.g. "topology.workerPools.0.name". */
@@ -30,12 +32,8 @@ const LABELS: [RegExp, string][] = [
   [/^kubernetes\.podCidr$/, 'wizard.podCidr'],
   [/^kubernetes\.serviceCidr$/, 'wizard.serviceCidr'],
   [/^infrastructure\.credentialRef$/, 'wizard.credential'],
+  // Without a form; with one, the provider's labels win (FP25-F-05).
   [/^infrastructure\.image$/, 'wizard.image'],
-  [/^infrastructure\.externalNetwork$/, 'wizard.externalNetwork'],
-  [/^infrastructure\.network\.nodeCidr$/, 'wizard.nodeCidr'],
-  [/^infrastructure\.sshKeyName$/, 'wizard.sshKey'],
-  [/^infrastructure\.region$/, 'wizard.region'],
-  [/^infrastructure\.ami/, 'wizard.ami'],
   [/^topology\.workerPools\.\d+\.name$/, 'wizard.poolName'],
   [/^topology\.workerPools\.\d+\.replicas$/, 'wizard.replicas'],
   [/rootVolumeSizeGB$/, 'wizard.rootVolume'],
@@ -46,14 +44,20 @@ const LABELS: [RegExp, string][] = [
  * Issues from a schema validation, one per field: Zod reports e.g. "Required" and a pattern
  * mismatch for an empty name; the first one is enough.
  */
-export function stepIssues(issues: { path: PropertyKey[]; message: string }[]): StepIssue[] {
+export function stepIssues(
+  issues: { path: PropertyKey[]; message: string }[],
+  /** Labels of the infrastructure fields come from the provider's form (FP25-F-05). */
+  form?: InfraForm,
+): StepIssue[] {
   const seen = new Set<string>();
   const result: StepIssue[] = [];
   for (const i of issues) {
     const path = i.path.map(String).join('.');
     if (seen.has(path)) continue;
     seen.add(path);
-    const labelKey = LABELS.find(([re]) => re.test(path))?.[1];
+    const labelKey =
+      form?.fields.find((f) => path === `infrastructure.${f.path}`)?.label ??
+      LABELS.find(([re]) => re.test(path))?.[1];
     result.push({
       path,
       message: i.message,
