@@ -74,6 +74,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * Jinja templates rendered on the node.
    */
   nodeIdentity(infra: T): { providerId: string; nodeName: string };
+  /** Commands every node runs first, before the distribution is installed (as root). */
+  nodePreparation?: string[];
   /**
    * Limits of the API load balancer the distributions adapt to (ADR-0022). Unset: it forwards
    * the ports a distribution asks for (`FlavorNetwork`) and checks the API server by TCP.

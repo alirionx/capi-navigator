@@ -26,6 +26,11 @@ export interface ManifestAddon {
   dir: string;
   file: string;
   sha256: string;
+  /**
+   * Namespaces the manifest creates. The cluster deletion's cleanup keeps them: a CSI driver
+   * removed before the volumes would leave pods terminating and disks behind (seen live).
+   */
+  namespaces?: string[];
   /** Adapts the upstream manifest to the app's clusters; fails if an expected object is missing. */
   forCluster(manifest: string): string;
 }

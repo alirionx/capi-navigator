@@ -104,6 +104,11 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
   // on 6443 without credentials. 6443 keeps the endpoint where k0s expects it.
   apiLoadBalancer: { port: 6443, apiPortOnly: true, anonymousHealthCheck: true },
 
+  // GCE hands out the FQDN (<instance>.<zone>.c.<project>.internal) as hostname. k0s labels its
+  // etcd member with "k0s-ctrl-<hostname>", which exceeds 63 characters and stops k0s (seen live).
+  // A static short hostname wins over the DHCP one and survives lease renewals and reboots.
+  nodePreparation: ['hostnamectl set-hostname "$(hostname -s)"'],
+
   infraCluster(spec, infra, ctx, labels) {
     // CAPG creates allow-<cluster>-healthchecks and allow-<cluster>-cluster (all traffic between
     // the cluster's machines), so the distribution's ports need no extra rules (ADR-0012).

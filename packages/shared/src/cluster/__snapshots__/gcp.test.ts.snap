@@ -122,6 +122,8 @@ spec:
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
+    preK0sCommands:
+      - hostnamectl set-hostname "$(hostname -s)"
 "
 `;
 
@@ -244,6 +246,8 @@ spec:
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
+    preK0sCommands:
+      - hostnamectl set-hostname "$(hostname -s)"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
@@ -265,7 +269,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: K0sWorkerConfigTemplate
 metadata:
-  name: demo-gcp-k0s-default-63abf114
+  name: demo-gcp-k0s-default-e2c0cb8f
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -278,6 +282,8 @@ spec:
         - --enable-cloud-provider
         - --kubelet-root-dir=/var/lib/kubelet
       useSystemHostname: true
+      preK0sCommands:
+        - hostnamectl set-hostname "$(hostname -s)"
 ---
 apiVersion: cluster.x-k8s.io/v1beta2
 kind: MachineDeployment
@@ -312,7 +318,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: K0sWorkerConfigTemplate
-          name: demo-gcp-k0s-default-63abf114
+          name: demo-gcp-k0s-default-e2c0cb8f
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
@@ -517,6 +523,7 @@ spec:
         permissions: "0755"
         owner: root:root
     preKubeadmCommands:
+      - hostnamectl set-hostname "$(hostname -s)"
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
     initConfiguration:
       nodeRegistration:
@@ -734,6 +741,7 @@ spec:
         permissions: "0755"
         owner: root:root
     preKubeadmCommands:
+      - hostnamectl set-hostname "$(hostname -s)"
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
     initConfiguration:
       nodeRegistration:
@@ -772,7 +780,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-gcp-kubeadm-default-ffef887b
+  name: demo-gcp-kubeadm-default-66d579ed
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -879,6 +887,7 @@ spec:
           permissions: "0755"
           owner: root:root
       preKubeadmCommands:
+        - hostnamectl set-hostname "$(hostname -s)"
         - /usr/local/bin/capi-navigator-install-kubernetes.sh
       joinConfiguration:
         nodeRegistration:
@@ -922,7 +931,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-gcp-kubeadm-default-ffef887b
+          name: demo-gcp-kubeadm-default-66d579ed
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
@@ -1041,6 +1050,7 @@ spec:
       extraArgs:
         - provider-id=gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
   preRKE2Commands:
+    - hostnamectl set-hostname "$(hostname -s)"
     - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
   gzipUserData: false
 "
@@ -1157,6 +1167,7 @@ spec:
       extraArgs:
         - provider-id=gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
   preRKE2Commands:
+    - hostnamectl set-hostname "$(hostname -s)"
     - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
   gzipUserData: false
 ---
@@ -1180,7 +1191,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: RKE2ConfigTemplate
 metadata:
-  name: demo-gcp-rke2-default-da4bd543
+  name: demo-gcp-rke2-default-473dbb89
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1195,6 +1206,7 @@ spec:
             - provider-id=gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
             - cloud-provider=external
       preRKE2Commands:
+        - hostnamectl set-hostname "$(hostname -s)"
         - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
       gzipUserData: false
 ---
@@ -1231,7 +1243,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: RKE2ConfigTemplate
-          name: demo-gcp-rke2-default-da4bd543
+          name: demo-gcp-rke2-default-473dbb89
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate

@@ -167,6 +167,17 @@ describe('Google Cloud specifics (FP25-F-06, FP25-F-07, ADR-0022)', () => {
     expect(templates[1]!.spec.template.spec).not.toHaveProperty('serviceAccounts');
   });
 
+  it('gives nodes a short hostname before k0s, RKE2 or kubeadm are installed', () => {
+    // GCE's FQDN made k0s's etcd member label longer than 63 characters (seen live).
+    const cmd = 'hostnamectl set-hostname "$(hostname -s)"';
+    const k0s = find(gcp('k0s'), 'K0sControlPlane').spec.k0sConfigSpec.preK0sCommands;
+    expect(k0s[0]).toBe(cmd);
+    expect(find(gcp('rke2'), 'RKE2ControlPlane').spec.preRKE2Commands[0]).toBe(cmd);
+    expect(
+      find(gcp('kubeadm'), 'KubeadmControlPlane').spec.kubeadmConfigSpec.preKubeadmCommands[0],
+    ).toBe(cmd);
+  });
+
   it('offers no bastion host (CAPG has none, FP25-F-09)', () => {
     const spec = ClusterSpecSchema.parse(gcp());
     expect(() => setBastion(spec, { enabled: true })).toThrow(SpecChangeError);

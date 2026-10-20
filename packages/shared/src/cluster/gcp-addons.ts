@@ -148,6 +148,7 @@ export const GCP_MANIFEST_ADDONS: ManifestAddon[] = [
     dir: 'gcp',
     file: VERSIONS.addonManifests['gcp-csi'].manifest,
     sha256: VERSIONS.addonManifests['gcp-csi'].sha256,
+    namespaces: ['gce-pd-csi-driver'],
     forCluster: gcpCsiManifestForCluster,
   },
 ];

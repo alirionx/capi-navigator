@@ -54,7 +54,7 @@ function agentConfig(
 }
 
 /** files, pre/post commands and SSH keys of one group (FP5-F-13). */
-function customizationFields(spec: ClusterSpec, group: MachineGroup) {
+function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, group: MachineGroup) {
   const c: NodeCustomization = group.customization ?? {
     files: [],
     preCommands: [],
@@ -72,7 +72,7 @@ function customizationFields(spec: ClusterSpec, group: MachineGroup) {
         owner: f.owner,
       }),
     ),
-    preRKE2Commands: [...RKE2_OS_PREPARATION, ...c.preCommands],
+    preRKE2Commands: [...(infra.nodePreparation ?? []), ...RKE2_OS_PREPARATION, ...c.preCommands],
     postRKE2Commands: c.postCommands,
     gzipUserData: false,
   });
@@ -149,7 +149,7 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
             : undefined,
         }),
         agentConfig: agentConfig(spec, infra, { worker: false }),
-        ...customizationFields(spec, cp),
+        ...customizationFields(spec, infra, cp),
       }),
     };
   },
@@ -157,7 +157,7 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   workerBootstrapSpec({ spec, infra, pool }) {
     return compact({
       agentConfig: agentConfig(spec, infra, { worker: true, nodeLabels: pool.nodeLabels }),
-      ...customizationFields(spec, pool),
+      ...customizationFields(spec, infra, pool),
     });
   },
 };

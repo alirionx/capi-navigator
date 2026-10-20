@@ -71,7 +71,12 @@ function kubeletArgs(
 }
 
 /** files, pre/post commands and SSH keys of one group; the install script runs first (FP10-F-05). */
-function bootstrapFields(spec: ClusterSpec, group: MachineGroup, version: string) {
+function bootstrapFields(
+  spec: ClusterSpec,
+  infra: InfraTransformPlugin,
+  group: MachineGroup,
+  version: string,
+) {
   const c: NodeCustomization = group.customization ?? {
     files: [],
     preCommands: [],
@@ -103,6 +108,7 @@ function bootstrapFields(spec: ClusterSpec, group: MachineGroup, version: string
         : []),
     ],
     preKubeadmCommands: [
+      ...(infra.nodePreparation ?? []),
       INSTALL_SCRIPT_PATH,
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,
@@ -176,7 +182,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
         // Surge one new node before removing an old one (etcd quorum stays intact).
         rollout: { strategy: { type: 'RollingUpdate', rollingUpdate: { maxSurge: 1 } } },
         kubeadmConfigSpec: {
-          ...bootstrapFields(spec, cp, spec.kubernetes.version),
+          ...bootstrapFields(spec, infra, cp, spec.kubernetes.version),
           // Separate copies: a shared object would become a YAML anchor in the preview.
           initConfiguration: { nodeRegistration: structuredClone(nodeRegistration) },
           joinConfiguration: { nodeRegistration: structuredClone(nodeRegistration) },
@@ -188,7 +194,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
   workerBootstrapSpec({ spec, infra, pool }) {
     const version = spec.kubernetes.workerVersion ?? spec.kubernetes.version;
     return {
-      ...bootstrapFields(spec, pool, version),
+      ...bootstrapFields(spec, infra, pool, version),
       joinConfiguration: {
         nodeRegistration: {
           name: infra.nodeIdentity(spec.infrastructure).nodeName,
