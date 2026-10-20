@@ -55,11 +55,13 @@ export function gcpCcmManifestForCluster(manifest: string): string {
     '--controllers=*,-node-ipam-controller',
     '--v=2',
   ];
-  // Host network: the API server on the same node, on 6443 for all distributions (ADR-0022).
-  container.env = [
-    ...(container.env ?? []).filter((e: { name: string }) => e.name !== 'KUBERNETES_SERVICE_PORT'),
-    { name: 'KUBERNETES_SERVICE_PORT', value: '6443' },
-  ];
+  // The manifest points the CCM to 127.0.0.1, which kubeadm's serving certificate lacks, and the
+  // node IP is unknown until the CCM has initialized the node. Without the override, the CCM uses
+  // the kubernetes Service like every pod; kube-proxy routes it before the CNI is up (seen live).
+  container.env = (container.env ?? []).filter(
+    (e: { name: string }) =>
+      !['KUBERNETES_SERVICE_HOST', 'KUBERNETES_SERVICE_PORT'].includes(e.name),
+  );
   container.volumeMounts = [
     { name: 'cloudconfig', mountPath: '/etc/kubernetes/gce', readOnly: true },
   ];

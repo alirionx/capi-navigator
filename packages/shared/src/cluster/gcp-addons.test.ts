@@ -40,7 +40,8 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
         '--controllers=*,-node-ipam-controller',
       ]),
     );
-    expect(c.env).toContainEqual({ name: 'KUBERNETES_SERVICE_PORT', value: '6443' });
+    // The kubernetes Service instead of 127.0.0.1, which kubeadm's certificate lacks (seen live).
+    expect(JSON.stringify(c.env ?? [])).not.toContain('KUBERNETES_SERVICE_HOST');
     expect(ds.spec.template.spec.volumes).toEqual([
       { name: 'cloudconfig', configMap: { name: 'gce-cloud-config' } },
     ]);
