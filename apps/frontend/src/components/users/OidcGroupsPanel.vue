@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   OidcGroupNameSchema,
+  OidcSubjectSchema,
   type GroupMapping,
   type RoleBinding,
   type RoleInfo,
@@ -13,8 +14,9 @@ import { zodRule } from '../../forms/zod-rules.js';
 import { useOidcGroupsStore } from '../../stores/oidcGroups.js';
 
 /**
- * Mappings of OpenID Connect groups to role assignments (FP14-F-04): people of a mapped group get
- * these assignments; nobody has to be created in the app.
+ * Mappings of OpenID Connect groups, and of single people, to role assignments (FP14-F-04): people
+ * of a mapped group get these assignments; nobody has to be created in the app. Person mappings
+ * are for providers without groups (e.g. Rancher with local accounts).
  */
 const props = defineProps<{
   roles: RoleInfo[];
@@ -26,7 +28,7 @@ const store = useOidcGroupsStore();
 
 const loadError = ref<unknown>(null);
 const headers = computed(() => [
-  { title: t('oidcGroups.group'), key: 'group' },
+  { title: t('oidcGroups.who'), key: 'who', sortable: false },
   { title: t('users.bindings'), key: 'bindings', sortable: false },
   { title: t('users.actions'), key: 'actions', sortable: false, align: 'end' as const },
 ]);
@@ -42,16 +44,30 @@ onMounted(async () => {
 type DialogKind = 'create' | 'edit' | 'delete';
 const dialog = ref<DialogKind | null>(null);
 const target = ref<GroupMapping | null>(null);
-const form = ref({ group: '', description: '', bindings: [] as RoleBinding[] });
+type Mode = 'group' | 'person';
+const mode = ref<Mode>('group');
+const form = ref({
+  group: '',
+  subject: '',
+  displayName: '',
+  description: '',
+  bindings: [] as RoleBinding[],
+});
+/** Name of a mapping in lists and titles. */
+const label = (m: GroupMapping | null) =>
+  m ? (m.group ?? (m.displayName ? `${m.displayName} (${m.subject})` : m.subject)) : '';
 const valid = ref(false);
 const busy = ref(false);
 const dialogError = ref<unknown>(null);
 
-function open(kind: DialogKind, mapping?: GroupMapping): void {
+function open(kind: DialogKind, mapping?: GroupMapping, newMode: Mode = 'group'): void {
   target.value = mapping ?? null;
+  mode.value = mapping ? mapping.kind : newMode;
   dialogError.value = null;
   form.value = {
     group: mapping?.group ?? '',
+    subject: mapping?.subject ?? '',
+    displayName: mapping?.displayName ?? '',
     description: mapping?.description ?? '',
     // Plain copy: the store's mappings are reactive proxies.
     bindings: JSON.parse(
@@ -65,11 +81,17 @@ async function confirm(): Promise<void> {
   busy.value = true;
   dialogError.value = null;
   const description = form.value.description.trim() || undefined;
+  const displayName = form.value.displayName.trim() || undefined;
+  const bindings = form.value.bindings;
   try {
     if (dialog.value === 'create') {
-      await store.create({ group: form.value.group, description, bindings: form.value.bindings });
+      await store.create(
+        mode.value === 'group'
+          ? { group: form.value.group, description, bindings }
+          : { subject: form.value.subject, displayName, description, bindings },
+      );
     } else if (dialog.value === 'edit' && target.value) {
-      await store.update(target.value.name, { description, bindings: form.value.bindings });
+      await store.update(target.value.name, { displayName, description, bindings });
     } else if (dialog.value === 'delete' && target.value) {
       await store.remove(target.value.name);
     }
@@ -90,14 +112,24 @@ async function confirm(): Promise<void> {
         <p class="text-body-2 text-medium-emphasis mt-1">{{ t('oidcGroups.subtitle') }}</p>
       </div>
       <v-spacer />
-      <v-btn
-        color="primary"
-        variant="tonal"
-        prepend-icon="mdi-account-group"
-        data-testid="oidc-group-add"
-        @click="open('create')"
-        >{{ t('oidcGroups.add') }}</v-btn
-      >
+      <div class="d-flex ga-2 flex-wrap justify-end">
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-account-group"
+          data-testid="oidc-group-add"
+          @click="open('create')"
+          >{{ t('oidcGroups.add') }}</v-btn
+        >
+        <v-btn
+          color="primary"
+          variant="tonal"
+          prepend-icon="mdi-account-key"
+          data-testid="oidc-person-add"
+          @click="open('create', undefined, 'person')"
+          >{{ t('oidcGroups.addPerson') }}</v-btn
+        >
+      </div>
     </div>
 
     <ErrorAlert v-if="loadError" :error="loadError" class="mb-4" />
@@ -119,8 +151,16 @@ async function confirm(): Promise<void> {
         :no-data-text="t('oidcGroups.empty')"
         data-testid="oidc-groups-table"
       >
-        <template #[`item.group`]="{ item }">
-          <span class="font-weight-medium">{{ item.group }}</span>
+        <template #[`item.who`]="{ item }">
+          <v-chip
+            size="x-small"
+            variant="tonal"
+            :color="item.kind === 'person' ? 'info' : undefined"
+            :prepend-icon="item.kind === 'person' ? 'mdi-account' : 'mdi-account-group'"
+            class="mr-2"
+            >{{ t(`oidcGroups.kind.${item.kind}`) }}</v-chip
+          >
+          <span class="font-weight-medium">{{ label(item) }}</span>
           <div v-if="item.description" class="text-caption text-medium-emphasis">
             {{ item.description }}
           </div>
@@ -142,7 +182,7 @@ async function confirm(): Promise<void> {
             size="small"
             :title="t('users.edit')"
             :aria-label="t('users.edit')"
-            :data-testid="`oidc-group-edit-${item.group}`"
+            :data-testid="`oidc-group-edit-${item.group ?? item.subject}`"
             @click="open('edit', item)"
           />
           <v-btn
@@ -152,7 +192,7 @@ async function confirm(): Promise<void> {
             color="error"
             :title="t('common.delete')"
             :aria-label="t('common.delete')"
-            :data-testid="`oidc-group-delete-${item.group}`"
+            :data-testid="`oidc-group-delete-${item.group ?? item.subject}`"
             @click="open('delete', item)"
           />
         </template>
@@ -162,16 +202,19 @@ async function confirm(): Promise<void> {
     <v-dialog :model-value="dialog !== null" max-width="640" @update:model-value="dialog = null">
       <v-card v-if="dialog" data-testid="oidc-group-dialog">
         <v-card-title class="pt-4 px-6">
-          <template v-if="dialog === 'create'">{{ t('oidcGroups.add') }}</template>
+          <template v-if="dialog === 'create'">{{
+            mode === 'group' ? t('oidcGroups.add') : t('oidcGroups.addPerson')
+          }}</template>
           <template v-else-if="dialog === 'edit'">
-            {{ t('oidcGroups.editTitle', { group: target?.group }) }}
+            {{ t('oidcGroups.editTitle', { group: label(target) }) }}
           </template>
-          <template v-else>{{ t('oidcGroups.deleteTitle', { group: target?.group }) }}</template>
+          <template v-else>{{ t('oidcGroups.deleteTitle', { group: label(target) }) }}</template>
         </v-card-title>
         <v-card-text>
           <v-form v-model="valid" @submit.prevent="confirm">
             <template v-if="dialog !== 'delete'">
               <v-text-field
+                v-if="mode === 'group'"
                 v-model="form.group"
                 :label="t('oidcGroups.group')"
                 :hint="t('oidcGroups.groupHint')"
@@ -181,6 +224,26 @@ async function confirm(): Promise<void> {
                 class="mb-2"
                 data-testid="oidc-group-name"
               />
+              <template v-else>
+                <v-text-field
+                  v-model="form.subject"
+                  :label="t('oidcGroups.subject')"
+                  :hint="t('oidcGroups.subjectHint')"
+                  persistent-hint
+                  :rules="[zodRule(OidcSubjectSchema)]"
+                  :disabled="dialog === 'edit'"
+                  class="mb-2"
+                  data-testid="oidc-person-subject"
+                />
+                <v-text-field
+                  v-model="form.displayName"
+                  :label="t('oidcGroups.displayName')"
+                  :hint="t('oidcGroups.displayNameHint')"
+                  persistent-hint
+                  class="mb-2"
+                  data-testid="oidc-person-name"
+                />
+              </template>
               <v-text-field
                 v-model="form.description"
                 :label="t('oidcGroups.description')"

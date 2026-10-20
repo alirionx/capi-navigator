@@ -54,6 +54,10 @@ watch(
   { immediate: true },
 );
 
+function copySubject(): void {
+  if (auth.me?.subject) void navigator.clipboard?.writeText(auth.me.subject);
+}
+
 async function signOut(): Promise<void> {
   const endSessionUrl = await auth.logout();
   // FP14-F-10: sign out at the identity provider too; it returns to the login page.
@@ -160,6 +164,15 @@ async function signOut(): Promise<void> {
                 : ''
             "
             data-testid="oidc-info"
+          />
+          <!-- FP14-F-04: the ID an admin needs for a person mapping. -->
+          <v-list-item
+            v-if="auth.me.source === 'oidc' && auth.me.subject"
+            :subtitle="t('app.yourId', { subject: auth.me.subject })"
+            :title="t('app.copyId')"
+            prepend-icon="mdi-content-copy"
+            data-testid="oidc-subject"
+            @click="copySubject"
           />
           <v-divider />
           <v-list-item

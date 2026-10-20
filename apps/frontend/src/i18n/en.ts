@@ -10,6 +10,8 @@ export const en = {
     userMenu: 'User menu',
     signedInAs: 'Signed in as {username}',
     signedInWithOidc: 'Signed in with your identity provider',
+    yourId: 'Your ID: {subject}',
+    copyId: 'Copy ID',
     oidcGroups: 'Groups: {groups}',
     changePassword: 'Change password',
     signOut: 'Sign out',
@@ -1022,10 +1024,18 @@ export const en = {
     },
   },
   oidcGroups: {
-    title: 'OpenID Connect groups',
+    title: 'OpenID Connect groups and people',
     subtitle:
-      'People who sign in with the identity provider get the role assignments of their groups; nobody has to be created here. Without a mapped group they get the default role (Authentication page).',
+      'People who sign in with the identity provider get the role assignments of their groups, plus those of a person mapping; nobody has to be created here. Map people for providers without groups (e.g. Rancher with local accounts). Without any mapping they get the default role (Authentication page).',
     add: 'Map group',
+    addPerson: 'Map person',
+    who: 'Group or person',
+    kind: { group: 'group', person: 'person' },
+    subject: 'Person ID (subject)',
+    subjectHint:
+      'The "sub" of the person at the provider, shown in their user menu ("Your ID") and in the audit log of their sign-in. Applies only to the provider configured now. Cannot be changed later.',
+    displayName: 'Name',
+    displayNameHint: 'Optional, for this list; the provider ID decides.',
     group: 'Group',
     groupHint:
       'Group name exactly as the identity provider sends it in the groups claim, e.g. capi-admins, /team-a or a group ID. Cannot be changed later.',

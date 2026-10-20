@@ -84,7 +84,7 @@ export class UsersService implements OnApplicationBootstrap {
       bindings: effectiveBindings(principal.bindings, this.store.rolePermissions),
       mustChangePassword: principal.mustChangePassword,
       source: principal.oidc ? 'oidc' : 'local',
-      ...(principal.oidc ? { groups: principal.oidc.groups } : {}),
+      ...(principal.oidc ? { groups: principal.oidc.groups, subject: principal.oidc.subject } : {}),
     };
   }
 

@@ -98,7 +98,7 @@ export class SessionService implements OnModuleInit {
       // FP14-F-04: access from the mapped groups, resolved on every request.
       return {
         username: `${payload.u} (oidc)`,
-        bindings: this.groups.bindings(payload.o.gr),
+        bindings: this.groups.bindings(payload.o.gr, payload.o.s),
         mustChangePassword: false,
         oidc: { subject: payload.o.s, groups: payload.o.gr },
       };

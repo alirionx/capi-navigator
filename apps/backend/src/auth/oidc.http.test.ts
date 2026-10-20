@@ -20,7 +20,7 @@ import {
 } from '@capi-navigator/shared';
 import { AuthSettingsService } from './auth-settings.service.js';
 import { AuthModule } from './auth.module.js';
-import { groupResourceName } from './groups.service.js';
+import { GroupsService, groupResourceName } from './groups.service.js';
 import { safeReturnPath } from './oidc.controller.js';
 import { OIDC_FLOW_COOKIE } from './oidc.service.js';
 import { SESSION_COOKIE } from './session.service.js';
@@ -435,6 +435,81 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
     ).rejects.toThrow(/client secret/);
     await service.update({ enabled: false, issuerUrl: idp.issuer, clientId: 'x' });
     expect(fake.authSettings.get(AUTH_SETTINGS_NAME)?.spec.oidc.enabled).toBe(false);
+  });
+
+  it('maps single people by subject and issuer, effective at once (FP14-F-04)', async () => {
+    await mapGroup('capi-admins', [{ role: 'admin' }]);
+    idp.person = { sub: 'sub-admin', name: 'alice', groups: ['capi-admins'] };
+    const admin = (await signIn()).session!;
+    // A person without groups, e.g. Rancher with local accounts.
+    idp.person = { sub: 'u-carol1', name: 'carol' };
+    const carol = (await signIn()).session!;
+    const me = async () => (await http().get('/api/auth/me').set('Cookie', carol).expect(200)).body;
+    expect(await me()).toMatchObject({ subject: 'u-carol1', bindings: [{ role: 'viewer' }] });
+
+    const created = await http()
+      .post('/api/oidc-groups')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({
+        subject: 'u-carol1',
+        displayName: 'Carol',
+        description: 'test',
+        bindings: [{ role: 'operator', namespaces: ['team-a'] }],
+      })
+      .expect(201);
+    expect(created.body).toMatchObject({
+      kind: 'person',
+      subject: 'u-carol1',
+      issuer: idp.issuer,
+      displayName: 'Carol',
+      name: expect.stringMatching(/^person-[0-9a-f]{24}$/),
+    });
+    // Effective on the next request, without signing in again.
+    expect((await me()).bindings).toMatchObject([{ role: 'operator', namespaces: ['team-a'] }]);
+
+    // Clearing the description removes it (merge patch with null).
+    const updated = await http()
+      .patch(`/api/oidc-groups/${created.body.name}`)
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ displayName: 'Carol', bindings: [{ role: 'operator', namespaces: ['team-a'] }] })
+      .expect(200);
+    expect(updated.body.description).toBeUndefined();
+    expect(updated.body.subject).toBe('u-carol1');
+
+    // Same subject at another provider: the mapping does not apply.
+    configure({ issuerUrl: 'https://other-idp.example' });
+    expect((await me()).bindings).toMatchObject([{ role: 'viewer' }]);
+    configure();
+    expect((await me()).bindings).toMatchObject([{ role: 'operator' }]);
+
+    // A group mapping and a person mapping add up.
+    expect(
+      (await http().get('/api/oidc-groups').set('Cookie', admin).expect(200)).body.map(
+        (m: { kind: string }) => m.kind,
+      ),
+    ).toEqual(['group', 'person']);
+    await http()
+      .post('/api/oidc-groups')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ subject: 'u-carol1', bindings: [{ role: 'viewer' }] })
+      .expect(409);
+    await http()
+      .post('/api/oidc-groups')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ group: 'x', subject: 'y', bindings: [{ role: 'viewer' }] })
+      .expect(400);
+  });
+
+  it('refuses person mappings while no provider is set up', async () => {
+    const service = app.get(GroupsService);
+    fake.authSettings.clear();
+    await expect(
+      service.create({ subject: 'u-1', bindings: [{ role: 'viewer' }] }),
+    ).rejects.toThrow(/provider first/);
   });
 
   it('only returns to paths inside the app', () => {

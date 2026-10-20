@@ -167,10 +167,13 @@ export function createFakeStore() {
         const current = groups.get(name);
         if (!current) throw err(404);
         if (resourceVersion && current.metadata.resourceVersion !== resourceVersion) throw err(409);
+        // JSON merge patch: null removes a field.
+        const merged: Record<string, unknown> = { ...current.spec, ...spec };
+        for (const [k, v] of Object.entries(merged)) if (v === null) delete merged[k];
         const updated = {
           ...current,
           metadata: { ...current.metadata, resourceVersion: String(rv++) },
-          spec: { ...current.spec, ...spec },
+          spec: merged as unknown as NavigatorGroupSpec,
         };
         groups.set(name, updated);
         return structuredClone(updated);

@@ -88,8 +88,8 @@ export class OidcController {
     }
     const mapped = this.groups.mapped(person.groups);
     const actor = `${person.name} (oidc)`;
-    if (this.groups.bindings(mapped).length === 0) {
-      // FP14-F-05: no mapped group and no default role.
+    if (this.groups.bindings(mapped, person.subject).length === 0) {
+      // FP14-F-05: no mapped group, no person mapping and no default role.
       await this.record(actor, 'failure', "No role for the person's groups", person.subject);
       res.redirect(302, loginPage('oidc_no_access'));
       return;
