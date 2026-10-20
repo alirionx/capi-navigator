@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { OidcSettingsSchema } from './crds/navigator-auth-settings.js';
-import { NavigatorGroupSpecSchema, OidcGroupNameSchema } from './crds/navigator-group.js';
+import {
+  NavigatorGroupSpecSchema,
+  OidcGroupNameSchema,
+  OidcSubjectSchema,
+} from './crds/navigator-group.js';
 import { RoleBindingSchema } from './permissions.js';
 
 /**
@@ -21,11 +25,15 @@ export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 export const LogoutResponseSchema = z.object({ endSessionUrl: z.string().optional() });
 export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
 
-/** A group mapping (FP14-F-04) as shown in the user management. */
+/** A mapping of a group or a person (FP14-F-04) as shown in the user management. */
 export const GroupMappingSchema = z.object({
-  /** Resource name, derived from the group. */
+  /** Resource name, derived from the group or the person. */
   name: z.string(),
-  group: z.string(),
+  kind: z.enum(['group', 'person']),
+  group: z.string().optional(),
+  subject: z.string().optional(),
+  issuer: z.string().optional(),
+  displayName: z.string().optional(),
   description: z.string().optional(),
   bindings: z.array(RoleBindingSchema),
   createdAt: z.string().optional(),
@@ -33,13 +41,27 @@ export const GroupMappingSchema = z.object({
 export type GroupMapping = z.infer<typeof GroupMappingSchema>;
 export const GroupMappingListSchema = z.array(GroupMappingSchema);
 
-export const CreateGroupMappingRequestSchema = NavigatorGroupSpecSchema;
+const MappingBase = NavigatorGroupSpecSchema.pick({ description: true, bindings: true });
+
+/**
+ * A group, or a person by subject; the issuer of a person mapping is the configured provider's
+ * (set by the backend).
+ */
+export const CreateGroupMappingRequestSchema = z.union([
+  MappingBase.extend({ group: OidcGroupNameSchema }).strict(),
+  MappingBase.extend({
+    subject: OidcSubjectSchema,
+    displayName: NavigatorGroupSpecSchema.shape.displayName,
+  }).strict(),
+]);
 export type CreateGroupMappingRequest = z.input<typeof CreateGroupMappingRequestSchema>;
 
-export const UpdateGroupMappingRequestSchema = NavigatorGroupSpecSchema.omit({ group: true });
+export const UpdateGroupMappingRequestSchema = MappingBase.extend({
+  displayName: NavigatorGroupSpecSchema.shape.displayName,
+});
 export type UpdateGroupMappingRequest = z.input<typeof UpdateGroupMappingRequestSchema>;
 
-export { OidcGroupNameSchema };
+export { OidcGroupNameSchema, OidcSubjectSchema };
 
 /** The Authentication page (FP14-F-12): settings without the secret, and the deployment values. */
 export const AuthSettingsSchema = z.object({

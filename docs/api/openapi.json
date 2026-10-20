@@ -8464,7 +8464,23 @@
           "name": {
             "type": "string"
           },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "group",
+              "person"
+            ]
+          },
           "group": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "displayName": {
             "type": "string"
           },
           "description": {
@@ -8482,7 +8498,7 @@
         },
         "required": [
           "name",
-          "group",
+          "kind",
           "bindings"
         ],
         "additionalProperties": false
@@ -9148,6 +9164,9 @@
             "items": {
               "type": "string"
             }
+          },
+          "subject": {
+            "type": "string"
           }
         },
         "required": [
@@ -10620,27 +10639,61 @@
         ]
       },
       "CreateGroupMappingRequestInput": {
-        "type": "object",
-        "properties": {
-          "group": {
-            "$ref": "#/components/schemas/OidcGroupNameInput"
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "bindings": {
+                "minItems": 1,
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RoleBindingInput"
+                }
+              },
+              "group": {
+                "$ref": "#/components/schemas/OidcGroupNameInput"
+              }
+            },
+            "required": [
+              "bindings",
+              "group"
+            ],
+            "additionalProperties": false
           },
-          "description": {
-            "type": "string",
-            "maxLength": 300
-          },
-          "bindings": {
-            "minItems": 1,
-            "maxItems": 50,
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/RoleBindingInput"
-            }
+          {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "bindings": {
+                "minItems": 1,
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RoleBindingInput"
+                }
+              },
+              "subject": {
+                "$ref": "#/components/schemas/OidcSubjectInput"
+              },
+              "displayName": {
+                "type": "string",
+                "maxLength": 100
+              }
+            },
+            "required": [
+              "bindings",
+              "subject"
+            ],
+            "additionalProperties": false
           }
-        },
-        "required": [
-          "group",
-          "bindings"
         ]
       },
       "CreateHelmRepositoryRequestInput": {
@@ -10895,6 +10948,11 @@
         }
       },
       "OidcGroupNameInput": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
+      "OidcSubjectInput": {
         "type": "string",
         "minLength": 1,
         "maxLength": 256
@@ -11620,6 +11678,10 @@
             "items": {
               "$ref": "#/components/schemas/RoleBindingInput"
             }
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100
           }
         },
         "required": [

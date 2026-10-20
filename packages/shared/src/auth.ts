@@ -63,6 +63,8 @@ export const MeSchema = z.object({
   source: z.enum(['local', 'oidc']),
   /** OIDC only: the person's groups that are mapped in the app (FP14-F-06). */
   groups: z.array(z.string()).optional(),
+  /** OIDC only: the person's subject, for a person mapping (FP14-F-04). */
+  subject: z.string().optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
