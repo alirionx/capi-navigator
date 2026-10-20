@@ -48,6 +48,7 @@ export const VersionsFileSchema = z.strictObject({
     k0smotron: EntrySchema,
     openstack: EntrySchema,
     aws: EntrySchema,
+    gcp: EntrySchema,
     helm: EntrySchema,
   }),
   prerequisites: z.strictObject({

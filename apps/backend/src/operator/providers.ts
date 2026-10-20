@@ -128,6 +128,8 @@ function usesProvider(entry: ProviderCatalogEntry, cluster: ClusterObject): bool
       return infra.startsWith('OpenStack');
     case 'aws':
       return infra.startsWith('AWS');
+    case 'gcp':
+      return infra.startsWith('GCP');
     case 'rke2-bootstrap':
     case 'rke2-control-plane':
       return cp === 'RKE2ControlPlane';

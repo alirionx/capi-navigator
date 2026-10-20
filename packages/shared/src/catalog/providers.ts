@@ -197,6 +197,26 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     variablesHint:
       'AWS_B64ENCODED_CREDENTIALS can stay empty: clusters use the AWS credentials stored in CAPI Navigator (AWSClusterStaticIdentity).',
   },
+  {
+    id: 'gcp',
+    kind: 'InfrastructureProvider',
+    name: 'gcp',
+    displayName: 'Google Cloud (CAPG)',
+    description: 'Creates networks, load balancers and Compute Engine instances on Google Cloud.',
+    recommendedVersion: VERSIONS.providers['gcp'].version,
+    defaultNamespace: 'capg-system',
+    repository: 'kubernetes-sigs/cluster-api-provider-gcp',
+    docsUrl: 'https://cluster-api-gcp.sigs.k8s.io/',
+    dependsOn: ['core'],
+    // CAPG v1.13 still implements the v1beta1 contract; CAPI v1.14 supports it (versions.yaml).
+    contract: 'v1beta1',
+    // The components put this variable into the controller's own credentials Secret; it may stay
+    // empty because every cluster references the credential stored in CAPI Navigator
+    // (GCPCluster.spec.credentialsRef, FP25-F-02).
+    defaultVariables: { GCP_B64ENCODED_CREDENTIALS: '' },
+    variablesHint:
+      'GCP_B64ENCODED_CREDENTIALS can stay empty: clusters use the Google Cloud credentials stored in CAPI Navigator (credentialsRef).',
+  },
 ];
 
 export function catalogEntry(id: string): ProviderCatalogEntry | undefined {

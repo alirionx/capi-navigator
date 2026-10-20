@@ -136,23 +136,33 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
     return { data, summary: { region: v.region, accessKeyIdSuffix: v.accessKeyId.slice(-4) } };
   }
 
-  identity(name: string, secret: { name: string; namespace: string }, namespaces: string[]) {
-    return {
-      apiVersion: AWS_IDENTITY.apiVersion,
-      kind: AWS_IDENTITY.kind,
-      metadata: { name },
-      spec: {
-        // The Secret must live in the CAPA controller namespace; secretRef is the name only.
-        secretRef: secret.name,
-        allowedNamespaces: { list: [...namespaces].sort() },
-      },
-    };
-  }
+  readonly identity = {
+    resource: AWS_IDENTITY,
+    build(name: string, secret: { name: string; namespace: string }, namespaces: string[]) {
+      return {
+        apiVersion: AWS_IDENTITY.apiVersion,
+        kind: AWS_IDENTITY.kind,
+        metadata: { name },
+        spec: {
+          // The Secret must live in the CAPA controller namespace; secretRef is the name only.
+          secretRef: secret.name,
+          allowedNamespaces: { list: [...namespaces].sort() },
+        },
+      };
+    },
+    allowedNamespaces(identity: Record<string, unknown>): string[] {
+      const spec = identity.spec as { allowedNamespaces?: { list?: string[] } } | undefined;
+      return spec?.allowedNamespaces?.list ?? [];
+    },
+  };
 
-  allowedNamespaces(identity: Record<string, unknown>): string[] {
-    const spec = identity.spec as { allowedNamespaces?: { list?: string[] } } | undefined;
-    return spec?.allowedNamespaces?.list ?? [];
-  }
+  readonly clusterKind = {
+    version: 'v1beta2',
+    plural: 'awsclusters',
+    usesCredential: (cluster: Record<string, unknown>, credential: { name: string }) =>
+      (cluster.spec as { identityRef?: { name?: string } } | undefined)?.identityRef?.name ===
+      credential.name,
+  };
 
   /** FP4-F-09: caller identity, region and the CAPA IAM prerequisites. Read-only. */
   async test(

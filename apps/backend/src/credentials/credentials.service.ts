@@ -16,13 +16,11 @@ import {
   type V1Secret,
 } from '@kubernetes/client-node';
 import {
-  AWS_IDENTITY,
   catalogEntry,
   CredentialSummarySchema,
   CredentialTestResultSchema,
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
-  OPENSTACK_IDENTITY,
   type CloudsYamlInfo,
   type CreateCredentialRequest,
   type Credential,
@@ -56,12 +54,8 @@ const ANN_SUMMARY = 'capi-navigator.io/summary';
 const ANN_TEST = 'capi-navigator.io/last-test';
 const MERGE_PATCH = setHeaderOptions('Content-Type', PatchStrategy.MergePatch);
 
-const IDENTITIES = { openstack: OPENSTACK_IDENTITY, aws: AWS_IDENTITY } as const;
-/** Infrastructure cluster kinds that reference identities (for the removal check). */
-const CLUSTER_KINDS = {
-  openstack: { plural: 'openstackclusters', version: 'v1beta2' },
-  aws: { plural: 'awsclusters', version: 'v1beta2' },
-} as const;
+/** Allowed namespaces of credentials without an identity resource (JSON array on the Secret). */
+const ANN_ALLOWED = 'capi-navigator.io/allowed-namespaces';
 
 export function credentialSecretName(name: string): string {
   return `capi-navigator-credential-${name}`;
@@ -104,9 +98,9 @@ export class CredentialsService {
         .makeApiClient(CoreV1Api)
         .listSecretForAllNamespaces({ labelSelector: LABEL_PROVIDER });
       const identities = new Map<string, Record<string, unknown>>();
-      for (const provider of this.plugins.keys()) {
-        for (const id of await this.listIdentities(kc, provider)) {
-          identities.set(`${provider}/${(id.metadata as { name: string }).name}`, id);
+      for (const plugin of this.plugins.values()) {
+        for (const id of await this.listIdentities(kc, plugin)) {
+          identities.set(`${plugin.provider}/${(id.metadata as { name: string }).name}`, id);
         }
       }
       return secrets.items
@@ -172,17 +166,16 @@ export class CredentialsService {
     req: UpdateCredentialRequest,
   ): Promise<Credential> {
     const plugin = this.plugin(provider);
-    const other = plugin.provider === 'aws' ? req.openstack : req.aws;
+    const inputs = req as Partial<Record<CredentialProvider, unknown>>;
+    const other = [...this.plugins.keys()].find((p) => p !== plugin.provider && inputs[p]);
     if (other)
       throw new BadRequestException(`The credential "${name}" is a ${plugin.provider} credential`);
     const kc = await this.clients.forConnection(connection);
     const current = await this.read(kc, plugin, name);
     const namespace = current.secret.metadata!.namespace!;
-    const input = plugin.provider === 'aws' ? req.aws : req.openstack;
+    const input = inputs[plugin.provider];
     const currentSummary = parseSummary(current.secret);
-    const allowed =
-      req.allowedNamespaces ??
-      (current.identity ? plugin.allowedNamespaces(current.identity) : ['default']);
+    const allowed = req.allowedNamespaces ?? this.allowed(plugin, current);
     const displayName =
       req.displayName ?? current.secret.metadata?.annotations?.[ANN_DISPLAY] ?? '';
 
@@ -204,7 +197,7 @@ export class CredentialsService {
     const plugin = this.plugin(provider);
     const kc = await this.clients.forConnection(connection);
     const current = await this.read(kc, plugin, name);
-    const users = await this.clustersUsing(kc, plugin.provider, name);
+    const users = await this.clustersUsing(kc, plugin, name, current.secret);
     if (users.length > 0) {
       throw new ConflictException({
         statusCode: 409,
@@ -212,19 +205,21 @@ export class CredentialsService {
         hint: `Delete these clusters first: ${users.join(', ')}`,
       });
     }
-    const def = IDENTITIES[plugin.provider];
+    const def = plugin.identity?.resource;
     await this.kube(`Delete credential ${name}`, async () => {
-      await kc
-        .makeApiClient(CustomObjectsApi)
-        .deleteClusterCustomObject({
-          group: def.group,
-          version: def.version,
-          plural: def.plural,
-          name,
-        })
-        .catch((err: unknown) => {
-          if (!isNotFound(err)) throw err;
-        });
+      if (def) {
+        await kc
+          .makeApiClient(CustomObjectsApi)
+          .deleteClusterCustomObject({
+            group: def.group,
+            version: def.version,
+            plural: def.plural,
+            name,
+          })
+          .catch((err: unknown) => {
+            if (!isNotFound(err)) throw err;
+          });
+      }
       await kc.makeApiClient(CoreV1Api).deleteNamespacedSecret({
         name: current.secret.metadata!.name!,
         namespace: current.secret.metadata!.namespace!,
@@ -348,7 +343,7 @@ export class CredentialsService {
   }
 
   private build(plugin: CredentialPlugin, req: CreateCredentialRequest, namespace: string) {
-    const input = req.provider === 'aws' ? req.aws : req.openstack;
+    const input = (req as Partial<Record<CredentialProvider, unknown>>)[plugin.provider];
     const { data, summary } = this.normalize(plugin, input);
     const objects = this.objects(
       plugin,
@@ -383,14 +378,22 @@ export class CredentialsService {
       metadata: {
         ...secretRef,
         labels,
-        annotations: { [ANN_DISPLAY]: displayName, [ANN_SUMMARY]: JSON.stringify(summary) },
+        annotations: {
+          [ANN_DISPLAY]: displayName,
+          [ANN_SUMMARY]: JSON.stringify(summary),
+          // Without an identity resource the app keeps (and enforces) the allowed namespaces.
+          ...(plugin.identity
+            ? {}
+            : { [ANN_ALLOWED]: JSON.stringify([...allowedNamespaces].sort()) }),
+        },
       },
       type: 'Opaque',
       data: Object.fromEntries(
         Object.entries(data).map(([k, v]) => [k, Buffer.from(v, 'utf8').toString('base64')]),
       ),
     };
-    const identity = plugin.identity(name, secretRef, allowedNamespaces) as KubernetesObject;
+    if (!plugin.identity) return [secret];
+    const identity = plugin.identity.build(name, secretRef, allowedNamespaces) as KubernetesObject;
     identity.metadata = { ...identity.metadata, labels };
     return [secret, identity];
   }
@@ -442,7 +445,8 @@ export class CredentialsService {
     );
     const secret = secrets.items[0];
     if (!secret) throw new NotFoundException(`Credential "${name}" not found`);
-    const def = IDENTITIES[plugin.provider];
+    const def = plugin.identity?.resource;
+    if (!def) return { secret };
     const identity = await kc
       .makeApiClient(CustomObjectsApi)
       .getClusterCustomObject({ group: def.group, version: def.version, plural: def.plural, name })
@@ -471,9 +475,10 @@ export class CredentialsService {
 
   private async listIdentities(
     kc: KubeConfig,
-    provider: CredentialProvider,
+    plugin: CredentialPlugin,
   ): Promise<Record<string, unknown>[]> {
-    const def = IDENTITIES[provider];
+    const def = plugin.identity?.resource;
+    if (!def) return [];
     try {
       const res = (await kc.makeApiClient(CustomObjectsApi).listClusterCustomObject({
         group: def.group,
@@ -490,23 +495,25 @@ export class CredentialsService {
 
   private async clustersUsing(
     kc: KubeConfig,
-    provider: CredentialProvider,
+    plugin: CredentialPlugin,
     name: string,
+    secret: V1Secret,
   ): Promise<string[]> {
-    const def = CLUSTER_KINDS[provider];
+    const { version, plural, usesCredential } = plugin.clusterKind;
+    const credential = {
+      name,
+      secret: { name: secret.metadata!.name!, namespace: secret.metadata!.namespace! },
+    };
     try {
       const res = (await kc.makeApiClient(CustomObjectsApi).listClusterCustomObject({
         group: 'infrastructure.cluster.x-k8s.io',
-        version: def.version,
-        plural: def.plural,
+        version,
+        plural,
       })) as {
-        items: {
-          metadata: { name: string; namespace: string };
-          spec?: { identityRef?: { name?: string } };
-        }[];
+        items: (Record<string, unknown> & { metadata: { name: string; namespace: string } })[];
       };
       return res.items
-        .filter((c) => c.spec?.identityRef?.name === name)
+        .filter((c) => usesCredential(c, credential))
         .map((c) => `${c.metadata.namespace}/${c.metadata.name}`);
     } catch (err) {
       if (isNotFound(err)) return [];
@@ -514,9 +521,22 @@ export class CredentialsService {
     }
   }
 
-  private toCredential(provider: CredentialProvider, { secret, identity }: Stored): Credential {
+  /** Allowed namespaces from the identity resource, or from the Secret for providers without. */
+  private allowed(plugin: CredentialPlugin, { secret, identity }: Stored): string[] {
+    if (plugin.identity) return identity ? plugin.identity.allowedNamespaces(identity) : [];
+    const stored = secret.metadata?.annotations?.[ANN_ALLOWED];
+    try {
+      const parsed: unknown = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed) ? parsed.filter((n): n is string => typeof n === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private toCredential(provider: CredentialProvider, stored: Stored): Credential {
+    const { secret } = stored;
     const plugin = this.plugin(provider);
-    const def = IDENTITIES[provider];
+    const def = plugin.identity?.resource;
     const ann = secret.metadata?.annotations ?? {};
     const name = secret.metadata?.labels?.[LABEL_CREDENTIAL] ?? '';
     const lastTest = parseJson(ann[ANN_TEST], CredentialTestResultSchema);
@@ -524,9 +544,12 @@ export class CredentialsService {
       name,
       provider,
       ...(ann[ANN_DISPLAY] ? { displayName: ann[ANN_DISPLAY] } : {}),
-      allowedNamespaces: identity ? plugin.allowedNamespaces(identity) : [],
+      allowedNamespaces: this.allowed(plugin, stored),
       summary: parseSummary(secret),
-      identity: { apiVersion: def.apiVersion, kind: def.kind, name },
+      // What clusters reference: the identity resource, or the Secret itself (e.g. CAPG).
+      identity: def
+        ? { apiVersion: def.apiVersion, kind: def.kind, name }
+        : { apiVersion: 'v1', kind: 'Secret', name: secret.metadata!.name! },
       secret: { name: secret.metadata!.name!, namespace: secret.metadata!.namespace! },
       ...(secret.metadata?.creationTimestamp
         ? { createdAt: new Date(secret.metadata.creationTimestamp).toISOString() }
