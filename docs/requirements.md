@@ -80,7 +80,6 @@ Because everything it creates is standard Cluster API, clusters stay open to oth
 ### Non-goals (for now)
 
 - Competing with commercial platforms such as Rancher (multi-tenancy, enterprise features, support)
-- Control plane hosting such as Kamaji or hosted control planes
 - Full coverage of all CAPI providers and all configuration options
 - General workload management inside workload clusters (deployments, pods); only Helm add-ons are in scope
 - Building OS images
@@ -928,7 +927,12 @@ These requirements apply to all feature packs and are checked in every pack.
 - **FP-21: CNI selection** (optional, low priority). Calico with VXLAN is the default for all distributions (RKE2 and k0s built in, kubeadm via a preset, FP-10). Later the wizard could offer a choice (e.g. Cilium or Flannel) per cluster, where each distribution supports it; the flavor plugins would then declare the CNIs they support and the node traffic each one needs (ADR-0012).
 - **FP-22: API tokens**: specified in section 6 for technical users; tokens for human users, scoped tokens and Kubernetes ServiceAccount tokens (TokenReview) may follow.
 - **FP-23: OpenAPI description and Swagger UI**: specified in section 6.
-- Possible later: K3s, kubeadm with prebuilt images, control plane hosting (Kamaji), GitOps export of manifests, free-form YAML editing.
+- **FP-24: Hosted control planes** (optional, low priority; not started). The control plane of a workload cluster runs as pods in the management cluster, only the workers run in the cloud: no control plane machines, faster and cheaper clusters, upgrades as a pod rollout (and no machine replacement as in ADR-0013). Findings so far (2026-10-20):
+  - Provider: k0smotron's `K0smotronControlPlane` (the k0smotron providers are already installed; CAPO documents this as its hosted control plane approach), with k0s workers through the existing k0s plugin. Kamaji publishes only edge builds marked for testing; stable releases are by subscription, which conflicts with pinned stable versions, so it is not the first choice.
+  - The management cluster needs a LoadBalancer reachable from the workers' network for every hosted control plane, storage for etcd (default StorageClass) and capacity; a local kind cluster is not enough for live tests (workers in the cloud cannot reach it).
+  - App changes: a topology mode "hosted" (k0s first), the transformation without control plane machine templates and without the infrastructure cluster's API load balancer, wizard fields for replicas and etcd storage, overview, tree and dashboard showing the control plane as pods and service in the management cluster, day 2 (version upgrade, scaling), deletion including the etcd PVCs, pre-checks of the management cluster (StorageClass, LoadBalancer), separation and resource limits of tenant control planes.
+  - Start with OpenStack, one replica; AWS and highly available control planes later. Effort about the size of FP-9, plus a management cluster in the cloud for live tests.
+- Possible later: K3s, kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
 
