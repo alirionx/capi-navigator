@@ -8548,13 +8548,27 @@
           },
           "mustChangePassword": {
             "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "local",
+              "oidc"
+            ]
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
           "username",
           "role",
           "bindings",
-          "mustChangePassword"
+          "mustChangePassword",
+          "source"
         ],
         "additionalProperties": false
       },

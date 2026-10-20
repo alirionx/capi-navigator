@@ -40,6 +40,7 @@ describe('router guards (FP1-F-07)', () => {
       role: 'admin',
       bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
       mustChangePassword: true,
+      source: 'local',
     });
     const router = createAppRouter(pinia);
     await router.push('/users');
@@ -52,6 +53,7 @@ describe('router guards (FP1-F-07)', () => {
       role: 'viewer',
       bindings: [{ role: 'viewer', permissions: [...BUILTIN_ROLES.viewer.permissions] }],
       mustChangePassword: false,
+      source: 'local',
     });
     const router = createAppRouter(pinia);
     await router.push('/users');
@@ -64,6 +66,7 @@ describe('router guards (FP1-F-07)', () => {
       role: 'admin',
       bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
       mustChangePassword: false,
+      source: 'local',
     });
     const router = createAppRouter(pinia);
     await router.push('/users');
@@ -76,6 +79,7 @@ describe('router guards (FP1-F-07)', () => {
       role: 'operator',
       bindings: [{ role: 'operator', permissions: [...BUILTIN_ROLES.operator.permissions] }],
       mustChangePassword: false,
+      source: 'local',
     });
     const router = createAppRouter(pinia);
     await router.push('/login');

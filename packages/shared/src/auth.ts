@@ -59,6 +59,10 @@ export const MeSchema = z.object({
   /** Role assignments with the permissions they grant (FP19-F-10). */
   bindings: z.array(EffectiveBindingSchema),
   mustChangePassword: z.boolean(),
+  /** Where the person signed in: a local account or the OpenID Connect provider (FP14-F-07). */
+  source: z.enum(['local', 'oidc']),
+  /** OIDC only: the person's groups that are mapped in the app (FP14-F-06). */
+  groups: z.array(z.string()).optional(),
 });
 export type Me = z.infer<typeof MeSchema>;
 
