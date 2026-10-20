@@ -61,4 +61,8 @@ Two models were considered for OIDC users:
 - Providers that put group IDs instead of names into the token (e.g. Entra ID) work, but the
   mapping uses the IDs; very large group lists that the provider leaves out of the token (Entra ID
   "overage") are not supported.
+- After the provider replaces its signing keys without announcing them first (e.g. a restarted Dex
+  with in-memory storage), sign-ins fail for up to a minute: `oauth4webapi` reloads the JWKS on an
+  unknown key at most once per minute (and every five minutes anyway), which protects against
+  requests with made-up key IDs.
 - One new dependency, `openid-client` (with `jose` and `oauth4webapi`).

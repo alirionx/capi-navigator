@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { AuthOptionsSchema, type AuthOptions } from '@capi-navigator/shared';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import AppLogo from '../components/AppLogo.vue';
+import { getJson } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { useAuthStore } from '../stores/auth.js';
 
@@ -16,6 +18,32 @@ const password = ref('');
 const showPassword = ref(false);
 const loading = ref(false);
 const error = ref<unknown>(null);
+const options = ref<AuthOptions>({ oidc: null });
+
+const redirect = computed(() =>
+  typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+    ? route.query.redirect
+    : '/',
+);
+/** FP14-F-07: the backend runs the OpenID Connect flow; the browser only navigates there. */
+const oidcHref = computed(
+  () => `/api/auth/oidc/login?redirect=${encodeURIComponent(redirect.value)}`,
+);
+/** Result of a failed OpenID Connect sign-in, from the callback redirect. */
+const oidcError = computed(() => {
+  const code = route.query.error;
+  return code === 'oidc_failed' || code === 'oidc_no_access' || code === 'oidc_cancelled'
+    ? t(`login.${code}`)
+    : null;
+});
+
+onMounted(async () => {
+  try {
+    options.value = await getJson('/api/auth/options', AuthOptionsSchema);
+  } catch {
+    // Without the options the local form still works.
+  }
+});
 
 async function submit(): Promise<void> {
   if (!username.value || !password.value) return;
@@ -27,8 +55,7 @@ async function submit(): Promise<void> {
     if (me.mustChangePassword) {
       await router.replace({ name: 'change-password' });
     } else {
-      const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/';
-      await router.replace(redirect.startsWith('/') ? redirect : '/');
+      await router.replace(redirect.value);
     }
   } catch (err) {
     error.value = err;
@@ -78,6 +105,29 @@ async function submit(): Promise<void> {
         >
           {{ t('login.submit') }}
         </v-btn>
+        <template v-if="options.oidc">
+          <div class="d-flex align-center ga-3 my-4 text-medium-emphasis text-body-2">
+            <v-divider />{{ t('login.or') }}<v-divider />
+          </div>
+          <v-alert
+            v-if="oidcError"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+            data-testid="oidc-error"
+            >{{ oidcError }}</v-alert
+          >
+          <v-btn
+            :href="oidcHref"
+            variant="tonal"
+            block
+            size="large"
+            prepend-icon="mdi-shield-account"
+            data-testid="oidc-sign-in"
+            >{{ options.oidc.label }}</v-btn
+          >
+        </template>
       </v-form>
     </v-card>
   </v-container>

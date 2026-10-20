@@ -9,6 +9,8 @@ export const en = {
     mainNavigation: 'Main navigation',
     userMenu: 'User menu',
     signedInAs: 'Signed in as {username}',
+    signedInWithOidc: 'Signed in with your identity provider',
+    oidcGroups: 'Groups: {groups}',
     changePassword: 'Change password',
     signOut: 'Sign out',
     apiDocs: 'API documentation',
@@ -835,6 +837,12 @@ export const en = {
     username: 'Username',
     password: 'Password',
     submit: 'Sign in',
+    or: 'or',
+    oidc_failed:
+      'Sign-in with your identity provider failed. Try again or ask an admin to check the logs.',
+    oidc_no_access:
+      'You are signed in at your identity provider, but none of your groups has access to CAPI Navigator. Ask an admin to map one of your groups.',
+    oidc_cancelled: 'Sign-in was cancelled at your identity provider.',
   },
   changePassword: {
     title: 'Change password',
@@ -959,6 +967,26 @@ export const en = {
       'For scripts, CI pipelines and GitOps: no password and no sign-in; access with API tokens generated here. Default: off.',
     technical: 'technical',
     tokens: 'API tokens',
+  },
+  oidcGroups: {
+    title: 'OpenID Connect groups',
+    subtitle:
+      'People who sign in with the identity provider get the role assignments of their groups; nobody has to be created here. Without a mapped group they get the default role (Helm value oidc.defaultRole).',
+    add: 'Map group',
+    group: 'Group',
+    groupHint:
+      'Group name exactly as the identity provider sends it in the groups claim, e.g. capi-admins, /team-a or a group ID. Cannot be changed later.',
+    description: 'Description',
+    descriptionHint: 'Optional, e.g. who is in the group.',
+    bindingsHint:
+      'Members get these assignments. Changes apply on their next request; a new mapping with their next sign-in. Maps to NavigatorGroup.spec.bindings.',
+    editTitle: 'Edit group {group}',
+    deleteTitle: 'Remove mapping of {group}?',
+    deleteText:
+      'Members of this group lose these assignments on their next request; without another mapped group they get the default role.',
+    empty: 'No groups mapped yet.',
+    notConfigured:
+      'Sign-in with an OpenID Connect provider is not configured (Helm values oidc.*). Mappings can be prepared already.',
   },
   tokens: {
     title: 'API tokens of {username}',

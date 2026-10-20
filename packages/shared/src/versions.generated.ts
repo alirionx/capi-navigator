@@ -272,5 +272,25 @@ export const VERSIONS: VersionsFile = {
       },
       "verified": "2026-10-20"
     }
+  },
+  "testTools": {
+    "dex": {
+      "version": "0.26.0",
+      "source": {
+        "datasource": "helm",
+        "package": "dex",
+        "registry": "https://charts.dexidp.io"
+      },
+      "verified": "2026-10-20"
+    },
+    "socat": {
+      "version": "1.8.1.1",
+      "source": {
+        "datasource": "docker",
+        "package": "alpine/socat",
+        "registry": "docker.io"
+      },
+      "verified": "2026-10-20"
+    }
   }
 };

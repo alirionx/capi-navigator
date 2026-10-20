@@ -11,6 +11,7 @@ import {
 import { ApiError } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import BindingsEditor from '../components/users/BindingsEditor.vue';
+import OidcGroupsPanel from '../components/users/OidcGroupsPanel.vue';
 import TokensDialog from '../components/users/TokensDialog.vue';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthStore } from '../stores/auth.js';
@@ -333,5 +334,11 @@ async function confirm(): Promise<void> {
       </v-card>
     </v-dialog>
     <TokensDialog v-if="tokensFor" v-model="tokensOpen" :username="tokensFor" />
+    <!-- FP14-F-04: access of people from the OpenID Connect provider. -->
+    <OidcGroupsPanel
+      :roles="roles.roles"
+      :connections="connectionNames"
+      :binding-label="bindingLabel"
+    />
   </v-container>
 </template>

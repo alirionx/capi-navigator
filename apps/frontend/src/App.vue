@@ -55,8 +55,10 @@ watch(
 );
 
 async function signOut(): Promise<void> {
-  await auth.logout();
-  await router.replace({ name: 'login' });
+  const endSessionUrl = await auth.logout();
+  // FP14-F-10: sign out at the identity provider too; it returns to the login page.
+  if (endSessionUrl) window.location.assign(endSessionUrl);
+  else await router.replace({ name: 'login' });
 }
 </script>
 
@@ -148,8 +150,20 @@ async function signOut(): Promise<void> {
             :title="t('app.signedInAs', { username: auth.me.username })"
             :subtitle="t(`roles.${auth.me.role}`)"
           />
+          <!-- FP14-F-08: OIDC people have no password here; show their mapped groups instead. -->
+          <v-list-item
+            v-if="auth.me.source === 'oidc'"
+            :title="t('app.signedInWithOidc')"
+            :subtitle="
+              auth.me.groups?.length
+                ? t('app.oidcGroups', { groups: auth.me.groups.join(', ') })
+                : ''
+            "
+            data-testid="oidc-info"
+          />
           <v-divider />
           <v-list-item
+            v-if="auth.me.source !== 'oidc'"
             prepend-icon="mdi-key"
             :title="t('app.changePassword')"
             :to="{ name: 'change-password' }"
