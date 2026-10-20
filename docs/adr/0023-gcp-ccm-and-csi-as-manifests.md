@@ -49,5 +49,9 @@ projects.
   fewer roles can be entered in the wizard.
 - A new CCM or CSI version needs the new file and checksum in `versions.yaml`; the update report
   lists both under "Add-on manifests".
+- A new version or content of an add-on gets a new resource set name. When the app adds it to a
+  namespace, it removes the older resource sets of the same add-on (and Calico's) with their
+  ConfigMaps, announced in the preview: otherwise new clusters would get every version. Clusters
+  that already got an older version keep its objects (`ApplyOnce`).
 - The CCM runs with `--use-service-account-credentials=false`, since the manifest only grants its
   own service account; its role cannot delete Node objects, which CAPI removes on machine deletion.

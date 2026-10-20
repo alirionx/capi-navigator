@@ -134,6 +134,8 @@ interface Plan {
   warnings: string[];
   blockers: string[];
   credentialNamespaceMissing: boolean;
+  /** Older versions of the namespace's add-on resource sets, replaced by the new ones. */
+  removed: KubernetesObject[];
 }
 
 /**
@@ -202,7 +204,10 @@ export class ClustersService {
         spec.namespace,
       );
     }
-    await this.kube(`Create cluster ${spec.name}`, () => serverSideApply(plan.kc, plan.objects));
+    await this.kube(`Create cluster ${spec.name}`, async () => {
+      await serverSideApply(plan.kc, plan.objects);
+      await deleteObjects(plan.kc, plan.removed);
+    });
     // Read back for status; right after creation the applied object is good enough.
     const applied = plan.objects.find((o) => o.kind === 'Cluster') as unknown as K8sObj;
     const cluster =
@@ -547,6 +552,18 @@ export class ClustersService {
           after: stringify(after, { lineWidth: 0 }),
         });
       }
+      // Older add-on resource sets replaced by the new ones (warned about in the plan).
+      for (const obj of plan.removed) {
+        removed.push(obj);
+        diffs.push({
+          kind: obj.kind ?? '',
+          name: obj.metadata?.name ?? '',
+          namespace,
+          change: 'delete',
+          before: '',
+          after: '',
+        });
+      }
       // Prune: MachineDeployments of pools that are no longer in the spec (FP7-F-06).
       const custom = plan.kc.makeApiClient(CustomObjectsApi);
       const selector = `${CLUSTER_NAME_LABEL}=${name},${MANAGED_BY_LABEL}=${MANAGED_BY_VALUE}`;
@@ -779,6 +796,37 @@ export class ClustersService {
     }) as KubernetesObject[];
     const extra: KubernetesObject[] = [];
     const extraPreview: KubernetesObject[] = [];
+    const removed: KubernetesObject[] = [];
+    /**
+     * Older ClusterResourceSets of an add-on in the namespace, removed with their ConfigMaps when a
+     * new version is added: otherwise new clusters would get every version. Clusters that already
+     * got an older one keep its objects (ApplyOnce, upstream ClusterResourceSetBinding).
+     */
+    const supersede = async (selector: string, keep: string, what: string) => {
+      const sets = (
+        (await kc.makeApiClient(CustomObjectsApi).listNamespacedCustomObject({
+          group: 'addons.cluster.x-k8s.io',
+          version: 'v1beta2',
+          namespace: spec.namespace,
+          plural: 'clusterresourcesets',
+          labelSelector: `${selector},${MANAGED_BY_LABEL}=${MANAGED_BY_VALUE}`,
+        })) as { items: K8sObj[] }
+      ).items.filter((o) => o.metadata.name !== keep);
+      for (const set of sets) {
+        const name = set.metadata.name;
+        removed.push(
+          {
+            apiVersion: 'addons.cluster.x-k8s.io/v1beta2',
+            kind: 'ClusterResourceSet',
+            metadata: { name, namespace: spec.namespace },
+          },
+          { apiVersion: 'v1', kind: 'ConfigMap', metadata: { name, namespace: spec.namespace } },
+        );
+        warnings.push(
+          `Replaces ${what} ${name} in namespace ${spec.namespace} with ${keep}; clusters that already got it keep its objects.`,
+        );
+      }
+    };
 
     // Namespace (created if missing).
     if (!(await this.namespaceExists(kc, spec.namespace))) {
@@ -864,6 +912,13 @@ export class ClustersService {
         resourceSet.metadata!.name!,
       );
       if (!existing) {
+        await this.kube('List add-on resource sets', () =>
+          supersede(
+            `capi-navigator.io/addon=${addon.id}`,
+            resourceSet.metadata!.name!,
+            `the ${addon.displayName} resource set`,
+          ),
+        );
         extra.push(configMap, resourceSet);
         extraPreview.push(
           {
@@ -894,6 +949,13 @@ export class ClustersService {
         resourceSet.metadata!.name!,
       );
       if (!existing) {
+        await this.kube('List Calico resource sets', () =>
+          supersede(
+            'capi-navigator.io/cni=calico',
+            resourceSet.metadata!.name!,
+            'the Calico resource set',
+          ),
+        );
         extra.push(configMap, resourceSet);
         extraPreview.push(
           {
@@ -940,6 +1002,7 @@ export class ClustersService {
       warnings,
       blockers,
       credentialNamespaceMissing,
+      removed,
     };
   }
 
