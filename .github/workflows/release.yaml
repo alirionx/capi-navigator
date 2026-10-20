@@ -1,5 +1,6 @@
-# Release: a tag vX.Y.Z publishes the container image ghcr.io/<owner>/capi-navigator:X.Y.Z and
-# attaches the packaged Helm chart (capi-navigator-X.Y.Z.tgz + .sha256) to the GitHub release.
+# Release: a tag vX.Y.Z publishes the container image ghcr.io/<owner>/capi-navigator:X.Y.Z, pushes
+# the Helm chart as OCI artifact to ghcr.io/<owner>/charts/capi-navigator:X.Y.Z and attaches the
+# packaged chart (capi-navigator-X.Y.Z.tgz + .sha256) to the GitHub release.
 #
 # To release: set `version` and `appVersion` in deploy/helm/capi-navigator/Chart.yaml to X.Y.Z,
 # commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
@@ -83,6 +84,7 @@ jobs:
     needs: [version, image]
     permissions:
       contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v5
@@ -95,6 +97,15 @@ jobs:
           file="dist/capi-navigator-${{ needs.version.outputs.version }}.tgz"
           (cd dist && sha256sum "$(basename "$file")" > "$(basename "$file").sha256")
           echo "file=$file" >> "$GITHUB_OUTPUT"
+      # Next to the container image, under charts/ (same name would clash with the image). A new
+      # package starts private: set it to public once in the package settings, like the image.
+      - name: Push chart to ghcr.io (OCI)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FILE: ${{ steps.package.outputs.file }}
+        run: |
+          echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          helm push "$FILE" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -102,23 +113,26 @@ jobs:
           FILE: ${{ steps.package.outputs.file }}
         run: |
           base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}"
+          chart="oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts/capi-navigator"
           cat > notes.md <<NOTES
           Container image: \`${IMAGE}:${VERSION}\`
 
-          Install the Helm chart from this release:
+          Install the Helm chart from ghcr.io:
 
           \`\`\`sh
-          helm install capi-navigator ${base}/$(basename "$FILE") \\
+          helm install capi-navigator ${chart} --version ${VERSION} \\
             -n capi-navigator-system --create-namespace
           \`\`\`
 
           Upgrading: Helm does not update CRDs on \`helm upgrade\`; apply them first:
 
           \`\`\`sh
-          helm show crds ${base}/$(basename "$FILE") | kubectl apply --server-side -f -
-          helm upgrade capi-navigator ${base}/$(basename "$FILE") \\
+          helm show crds ${chart} --version ${VERSION} | kubectl apply --server-side -f -
+          helm upgrade capi-navigator ${chart} --version ${VERSION} \\
             -n capi-navigator-system --reuse-values
           \`\`\`
+
+          The packaged chart is also attached to this release (\`${base}/$(basename "$FILE")\`).
 
           See the README for exposure options (Service, Ingress, HTTPRoute) and all values.
           NOTES
