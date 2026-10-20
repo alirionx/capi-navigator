@@ -2,7 +2,7 @@
 
 Generated on 2026-10-20 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
-**34 app versions** in [versions.yaml](../versions.yaml): 3 with a newer version (0 major, 2 minor, 1 patch).
+**34 app versions** in [versions.yaml](../versions.yaml): 1 with a newer version (0 major, 0 minor, 1 patch).
 
 npm packages are not part of this report: run `pnpm outdated -r`.
 
@@ -10,22 +10,22 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Cluster API providers
 
-| Entry                 | Current | Newest | Update                                                       | Change in                             |
-| --------------------- | ------- | ------ | ------------------------------------------------------------ | ------------------------------------- |
-| providers.cluster-api | v1.14.3 | –      | up to date                                                   | versions.yaml → providers.cluster-api |
-| providers.rke2        | v0.27.0 | –      | up to date                                                   | versions.yaml → providers.rke2        |
-| providers.k0smotron   | v2.2.0  | v2.3.0 | **minor** (released today; wait for the minimum release age) | versions.yaml → providers.k0smotron   |
-| providers.openstack   | v0.15.0 | –      | up to date                                                   | versions.yaml → providers.openstack   |
-| providers.aws         | v2.13.1 | –      | up to date                                                   | versions.yaml → providers.aws         |
-| providers.helm        | v0.6.4  | –      | up to date                                                   | versions.yaml → providers.helm        |
+| Entry                 | Current | Newest | Update     | Change in                             |
+| --------------------- | ------- | ------ | ---------- | ------------------------------------- |
+| providers.cluster-api | v1.14.3 | –      | up to date | versions.yaml → providers.cluster-api |
+| providers.rke2        | v0.27.0 | –      | up to date | versions.yaml → providers.rke2        |
+| providers.k0smotron   | v2.3.0  | –      | up to date | versions.yaml → providers.k0smotron   |
+| providers.openstack   | v0.15.0 | –      | up to date | versions.yaml → providers.openstack   |
+| providers.aws         | v2.13.1 | –      | up to date | versions.yaml → providers.aws         |
+| providers.helm        | v0.6.4  | –      | up to date | versions.yaml → providers.helm        |
 
 ### Prerequisites
 
-| Entry                          | Current | Newest  | Update                                                       | Change in                                     |
-| ------------------------------ | ------- | ------- | ------------------------------------------------------------ | --------------------------------------------- |
-| prerequisites.cert-manager     | v1.21.2 | –       | up to date                                                   | versions.yaml → prerequisites.cert-manager    |
-| prerequisites.capi-operator    | v0.29.0 | v0.30.0 | **minor** (released today; wait for the minimum release age) | versions.yaml → prerequisites.capi-operator   |
-| prerequisites.orc (CAPO v0.15) | v2.6.0  | –       | up to date                                                   | versions.yaml → prerequisites.orc.byCapoMinor |
+| Entry                          | Current | Newest | Update     | Change in                                     |
+| ------------------------------ | ------- | ------ | ---------- | --------------------------------------------- |
+| prerequisites.cert-manager     | v1.21.2 | –      | up to date | versions.yaml → prerequisites.cert-manager    |
+| prerequisites.capi-operator    | v0.30.0 | –      | up to date | versions.yaml → prerequisites.capi-operator   |
+| prerequisites.orc (CAPO v0.15) | v2.6.0  | –      | up to date | versions.yaml → prerequisites.orc.byCapoMinor |
 
 ### Kubernetes versions
 
@@ -84,4 +84,4 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ## Appendix: GitHub Actions and Docker images
 
-27 references in workflows, Dockerfile and .nvmrc; 0 of them have a newer version.
+28 references in workflows, Dockerfile and .nvmrc; 0 of them have a newer version.
