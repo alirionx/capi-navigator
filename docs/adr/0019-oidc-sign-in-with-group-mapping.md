@@ -25,8 +25,12 @@ Two models were considered for OIDC users:
 
 - **Groups decide access.** A `NavigatorGroup` resource maps one provider group to role
   assignments (role plus optional scope, the same model as FP-19). A person's access is the union of
-  the assignments of their groups. There are no per-person assignments; an exception is a group in
-  the provider. People without a mapped group get a configurable default role (default `viewer`),
+  the assignments of their groups.
+- **Person mappings for providers without groups** (added 2026-10-20): Rancher with local accounts
+  sends no groups, and its local authentication cannot have any. A `NavigatorGroup` can therefore
+  map one person instead, identified by subject plus issuer, never by name (names change and can be
+  reused; a subject of another provider must not inherit the access). The person sees the subject
+  in the user menu and sends it to an admin; it is also in the audit event of the sign-in. People without a mapped group get a configurable default role (default `viewer`),
   or are refused when none is set.
 - **The backend runs the flow.** Authorization code flow with PKCE, `state` and `nonce`, as a
   confidential client, with `openid-client` (OpenID certified; discovery, PKCE, ID token
