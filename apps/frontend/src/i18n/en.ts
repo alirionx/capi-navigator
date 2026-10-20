@@ -727,10 +727,15 @@ export const en = {
   credentials: {
     title: 'Credentials',
     subtitle:
-      'OpenStack and AWS credentials on the active management cluster. Stored once as Secret plus cluster-wide identity; clusters only reference them.',
+      'OpenStack, AWS and Google Cloud credentials on the active management cluster. Stored once as Secret (plus a cluster-wide identity where the provider has one); clusters only reference them.',
     addOpenStack: 'Add OpenStack',
     addAws: 'Add AWS',
-    addTitle: { openstack: 'Add OpenStack credentials', aws: 'Add AWS credentials' },
+    addGcp: 'Add Google Cloud',
+    addTitle: {
+      openstack: 'Add OpenStack credentials',
+      aws: 'Add AWS credentials',
+      gcp: 'Add Google Cloud credentials',
+    },
     editTitle: 'Edit {name}',
     name: 'Name',
     nameHint:
@@ -738,7 +743,8 @@ export const en = {
     displayName: 'Display name',
     displayNameHint: 'Optional label shown in the app. Default: the name.',
     provider: 'Provider',
-    providers: { openstack: 'OpenStack', aws: 'AWS' },
+    providers: { openstack: 'OpenStack', aws: 'AWS', gcp: 'Google Cloud' },
+    projectLabel: 'Project',
     target: 'Cloud',
     regionLabel: 'Region',
     keyEnding: 'Access key …{suffix}',
@@ -747,6 +753,7 @@ export const en = {
       openstack:
         'Namespaces whose clusters may use these credentials. Maps to spec.namespaceSelector of the OpenStackClusterIdentity. Default: default.',
       aws: 'Namespaces whose clusters may use these credentials. Maps to spec.allowedNamespaces.list of the AWSClusterStaticIdentity. Default: default.',
+      gcp: 'Namespaces whose clusters may use these credentials. CAPG has no identity resource; CAPI Navigator keeps and enforces this list (annotation on the Secret that GCPCluster.spec.credentialsRef references). Default: default.',
     },
     replaceSecret: 'Replace the stored secret values',
     required: 'Required',
@@ -808,6 +815,18 @@ export const en = {
       secretAccessKey: 'Secret access key',
       region: 'Default region',
       regionHint: 'Used for the test and as default for selection lists, e.g. eu-central-1.',
+    },
+    gcp: {
+      recommend:
+        'Use a service account of a project for Cluster API only, with the role "Editor" (or narrower) and the Compute Engine API enabled; never a personal account. The key is stored in a Secret and never shown again.',
+      keyFile: 'JSON key file',
+      keyPaste: 'Service account key (JSON)',
+      keyHint:
+        'Upload the file or paste its content (IAM & Admin → Service accounts → Keys → Add key → JSON). Maps to the Secret key "credentials" for GCPCluster.spec.credentialsRef.',
+      keyInfo: 'Project {project}, service account {account}',
+      region: 'Default region',
+      regionHint:
+        'Used for the test and as default for selection lists, e.g. europe-west6 (Zurich).',
     },
   },
   orc: {

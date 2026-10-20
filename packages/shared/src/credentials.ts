@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Infrastructure providers with stored credentials (FP-4). */
-export const CREDENTIAL_PROVIDERS = ['openstack', 'aws'] as const;
+export const CREDENTIAL_PROVIDERS = ['openstack', 'aws', 'gcp'] as const;
 export const CredentialProviderSchema = z.enum(CREDENTIAL_PROVIDERS);
 export type CredentialProvider = z.infer<typeof CredentialProviderSchema>;
 
@@ -95,6 +95,26 @@ export const AwsCredentialInputSchema = z.object({
 });
 export type AwsCredentialInput = z.input<typeof AwsCredentialInputSchema>;
 
+// ---- Google Cloud (FP25-F-02..04) ----
+
+export const GcpRegionSchema = z
+  .string()
+  .regex(/^[a-z]+-[a-z]+\d+$/, 'A Google Cloud region like europe-west6');
+
+/** Service account key as downloaded from the Google Cloud console (JSON). */
+export const GcpServiceAccountKeySchema = z
+  .string()
+  .trim()
+  .min(1, 'Paste or upload the JSON key of the service account')
+  .max(64 * 1024, 'At most 64 KiB');
+
+export const GcpCredentialInputSchema = z.object({
+  serviceAccountKey: GcpServiceAccountKeySchema,
+  /** Default region for tests and selection lists. */
+  region: GcpRegionSchema,
+});
+export type GcpCredentialInput = z.input<typeof GcpCredentialInputSchema>;
+
 // ---- API ----
 
 export const CreateCredentialRequestSchema = z.discriminatedUnion('provider', [
@@ -112,6 +132,13 @@ export const CreateCredentialRequestSchema = z.discriminatedUnion('provider', [
     allowedNamespaces: AllowedNamespacesSchema,
     aws: AwsCredentialInputSchema,
   }),
+  z.object({
+    provider: z.literal('gcp'),
+    name: CredentialNameSchema,
+    displayName: z.string().trim().max(80).optional(),
+    allowedNamespaces: AllowedNamespacesSchema,
+    gcp: GcpCredentialInputSchema,
+  }),
 ]);
 export type CreateCredentialRequest = z.input<typeof CreateCredentialRequestSchema>;
 
@@ -122,13 +149,15 @@ export const UpdateCredentialRequestSchema = z
     /** New secret values; omit to keep the stored ones. Must match the credential's provider. */
     openstack: OpenStackCredentialInputSchema.optional(),
     aws: AwsCredentialInputSchema.optional(),
+    gcp: GcpCredentialInputSchema.optional(),
   })
   .refine(
     (v) =>
       v.displayName !== undefined ||
       v.allowedNamespaces !== undefined ||
       v.openstack !== undefined ||
-      v.aws !== undefined,
+      v.aws !== undefined ||
+      v.gcp !== undefined,
     { message: 'Nothing to update' },
   );
 export type UpdateCredentialRequest = z.input<typeof UpdateCredentialRequestSchema>;
@@ -189,6 +218,9 @@ export const CredentialSummarySchema = z.object({
   projectName: z.string().optional(),
   /** Last 4 characters of the AWS access key ID. */
   accessKeyIdSuffix: z.string().optional(),
+  /** Google Cloud project and service account of the key (FP25-F-02). */
+  projectId: z.string().optional(),
+  serviceAccount: z.string().optional(),
   hasCaCert: z.boolean().optional(),
 });
 export type CredentialSummary = z.infer<typeof CredentialSummarySchema>;
@@ -220,9 +252,9 @@ export const LOOKUP_KINDS = {
     'volumeTypes',
   ],
   aws: ['regions', 'availabilityZones', 'instanceTypes', 'images', 'keyPairs'],
+  gcp: ['regions', 'zones', 'machineTypes', 'images', 'networks'],
 } as const;
-export type LookupKind =
-  (typeof LOOKUP_KINDS)['openstack'][number] | (typeof LOOKUP_KINDS)['aws'][number];
+export type LookupKind = (typeof LOOKUP_KINDS)[keyof typeof LOOKUP_KINDS][number];
 
 export const LookupOptionSchema = z.object({
   value: z.string(),
@@ -273,3 +305,35 @@ export const CAPA_IAM = {
 export const CANONICAL_AWS_OWNER = '099720109477';
 export const DEBIAN_AWS_OWNER = '136693071363';
 export const ROCKY_AWS_OWNER = '792107900819';
+
+/**
+ * Public image families on Google Cloud offered in the wizard (FP25-F-04); the lookup resolves
+ * each to its current image and leaves out families the project cannot see.
+ */
+export const GCP_IMAGE_FAMILIES = [
+  { project: 'ubuntu-os-cloud', family: 'ubuntu-2404-lts-amd64', label: 'Ubuntu 24.04 LTS' },
+  { project: 'ubuntu-os-cloud', family: 'ubuntu-2204-lts', label: 'Ubuntu 22.04 LTS' },
+  { project: 'debian-cloud', family: 'debian-13', label: 'Debian 13' },
+  { project: 'debian-cloud', family: 'debian-12', label: 'Debian 12' },
+  { project: 'rocky-linux-cloud', family: 'rocky-linux-9', label: 'Rocky Linux 9' },
+] as const;
+
+/**
+ * Permissions CAPG needs in the project (FP25-F-03), checked with testIamPermissions: networks,
+ * firewalls, the API load balancer and instances; the role "Editor" covers them.
+ */
+export const GCP_REQUIRED_PERMISSIONS = [
+  'compute.networks.create',
+  'compute.subnetworks.create',
+  'compute.routers.create',
+  'compute.firewalls.create',
+  'compute.addresses.create',
+  'compute.healthChecks.create',
+  'compute.backendServices.create',
+  'compute.forwardingRules.create',
+  'compute.targetTcpProxies.create',
+  'compute.instanceGroups.create',
+  'compute.instances.create',
+  'compute.disks.create',
+  'iam.serviceAccounts.actAs',
+] as const;

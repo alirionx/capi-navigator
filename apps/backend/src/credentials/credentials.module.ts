@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConnectionsModule } from '../connections/connections.module.js';
 import { AwsCredentialPlugin } from '../infra-providers/aws/aws-credential.plugin.js';
+import { GcpCredentialPlugin } from '../infra-providers/gcp/gcp-credential.plugin.js';
 import { OpenStackCredentialPlugin } from '../infra-providers/openstack/openstack-credential.plugin.js';
 import { CredentialsController } from './credentials.controller.js';
 import { CREDENTIAL_PLUGINS, CredentialsService } from './credentials.service.js';
@@ -13,7 +14,11 @@ import { CREDENTIAL_PLUGINS, CredentialsService } from './credentials.service.js
     CredentialsService,
     {
       provide: CREDENTIAL_PLUGINS,
-      useFactory: () => [new OpenStackCredentialPlugin(), new AwsCredentialPlugin()],
+      useFactory: () => [
+        new OpenStackCredentialPlugin(),
+        new AwsCredentialPlugin(),
+        new GcpCredentialPlugin(),
+      ],
     },
   ],
   exports: [CredentialsService],
