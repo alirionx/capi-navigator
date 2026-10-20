@@ -40,4 +40,13 @@ describe('CRD generation (STATE-02)', () => {
       expect(readFileSync(join(root, path), 'utf8')).toBe(content);
     }
   });
+
+  it('lets the app read and write every CRD in the Helm chart role', () => {
+    // A missing resource keeps the informer cache unsynced and the pod never ready (found for
+    // NavigatorAuthSettings before release 0.6.0; local development runs with admin rights).
+    const rbac = readFileSync(join(root, 'deploy/helm/capi-navigator/templates/rbac.yaml'), 'utf8');
+    const resources = /resources: \[([^\]]*navigatorusers[^\]]*)\]/.exec(rbac)?.[1] ?? '';
+    const granted = resources.split(',').map((r) => r.trim());
+    for (const def of ALL_CRDS) expect(granted, def.kind).toContain(def.plural);
+  });
 });
