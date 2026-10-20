@@ -3,7 +3,7 @@ import type { PermissionCheck } from './connections.js';
 /**
  * Permissions CAPI Navigator needs on a management cluster, checked with
  * SelfSubjectAccessReview when a connection is tested (FP2-F-04). Resource names verified against
- * cluster-api v1.14.3, cluster-api-operator v0.29.0 and CAAPH CRDs.
+ * cluster-api v1.14.3, cluster-api-operator v0.30.0 (unchanged API) and CAAPH CRDs.
  */
 export const REQUIRED_PERMISSIONS: Omit<PermissionCheck, 'allowed'>[] = [
   {

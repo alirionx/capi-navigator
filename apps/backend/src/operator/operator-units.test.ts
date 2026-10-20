@@ -1,5 +1,5 @@
 import type { KubeConfig, V1Deployment } from '@kubernetes/client-node';
-import { catalogEntry } from '@capi-navigator/shared';
+import { CAPI_OPERATOR, catalogEntry } from '@capi-navigator/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { fetchOrcManifest, OrcManifestError, parseOrcManifest } from './orc-manifest.js';
 import { deploymentReady, deploymentVersion, detectPrerequisites } from './prerequisites.js';
@@ -66,7 +66,9 @@ describe('prerequisite detection (FP3-F-01, FP3-F-02, FP3-F-04a)', () => {
     expect(pre.operator).toEqual({ installed: false, ready: false });
     expect(pre.orc).toEqual({ installed: false, ready: false });
     expect(pre.instructions.certManager).toContain('oci://quay.io/jetstack/charts/cert-manager');
-    expect(pre.instructions.operator).toContain('--version 0.29.0');
+    expect(pre.instructions.operator).toContain(
+      `--version ${CAPI_OPERATOR.recommendedVersion.replace(/^v/, '')}`,
+    );
     expect(pre.instructions.orc).toContain('/v2.6.0/install.yaml');
   });
 
