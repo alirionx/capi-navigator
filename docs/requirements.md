@@ -850,13 +850,15 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 
 **Acceptance criteria**
 
-- [ ] With Dex, a person in a group mapped to "operator in `home/team-a`" signs in with the button, changes a cluster in `team-a` and gets 403 in `team-b`; nobody was created in the app beforehand.
-- [ ] A person without a mapped group gets the default role; with no default role the sign-in is refused with a message.
-- [ ] Removing a group mapping takes effect on the next request; local sign-in keeps working with OIDC enabled.
-- [ ] Wrong issuer, wrong audience, an expired ID token, a wrong `nonce` or `state` and a replayed callback are refused (tests against a test provider).
-- [ ] No provider token or authorization code appears in API responses, logs, the audit log or the browser.
-- [ ] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
-- [ ] A Playwright test signs in through a test provider.
+- [x] With Dex, a person in a group mapped to "operator in `home/team-a`" signs in with the button, changes a cluster in `team-a` and gets 403 in `team-b`; nobody was created in the app beforehand.
+- [x] A person without a mapped group gets the default role; with no default role the sign-in is refused with a message.
+- [x] Removing a group mapping takes effect on the next request; local sign-in keeps working with OIDC enabled.
+- [x] Wrong issuer, wrong audience, an expired ID token, a wrong `nonce` or `state` and a replayed callback are refused (tests against a test provider).
+- [x] No provider token or authorization code appears in API responses, logs, the audit log or the browser.
+- [x] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
+- [x] A Playwright test signs in through a test provider.
+
+Verified on 2026-10-20 with HTTP tests against an in-process test provider (all failure cases), a Playwright test against Dex v2.46 in kind (`pnpm dex:up`) and live checks: an OIDC operator of `team-a` passed the permission check in `team-a` and got 403 in `team-b` and on `/api/users`. The tests showed that `openid-client` accepts ID tokens with a foreign signature from the token endpoint unless `enableNonRepudiationChecks` is set; it is set (ADR-0019).
 
 ## 7. Non-functional requirements
 
