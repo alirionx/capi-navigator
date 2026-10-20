@@ -565,7 +565,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
   });
 
   it('replaces older versions of an add-on resource set in the namespace (ADR-0023)', async () => {
-    state.providers.push(ready('gcp'));
+    state.providers.push(ready('gcp') as OperatorState['providers'][number]);
     const managed = { 'capi-navigator.io/managed-by': 'capi-navigator' };
     k8s.resourceSets = [
       {
