@@ -312,6 +312,8 @@ const k8s = vi.hoisted(() => ({
   conflicts: new Map<string, { managers: string[]; fields: string[] }>(),
   machines: [] as unknown[],
   deleted: [] as string[],
+  /** ClusterResourceSets in the namespace, with their labels (ADR-0023). */
+  resourceSets: [] as { name: string; labels: Record<string, string> }[],
 }));
 vi.mock('../kube/apply.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../kube/apply.js')>()),
@@ -364,15 +366,33 @@ const fakeKc = {
     },
     listClusterCustomObject: async () => ({ items: [] }),
     // Live MachineDeployments (from the simulated live state) and machines (FP-7 pipeline).
-    listNamespacedCustomObject: async ({ plural }: { plural: string }) => ({
+    listNamespacedCustomObject: async ({
+      plural,
+      labelSelector,
+    }: {
+      plural: string;
+      labelSelector?: string;
+    }) => ({
       items:
-        plural === 'machinedeployments'
-          ? [...k8s.live.entries()]
-              .filter(([key]) => key.startsWith('MachineDeployment/'))
-              .map(([, o]) => o)
-          : plural === 'machines'
-            ? k8s.machines
-            : [],
+        plural === 'clusterresourcesets'
+          ? k8s.resourceSets
+              .filter((set) =>
+                (labelSelector ?? '')
+                  .split(',')
+                  .filter(Boolean)
+                  .every((term) => {
+                    const [key, value] = term.split('=');
+                    return set.labels[key!] === value;
+                  }),
+              )
+              .map((set) => ({ metadata: { name: set.name, labels: set.labels } }))
+          : plural === 'machinedeployments'
+            ? [...k8s.live.entries()]
+                .filter(([key]) => key.startsWith('MachineDeployment/'))
+                .map(([, o]) => o)
+            : plural === 'machines'
+              ? k8s.machines
+              : [],
     }),
     readNamespacedSecret: async ({ name }: { name: string }) => {
       if (name === 'demo-kubeconfig') {
@@ -484,6 +504,8 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       lastTest: { ok: true, testedAt: 'x', checks: [] },
     };
     k8s.applied = [];
+    k8s.deleted = [];
+    k8s.resourceSets = [];
     k8s.namespaces = new Set(['team-a']);
     k8s.existingCluster = false;
     allowNamespace.mockReset();
@@ -540,6 +562,49 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     expect(res.body.objects.map((o: { kind: string }) => o.kind)).not.toContain(
       'ClusterResourceSet',
     );
+  });
+
+  it('replaces older versions of an add-on resource set in the namespace (ADR-0023)', async () => {
+    state.providers.push(ready('gcp'));
+    const managed = { 'capi-navigator.io/managed-by': 'capi-navigator' };
+    k8s.resourceSets = [
+      {
+        name: 'capi-navigator-gcp-ccm-v36-4-8-aaaaaa',
+        labels: { ...managed, 'capi-navigator.io/addon': 'gcp-ccm' },
+      },
+      // Not the app's, or another add-on: left alone.
+      { name: 'someone-elses-ccm', labels: { 'capi-navigator.io/addon': 'gcp-ccm' } },
+      {
+        name: 'capi-navigator-gcp-csi-v1-27-4-bbbbbb',
+        labels: { ...managed, 'capi-navigator.io/addon': 'gcp-csi' },
+      },
+    ];
+    const gcpSpec = {
+      ...OS_SPEC,
+      infrastructure: {
+        provider: 'gcp',
+        credentialRef: 'gcp',
+        project: 'demo-proj',
+        region: 'europe-west3',
+        image: 'projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261016',
+      },
+    };
+    const res = await preview(gcpSpec).expect(200);
+    expect(res.body.warnings.join('\n')).toMatch(
+      /Replaces the GCP Cloud Controller Manager resource set capi-navigator-gcp-ccm-v36-4-8-aaaaaa/,
+    );
+    await http()
+      .post(base)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ spec: gcpSpec })
+      .expect(201);
+    expect(k8s.deleted.sort()).toEqual([
+      'ClusterResourceSet/capi-navigator-gcp-ccm-v36-4-8-aaaaaa',
+      'ClusterResourceSet/capi-navigator-gcp-csi-v1-27-4-bbbbbb',
+      'ConfigMap/capi-navigator-gcp-ccm-v36-4-8-aaaaaa',
+      'ConfigMap/capi-navigator-gcp-csi-v1-27-4-bbbbbb',
+    ]);
   });
 
   it('offers to allow the namespace for the credential and does it on create', async () => {
