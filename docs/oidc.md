@@ -10,13 +10,19 @@ Keycloak, and Rancher.
 - The sign-in page shows the local form and, below it, a button such as "Sign in with Okta".
 - The backend runs the authorization code flow with PKCE. The provider's tokens never reach the
   browser; the app issues its own session cookie, with the same lifetime as for local users.
-- **Groups decide access.** In **Users → OpenID Connect groups** an admin maps a provider group to
-  role assignments, e.g. `platform-team` → admin, `team-a` → operator in namespace `team-a`. Nobody
-  has to be created in the app. A person's access is the union of their groups' assignments.
+- **Groups decide access.** In **Users → OpenID Connect groups and people** an admin maps a
+  provider group to role assignments, e.g. `platform-team` → admin, `team-a` → operator in namespace
+  `team-a`. Nobody has to be created in the app. A person's access is the union of their groups'
+  assignments.
+- **Single people** can be mapped too, for providers without groups (e.g. Rancher with local
+  accounts). They are identified by their subject (`sub`) at the configured provider, never by
+  name. The list **Recent sign-ins** below the mappings shows who signed in (from the audit log),
+  where their access comes from, and a **Map person** button that fills in the ID; a person also
+  sees their ID in the user menu.
 - People without a mapped group get the **default role** (Viewer), or are refused if you choose
   "Nobody". With a provider where anyone can register, set it empty.
-- Changing or removing a mapping applies on the next request; a new mapping and a changed group
-  membership apply with the next sign-in.
+- Changing or removing a mapping and adding a person mapping apply on the next request; a new group
+  mapping and a changed group membership apply with the next sign-in.
 - The local `admin` stays as break-glass access. API tokens remain for local technical users only.
 
 ## Settings
@@ -161,6 +167,10 @@ independent of Rancher managing clusters; CAPI Navigator only uses it for sign-i
 Rancher sends groups as principal names of its auth provider, e.g. `github_team://1234567`, and local
 Rancher groups without prefix. Map them exactly like that; the group list of a signed-in person is
 shown in their user menu in CAPI Navigator.
+
+**Rancher with local accounts only** sends no groups at all: Rancher's local authentication has no
+groups. Map these people one by one: they sign in once (and get the default role), then an admin
+picks them in **Recent sign-ins** and maps them.
 
 ## Troubleshooting
 

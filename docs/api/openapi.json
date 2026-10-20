@@ -5360,6 +5360,41 @@
         ]
       }
     },
+    "/api/oidc-groups/sign-ins": {
+      "get": {
+        "operationId": "Groups_signIns",
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Recent sign-ins with the configured provider, for person mappings",
+        "description": "From the audit log (retention AUDIT_RETENTION_DAYS); one row per person.\n\nRequires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcSignInList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
     "/api/openapi.json": {
       "get": {
         "operationId": "OpenApi_openApi",
@@ -9292,6 +9327,70 @@
           "after"
         ],
         "additionalProperties": false
+      },
+      "OidcSignIn": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lastSignIn": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ]
+          },
+          "access": {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "groups",
+                  "person",
+                  "default",
+                  "none"
+                ]
+              },
+              "detail": {
+                "default": [],
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "kind",
+              "detail"
+            ],
+            "additionalProperties": false
+          },
+          "mapping": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "name",
+          "lastSignIn",
+          "outcome",
+          "access"
+        ],
+        "additionalProperties": false
+      },
+      "OidcSignInList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/OidcSignIn"
+        }
       },
       "OidcTestResult": {
         "type": "object",

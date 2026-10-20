@@ -504,6 +504,66 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
       .expect(400);
   });
 
+  it('lists recent sign-ins of the configured provider with their access (FP14-F-15)', async () => {
+    fake.auditEvents.length = 0;
+    await mapGroup('capi-admins', [{ role: 'admin' }]);
+    idp.person = { sub: 'sub-admin', name: 'alice', groups: ['capi-admins', 'unmapped'] };
+    const admin = (await signIn()).session!;
+    idp.person = { sub: 'u-dave', name: 'dave' };
+    await signIn();
+    await signIn(); // twice: one row, latest sign-in
+    // Older events: without issuer (before FP14-F-15) and of another provider.
+    const old = { actor: 'x (oidc)', action: 'auth.oidc.login', outcome: 'success' as const };
+    await fake.store.auditEvents.create(
+      {},
+      { ...old, subject: 'old-1', timestamp: '2026-01-01T00:00:00Z' },
+    );
+    await fake.store.auditEvents.create(
+      {},
+      {
+        ...old,
+        subject: 'other-1',
+        issuer: 'https://other.example',
+        timestamp: '2026-01-01T00:00:00Z',
+      },
+    );
+
+    const list = async () =>
+      (await http().get('/api/oidc-groups/sign-ins').set('Cookie', admin).expect(200)).body;
+    const rows = await list();
+    expect(rows.map((r: { name: string }) => r.name)).toEqual(['dave', 'alice']);
+    expect(rows[0]).toMatchObject({
+      subject: 'u-dave',
+      outcome: 'success',
+      access: { kind: 'default', detail: ['viewer'] },
+    });
+    expect(rows[1]).toMatchObject({ access: { kind: 'groups', detail: ['capi-admins'] } });
+    // The audit event keeps only mapped groups.
+    expect(JSON.stringify(fake.auditEvents)).not.toContain('unmapped');
+
+    const mapped = await http()
+      .post('/api/oidc-groups')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ subject: 'u-dave', displayName: 'dave', bindings: [{ role: 'operator' }] })
+      .expect(201);
+    expect((await list())[0]).toMatchObject({
+      access: { kind: 'person' },
+      mapping: mapped.body.name,
+    });
+
+    // People refused for lack of a role show up too, so they can be mapped.
+    configure({ defaultRole: '' });
+    idp.person = { sub: 'u-erin', name: 'erin' };
+    await signIn();
+    configure();
+    expect((await list())[0]).toMatchObject({ name: 'erin', outcome: 'failure' });
+
+    idp.person = { sub: 'u-v', name: 'victor', groups: [] };
+    const viewer = (await signIn()).session!;
+    await http().get('/api/oidc-groups/sign-ins').set('Cookie', viewer).expect(403);
+  });
+
   it('refuses person mappings while no provider is set up', async () => {
     const service = app.get(GroupsService);
     fake.authSettings.clear();

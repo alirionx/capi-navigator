@@ -61,6 +61,24 @@ export const UpdateGroupMappingRequestSchema = MappingBase.extend({
 });
 export type UpdateGroupMappingRequest = z.input<typeof UpdateGroupMappingRequestSchema>;
 
+/** A person who signed in with the configured provider recently (FP14-F-15), from the audit log. */
+export const OidcSignInSchema = z.object({
+  subject: z.string(),
+  name: z.string(),
+  lastSignIn: z.string(),
+  outcome: z.enum(['success', 'failure']),
+  /** Where the person's access comes from now. */
+  access: z.object({
+    kind: z.enum(['groups', 'person', 'default', 'none']),
+    /** Mapped groups (kind groups; with a person mapping too), or the default role. */
+    detail: z.array(z.string()).default([]),
+  }),
+  /** Name of the person mapping, if any. */
+  mapping: z.string().optional(),
+});
+export type OidcSignIn = z.infer<typeof OidcSignInSchema>;
+export const OidcSignInListSchema = z.array(OidcSignInSchema);
+
 export { OidcGroupNameSchema, OidcSubjectSchema };
 
 /** The Authentication page (FP14-F-12): settings without the secret, and the deployment values. */

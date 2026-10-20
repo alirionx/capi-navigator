@@ -1036,6 +1036,23 @@ export const en = {
       'The "sub" of the person at the provider, shown in their user menu ("Your ID") and in the audit log of their sign-in. Applies only to the provider configured now. Cannot be changed later.',
     displayName: 'Name',
     displayNameHint: 'Optional, for this list; the provider ID decides.',
+    signIns: {
+      title: 'Recent sign-ins',
+      subtitle:
+        'People who signed in with the configured provider, from the audit log (retention: AUDIT_RETENTION_DAYS, default 90 days). Map a person directly from here.',
+      name: 'Name',
+      last: 'Last sign-in',
+      access: 'Access now',
+      refused: 'refused',
+      map: 'Map person',
+      empty: 'Nobody has signed in with the configured provider yet.',
+      kind: {
+        groups: 'Groups',
+        person: 'Person mapping',
+        default: 'Default role',
+        none: 'No access',
+      },
+    },
     group: 'Group',
     groupHint:
       'Group name exactly as the identity provider sends it in the groups claim, e.g. capi-admins, /team-a or a group ID. Cannot be changed later.',

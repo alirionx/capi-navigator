@@ -4,7 +4,9 @@ import {
   AuthOptionsSchema,
   GroupMappingListSchema,
   GroupMappingSchema,
+  OidcSignInListSchema,
   type CreateGroupMappingRequest,
+  type OidcSignIn,
   type GroupMapping,
   type UpdateGroupMappingRequest,
 } from '@capi-navigator/shared';
@@ -16,15 +18,19 @@ export const useOidcGroupsStore = defineStore('oidcGroups', () => {
   const loading = ref(false);
   /** Whether sign-in with an OpenID Connect provider is configured at all. */
   const oidcEnabled = ref(false);
+  /** Recent sign-ins of the configured provider (FP14-F-15). */
+  const signIns = ref<OidcSignIn[]>([]);
 
   async function load(): Promise<void> {
     loading.value = true;
     try {
-      const [list, options] = await Promise.all([
+      const [list, options, recent] = await Promise.all([
         api('GET', '/api/oidc-groups', GroupMappingListSchema),
         getJson('/api/auth/options', AuthOptionsSchema),
+        api('GET', '/api/oidc-groups/sign-ins', OidcSignInListSchema),
       ]);
       mappings.value = list;
+      signIns.value = recent;
       oidcEnabled.value = options.oidc !== null;
     } finally {
       loading.value = false;
@@ -46,5 +52,5 @@ export const useOidcGroupsStore = defineStore('oidcGroups', () => {
     await load();
   }
 
-  return { mappings, loading, oidcEnabled, load, create, update, remove };
+  return { mappings, signIns, loading, oidcEnabled, load, create, update, remove };
 });

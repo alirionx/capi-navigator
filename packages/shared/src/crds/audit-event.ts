@@ -25,6 +25,10 @@ export const AuditEventSpecSchema = z.object({
   token: z.string().optional(),
   /** OpenID Connect subject of the actor (FP14-F-07); the actor is "<name> (oidc)". */
   subject: z.string().optional(),
+  /** OpenID Connect issuer of an `auth.oidc.login` event (FP14-F-15). */
+  issuer: z.string().optional(),
+  /** Mapped provider groups of an `auth.oidc.login` event (FP14-F-15). */
+  groups: z.array(z.string()).optional(),
   /** Short reason for a failure. Never contains credentials (NF-01). */
   message: z.string().optional(),
 });

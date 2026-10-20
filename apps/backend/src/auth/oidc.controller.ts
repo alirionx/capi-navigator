@@ -90,12 +90,18 @@ export class OidcController {
     const actor = `${person.name} (oidc)`;
     if (this.groups.bindings(mapped, person.subject).length === 0) {
       // FP14-F-05: no mapped group, no person mapping and no default role.
-      await this.record(actor, 'failure', "No role for the person's groups", person.subject);
+      await this.record(
+        actor,
+        'failure',
+        "No role for the person's groups",
+        person.subject,
+        mapped,
+      );
       res.redirect(302, loginPage('oidc_no_access'));
       return;
     }
     this.sessions.issueOidc(res, { subject: person.subject, name: person.name, groups: mapped });
-    await this.record(actor, 'success', undefined, person.subject);
+    await this.record(actor, 'success', undefined, person.subject, mapped);
     res.redirect(302, flow.r);
   }
 
@@ -104,13 +110,17 @@ export class OidcController {
     outcome: 'success' | 'failure',
     reason?: string,
     subject?: string,
+    groups?: string[],
   ): Promise<void> {
+    const issuer = subject ? this.oidc.issuer : undefined;
     return this.audit.record({
       actor,
       action: 'auth.oidc.login',
       outcome,
       request: { method: 'GET', path: '/api/auth/oidc/callback' },
       ...(subject ? { subject } : {}),
+      ...(issuer ? { issuer } : {}),
+      ...(groups ? { groups } : {}),
       ...(reason ? { message: reason.slice(0, 300) } : {}),
     });
   }

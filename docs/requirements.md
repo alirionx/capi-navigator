@@ -850,6 +850,7 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 - **FP14-F-12** MUST offer a page "Authentication" under Administration with the settings, the redirect URI to register at the provider, a test that runs the discovery with the entered values and shows what the provider offers (endpoints, scopes, end-session), and a switch to turn OIDC on and off without losing the settings. Saving shows a preview of the change and writes an `AuditEvent`.
 - **FP14-F-13** MUST store the settings as a `NavigatorAuthSettings` resource and the client secret in a Secret in the home cluster, and apply changes without a restart on all replicas.
 - **FP14-F-14** MUST treat the client secret as write-only: no API response, log or audit event contains it; the page shows only whether one is set and can replace it.
+- **FP14-F-15** MUST list the recent OpenID Connect sign-ins of the configured provider for users with `users.manage` (name, subject, last sign-in, outcome and where the person's access comes from: group, person mapping, default role or none), taken from the audit log, with an action that opens the person mapping prefilled. The audit event of a sign-in records the issuer.
 
 **Acceptance criteria**
 
@@ -861,6 +862,7 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 - [x] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
 - [x] A Playwright test signs in through a test provider.
 - [x] A person without groups (Dex user carol) gets a person mapping as operator and has that access on the next request; the mapping does not apply after switching to another issuer.
+- [x] An admin maps a person from the list of recent sign-ins without typing the subject; sign-ins of another provider are not listed.
 - [x] An admin configures Dex on the Authentication page, runs the test, saves, and the sign-in button appears without a restart; switching OIDC off hides it again.
 - [x] The client secret appears in no API response, log or audit event.
 
