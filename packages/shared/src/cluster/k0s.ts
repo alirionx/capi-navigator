@@ -149,12 +149,23 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
         // ADR-0013: in place via k0s autopilot (exception to hard rule 5, versions only).
         updateStrategy: 'InPlace',
         machineTemplate: {
-          // v1beta2 K0sControlPlane still references the template with apiVersion.
+          // k0smotron v2.2.0 reads this deprecated reference with apiVersion.
           infrastructureRef: {
             apiVersion: infra.apiVersion,
             kind: machineTemplate.kind,
             name: machineTemplate.name,
             namespace: spec.namespace,
+          },
+          // k0smotron v2.3.0 prefers the contract reference; its webhook fills it from the
+          // deprecated one only while empty and nobody owns it, so a template rotation would not
+          // reach it (ADR-0013, seen live). Written by the app, both change together; v2.2.0
+          // drops the unknown field with a warning.
+          spec: {
+            infrastructureRef: {
+              apiGroup: machineTemplate.apiGroup,
+              kind: machineTemplate.kind,
+              name: machineTemplate.name,
+            },
           },
         },
         k0sConfigSpec: compact({

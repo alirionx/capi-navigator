@@ -377,6 +377,27 @@ describe('k0s flavor (FP-9)', () => {
   it('OpenStack all-in-one', () => {
     expect(render(allInOne(k0s(openstack())))).toMatchSnapshot();
   });
+  it('references the control plane template in both forms, so rotations reach k0smotron v2.3.0 (ADR-0013)', () => {
+    const objects = transform(ClusterSpecSchema.parse(k0s(openstack())), ctx);
+    const kcp = objects.find((o) => o.kind === 'K0sControlPlane')!;
+    const template = objects.find(
+      (o) => o.kind === 'OpenStackMachineTemplate' && /-cp-/.test(o.metadata.name),
+    )!;
+    const mt = (
+      kcp.spec as {
+        machineTemplate: {
+          infrastructureRef: { name: string };
+          spec: { infrastructureRef: { apiGroup: string; kind: string; name: string } };
+        };
+      }
+    ).machineTemplate;
+    expect(mt.infrastructureRef.name).toBe(template.metadata.name);
+    expect(mt.spec.infrastructureRef).toEqual({
+      apiGroup: 'infrastructure.cluster.x-k8s.io',
+      kind: 'OpenStackMachineTemplate',
+      name: template.metadata.name,
+    });
+  });
   it('AWS standard', () => {
     expect(render(k0s(aws()))).toMatchSnapshot();
   });
