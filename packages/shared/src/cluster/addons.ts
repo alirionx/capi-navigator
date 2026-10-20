@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
 import { VERSIONS } from '../versions.generated.js';
+import { GCP_MANIFEST_ADDONS } from './gcp-addons.js';
+import type { ManifestAddon } from './manifest-addons.js';
 
 /**
  * CCM and CSI presets as HelmChartProxy (CAAPH, addons.cluster.x-k8s.io/v1alpha1), one set per
@@ -202,6 +204,14 @@ export function effectivePreset(
 }
 
 /** Presets a cluster needs, from its add-on labels (with overrides applied). */
+/** Add-ons without a Helm chart, delivered by ClusterResourceSet (FP25-F-08, ADR-0023). */
+export const MANIFEST_ADDONS: ManifestAddon[] = [...GCP_MANIFEST_ADDONS];
+
+/** The manifest add-ons a cluster selects with its labels. */
+export function manifestAddonsFor(clusterLabels: Record<string, string>): ManifestAddon[] {
+  return MANIFEST_ADDONS.filter(({ label: [key, value] }) => clusterLabels[key] === value);
+}
+
 export function presetsFor(
   clusterLabels: Record<string, string>,
   overrides: AddonPresetOverrides = {},

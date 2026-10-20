@@ -8525,6 +8525,11 @@
             "type": "string",
             "pattern": "^projects\\/[a-z][-a-z0-9]{4,61}[a-z0-9]\\/global\\/images\\/[a-z][-a-z0-9]{0,62}$"
           },
+          "controlPlaneServiceAccount": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
           "network": {
             "default": {
               "nodeCidr": "10.6.0.0/24"
@@ -11076,6 +11081,11 @@
           "image": {
             "type": "string",
             "pattern": "^projects\\/[a-z][-a-z0-9]{4,61}[a-z0-9]\\/global\\/images\\/[a-z][-a-z0-9]{0,62}$"
+          },
+          "controlPlaneServiceAccount": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
           },
           "network": {
             "default": {

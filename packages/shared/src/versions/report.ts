@@ -39,6 +39,7 @@ const GROUPS: [prefix: string, title: string][] = [
   ['addonPresets.', 'Add-on preset charts'],
   ['kubeadmRuntime.', 'kubeadm node runtime'],
   ['cni.', 'CNI'],
+  ['addonManifests.', 'Add-on manifests'],
   ['images.', 'Images'],
   ['testTools.', 'Local test tools'],
 ];

@@ -693,6 +693,9 @@ export const en = {
       'Public Ubuntu, Debian or Rocky Linux image; Ubuntu 24.04 by default. Maps to GCPMachineTemplate image.',
     gcpNodeCidrHint:
       'Subnet of the dedicated VPC per cluster (with Cloud NAT, no public node IPs). Default: 10.6.0.0/24. Maps to GCPCluster.spec.network.subnets.',
+    gcpServiceAccount: 'Control plane service account',
+    gcpServiceAccountHint:
+      'The control plane machines run as this account; the cloud controller manager and the CSI driver use it through the metadata server, so no key reaches the cluster. Default: the account of the credentials. Empty: the default compute account. Maps to GCPMachineTemplate serviceAccounts.',
     gcpLbInfo:
       'Google Cloud always uses a global TCP proxy load balancer for the API server on port 6443; it only forwards the API port, so k0s runs without Konnectivity and RKE2 and k0s allow anonymous health checks (ADR-0022). CAPG has no bastion host; reach nodes with SSH through Identity-Aware Proxy.',
     awsLbInfo:

@@ -25,6 +25,12 @@ const EntrySchema = z.object({
   note: z.string().optional(),
 });
 
+/** An upstream manifest shipped with the backend (apps/backend/assets), verified by checksum. */
+const ManifestEntrySchema = EntrySchema.extend({
+  manifest: z.string().min(1),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
+
 const KubernetesVersionSchema = z.object({
   version: z.string().regex(/^v\d+\.\d+\.\d+/, 'Expected a "v1.2.3…" version'),
   verifiedWithProvider: z.string(),
@@ -74,11 +80,11 @@ export const VersionsFileSchema = z.strictObject({
     kured: EntrySchema,
   }),
   kubeadmRuntime: z.strictObject({ containerd: EntrySchema, runc: EntrySchema }),
-  cni: z.strictObject({
-    calico: EntrySchema.extend({
-      manifest: z.string().min(1),
-      sha256: z.string().regex(/^[0-9a-f]{64}$/),
-    }),
+  cni: z.strictObject({ calico: ManifestEntrySchema }),
+  /** Add-on manifests without a Helm chart, delivered by a ClusterResourceSet (FP25-F-08). */
+  addonManifests: z.strictObject({
+    'gcp-ccm': ManifestEntrySchema,
+    'gcp-csi': ManifestEntrySchema,
   }),
   images: z.strictObject({ 'node-shell': EntrySchema }),
   /** Tools of the local test setup, not part of the app (e.g. Dex for FP-14). */

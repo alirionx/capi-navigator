@@ -9,6 +9,7 @@ import {
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
   infraFromValues,
+  MANIFEST_ADDONS,
   initialInfraValues,
   type ClusterPreview,
   type ClusterSpecInput,
@@ -427,14 +428,21 @@ const steps = computed(() => [
   t('wizard.steps.preview'),
   t('wizard.steps.create'),
 ]);
-const presets = computed(() =>
-  ADDON_PRESETS.filter(
+const presets = computed(() => [
+  ...ADDON_PRESETS.filter(
     (p) =>
       p.provider === draft.provider ||
       (p.id === 'kured' && draft.addons.reboot) ||
       (p.kind === 'cni' && !!flavorPlugin.value?.needsCni && draft.cni),
   ),
-);
+  // FP25-F-08: add-ons delivered as manifest by ClusterResourceSet instead of a chart.
+  ...MANIFEST_ADDONS.filter((a) => a.provider === draft.provider).map((a) => ({
+    id: a.id,
+    displayName: a.displayName,
+    chartName: a.file,
+    version: a.version,
+  })),
+]);
 const canPreview = computed(() => issues.value.length === 0);
 </script>
 

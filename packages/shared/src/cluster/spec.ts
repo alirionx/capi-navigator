@@ -210,6 +210,14 @@ export const GcpInfraSchema = z.object({
     .regex(/^[a-z]+-[a-z]+\d+-[a-z]$/, 'A zone like europe-west6-a')
     .optional(),
   image: z.string().regex(GCP_IMAGE_PATTERN, GCP_IMAGE_MESSAGE),
+  /**
+   * Service account of the control plane machines; CCM and CSI controller use it through the
+   * metadata server (ADR-0023). Default: the account of the credential. Empty: the project's
+   * default compute account.
+   */
+  controlPlaneServiceAccount: z
+    .email('A service account like name@project.iam.gserviceaccount.com')
+    .optional(),
   /** Dedicated VPC per cluster with one subnet; CAPG adds Cloud NAT and removes both. */
   network: z
     .object({ nodeCidr: CidrSchema.default('10.6.0.0/24') })

@@ -26,7 +26,9 @@ import {
   type ObjectDiff,
   FLAVOR_PLUGINS,
   buildCalicoResourceSet,
+  buildManifestAddonResourceSet,
   CALICO_MANIFEST,
+  manifestAddonsFor,
   INFRA_PLUGINS,
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
@@ -57,7 +59,7 @@ import {
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
-import { calicoManifest } from './cni-manifest.js';
+import { calicoManifest, shippedManifest } from './cni-manifest.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { ImageNameCache } from './image-names.js';
 import { analyzeRollouts, type PlannedObject } from './rollouts.js';
@@ -840,6 +842,37 @@ export class ClustersService {
       } else {
         warnings.push(
           `The add-on preset ${hcp.metadata!.name} in namespace ${spec.namespace} differs from the current version and was changed outside the app; it is left as is.`,
+        );
+      }
+    }
+
+    // FP25-F-08 (ADR-0023): add-ons without a Helm chart, selected by the Cluster's labels, once
+    // per namespace via ClusterResourceSet; existing ones are left as they are (versioned names).
+    for (const addon of manifestAddonsFor(clusterObj?.metadata.labels ?? {})) {
+      const manifest = await shippedManifest(addon.dir, addon.file, addon.sha256);
+      const [configMap, resourceSet] = buildManifestAddonResourceSet(
+        addon,
+        spec.namespace,
+        manifest,
+      ) as unknown as [KubernetesObject, KubernetesObject];
+      const existing = await this.getCustom(
+        kc,
+        'addons.cluster.x-k8s.io',
+        'v1beta2',
+        'clusterresourcesets',
+        spec.namespace,
+        resourceSet.metadata!.name!,
+      );
+      if (!existing) {
+        extra.push(configMap, resourceSet);
+        extraPreview.push(
+          {
+            ...configMap,
+            data: {
+              [`${addon.id}.yaml`]: `# ${addon.displayName} ${addon.version} (upstream manifest ${addon.file}, sha256 ${addon.sha256.slice(0, 12)}…, adapted by the app), shortened in the preview`,
+            },
+          } as KubernetesObject,
+          resourceSet,
         );
       }
     }

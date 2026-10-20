@@ -5,6 +5,8 @@ export * from './infra-form.js';
 export * from './openstack.js';
 export * from './aws.js';
 export * from './gcp.js';
+export * from './gcp-addons.js';
+export * from './manifest-addons.js';
 export * from './rke2.js';
 export * from './k0s.js';
 export * from './kubeadm.js';

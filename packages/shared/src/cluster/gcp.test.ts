@@ -37,6 +37,7 @@ const gcp = (
     project: 'demo-proj',
     region: 'europe-west6',
     image: IMAGE,
+    controlPlaneServiceAccount: 'capi@demo-proj.iam.gserviceaccount.com',
   },
   ...over,
 });
@@ -153,6 +154,15 @@ describe('Google Cloud specifics (FP25-F-06, FP25-F-07, ADR-0022)', () => {
     expect(issues({}, { image: '6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2' })).toEqual([
       'topology.controlPlane.image',
     ]);
+  });
+
+  it("runs only the control plane as the credential's service account (ADR-0023)", () => {
+    const templates = objects(gcp()).filter((o) => o.kind === 'GCPMachineTemplate') as Manifest[];
+    expect(templates[0]!.spec.template.spec.serviceAccounts).toEqual({
+      email: 'capi@demo-proj.iam.gserviceaccount.com',
+      scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+    });
+    expect(templates[1]!.spec.template.spec).not.toHaveProperty('serviceAccounts');
   });
 
   it('offers no bastion host (CAPG has none, FP25-F-09)', () => {
