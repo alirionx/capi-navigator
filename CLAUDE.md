@@ -10,7 +10,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 
 ## Source of truth
 
-- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 and FP-23, outlook FP-11 to FP-21 and FP-24, non-functional requirements, decisions). Always follow it.
+- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22, FP-23 and FP-25, outlook FP-11 to FP-21 and FP-24, non-functional requirements, decisions). Always follow it.
 - **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
@@ -44,6 +44,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-22 | API tokens for technical users (optional) | done |
 | FP-23 | OpenAPI description and Swagger UI (optional) | done |
 | FP-14 | Sign-in with an OpenID Connect provider (optional) | done |
+| FP-25 | Google Cloud as third infrastructure provider (optional) | in progress |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 
