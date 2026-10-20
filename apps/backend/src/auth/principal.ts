@@ -8,6 +8,8 @@ export interface Principal {
   mustChangePassword: boolean;
   /** Set when the request authenticated with an API token (FP-22). */
   token?: { id: string; name: string };
+  /** Set for people signed in with the OpenID Connect provider (FP-14). */
+  oidc?: { subject: string; groups: string[] };
 }
 
 /** Fields the auth guard attaches to the Express request. */

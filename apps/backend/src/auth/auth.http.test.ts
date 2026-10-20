@@ -160,6 +160,7 @@ describe('authentication and authorization over HTTP (FP-1)', () => {
       role: 'admin',
       bindings: [{ role: 'admin', permissions: [...BUILTIN_ROLES.admin.permissions] }],
       mustChangePassword: true,
+      source: 'local',
     });
   });
 
