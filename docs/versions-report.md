@@ -1,8 +1,8 @@
 # Version report
 
-Generated on 2026-10-19 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
+Generated on 2026-10-20 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
-**32 app versions** in [versions.yaml](../versions.yaml): 0 with a newer version (0 major, 0 minor, 0 patch).
+**34 app versions** in [versions.yaml](../versions.yaml): 3 with a newer version (0 major, 2 minor, 1 patch).
 
 npm packages are not part of this report: run `pnpm outdated -r`.
 
@@ -10,22 +10,22 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Cluster API providers
 
-| Entry                 | Current | Newest | Update     | Change in                             |
-| --------------------- | ------- | ------ | ---------- | ------------------------------------- |
-| providers.cluster-api | v1.14.3 | –      | up to date | versions.yaml → providers.cluster-api |
-| providers.rke2        | v0.27.0 | –      | up to date | versions.yaml → providers.rke2        |
-| providers.k0smotron   | v2.2.0  | –      | up to date | versions.yaml → providers.k0smotron   |
-| providers.openstack   | v0.15.0 | –      | up to date | versions.yaml → providers.openstack   |
-| providers.aws         | v2.13.1 | –      | up to date | versions.yaml → providers.aws         |
-| providers.helm        | v0.6.4  | –      | up to date | versions.yaml → providers.helm        |
+| Entry                 | Current | Newest | Update                                                       | Change in                             |
+| --------------------- | ------- | ------ | ------------------------------------------------------------ | ------------------------------------- |
+| providers.cluster-api | v1.14.3 | –      | up to date                                                   | versions.yaml → providers.cluster-api |
+| providers.rke2        | v0.27.0 | –      | up to date                                                   | versions.yaml → providers.rke2        |
+| providers.k0smotron   | v2.2.0  | v2.3.0 | **minor** (released today; wait for the minimum release age) | versions.yaml → providers.k0smotron   |
+| providers.openstack   | v0.15.0 | –      | up to date                                                   | versions.yaml → providers.openstack   |
+| providers.aws         | v2.13.1 | –      | up to date                                                   | versions.yaml → providers.aws         |
+| providers.helm        | v0.6.4  | –      | up to date                                                   | versions.yaml → providers.helm        |
 
 ### Prerequisites
 
-| Entry                          | Current | Newest | Update     | Change in                                     |
-| ------------------------------ | ------- | ------ | ---------- | --------------------------------------------- |
-| prerequisites.cert-manager     | v1.21.2 | –      | up to date | versions.yaml → prerequisites.cert-manager    |
-| prerequisites.capi-operator    | v0.29.0 | –      | up to date | versions.yaml → prerequisites.capi-operator   |
-| prerequisites.orc (CAPO v0.15) | v2.6.0  | –      | up to date | versions.yaml → prerequisites.orc.byCapoMinor |
+| Entry                          | Current | Newest  | Update                                                       | Change in                                     |
+| ------------------------------ | ------- | ------- | ------------------------------------------------------------ | --------------------------------------------- |
+| prerequisites.cert-manager     | v1.21.2 | –       | up to date                                                   | versions.yaml → prerequisites.cert-manager    |
+| prerequisites.capi-operator    | v0.29.0 | v0.30.0 | **minor** (released today; wait for the minimum release age) | versions.yaml → prerequisites.capi-operator   |
+| prerequisites.orc (CAPO v0.15) | v2.6.0  | –       | up to date                                                   | versions.yaml → prerequisites.orc.byCapoMinor |
 
 ### Kubernetes versions
 
@@ -74,6 +74,13 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 | Entry             | Current | Newest | Update     | Change in                         |
 | ----------------- | ------- | ------ | ---------- | --------------------------------- |
 | images.node-shell | 3.24    | –      | up to date | versions.yaml → images.node-shell |
+
+### Local test tools
+
+| Entry           | Current | Newest  | Update     | Change in                       |
+| --------------- | ------- | ------- | ---------- | ------------------------------- |
+| testTools.dex   | 0.26.0  | –       | up to date | versions.yaml → testTools.dex   |
+| testTools.socat | 1.8.1.1 | 1.8.1.3 | **patch**  | versions.yaml → testTools.socat |
 
 ## Appendix: GitHub Actions and Docker images
 
