@@ -1,4 +1,4 @@
-import type { BootstrapFlavorPlugin } from './plugins.js';
+import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
@@ -26,7 +26,7 @@ const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
 
 /** files, pre/post commands and SSH keys of one group (FP9-F-03). */
-function customizationFields(spec: ClusterSpec, group: MachineGroup) {
+function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, group: MachineGroup) {
   const c: NodeCustomization = group.customization ?? {
     files: [],
     preCommands: [],
@@ -50,7 +50,11 @@ function customizationFields(spec: ClusterSpec, group: MachineGroup) {
         ? [{ path: SSH_KEYS_FILE, content: `${ssh.join('\n')}\n`, permissions: '0600' }]
         : []),
     ],
-    preK0sCommands: [...(ssh.length ? [SSH_KEYS_COMMAND] : []), ...c.preCommands],
+    preK0sCommands: [
+      ...(infra.nodePreparation ?? []),
+      ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
+      ...c.preCommands,
+    ],
     postK0sCommands: c.postCommands,
   });
 }
@@ -193,13 +197,13 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
             KUBELET_ROOT_DIR,
           ],
           useSystemHostname: true,
-          ...customizationFields(spec, cp),
+          ...customizationFields(spec, infra, cp),
         }),
       },
     };
   },
 
-  workerBootstrapSpec({ spec, pool }) {
+  workerBootstrapSpec({ spec, infra, pool }) {
     return compact({
       // FP7-F-08: workers follow the control plane only after it was upgraded.
       version: spec.kubernetes.workerVersion ?? spec.kubernetes.version,
@@ -211,7 +215,7 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           : []),
       ],
       useSystemHostname: true,
-      ...customizationFields(spec, pool),
+      ...customizationFields(spec, infra, pool),
     });
   },
 };

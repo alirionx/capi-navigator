@@ -1,4 +1,5 @@
 import { AppsV1Api, BatchV1Api, CoreV1Api, KubeConfig } from '@kubernetes/client-node';
+import { MANIFEST_ADDONS } from '@capi-navigator/shared';
 
 /**
  * Cleanup inside a workload cluster before it is deleted (FP6-F-06): CAPO does not remove load
@@ -18,10 +19,14 @@ export interface WorkloadApi {
   listVolumes(): Promise<{ name: string; reclaimPolicy?: string; claim?: string }[]>;
 }
 
+/** Namespaces of the manifest add-ons, e.g. the GCP PD CSI driver (ADR-0023). */
+const ADDON_NAMESPACES = new Set(MANIFEST_ADDONS.flatMap((a) => a.namespaces ?? []));
+
 /** Namespaces of Kubernetes, the distribution, the CNI and the add-ons; never deleted. */
 export function isSystemNamespace(name: string): boolean {
   return (
     ['default', 'kube-system', 'kube-public', 'kube-node-lease'].includes(name) ||
+    ADDON_NAMESPACES.has(name) ||
     /^(calico-|tigera-|cattle-|cilium)/.test(name)
   );
 }

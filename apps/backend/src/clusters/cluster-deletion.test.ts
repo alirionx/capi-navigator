@@ -63,6 +63,11 @@ describe('workload cleanup (FP6-F-06)', () => {
     ).toEqual(['default', 'kube-system', 'calico-system', 'tigera-operator']);
   });
 
+  it('keeps the namespaces of manifest add-ons such as the GCP CSI driver (ADR-0023)', () => {
+    // Removed before the volumes, the CSI driver left a pod terminating and its disk behind.
+    expect(isSystemNamespace('gce-pd-csi-driver')).toBe(true);
+  });
+
   it('lists what will be removed and what stays (Retain)', async () => {
     const { api } = fakeWorkload();
     expect(await inventory(api)).toEqual({
