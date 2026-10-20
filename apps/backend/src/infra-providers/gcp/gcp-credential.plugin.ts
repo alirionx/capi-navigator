@@ -129,7 +129,7 @@ export class GcpCredentialPlugin implements CredentialPlugin<unknown> {
         name: 'Permissions for Cluster API',
         ok: false,
         warning: true,
-        message: explain(err, project).message,
+        message: `${explain(err, project).message}; permissions not checked (optional)`,
       });
     }
     const failed = checks.filter((c) => !c.ok && !c.warning);
@@ -259,6 +259,11 @@ function fail(err: unknown, project: string): never {
   throw new CredentialInputError(message, hint);
 }
 
+const API_NAMES: Record<string, string> = {
+  'compute.googleapis.com': 'Compute Engine API',
+  'cloudresourcemanager.googleapis.com': 'Cloud Resource Manager API',
+};
+
 /** Understandable messages for Google API errors (no secrets). */
 function explain(err: unknown, project?: string): { message: string; hint?: string } {
   if (err instanceof CredentialInputError) {
@@ -266,9 +271,14 @@ function explain(err: unknown, project?: string): { message: string; hint?: stri
   }
   if (err instanceof GcpApiError) {
     if (err.reason === 'SERVICE_DISABLED' || /has not been used|is disabled/i.test(err.message)) {
+      // Google names the disabled API in the error; Compute Engine is the one CAPG cannot do without.
+      const service =
+        err.service ??
+        /([a-z]+\.googleapis\.com)/.exec(err.message)?.[1] ??
+        'compute.googleapis.com';
       return {
-        message: 'The Compute Engine API is not enabled in the project',
-        hint: `Enable it: https://console.cloud.google.com/apis/library/compute.googleapis.com?project=${project ?? ''}`,
+        message: `The ${API_NAMES[service] ?? service} is not enabled in the project`,
+        hint: `Enable it: https://console.cloud.google.com/apis/library/${service}?project=${project ?? ''}`,
       };
     }
     if (err.reason === 'invalid_grant') {

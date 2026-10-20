@@ -32,6 +32,8 @@ export class GcpApiError extends Error {
     readonly status: number,
     /** e.g. SERVICE_DISABLED, PERMISSION_DENIED */
     readonly reason?: string,
+    /** The API the error is about, e.g. cloudresourcemanager.googleapis.com (ErrorInfo metadata). */
+    readonly service?: string,
   ) {
     super(message);
   }
@@ -146,9 +148,19 @@ async function request(url: string, init: RequestInit): Promise<unknown> {
       throw new GcpApiError(`${error}${description ? `: ${description}` : ''}`, res.status, error);
     }
     const e = error as
-      { message?: string; status?: string; details?: { reason?: string }[] } | undefined;
-    const reason = e?.details?.find((d) => d.reason)?.reason ?? e?.status;
-    throw new GcpApiError(e?.message ?? `HTTP ${res.status}`, res.status, reason);
+      | {
+          message?: string;
+          status?: string;
+          details?: { reason?: string; metadata?: { service?: string } }[];
+        }
+      | undefined;
+    const info = e?.details?.find((d) => d.reason);
+    throw new GcpApiError(
+      e?.message ?? `HTTP ${res.status}`,
+      res.status,
+      info?.reason ?? e?.status,
+      info?.metadata?.service,
+    );
   }
   return json;
 }
