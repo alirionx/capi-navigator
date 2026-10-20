@@ -117,6 +117,7 @@ pnpm test:coverage    # backend unit tests with the 70 % line coverage threshold
 pnpm test:int         # Vitest integration tests against the kind cluster; opt-in read-only cloud tests
                       # with OPENSTACK_CLOUDS_YAML=… or AWS_LIVE_ACCESS_KEY_ID/…SECRET_ACCESS_KEY/…REGION
 pnpm test:e2e         # Playwright
+pnpm docs:screenshots # screenshots for docs/ui-tour.md against the running app (read-only)
 pnpm kind:up          # local kind cluster as home + management cluster
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)

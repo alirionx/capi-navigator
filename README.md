@@ -7,6 +7,11 @@ cluster, install the CAPI providers, store cloud credentials and create, operate
 Kubernetes clusters on OpenStack and AWS with RKE2, k0s or kubeadm, from forms with a preview of
 every change instead of hand-written YAML.
 
+![CAPI Navigator: installed providers and the workload clusters that use them](docs/images/ui-tour/01-home.png)
+
+**[Take the UI tour](docs/ui-tour.md)**: screenshots of every step, from the providers to the
+node shell, with the Cluster API resources behind each screen.
+
 ## Why
 
 Cluster API manages Kubernetes clusters declaratively, but getting started is hard: a management
@@ -327,6 +332,7 @@ stored in the home cluster (the app has no database).
 | Backend unit tests with the coverage threshold (70 % lines, as in CI)                                                                 | `pnpm test:coverage`                                 |
 | Integration tests against kind (own throwaway namespace; opt-in read-only cloud tests with `OPENSTACK_CLOUDS_YAML=…` or `AWS_LIVE_*`) | `pnpm test:int`                                      |
 | End-to-end tests (first time: `pnpm exec playwright install chromium`; with `E2E_ADMIN_PASSWORD=…`)                                   | `pnpm test:e2e`                                      |
+| Screenshots for the [UI tour](docs/ui-tour.md) (read-only, needs running workload clusters)                                           | `pnpm docs:screenshots`                              |
 | kind cluster as home and management cluster                                                                                           | `pnpm kind:up` / `pnpm kind:down`                    |
 | Regenerate / install the app's CRDs from the Zod schemas                                                                              | `pnpm crds:generate` / `pnpm crds:install`           |
 | Regenerate the pinned versions / node script templates after editing them                                                             | `pnpm versions:generate` / `pnpm templates:generate` |
