@@ -1,8 +1,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { Condition, LookupOption, MachineStatus } from '@capi-navigator/shared';
-import { CHECK_NEUTRON_PAGING, isReservedLabel } from '@capi-navigator/shared';
+import type {
+  Condition,
+  Infrastructure,
+  LookupOption,
+  MachineStatus,
+} from '@capi-navigator/shared';
+import {
+  bastionComplete,
+  bastionRequest as bastionPart,
+  INFRA_PLUGINS,
+  isReservedLabel,
+} from '@capi-navigator/shared';
 import { useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
@@ -72,31 +82,22 @@ async function openBastion(): Promise<void> {
       (x) => x.provider === info.provider && x.name === info.credentialRef,
     );
     if (c) {
-      const check = c.lastTest?.checks.find((x) => x.id === CHECK_NEUTRON_PAGING);
+      const id = infraForm.value?.bastion?.blockingCheck;
+      const check = id ? c.lastTest?.checks.find((x) => x.id === id) : undefined;
       bastionPagingWarning.value = check && !check.ok ? check.message : undefined;
-      const kind = info.provider === 'openstack' ? 'flavors' : 'instanceTypes';
+      const kind = infraForm.value!.machine.sizeLookup;
       bastionSizes.value = (await credentials.lookup(c, kind, info.region)).options;
     }
   } catch {
     bastionSizes.value = [];
   }
 }
-const bastionRequest = () => ({
-  bastion: {
-    enabled: bastionDraft.value.enabled,
-    ...(bastionDraft.value.machineSize ? { machineSize: bastionDraft.value.machineSize } : {}),
-    ...(s.value?.infraSummary?.provider === 'aws' && bastionDraft.value.enabled
-      ? { allowedCidrs: bastionDraft.value.allowedCidrs.map((c) => c.trim()) }
-      : {}),
-  },
-});
+const bastionRequest = () => ({ bastion: bastionPart(infraForm.value!, bastionDraft.value) });
 const bastionValid = computed(() => {
   const d = bastionDraft.value;
   if (!d.enabled) return true;
-  if (!s.value?.infraSummary?.sshKeyName) return false;
-  return s.value.infraSummary.provider === 'openstack'
-    ? !!d.machineSize
-    : d.allowedCidrs.length > 0;
+  if (!s.value?.infraSummary?.sshKeyName || !infraForm.value) return false;
+  return bastionComplete(infraForm.value, d);
 });
 const bastionRunning = computed(() => !!s.value?.bastion?.enabled);
 /** `ssh -J` command for a machine, if bastion and node address are known. */
@@ -104,8 +105,8 @@ function sshCommand(m: MachineStatus): string | undefined {
   const b = s.value?.bastion;
   if (!b?.enabled || !b.publicIP || !m.internalIP) return undefined;
   const nodeUser = sshUserFor(m.imageName) ?? '<user>';
-  // The OpenStack bastion uses the cluster image; CAPA's default bastion AMI is Ubuntu.
-  const bastionUser = s.value?.infraSummary?.provider === 'aws' ? 'ubuntu' : nodeUser;
+  // The bastion uses the cluster image unless the provider names its user (CAPA: Ubuntu).
+  const bastionUser = infraForm.value?.bastion?.sshUser ?? nodeUser;
   return sshJumpCommand({ bastionIP: b.publicIP, bastionUser, nodeIP: m.internalIP, nodeUser });
 }
 const copiedCmd = ref<string | null>(null);
@@ -167,6 +168,11 @@ watch(
 onBeforeUnmount(() => store.unwatch());
 
 const s = computed(() => store.status);
+/** Form description of the cluster's infrastructure provider (FP25-F-05). */
+const infraForm = computed(() => {
+  const p = s.value?.infraSummary?.provider;
+  return p && p in INFRA_PLUGINS ? INFRA_PLUGINS[p as Infrastructure['provider']].form : undefined;
+});
 const failing = (conds: Condition[]) => conds.filter((c) => c.status !== 'True' && c.message);
 const color = (ok: boolean) => (ok ? 'success' : 'info');
 const machineColor = (m: MachineStatus) =>
@@ -442,7 +448,7 @@ const machineHeaders = computed(() => [
 
           <!-- Bastion host (FP5-F-20) -->
           <v-card
-            v-if="s.summary.managed && (s.bastion || canChange)"
+            v-if="s.summary.managed && (s.bastion || (canChange && infraForm?.bastion))"
             border
             class="mt-4"
             data-testid="bastion-card"
@@ -450,7 +456,7 @@ const machineHeaders = computed(() => [
             <v-card-item :title="t('bastion.title')">
               <template #append>
                 <v-btn
-                  v-if="canChange"
+                  v-if="canChange && infraForm?.bastion"
                   size="small"
                   variant="tonal"
                   prepend-icon="mdi-shield-key-outline"
@@ -732,7 +738,7 @@ const machineHeaders = computed(() => [
       </v-window>
     </template>
     <ChangeDialog
-      v-if="s?.infraSummary"
+      v-if="s?.infraSummary && infraForm?.bastion"
       v-model="bastionOpen"
       :title="t('bastion.changeTitle')"
       :valid="bastionValid"
@@ -743,7 +749,7 @@ const machineHeaders = computed(() => [
     >
       <BastionEditor
         v-model="bastionDraft"
-        :provider="s.infraSummary.provider === 'aws' ? 'aws' : 'openstack'"
+        :provider="s.infraSummary.provider as Infrastructure['provider']"
         :sizes="bastionSizes"
         :has-key-pair="!!s.infraSummary.sshKeyName"
         :paging-warning="bastionPagingWarning"

@@ -3,6 +3,7 @@ import YamlButton from '../components/YamlButton.vue';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
+  CREDENTIAL_PROVIDERS,
   LOOKUP_KINDS,
   type Credential,
   type CredentialProvider,
@@ -131,31 +132,15 @@ async function loadLookup(c: Credential): Promise<void> {
       <v-spacer />
       <template v-if="isAdmin && connections.active">
         <v-btn
+          v-for="p in CREDENTIAL_PROVIDERS"
+          :key="p"
           variant="tonal"
           color="primary"
           prepend-icon="mdi-plus"
-          data-testid="add-openstack"
-          @click="dialog = { kind: 'edit', provider: 'openstack', credential: null }"
+          :data-testid="`add-${p}`"
+          @click="dialog = { kind: 'edit', provider: p, credential: null }"
         >
-          {{ t('credentials.addOpenStack') }}
-        </v-btn>
-        <v-btn
-          variant="tonal"
-          color="primary"
-          prepend-icon="mdi-plus"
-          data-testid="add-aws"
-          @click="dialog = { kind: 'edit', provider: 'aws', credential: null }"
-        >
-          {{ t('credentials.addAws') }}
-        </v-btn>
-        <v-btn
-          variant="tonal"
-          color="primary"
-          prepend-icon="mdi-plus"
-          data-testid="add-gcp"
-          @click="dialog = { kind: 'edit', provider: 'gcp', credential: null }"
-        >
-          {{ t('credentials.addGcp') }}
+          {{ t(`credentials.add.${p}`) }}
         </v-btn>
       </template>
     </div>
@@ -188,22 +173,8 @@ async function loadLookup(c: Credential): Promise<void> {
             t(`credentials.providers.${item.provider}`)
           }}</template>
           <template #[`item.target`]="{ item }">
-            <div class="text-caption">
-              <template v-if="item.provider === 'openstack'">
-                {{ item.summary.authUrl }}<br />{{ t('credentials.regionLabel') }}:
-                {{ item.summary.region ?? '–' }} · {{ item.summary.authType }}
-              </template>
-              <template v-else-if="item.provider === 'gcp'">
-                {{ t('credentials.projectLabel') }}: {{ item.summary.projectId }} ·
-                {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
-                  item.summary.serviceAccount
-                }}
-              </template>
-              <template v-else>
-                {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
-                  t('credentials.keyEnding', { suffix: item.summary.accessKeyIdSuffix })
-                }}
-              </template>
+            <div class="text-caption summary">
+              {{ t(`credentials.summary.${item.provider}`, { region: '–', ...item.summary }) }}
             </div>
           </template>
           <template #[`item.allowedNamespaces`]="{ item }">
@@ -415,6 +386,10 @@ async function loadLookup(c: Credential): Promise<void> {
 </template>
 
 <style scoped>
+/* One line per row of the cloud summary. */
+.summary {
+  white-space: pre-line;
+}
 .command {
   white-space: pre-wrap;
   word-break: break-all;

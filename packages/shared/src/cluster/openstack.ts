@@ -1,4 +1,6 @@
+import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
+import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
 import { compact } from './util.js';
@@ -19,6 +21,101 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
   infraClusterKind: 'OpenStackCluster',
   machineTemplateKind: 'OpenStackMachineTemplate',
   apiVersion: OPENSTACK_API_VERSION,
+
+  form: {
+    displayName: 'OpenStack',
+    lookups: [
+      { kind: 'flavors' },
+      { kind: 'images' },
+      { kind: 'externalNetworks' },
+      { kind: 'availabilityZones' },
+      { kind: 'keyPairs' },
+      // Clouds without Cinder simply offer no volume types.
+      { kind: 'volumeTypes', optional: true },
+    ],
+    fields: [
+      {
+        path: 'image',
+        kind: 'autocomplete',
+        lookup: 'images',
+        label: 'wizard.image',
+        hint: 'wizard.imageHint',
+        preselect: ubuntuImage,
+        testId: 'image',
+      },
+      {
+        path: 'externalNetwork',
+        kind: 'select',
+        lookup: 'externalNetworks',
+        label: 'wizard.externalNetwork',
+        hint: 'wizard.externalNetworkHint',
+        // The only or the "floating" external network.
+        preselect: (nets) => (nets.find((n) => /float/i.test(n.label)) ?? nets[0])?.value,
+      },
+      {
+        path: 'network.nodeCidr',
+        kind: 'text',
+        label: 'wizard.nodeCidr',
+        hint: 'wizard.nodeCidrHint',
+        default: '10.6.0.0/24',
+        cols: 4,
+      },
+      {
+        path: 'network.dnsNameservers',
+        kind: 'list',
+        label: 'wizard.dns',
+        hint: 'wizard.dnsHint',
+        default: '1.1.1.1, 8.8.8.8',
+        cols: 4,
+      },
+      {
+        path: 'apiServerLoadBalancer',
+        kind: 'switch',
+        label: 'wizard.apiLb',
+        hint: 'wizard.apiLbHint',
+        default: true,
+        cols: 4,
+      },
+      {
+        path: 'failureDomain',
+        kind: 'select',
+        lookup: 'availabilityZones',
+        label: 'wizard.az',
+        hint: 'wizard.azHint',
+        clearable: true,
+      },
+      {
+        path: 'sshKeyName',
+        kind: 'select',
+        lookup: 'keyPairs',
+        label: 'wizard.sshKey',
+        hint: 'wizard.sshKeyHint',
+        clearable: true,
+      },
+    ],
+    keyPairField: 'sshKeyName',
+    machine: {
+      sizeLookup: 'flavors',
+      sizeLabel: 'wizard.machineSize.openstack',
+      target: 'OpenStackMachineTemplate',
+      sizeField: 'flavor.filter.name',
+      rootVolume: {
+        neededWithoutLocalDisk: true,
+        typeNeedsSize: true,
+        types: { lookup: 'volumeTypes' },
+        typeHint: 'wizard.rootVolumeTypeOpenStack',
+      },
+    },
+    bastion: {
+      sizeLabel: 'bastion.size.openstack',
+      sizeHint: 'bastion.sizeHintOs',
+      sizeRequired: true,
+      // CAPO v0.15 opens SSH to the bastion to everyone (not configurable).
+      allowedCidrs: false,
+      openWarning: 'bastion.openStackOpen',
+      blockingCheck: CHECK_NEUTRON_PAGING,
+    },
+  },
 
   infraCluster(spec, infra, ctx, labels, network): ManifestObject {
     const lbPorts = network.controlPlanePorts.filter((p) => p.viaLoadBalancer).map((p) => p.port);

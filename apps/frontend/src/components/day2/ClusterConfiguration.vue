@@ -5,6 +5,7 @@ import {
   CONTROL_PLANE_GROUP,
   distributionCatalog,
   FLAVOR_PLUGINS,
+  INFRA_PLUGINS,
   upgradeProblem,
   type ClusterSpec,
   type ClusterStatus,
@@ -87,17 +88,18 @@ async function loadLists(): Promise<void> {
     );
     if (!c) return;
     const region = 'region' in s.infrastructure ? s.infrastructure.region : undefined;
-    const os = s.infrastructure.provider === 'openstack';
+    const machine = INFRA_PLUGINS[s.infrastructure.provider].form.machine;
+    const types = machine.rootVolume.types;
     const [sz, im, vt] = await Promise.all([
-      credentials.lookup(c, os ? 'flavors' : 'instanceTypes', region),
+      credentials.lookup(c, machine.sizeLookup, region),
       credentials.lookup(c, 'images', region),
-      os
-        ? credentials.lookup(c, 'volumeTypes', region).catch(() => ({ options: [] }))
-        : Promise.resolve({ options: [] }),
+      'lookup' in types
+        ? credentials.lookup(c, types.lookup, region).catch(() => ({ options: [] }))
+        : Promise.resolve({ options: types.options.map((v) => ({ value: v, label: v })) }),
     ]);
     sizes.value = sz.options;
     images.value = im.options;
-    volumeTypes.value = os ? vt.options : ['gp3', 'gp2'].map((v) => ({ value: v, label: v }));
+    volumeTypes.value = vt.options;
   } catch {
     // lists are a convenience; the fields still accept typed values
   }
@@ -357,9 +359,7 @@ const custSummary = (g: Group) => {
 };
 const shortImage = (id?: string) =>
   id ? (id.length > 20 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id) : t('day2.clusterImage');
-const provider = computed(() =>
-  spec.value?.infrastructure.provider === 'aws' ? 'aws' : 'openstack',
-);
+const provider = computed(() => spec.value?.infrastructure.provider);
 </script>
 
 <template>
@@ -644,7 +644,7 @@ const provider = computed(() =>
           </div>
           <MachineGroupEditor
             v-model="form.group"
-            :provider="provider"
+            :provider="provider!"
             :sizes="sizes"
             :images="images"
             :volume-types="volumeTypes"
@@ -668,7 +668,7 @@ const provider = computed(() =>
           }}</v-alert>
           <MachineGroupEditor
             v-model="form.group"
-            :provider="provider"
+            :provider="provider!"
             :sizes="sizes"
             :images="images"
             :volume-types="volumeTypes"

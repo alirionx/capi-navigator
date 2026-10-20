@@ -4,14 +4,17 @@ import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import {
   ADDON_PRESETS,
-  CHECK_NEUTRON_PAGING,
-  AWS_ROOT_VOLUME_TYPES,
   ClusterSpecSchema,
   distributionCatalog,
   FLAVOR_PLUGINS,
+  INFRA_PLUGINS,
+  infraFromValues,
+  initialInfraValues,
   type ClusterPreview,
   type ClusterSpecInput,
   type Credential,
+  type Infrastructure,
+  type InfraValues,
   type KubernetesFlavor,
   type LookupOption,
 } from '@capi-navigator/shared';
@@ -20,6 +23,7 @@ import { stepIssues, visibleIssues } from '../forms/wizard-issues.js';
 import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../components/wizard/MachineGroupEditor.vue';
+import InfraFields from '../components/wizard/InfraFields.vue';
 import BastionEditor from '../components/BastionEditor.vue';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
@@ -67,7 +71,8 @@ const draft = reactive({
   /** FP9-F-06: RKE2 or k0s, RKE2 by default. */
   flavor: 'rke2' as KubernetesFlavor,
   version: defaultVersion('rke2'),
-  provider: 'openstack' as 'openstack' | 'aws',
+  /** The first provider of the plugins (OpenStack). */
+  provider: Object.keys(INFRA_PLUGINS)[0] as Infrastructure['provider'],
   credential: '',
   mode: 'standard' as 'standard' | 'all-in-one',
   /** FP5-F-19: mirror the control plane root disk to all worker pools. */
@@ -90,22 +95,10 @@ const draft = reactive({
     replicas: number;
     nodeLabels: string[];
   })[],
-  os: {
-    image: '',
-    externalNetwork: '',
-    nodeCidr: '10.6.0.0/24',
-    dns: '1.1.1.1, 8.8.8.8',
-    apiLb: true,
-    failureDomain: '' as string | null,
-    sshKeyName: '' as string | null,
-  },
-  aws: {
-    region: '',
-    image: '',
-    vpcCidr: '10.0.0.0/16',
-    azCount: 1,
-    sshKeyName: '' as string | null,
-  },
+  /** Infrastructure step per provider, from the plugins' form descriptions (FP25-F-05). */
+  infra: Object.fromEntries(
+    Object.entries(INFRA_PLUGINS).map(([p, plugin]) => [p, initialInfraValues(plugin.form)]),
+  ) as Record<Infrastructure['provider'], InfraValues>,
   /** FP5-F-20: bastion host. */
   bastion: { enabled: false, machineSize: '', allowedCidrs: [] as string[] },
   addons: { ccm: true, csi: true, reboot: false },
@@ -152,6 +145,13 @@ watch(
 );
 
 // ---- credentials and selection lists (FP4-F-05, FP4-F-10) ----
+const providers = Object.entries(INFRA_PLUGINS).map(([id, p]) => ({
+  id: id as Infrastructure['provider'],
+  name: p.form.displayName,
+}));
+const form = computed(() => INFRA_PLUGINS[draft.provider].form);
+const infraValues = computed(() => draft.infra[draft.provider]);
+const isEmpty = (v: unknown) => v === '' || v === null || v === undefined;
 const credentials = computed(() =>
   credentialsStore.credentials.filter((c) => c.provider === draft.provider),
 );
@@ -176,26 +176,17 @@ async function loadLists(): Promise<void> {
   if (!c) return;
   listLoading.value = true;
   listError.value = null;
-  const region = draft.provider === 'aws' ? draft.aws.region || c.summary.region : undefined;
-  const kinds =
-    draft.provider === 'openstack'
-      ? ['flavors', 'images', 'externalNetworks', 'availabilityZones', 'keyPairs']
-      : ['instanceTypes', 'images', 'keyPairs', 'regions'];
+  const f = form.value;
+  const region = f.regionField
+    ? String(infraValues.value[f.regionField] || c.summary.region || '') || undefined
+    : undefined;
   try {
-    await Promise.all([
-      ...kinds.map(async (kind) => {
-        lists[kind] = (await credentialsStore.lookup(c, kind, region)).options;
+    await Promise.all(
+      f.lookups.map(async ({ kind, optional }) => {
+        const options = credentialsStore.lookup(c, kind, region).then((r) => r.options);
+        lists[kind] = optional ? await options.catch(() => []) : await options;
       }),
-      // Optional: clouds without Cinder simply offer no volume types.
-      ...(draft.provider === 'openstack'
-        ? [
-            credentialsStore
-              .lookup(c, 'volumeTypes')
-              .then((r) => (lists.volumeTypes = r.options))
-              .catch(() => (lists.volumeTypes = [])),
-          ]
-        : []),
-    ]);
+    );
     applyDefaults();
   } catch (err) {
     listError.value = err;
@@ -204,29 +195,29 @@ async function loadLists(): Promise<void> {
   }
 }
 
-/** Sensible defaults from the lists: Ubuntu 24.04, the only/first external network. */
+/** Defaults from the credential and the lists (e.g. its region, Ubuntu 24.04), as the plugin says. */
 function applyDefaults(): void {
-  const ubuntu = (lists.images ?? []).find((i) => /ubuntu.*24\.04/i.test(i.label));
-  if (draft.provider === 'openstack') {
-    if (!draft.os.image && ubuntu) draft.os.image = ubuntu.value;
-    const nets = lists.externalNetworks ?? [];
-    if (!draft.os.externalNetwork && nets.length > 0) {
-      draft.os.externalNetwork = (nets.find((n) => /float/i.test(n.label)) ?? nets[0]!).value;
-    }
-  } else {
-    if (!draft.aws.region && credential.value?.summary.region)
-      draft.aws.region = credential.value.summary.region;
-    if (!draft.aws.image && ubuntu) draft.aws.image = ubuntu.value;
+  const values = infraValues.value;
+  for (const f of form.value.fields) {
+    if (!isEmpty(values[f.path])) continue;
+    const value =
+      (credential.value && f.fromCredential?.(credential.value.summary)) ||
+      (f.lookup && f.preselect?.(lists[f.lookup] ?? []));
+    if (value) values[f.path] = value;
   }
 }
 
+/** Values that come from the credential or its lists start over with another credential. */
+function resetCredentialFields(): void {
+  for (const f of form.value.fields) {
+    if (f.lookup || f.fromCredential) infraValues.value[f.path] = f.default ?? '';
+  }
+}
 watch(
   () => draft.credential,
   () => {
     for (const k of Object.keys(lists)) delete lists[k];
-    draft.os.image = '';
-    draft.aws.image = '';
-    draft.aws.region = '';
+    resetCredentialFields();
     void loadLists();
   },
 );
@@ -238,13 +229,22 @@ watch(
 watch(credentials, (list) => {
   if (!list.some((c) => c.name === draft.credential)) draft.credential = list[0]?.name ?? '';
 });
+// A changed region (or similar) empties dependent fields and reloads the lists.
 watch(
-  () => draft.aws.region,
-  (r, old) => {
-    if (old && r !== old) {
-      draft.aws.image = '';
-      void loadLists();
-    }
+  () =>
+    [
+      draft.provider,
+      ...form.value.fields.filter((f) => f.resets).map((f) => infraValues.value[f.path]),
+    ] as unknown[],
+  ([provider, ...now], before) => {
+    const [oldProvider, ...old] = before ?? [];
+    if (provider !== oldProvider) return;
+    const changed = form.value.fields
+      .filter((f) => f.resets)
+      .filter((_, i) => !isEmpty(old[i]) && now[i] !== old[i]);
+    if (changed.length === 0) return;
+    for (const f of changed) for (const p of f.resets!) infraValues.value[p] = '';
+    void loadLists();
   },
 );
 watch(
@@ -254,20 +254,20 @@ watch(
   },
 );
 
-const sizes = computed(
-  () => lists[draft.provider === 'openstack' ? 'flavors' : 'instanceTypes'] ?? [],
-);
+const sizes = computed(() => lists[form.value.machine.sizeLookup] ?? []);
 const images = computed(() => lists.images ?? []);
-/** FP5-F-20: result of the Neutron paging check of the selected credential (OpenStack). */
+/** FP5-F-20: a failed credential check that breaks the bastion (OpenStack: Neutron paging). */
 const pagingWarning = computed(() => {
-  const c = credential.value?.lastTest?.checks.find((x) => x.id === CHECK_NEUTRON_PAGING);
+  const id = form.value.bastion?.blockingCheck;
+  const c = id ? credential.value?.lastTest?.checks.find((x) => x.id === id) : undefined;
   return c && !c.ok ? c.message : undefined;
 });
-const volumeTypes = computed<LookupOption[]>(() =>
-  draft.provider === 'openstack'
-    ? (lists.volumeTypes ?? [])
-    : AWS_ROOT_VOLUME_TYPES.map((v) => ({ value: v, label: v })),
-);
+const volumeTypes = computed<LookupOption[]>(() => {
+  const types = form.value.machine.rootVolume.types;
+  return 'lookup' in types
+    ? (lists[types.lookup] ?? [])
+    : types.options.map((v) => ({ value: v, label: v }));
+});
 
 // FP5-F-19: "same root disk for all groups" mirrors the control plane settings.
 watch(
@@ -295,7 +295,7 @@ function group(g: Group) {
     machineSize: g.machineSize,
     ...(g.image ? { image: g.image } : {}),
     ...(g.rootVolumeSizeGB ? { rootVolumeSizeGB: Number(g.rootVolumeSizeGB) } : {}),
-    ...(g.rootVolumeType && (draft.provider === 'aws' || g.rootVolumeSizeGB)
+    ...(g.rootVolumeType && (!form.value.machine.rootVolume.typeNeedsSize || g.rootVolumeSizeGB)
       ? { rootVolumeType: g.rootVolumeType }
       : {}),
     ...(hasCustom ? { customization: c } : {}),
@@ -341,55 +341,19 @@ const spec = computed<ClusterSpecInput>(() => ({
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean),
-  infrastructure:
-    draft.provider === 'openstack'
-      ? {
-          provider: 'openstack',
-          credentialRef: draft.credential,
-          image: draft.os.image,
-          externalNetwork: draft.os.externalNetwork,
-          network: {
-            nodeCidr: draft.os.nodeCidr.trim(),
-            dnsNameservers: draft.os.dns.split(/[\s,]+/).filter(Boolean),
-          },
-          apiServerLoadBalancer: draft.os.apiLb,
-          ...(draft.os.failureDomain ? { failureDomain: draft.os.failureDomain } : {}),
-          ...(draft.os.sshKeyName ? { sshKeyName: draft.os.sshKeyName } : {}),
-          ...(draft.bastion.enabled
-            ? {
-                bastion: {
-                  enabled: true,
-                  ...(draft.bastion.machineSize ? { machineSize: draft.bastion.machineSize } : {}),
-                },
-              }
-            : {}),
-        }
-      : {
-          provider: 'aws',
-          credentialRef: draft.credential,
-          region: draft.aws.region,
-          image: draft.aws.image,
-          network: {
-            vpcCidr: draft.aws.vpcCidr.trim(),
-            availabilityZoneCount: Number(draft.aws.azCount),
-          },
-          ...(draft.aws.sshKeyName ? { sshKeyName: draft.aws.sshKeyName } : {}),
-          ...(draft.bastion.enabled
-            ? {
-                bastion: {
-                  enabled: true,
-                  allowedCidrs: draft.bastion.allowedCidrs.map((c) => c.trim()),
-                  ...(draft.bastion.machineSize ? { machineSize: draft.bastion.machineSize } : {}),
-                },
-              }
-            : {}),
-        },
+  infrastructure: infraFromValues(
+    draft.provider,
+    form.value,
+    infraValues.value,
+    draft.credential,
+    draft.bastion,
+  ) as ClusterSpecInput['infrastructure'],
 }));
 
 // ---- validation per step with the shared schema (FP5-F-02) ----
 const issues = computed(() => {
   const r = ClusterSpecSchema.safeParse(spec.value);
-  return r.success ? [] : stepIssues(r.error.issues);
+  return r.success ? [] : stepIssues(r.error.issues, form.value);
 });
 /** Steps the user has left once; only their issues are shown (no errors on an empty form). */
 const visited = ref(new Set<number>());
@@ -570,8 +534,13 @@ const canPreview = computed(() => issues.value.length === 0);
               variant="outlined"
               divided
             >
-              <v-btn value="openstack" data-testid="provider-openstack">OpenStack</v-btn>
-              <v-btn value="aws" data-testid="provider-aws">AWS</v-btn>
+              <v-btn
+                v-for="p in providers"
+                :key="p.id"
+                :value="p.id"
+                :data-testid="`provider-${p.id}`"
+                >{{ p.name }}</v-btn
+              >
             </v-btn-toggle>
             <div class="text-caption text-medium-emphasis mt-1">{{ t('wizard.providerHint') }}</div>
           </v-col>
@@ -739,151 +708,20 @@ const canPreview = computed(() => issues.value.length === 0);
 
       <!-- 3 Infrastructure -->
       <template #[`item.3`]>
-        <v-row v-if="draft.provider === 'openstack'">
-          <v-col cols="12" md="6">
-            <v-autocomplete
-              v-model="draft.os.image"
-              :items="images"
-              item-title="label"
-              item-value="value"
-              :loading="listLoading"
-              :label="t('wizard.image')"
-              :hint="t('wizard.imageHint')"
-              persistent-hint
-              data-testid="image"
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <v-select
-              v-model="draft.os.externalNetwork"
-              :items="lists.externalNetworks ?? []"
-              item-title="label"
-              item-value="value"
-              :label="t('wizard.externalNetwork')"
-              :hint="t('wizard.externalNetworkHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="draft.os.nodeCidr"
-              :label="t('wizard.nodeCidr')"
-              :hint="t('wizard.nodeCidrHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="draft.os.dns"
-              :label="t('wizard.dns')"
-              :hint="t('wizard.dnsHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-switch
-              v-model="draft.os.apiLb"
-              color="primary"
-              :label="t('wizard.apiLb')"
-              :hint="t('wizard.apiLbHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <v-select
-              v-model="draft.os.failureDomain"
-              :items="lists.availabilityZones ?? []"
-              item-title="label"
-              item-value="value"
-              clearable
-              :label="t('wizard.az')"
-              :hint="t('wizard.azHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="6">
-            <v-select
-              v-model="draft.os.sshKeyName"
-              :items="lists.keyPairs ?? []"
-              item-title="label"
-              item-value="value"
-              clearable
-              :label="t('wizard.sshKey')"
-              :hint="t('wizard.sshKeyHint')"
-              persistent-hint
-            />
-          </v-col>
-        </v-row>
-        <v-row v-else>
-          <v-col cols="12" md="4">
-            <v-autocomplete
-              v-model="draft.aws.region"
-              :items="lists.regions ?? []"
-              item-title="label"
-              item-value="value"
-              :label="t('wizard.region')"
-              :hint="t('wizard.regionHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="8">
-            <v-autocomplete
-              v-model="draft.aws.image"
-              :items="images"
-              item-title="label"
-              item-value="value"
-              :loading="listLoading"
-              :label="t('wizard.ami')"
-              :hint="t('wizard.amiHint')"
-              persistent-hint
-              data-testid="image"
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-text-field
-              v-model="draft.aws.vpcCidr"
-              :label="t('wizard.vpcCidr')"
-              :hint="t('wizard.vpcCidrHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select
-              v-model="draft.aws.azCount"
-              :items="[1, 2, 3]"
-              :label="t('wizard.azCount')"
-              :hint="t('wizard.azCountHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select
-              v-model="draft.aws.sshKeyName"
-              :items="lists.keyPairs ?? []"
-              item-title="label"
-              item-value="value"
-              clearable
-              :label="t('wizard.sshKey')"
-              :hint="t('wizard.sshKeyHint')"
-              persistent-hint
-            />
-          </v-col>
-          <v-col cols="12">
-            <v-alert type="info" variant="tonal" density="compact">{{
-              t('wizard.awsLbInfo')
-            }}</v-alert>
-          </v-col>
-        </v-row>
-        <v-card border class="pa-4 mt-4">
+        <InfraFields
+          v-model="draft.infra[draft.provider]"
+          :form="form"
+          :lists="lists"
+          :loading="listLoading"
+        />
+        <v-card v-if="form.bastion" border class="pa-4 mt-4">
           <div class="text-subtitle-1 mb-1">{{ t('bastion.title') }}</div>
           <BastionEditor
             v-model="draft.bastion"
             :provider="draft.provider"
             :sizes="sizes"
             :paging-warning="pagingWarning"
-            :has-key-pair="
-              !!(draft.provider === 'openstack' ? draft.os.sshKeyName : draft.aws.sshKeyName)
-            "
+            :has-key-pair="!!form.keyPairField && !isEmpty(infraValues[form.keyPairField])"
           />
         </v-card>
       </template>
