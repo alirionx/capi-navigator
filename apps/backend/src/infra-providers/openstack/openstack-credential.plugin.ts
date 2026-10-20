@@ -58,28 +58,38 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
     }
   }
 
-  identity(name: string, secret: { name: string; namespace: string }, namespaces: string[]) {
-    return {
-      apiVersion: OPENSTACK_IDENTITY.apiVersion,
-      kind: OPENSTACK_IDENTITY.kind,
-      metadata: { name },
-      spec: {
-        secretRef: secret,
-        namespaceSelector: {
-          matchExpressions: [{ key: NAME_LABEL, operator: 'In', values: [...namespaces].sort() }],
+  readonly identity = {
+    resource: OPENSTACK_IDENTITY,
+    build(name: string, secret: { name: string; namespace: string }, namespaces: string[]) {
+      return {
+        apiVersion: OPENSTACK_IDENTITY.apiVersion,
+        kind: OPENSTACK_IDENTITY.kind,
+        metadata: { name },
+        spec: {
+          secretRef: secret,
+          namespaceSelector: {
+            matchExpressions: [{ key: NAME_LABEL, operator: 'In', values: [...namespaces].sort() }],
+          },
         },
-      },
-    };
-  }
+      };
+    },
+    allowedNamespaces(identity: Record<string, unknown>): string[] {
+      const spec = identity.spec as
+        | { namespaceSelector?: { matchExpressions?: { key: string; values?: string[] }[] } }
+        | undefined;
+      return (
+        spec?.namespaceSelector?.matchExpressions?.find((e) => e.key === NAME_LABEL)?.values ?? []
+      );
+    },
+  };
 
-  allowedNamespaces(identity: Record<string, unknown>): string[] {
-    const spec = identity.spec as
-      | { namespaceSelector?: { matchExpressions?: { key: string; values?: string[] }[] } }
-      | undefined;
-    return (
-      spec?.namespaceSelector?.matchExpressions?.find((e) => e.key === NAME_LABEL)?.values ?? []
-    );
-  }
+  readonly clusterKind = {
+    version: 'v1beta2',
+    plural: 'openstackclusters',
+    usesCredential: (cluster: Record<string, unknown>, credential: { name: string }) =>
+      (cluster.spec as { identityRef?: { name?: string } } | undefined)?.identityRef?.name ===
+      credential.name,
+  };
 
   private async session(data: Record<string, string>): Promise<OpenStackSession> {
     const { cloud } = readStoredCloud(data['clouds.yaml'] ?? '');

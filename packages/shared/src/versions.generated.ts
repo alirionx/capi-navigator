@@ -48,6 +48,15 @@ export const VERSIONS: VersionsFile = {
       },
       "verified": "2026-10-17"
     },
+    "gcp": {
+      "version": "v1.13.1",
+      "source": {
+        "datasource": "github-releases",
+        "package": "kubernetes-sigs/cluster-api-provider-gcp"
+      },
+      "verified": "2026-10-20",
+      "note": "Still implements the v1beta1 contract (built against CAPI v1.13.2). CAPI v1.14 supports it; CAPI plans to drop v1beta1 contract support with v1.16 (tentatively April 2027), so CAPG must move to v1beta2 before core can go there."
+    },
     "helm": {
       "version": "v0.6.4",
       "source": {

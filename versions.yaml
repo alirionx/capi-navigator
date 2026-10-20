@@ -61,6 +61,17 @@ providers:
       datasource: github-releases
       package: kubernetes-sigs/cluster-api-provider-aws
     verified: 2026-10-17
+  gcp:
+    # Cluster API provider for Google Cloud (CAPG, FP-25).
+    version: v1.13.1
+    source:
+      datasource: github-releases
+      package: kubernetes-sigs/cluster-api-provider-gcp
+    verified: 2026-10-20
+    note: >-
+      Still implements the v1beta1 contract (built against CAPI v1.13.2). CAPI v1.14 supports it;
+      CAPI plans to drop v1beta1 contract support with v1.16 (tentatively April 2027), so CAPG
+      must move to v1beta2 before core can go there.
   helm:
     # Cluster API Add-on Provider for Helm (CAAPH, FP-8).
     version: v0.6.4

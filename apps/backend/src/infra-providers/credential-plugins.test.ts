@@ -195,7 +195,7 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
       region: 'dc4-a',
       authType: 'v3applicationcredential',
     });
-    const identity = plugin.identity('c', { name: 's', namespace: 'capo-system' }, [
+    const identity = plugin.identity.build('c', { name: 's', namespace: 'capo-system' }, [
       'team-b',
       'default',
     ]);
@@ -204,7 +204,7 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
       kind: 'OpenStackClusterIdentity',
       spec: { secretRef: { name: 's', namespace: 'capo-system' } },
     });
-    expect(plugin.allowedNamespaces(identity)).toEqual(['default', 'team-b']);
+    expect(plugin.identity.allowedNamespaces(identity)).toEqual(['default', 'team-b']);
   });
 
   it('tests token, project and services', async () => {
@@ -360,13 +360,15 @@ describe('AWS plugin (FP4-F-07..10)', () => {
       SecretAccessKey: input.secretAccessKey,
     });
     expect(summary).toEqual({ region: 'eu-central-1', accessKeyIdSuffix: 'MPLE' });
-    const identity = plugin.identity('a', { name: 's', namespace: 'capa-system' }, ['default']);
+    const identity = plugin.identity.build('a', { name: 's', namespace: 'capa-system' }, [
+      'default',
+    ]);
     expect(identity).toMatchObject({
       apiVersion: 'infrastructure.cluster.x-k8s.io/v1beta2',
       kind: 'AWSClusterStaticIdentity',
       spec: { secretRef: 's', allowedNamespaces: { list: ['default'] } },
     });
-    expect(plugin.allowedNamespaces(identity)).toEqual(['default']);
+    expect(plugin.identity.allowedNamespaces(identity)).toEqual(['default']);
     expect(() => plugin.normalize({ ...input, accessKeyId: 'nope' })).toThrow(/AKIA/);
   });
 

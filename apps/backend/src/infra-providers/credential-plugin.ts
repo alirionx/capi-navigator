@@ -6,6 +6,14 @@ import type {
   LookupOption,
 } from '@capi-navigator/shared';
 
+export interface IdentityResource {
+  apiVersion: string;
+  kind: string;
+  group: string;
+  version: string;
+  plural: string;
+}
+
 /** A user-fixable credential problem; message and hint never contain secret values. */
 export class CredentialInputError extends Error {
   constructor(
@@ -27,14 +35,30 @@ export interface CredentialPlugin<TInput = unknown> {
   catalogId: string;
   /** Validates the input and returns the Secret data in the provider's format plus a summary. */
   normalize(input: TInput): { data: Record<string, string>; summary: CredentialSummary };
-  /** Builds the cluster-scoped identity that references the Secret (ADR-0002). */
-  identity(
-    name: string,
-    secret: { name: string; namespace: string },
-    allowedNamespaces: string[],
-  ): Record<string, unknown>;
-  /** Reads the allowed namespaces back from an identity object. */
-  allowedNamespaces(identity: Record<string, unknown>): string[];
+  /**
+   * The provider's cluster-scoped identity that references the Secret and holds the allowed
+   * namespaces (ADR-0002). Providers without one (CAPG references the Secret directly) leave it
+   * out; the app then keeps the allowed namespaces on the Secret and enforces them itself.
+   */
+  identity?: {
+    resource: IdentityResource;
+    build(
+      name: string,
+      secret: { name: string; namespace: string },
+      allowedNamespaces: string[],
+    ): Record<string, unknown>;
+    /** Reads the allowed namespaces back from an identity object. */
+    allowedNamespaces(identity: Record<string, unknown>): string[];
+  };
+  /** The infrastructure cluster kind and how it references a credential (removal check). */
+  clusterKind: {
+    version: string;
+    plural: string;
+    usesCredential(
+      cluster: Record<string, unknown>,
+      credential: { name: string; secret: { name: string; namespace: string } },
+    ): boolean;
+  };
   /** Tests the credentials against the cloud (read-only). */
   test(data: Record<string, string>, summary: CredentialSummary): Promise<CredentialTestResult>;
   lookupKinds: readonly LookupKind[];
