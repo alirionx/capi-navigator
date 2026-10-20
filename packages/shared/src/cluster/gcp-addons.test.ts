@@ -37,6 +37,7 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
         '--cloud-config=/etc/kubernetes/gce/cloud.config',
         '--configure-cloud-routes=false',
         '--allocate-node-cidrs=false',
+        '--controllers=*,-node-ipam-controller',
       ]),
     );
     expect(c.env).toContainEqual({ name: 'KUBERNETES_SERVICE_PORT', value: '6443' });
@@ -46,6 +47,9 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
     expect(find(objects, 'ConfigMap', 'gce-cloud-config').data['cloud.config']).toContain(
       'multizone = true',
     );
+    expect(find(objects, 'Role', 'capi-navigator:cloud-controller-manager').rules).toEqual([
+      { apiGroups: [''], resources: ['configmaps'], verbs: ['get', 'create', 'update'] },
+    ]);
     // Still on control plane nodes, tolerating the "uninitialized" taint it removes.
     expect(JSON.stringify(ds.spec.template.spec.affinity)).toContain('control-plane');
   });

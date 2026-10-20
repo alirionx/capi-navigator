@@ -92,9 +92,11 @@ describe('Google Cloud specifics (FP25-F-06, FP25-F-07, ADR-0022)', () => {
         ],
       },
     });
-    // No public IPs: the dedicated network gets Cloud NAT from CAPG.
+    // No public IPs: the dedicated network gets Cloud NAT from CAPG. The subnet must be named:
+    // CAPG leaves it empty otherwise, which a custom-mode network rejects (seen live).
     const template = find(gcp(), 'GCPMachineTemplate');
     expect(template.spec.template.spec).not.toHaveProperty('publicIP');
+    expect(template.spec.template.spec.subnet).toBe('demo-gcp-rke2-nodes');
   });
 
   it('serves the API on 6443 through the load balancer for every distribution', () => {

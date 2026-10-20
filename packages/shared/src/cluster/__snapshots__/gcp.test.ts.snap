@@ -58,7 +58,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-k0s-aio-cp-366f5fdf
+  name: demo-gcp-k0s-aio-cp-2a163f11
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -67,6 +67,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-k0s-aio-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -89,13 +90,13 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: GCPMachineTemplate
-      name: demo-gcp-k0s-aio-cp-366f5fdf
+      name: demo-gcp-k0s-aio-cp-2a163f11
       namespace: team-a
     spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-k0s-aio-cp-366f5fdf
+        name: demo-gcp-k0s-aio-cp-2a163f11
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -180,7 +181,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-k0s-cp-366f5fdf
+  name: demo-gcp-k0s-cp-608f7e5b
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -189,6 +190,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-k0s-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -211,13 +213,13 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: GCPMachineTemplate
-      name: demo-gcp-k0s-cp-366f5fdf
+      name: demo-gcp-k0s-cp-608f7e5b
       namespace: team-a
     spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-k0s-cp-366f5fdf
+        name: demo-gcp-k0s-cp-608f7e5b
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -246,7 +248,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-k0s-default-98efe691
+  name: demo-gcp-k0s-default-3ce1d105
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -255,6 +257,7 @@ spec:
   template:
     spec:
       instanceType: n2-standard-4
+      subnet: demo-gcp-k0s-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       rootDeviceSize: 80
       rootDeviceType: pd-balanced
@@ -313,7 +316,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-k0s-default-98efe691
+        name: demo-gcp-k0s-default-3ce1d105
 "
 `;
 
@@ -376,7 +379,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-kubeadm-aio-cp-366f5fdf
+  name: demo-gcp-kubeadm-aio-cp-d021e74e
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -385,6 +388,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-kubeadm-aio-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -407,7 +411,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-kubeadm-aio-cp-366f5fdf
+        name: demo-gcp-kubeadm-aio-cp-d021e74e
   rollout:
     strategy:
       type: RollingUpdate
@@ -592,7 +596,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-kubeadm-cp-366f5fdf
+  name: demo-gcp-kubeadm-cp-927d57a0
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -601,6 +605,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-kubeadm-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -623,7 +628,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-kubeadm-cp-366f5fdf
+        name: demo-gcp-kubeadm-cp-927d57a0
   rollout:
     strategy:
       type: RollingUpdate
@@ -750,7 +755,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-kubeadm-default-98efe691
+  name: demo-gcp-kubeadm-default-cf6fbde2
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -759,6 +764,7 @@ spec:
   template:
     spec:
       instanceType: n2-standard-4
+      subnet: demo-gcp-kubeadm-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       rootDeviceSize: 80
       rootDeviceType: pd-balanced
@@ -920,7 +926,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-kubeadm-default-98efe691
+        name: demo-gcp-kubeadm-default-cf6fbde2
 "
 `;
 
@@ -982,7 +988,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-rke2-aio-cp-366f5fdf
+  name: demo-gcp-rke2-aio-cp-6b401cf5
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -991,6 +997,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-rke2-aio-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -1014,7 +1021,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-rke2-aio-cp-366f5fdf
+        name: demo-gcp-rke2-aio-cp-6b401cf5
   rolloutStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -1095,7 +1102,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-rke2-cp-366f5fdf
+  name: demo-gcp-rke2-cp-28667f9f
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1104,6 +1111,7 @@ spec:
   template:
     spec:
       instanceType: e2-standard-2
+      subnet: demo-gcp-rke2-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       serviceAccounts:
         email: capi@demo-proj.iam.gserviceaccount.com
@@ -1127,7 +1135,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-rke2-cp-366f5fdf
+        name: demo-gcp-rke2-cp-28667f9f
   rolloutStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -1155,7 +1163,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-rke2-default-98efe691
+  name: demo-gcp-rke2-default-06abc031
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1164,6 +1172,7 @@ spec:
   template:
     spec:
       instanceType: n2-standard-4
+      subnet: demo-gcp-rke2-nodes
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
       rootDeviceSize: 80
       rootDeviceType: pd-balanced
@@ -1226,6 +1235,6 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-rke2-default-98efe691
+        name: demo-gcp-rke2-default-06abc031
 "
 `;
