@@ -14,15 +14,8 @@ if [[ -f "${ROOT_DIR}/.env.local" ]]; then
   set +a
 fi
 
-# OpenID Connect against the local Dex (FP-14), when pnpm dex:up wrote its settings.
-DEX_ENV="${ROOT_DIR}/.kube/dex-${KIND_CLUSTER_NAME}.env"
-if [[ -f "${DEX_ENV}" ]]; then
-  set -a
-  # shellcheck source=/dev/null
-  source "${DEX_ENV}"
-  set +a
-fi
-
+# Public URL of the dev frontend; the OpenID Connect redirect URI is built from it (FP-14).
+export PUBLIC_URL="${PUBLIC_URL:-http://localhost:5173}"
 export LOG_JSON="${LOG_JSON:-false}"
 
 cd "${ROOT_DIR}" || exit 1

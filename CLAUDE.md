@@ -120,7 +120,7 @@ pnpm test:int         # Vitest integration tests against the kind cluster; opt-i
 pnpm test:e2e         # Playwright
 pnpm docs:screenshots # screenshots for docs/ui-tour.md against the running app (read-only)
 pnpm kind:up          # local kind cluster as home + management cluster
-pnpm dex:up           # Dex with test users as OIDC provider in kind (FP-14); restart pnpm dev
+pnpm dex:up           # Dex with test users as OIDC provider in kind; configures the app's sign-in (FP-14)
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
 pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP-20)

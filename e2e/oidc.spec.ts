@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// FP-14: sign-in with OpenID Connect against Dex in kind. Needs `pnpm dex:up`, then `pnpm dev`
-// (restarted, so it reads the Dex settings), and the group mappings this test creates:
+// FP-14: sign-in with OpenID Connect against Dex in kind. Needs `pnpm dev` and `pnpm dex:up`
+// (which configures the app's sign-in with Dex); the test creates the group mappings itself:
 //   E2E_OIDC=1 E2E_ADMIN_PASSWORD=... pnpm test:e2e e2e/oidc.spec.ts
 const adminUser = process.env.E2E_ADMIN_USER ?? 'admin';
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
@@ -74,6 +74,40 @@ test.describe('sign-in with OpenID Connect (FP-14)', () => {
     await page.getByTestId('user-menu').click();
     await page.getByTestId('sign-out').click();
     await expect(page).toHaveURL(/\/login|127\.0\.0\.1:5556/);
+  });
+
+  test('admins set up the provider on the Authentication page (FP14-F-12)', async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Username').fill(adminUser);
+    await page.getByLabel('Password', { exact: true }).fill(adminPassword!);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page).not.toHaveURL(/\/login/);
+
+    await page.goto('/authentication');
+    await expect(page.getByTestId('redirect-uri')).toContainText('/api/auth/oidc/callback');
+    await page.getByTestId('oidc-test').click();
+    await expect(page.getByTestId('oidc-test-result')).toContainText('Provider found');
+
+    const label = page.getByLabel('Button label');
+    const save = async () => {
+      await page.getByTestId('oidc-preview').click();
+      await expect(page.getByTestId('oidc-confirm')).toBeVisible();
+      await page.getByTestId('oidc-save').click();
+      await expect(page.getByTestId('oidc-saved')).toBeVisible();
+    };
+    await label.fill('Sign in with Company SSO');
+    await save();
+    const options = async () => (await (await page.request.get('/api/auth/options')).json()).oidc;
+    expect(await options()).toEqual({ label: 'Sign in with Company SSO' });
+
+    // Off: the button disappears; on again with the original label.
+    await page.getByTestId('oidc-enabled').locator('input').click();
+    await save();
+    expect(await options()).toBeNull();
+    await page.getByTestId('oidc-enabled').locator('input').click();
+    await label.fill('Sign in with Dex');
+    await save();
+    expect(await options()).toEqual({ label: 'Sign in with Dex' });
   });
 
   test('the local sign-in keeps working (FP14-F-07)', async ({ page }) => {
