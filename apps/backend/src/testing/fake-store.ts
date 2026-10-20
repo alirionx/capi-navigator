@@ -352,7 +352,11 @@ export function createFakeStore() {
         auditEvents.push(obj);
         return obj;
       },
-      list: async () => ({ items: [...auditEvents] }),
+      list: async (params: { labelSelector?: string } = {}) => {
+        // Only the action label is used as selector (capi-navigator.io/action=...).
+        const action = /capi-navigator\.io\/action=([^,]+)/.exec(params.labelSelector ?? '')?.[1];
+        return { items: auditEvents.filter((e) => !action || e.spec.action === action) };
+      },
       delete: async (name: string) => {
         const idx = auditEvents.findIndex((e) => e.metadata.name === name);
         if (idx < 0) throw err(404);

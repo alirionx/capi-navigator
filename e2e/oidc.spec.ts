@@ -76,7 +76,7 @@ test.describe('sign-in with OpenID Connect (FP-14)', () => {
     await expect(page).toHaveURL(/\/login|127\.0\.0\.1:5556/);
   });
 
-  test('a person without groups gets a person mapping from the admin (FP14-F-04)', async ({
+  test('a person without groups gets a person mapping from the list of sign-ins (FP14-F-04, FP14-F-15)', async ({
     page,
     browser,
   }) => {
@@ -96,8 +96,9 @@ test.describe('sign-in with OpenID Connect (FP-14)', () => {
     await admin.getByRole('button', { name: 'Sign in', exact: true }).click();
     await expect(admin).not.toHaveURL(/\/login/);
     await admin.goto('/users');
-    await admin.getByTestId('oidc-person-add').click();
-    await admin.getByTestId('oidc-person-subject').locator('input').fill(subject!);
+    // FP14-F-15: carol is in the list of recent sign-ins; mapping her prefills ID and name.
+    await admin.getByTestId(`oidc-sign-in-map-${subject}`).click();
+    await expect(admin.getByTestId('oidc-person-subject').locator('input')).toHaveValue(subject!);
     await admin.getByTestId('oidc-person-name').locator('input').fill('Carol');
     await admin.getByTestId('bindings-editor').getByRole('combobox').first().click();
     await admin.locator('.v-overlay--active .v-list-item').filter({ hasText: 'Operator' }).click();

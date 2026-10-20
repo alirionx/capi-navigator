@@ -36,6 +36,7 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'GET /api/auth/oidc/login': 'public',
     'GET /api/auth/oidc/callback': 'public',
     'GET /api/oidc-groups': 'admin',
+    'GET /api/oidc-groups/sign-ins': 'admin',
     'POST /api/oidc-groups': 'admin',
     'PATCH /api/oidc-groups/:name': 'admin',
     'DELETE /api/oidc-groups/:name': 'admin',

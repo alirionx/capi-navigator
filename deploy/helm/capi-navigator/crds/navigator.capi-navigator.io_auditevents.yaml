@@ -86,6 +86,12 @@ spec:
                   type: string
                 subject:
                   type: string
+                issuer:
+                  type: string
+                groups:
+                  type: array
+                  items:
+                    type: string
                 message:
                   type: string
               required:

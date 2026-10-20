@@ -55,6 +55,11 @@ export class OidcService {
     return { oidc: active ? { label: active.buttonLabel } : null };
   }
 
+  /** Issuer of the provider in effect; recorded with each sign-in (FP14-F-15). */
+  get issuer(): string | undefined {
+    return this.settings.active()?.issuerUrl;
+  }
+
   /** FP14-F-03: from the configured public URL only. */
   get redirectUri(): string {
     return this.settings.redirectUri ?? '';

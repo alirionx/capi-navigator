@@ -10,6 +10,7 @@ import type {
   GroupMapping,
   NavigatorGroupSpec,
   NavigatorResource,
+  OidcSignIn,
   RoleBinding,
   UpdateGroupMappingRequest,
 } from '@capi-navigator/shared';
@@ -18,6 +19,9 @@ import { StoreService } from '../store/store.service.js';
 import { AuthSettingsService } from './auth-settings.service.js';
 
 type GroupResource = NavigatorResource<NavigatorGroupSpec>;
+
+/** At most this many sign-in events are read for the list (FP14-F-15). */
+const SIGN_IN_EVENT_LIMIT = 1000;
 
 const hash = (value: string) =>
   createHash('sha256').update(value, 'utf8').digest('hex').slice(0, 24);
@@ -164,6 +168,65 @@ export class GroupsService {
     this.require(name);
     await this.kube(`Delete mapping ${name}`, () => this.store.groups.delete(name));
     this.store.groupCache.remove(name);
+  }
+
+  /**
+   * Recent sign-ins with the configured provider (FP14-F-15), from the audit log: one row per
+   * person with the latest sign-in and where their access comes from now. Events without issuer
+   * (before this list existed) or of another provider are left out.
+   */
+  async signIns(): Promise<OidcSignIn[]> {
+    const issuer = this.settings.stored()?.issuerUrl;
+    if (!issuer) return [];
+    const latest = new Map<string, OidcSignIn & { groups: string[] }>();
+    let token: string | undefined;
+    let read = 0;
+    do {
+      const page = await this.kube('Read the sign-ins from the audit log', () =>
+        this.store.auditEvents.list({
+          labelSelector: 'capi-navigator.io/action=auth.oidc.login',
+          limit: 500,
+          ...(token ? { _continue: token } : {}),
+        }),
+      );
+      for (const { spec: e } of page.items) {
+        if (e.issuer !== issuer || !e.subject) continue;
+        const known = latest.get(e.subject);
+        if (known && known.lastSignIn >= e.timestamp) continue;
+        latest.set(e.subject, {
+          subject: e.subject,
+          name: e.actor.replace(/ \(oidc\)$/, ''),
+          lastSignIn: e.timestamp,
+          outcome: e.outcome,
+          access: { kind: 'none', detail: [] },
+          groups: e.groups ?? [],
+        });
+      }
+      read += page.items.length;
+      token = page.continue;
+    } while (token && read < SIGN_IN_EVENT_LIMIT);
+
+    return [...latest.values()]
+      .map(({ groups, ...row }) => ({ ...row, ...this.access(issuer, row.subject, groups) }))
+      .sort((a, b) => b.lastSignIn.localeCompare(a.lastSignIn));
+  }
+
+  /** Where a person's access comes from now: person mapping, groups, default role or none. */
+  private access(
+    issuer: string,
+    subject: string,
+    groups: string[],
+  ): Pick<OidcSignIn, 'access' | 'mapping'> {
+    const mappedGroups = groups.filter((g) => this.store.groupCache.get(groupResourceName(g)));
+    const person = this.store.groupCache.get(personResourceName(issuer, subject));
+    if (person?.spec.issuer === issuer && person.spec.subject === subject) {
+      return { access: { kind: 'person', detail: mappedGroups }, mapping: person.metadata.name };
+    }
+    if (mappedGroups.length) return { access: { kind: 'groups', detail: mappedGroups } };
+    const fallback = this.defaultBindings();
+    return fallback.length
+      ? { access: { kind: 'default', detail: fallback.map((b) => b.role) } }
+      : { access: { kind: 'none', detail: [] } };
   }
 
   /** Groups and people whose mapping uses `role`, for the role management (FP19-F-08). */

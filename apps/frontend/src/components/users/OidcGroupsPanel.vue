@@ -5,6 +5,7 @@ import {
   OidcGroupNameSchema,
   OidcSubjectSchema,
   type GroupMapping,
+  type OidcSignIn,
   type RoleBinding,
   type RoleInfo,
 } from '@capi-navigator/shared';
@@ -76,6 +77,22 @@ function open(kind: DialogKind, mapping?: GroupMapping, newMode: Mode = 'group')
   };
   dialog.value = kind;
 }
+
+/** FP14-F-15: map a person from the list of recent sign-ins, prefilled. */
+function mapPerson(row: OidcSignIn): void {
+  open('create', undefined, 'person');
+  form.value.subject = row.subject;
+  form.value.displayName = row.name;
+}
+
+const signInHeaders = computed(() => [
+  { title: t('oidcGroups.signIns.name'), key: 'name' },
+  { title: t('oidcGroups.subject'), key: 'subject', sortable: false },
+  { title: t('oidcGroups.signIns.last'), key: 'lastSignIn' },
+  { title: t('oidcGroups.signIns.access'), key: 'access', sortable: false },
+  { title: '', key: 'actions', sortable: false, align: 'end' as const },
+]);
+const formatTime = (iso: string) => new Date(iso).toLocaleString();
 
 async function confirm(): Promise<void> {
   busy.value = true;
@@ -195,6 +212,52 @@ async function confirm(): Promise<void> {
             :data-testid="`oidc-group-delete-${item.group ?? item.subject}`"
             @click="open('delete', item)"
           />
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- FP14-F-15: who signed in recently, to map people without typing their ID. -->
+    <h3 class="text-subtitle-1 font-weight-medium mt-8">{{ t('oidcGroups.signIns.title') }}</h3>
+    <p class="text-body-2 text-medium-emphasis mt-1 mb-3">{{ t('oidcGroups.signIns.subtitle') }}</p>
+    <v-card border class="table-card">
+      <v-data-table
+        :headers="signInHeaders"
+        :items="store.signIns"
+        :loading="store.loading"
+        item-value="subject"
+        :no-data-text="t('oidcGroups.signIns.empty')"
+        data-testid="oidc-sign-ins"
+      >
+        <template #[`item.subject`]="{ item }">
+          <code class="text-caption">{{ item.subject }}</code>
+        </template>
+        <template #[`item.lastSignIn`]="{ item }">
+          {{ formatTime(item.lastSignIn) }}
+          <v-chip
+            v-if="item.outcome === 'failure'"
+            size="x-small"
+            color="warning"
+            variant="tonal"
+            class="ml-1"
+            >{{ t('oidcGroups.signIns.refused') }}</v-chip
+          >
+        </template>
+        <template #[`item.access`]="{ item }">
+          <span>{{ t(`oidcGroups.signIns.kind.${item.access.kind}`) }}</span>
+          <span v-if="item.access.detail.length" class="text-medium-emphasis">
+            · {{ item.access.detail.join(', ') }}</span
+          >
+        </template>
+        <template #[`item.actions`]="{ item }">
+          <v-btn
+            v-if="item.access.kind !== 'person'"
+            size="small"
+            variant="tonal"
+            prepend-icon="mdi-account-key"
+            :data-testid="`oidc-sign-in-map-${item.subject}`"
+            @click="mapPerson(item)"
+            >{{ t('oidcGroups.signIns.map') }}</v-btn
+          >
         </template>
       </v-data-table>
     </v-card>

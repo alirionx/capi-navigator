@@ -3,7 +3,9 @@ import {
   CreateGroupMappingRequestSchema,
   GroupMappingListSchema,
   GroupMappingSchema,
+  OidcSignInListSchema,
   UpdateGroupMappingRequestSchema,
+  type OidcSignIn,
   type CreateGroupMappingRequest,
   type GroupMapping,
   type UpdateGroupMappingRequest,
@@ -23,6 +25,16 @@ export class GroupsController {
   @Get()
   list(): GroupMapping[] {
     return this.groups.list();
+  }
+
+  @Api({
+    summary: 'Recent sign-ins with the configured provider, for person mappings',
+    description: 'From the audit log (retention AUDIT_RETENTION_DAYS); one row per person.',
+    response: OidcSignInListSchema,
+  })
+  @Get('sign-ins')
+  signIns(): Promise<OidcSignIn[]> {
+    return this.groups.signIns();
   }
 
   @Api({
