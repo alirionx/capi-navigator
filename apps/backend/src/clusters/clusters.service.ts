@@ -337,7 +337,7 @@ export class ClustersService {
     if (!parsed?.success) return status;
     const spec = parsed.data;
     // FP5-F-20: bastion from the spec plus address and state from the provider.
-    const b = spec.infrastructure.bastion;
+    const b = 'bastion' in spec.infrastructure ? spec.infrastructure.bastion : undefined;
     const bastion =
       b && (b.enabled || infraObj?.status?.bastion)
         ? {
@@ -770,7 +770,10 @@ export class ClustersService {
 
     const cloudName = resolved?.credential.summary.cloudName;
     const objects: KubernetesObject[] = transform(spec, {
-      credential: { ...(cloudName ? { cloudName } : {}) },
+      credential: {
+        ...(cloudName ? { cloudName } : {}),
+        ...(resolved ? { secret: resolved.credential.secret } : {}),
+      },
     }) as KubernetesObject[];
     const extra: KubernetesObject[] = [];
     const extraPreview: KubernetesObject[] = [];

@@ -24,7 +24,8 @@ function agentConfig(
   infra: InfraTransformPlugin,
   extra: { nodeLabels?: Record<string, string>; worker: boolean },
 ) {
-  const kubeletArgs = [`provider-id=${infra.nodeIdentity.providerId}`];
+  const identity = infra.nodeIdentity(spec.infrastructure);
+  const kubeletArgs = [`provider-id=${identity.providerId}`];
   // Servers get cloud-provider=external via serverConfig.cloudProviderName; agents need it here.
   if (extra.worker && spec.addons.cloudControllerManager)
     kubeletArgs.push('cloud-provider=external');
@@ -34,7 +35,7 @@ function agentConfig(
       : undefined;
   const ssh = spec.sshPublicKeys;
   return compact({
-    nodeName: infra.nodeIdentity.nodeName,
+    nodeName: identity.nodeName,
     nodeLabels: extra.nodeLabels
       ? Object.entries(extra.nodeLabels)
           .sort(([a], [b]) => a.localeCompare(b))
@@ -141,6 +142,11 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
           // FP5-F-10: external cloud provider when the CCM is rolled out.
           cloudProviderName: external ? 'external' : undefined,
           disableComponents: external ? { kubernetesComponents: ['cloudController'] } : undefined,
+          // ADR-0022: the load balancer checks /readyz without credentials (Google Cloud); RKE2
+          // turns anonymous requests off by default. Default RBAC lets them read health only.
+          kubeAPIServer: infra.apiLoadBalancer?.anonymousHealthCheck
+            ? { extraArgs: ['anonymous-auth=true'] }
+            : undefined,
         }),
         agentConfig: agentConfig(spec, infra, { worker: false }),
         ...customizationFields(spec, cp),

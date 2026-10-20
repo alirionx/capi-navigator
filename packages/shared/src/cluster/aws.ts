@@ -211,11 +211,11 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     });
   },
 
-  nodeIdentity: {
+  nodeIdentity: () => ({
     providerId: 'aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}',
     // The AWS CCM expects the private DNS name as node name.
     nodeName: '{{ v1.local_hostname }}',
-  },
+  }),
 
   resources: {
     infraClusterPlural: 'awsclusters',

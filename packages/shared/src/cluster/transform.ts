@@ -1,6 +1,7 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
 import { CNI_LABEL, REBOOT_DAEMON_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
+import { gcpPlugin } from './gcp.js';
 import { openstackPlugin } from './openstack.js';
 import type {
   BootstrapFlavorPlugin,
@@ -20,6 +21,7 @@ export type { TransformContext } from './plugins.js';
 export const INFRA_PLUGINS: Record<Infrastructure['provider'], InfraTransformPlugin> = {
   openstack: openstackPlugin as InfraTransformPlugin,
   aws: awsPlugin as InfraTransformPlugin,
+  gcp: gcpPlugin as InfraTransformPlugin,
 };
 export const FLAVOR_PLUGINS: Partial<
   Record<ClusterSpec['kubernetes']['flavor'], BootstrapFlavorPlugin>
@@ -69,6 +71,8 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     },
     spec: {
       clusterNetwork: {
+        // ADR-0022: the port the API load balancer listens on, where the provider takes it.
+        ...(infra.apiLoadBalancer ? { apiServerPort: infra.apiLoadBalancer.port } : {}),
         pods: { cidrBlocks: [spec.kubernetes.podCidr] },
         services: { cidrBlocks: [spec.kubernetes.serviceCidr] },
       },

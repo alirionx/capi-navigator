@@ -48,7 +48,10 @@ const target = computed(() => form.value.target);
 const rootHint = computed(() => {
   if (props.rootDiskLocked) return t('wizard.rootDiskLocked');
   if (root.value.defaultGB)
-    return t('wizard.rootVolumeHint', { def: root.value.defaultGB, target: target.value });
+    return t(root.value.sizeHint ?? 'wizard.rootVolumeHint', {
+      def: root.value.defaultGB,
+      target: target.value,
+    });
   if (needsVolume.value) return t('wizard.rootVolumeNeeded', { target: target.value });
   return t('wizard.rootVolumeLocal', {
     size: selected.value ? ` (${selected.value.details?.diskGB} GB)` : '',

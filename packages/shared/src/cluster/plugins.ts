@@ -7,6 +7,8 @@ export interface TransformContext {
   credential: {
     /** OpenStack: entry of the clouds.yaml (identityRef.cloudName). */
     cloudName?: string;
+    /** The credential's Secret, for providers that reference it directly (CAPG credentialsRef). */
+    secret?: { name: string; namespace: string };
   };
 }
 
@@ -71,7 +73,19 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * Node identity from cloud-init instance data (ADR-0004): providerID and node name as
    * Jinja templates rendered on the node.
    */
-  nodeIdentity: { providerId: string; nodeName: string };
+  nodeIdentity(infra: T): { providerId: string; nodeName: string };
+  /**
+   * Limits of the API load balancer the distributions adapt to (ADR-0022). Unset: it forwards
+   * the ports a distribution asks for (`FlavorNetwork`) and checks the API server by TCP.
+   */
+  apiLoadBalancer?: {
+    /** Port the load balancer listens on (Cluster.spec.clusterNetwork.apiServerPort). */
+    port: number;
+    /** Only the API port is forwarded; other control plane ports are not reachable through it. */
+    apiPortOnly: boolean;
+    /** Health check by HTTPS /readyz without credentials: the API server must allow anonymous. */
+    anonymousHealthCheck: boolean;
+  };
   /** Plurals for reading and watching the provider's objects (FP-6). */
   resources: {
     infraClusterPlural: string;

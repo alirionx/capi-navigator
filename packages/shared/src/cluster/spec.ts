@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AwsRegionSchema, CredentialNameSchema } from '../credentials.js';
+import { AwsRegionSchema, CredentialNameSchema, GcpRegionSchema } from '../credentials.js';
 import { cidrsOverlap, parseIpv4Cidr } from './cidr.js';
 
 /**
@@ -189,9 +189,40 @@ export const AwsInfraSchema = z.object({
 });
 export type AwsInfra = z.infer<typeof AwsInfraSchema>;
 
+/** Persistent disk types that boot any machine type (CAPG rootDeviceType, default pd-standard). */
+export const GCP_ROOT_DISK_TYPES = ['pd-balanced', 'pd-ssd', 'pd-standard'] as const;
+
+/** A public image of Google Cloud as self link, e.g. from an image family (FP25-F-04). */
+export const GCP_IMAGE_PATTERN =
+  /^projects\/[a-z][-a-z0-9]{4,61}[a-z0-9]\/global\/images\/[a-z][-a-z0-9]{0,62}$/;
+const GCP_IMAGE_MESSAGE = 'An image like projects/ubuntu-os-cloud/global/images/ubuntu-2404-…';
+
+export const GcpInfraSchema = z.object({
+  provider: z.literal('gcp'),
+  /** Stored service account key, referenced as GCPCluster.spec.credentialsRef (FP25-F-02). */
+  credentialRef: CredentialNameSchema,
+  /** Project the cluster is created in; default: the project of the credential. */
+  project: z.string().regex(/^[a-z][-a-z0-9]{4,28}[a-z0-9]$/, 'A project ID like my-project-123'),
+  region: GcpRegionSchema,
+  /** One zone for all machines; empty: CAPG spreads the control plane over the region's zones. */
+  zone: z
+    .string()
+    .regex(/^[a-z]+-[a-z]+\d+-[a-z]$/, 'A zone like europe-west6-a')
+    .optional(),
+  image: z.string().regex(GCP_IMAGE_PATTERN, GCP_IMAGE_MESSAGE),
+  /** Dedicated VPC per cluster with one subnet; CAPG adds Cloud NAT and removes both. */
+  network: z
+    .object({ nodeCidr: CidrSchema.default('10.6.0.0/24') })
+    .default({ nodeCidr: '10.6.0.0/24' }),
+  /** CAPG always creates a load balancer for the API server. */
+  apiServerLoadBalancer: z.literal(true).default(true),
+});
+export type GcpInfra = z.infer<typeof GcpInfraSchema>;
+
 export const InfrastructureSchema = z.discriminatedUnion('provider', [
   OpenStackInfraSchema,
   AwsInfraSchema,
+  GcpInfraSchema,
 ]);
 export type Infrastructure = z.infer<typeof InfrastructureSchema>;
 
@@ -310,16 +341,17 @@ export const ClusterSpecSchema = z
     });
 
     // Overlapping networks break routing inside the cluster (acceptance FP-5).
+    const infra = spec.infrastructure;
     const nodeCidr =
-      spec.infrastructure.provider === 'openstack'
+      infra.provider !== 'aws'
         ? {
             path: ['infrastructure', 'network', 'nodeCidr'],
-            cidr: spec.infrastructure.network.nodeCidr,
+            cidr: infra.network.nodeCidr,
             label: 'node network',
           }
         : {
             path: ['infrastructure', 'network', 'vpcCidr'],
-            cidr: spec.infrastructure.network.vpcCidr,
+            cidr: infra.network.vpcCidr,
             label: 'VPC',
           };
     const nets = [
@@ -356,31 +388,34 @@ export const ClusterSpecSchema = z
       ) {
         issue(groupPath(i, 'rootVolumeType'), `One of ${AWS_ROOT_VOLUME_TYPES.join(', ')}`);
       }
+      if (
+        spec.infrastructure.provider === 'gcp' &&
+        !(GCP_ROOT_DISK_TYPES as readonly string[]).includes(g.rootVolumeType)
+      ) {
+        issue(groupPath(i, 'rootVolumeType'), `One of ${GCP_ROOT_DISK_TYPES.join(', ')}`);
+      }
     });
 
     groups.forEach((g, i) => {
       if (!g.image) return;
-      const ok =
-        spec.infrastructure.provider === 'openstack'
-          ? z.uuid().safeParse(g.image).success
-          : /^ami-[0-9a-f]{8,17}$/.test(g.image);
-      if (!ok) {
-        issue(
-          i === 0
-            ? ['topology', 'controlPlane', 'image']
-            : ['topology', 'workerPools', i - 1, 'image'],
-          spec.infrastructure.provider === 'openstack'
-            ? 'An image ID (UUID)'
-            : 'An AMI ID like ami-0123456789abcdef0',
-        );
-      }
+      const [ok, message] =
+        infra.provider === 'openstack'
+          ? [z.uuid().safeParse(g.image).success, 'An image ID (UUID)']
+          : infra.provider === 'aws'
+            ? [/^ami-[0-9a-f]{8,17}$/.test(g.image), 'An AMI ID like ami-0123456789abcdef0']
+            : [GCP_IMAGE_PATTERN.test(g.image), GCP_IMAGE_MESSAGE];
+      if (!ok) issue(groupPath(i, 'image'), message);
     });
 
-    // FP5-F-20: bastion host.
-    const bastion = spec.infrastructure.bastion;
-    if (bastion?.enabled) {
+    if (infra.provider === 'gcp' && infra.zone && !infra.zone.startsWith(`${infra.region}-`)) {
+      issue(['infrastructure', 'zone'], `A zone of region ${infra.region}`);
+    }
+
+    // FP5-F-20: bastion host (OpenStack and AWS; CAPG has none).
+    const bastion = 'bastion' in infra ? infra.bastion : undefined;
+    if (bastion?.enabled && infra.provider !== 'gcp') {
       const path = ['infrastructure', 'bastion'];
-      if (!spec.infrastructure.sshKeyName) {
+      if (!infra.sshKeyName) {
         issue(['infrastructure', 'sshKeyName'], 'The bastion needs an SSH key pair of the cloud');
       }
       if (spec.infrastructure.provider === 'openstack') {
