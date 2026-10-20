@@ -12,7 +12,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-k0s-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"demo-gcp-k0s-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"demo-gcp-k0s-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -58,7 +58,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-k0s-aio-cp-308286e0
+  name: demo-gcp-k0s-aio-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -68,6 +68,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: K0sControlPlane
@@ -85,13 +89,13 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: GCPMachineTemplate
-      name: demo-gcp-k0s-aio-cp-308286e0
+      name: demo-gcp-k0s-aio-cp-366f5fdf
       namespace: team-a
     spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-k0s-aio-cp-308286e0
+        name: demo-gcp-k0s-aio-cp-366f5fdf
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -132,7 +136,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-k0s
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"demo-gcp-k0s","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"demo-gcp-k0s","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -176,7 +180,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-k0s-cp-308286e0
+  name: demo-gcp-k0s-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -186,6 +190,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: K0sControlPlane
@@ -203,13 +211,13 @@ spec:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
       kind: GCPMachineTemplate
-      name: demo-gcp-k0s-cp-308286e0
+      name: demo-gcp-k0s-cp-366f5fdf
       namespace: team-a
     spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-k0s-cp-308286e0
+        name: demo-gcp-k0s-cp-366f5fdf
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -322,7 +330,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-kubeadm-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"demo-gcp-kubeadm-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"demo-gcp-kubeadm-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -368,7 +376,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-kubeadm-aio-cp-308286e0
+  name: demo-gcp-kubeadm-aio-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -378,6 +386,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KubeadmControlPlane
@@ -395,7 +407,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-kubeadm-aio-cp-308286e0
+        name: demo-gcp-kubeadm-aio-cp-366f5fdf
   rollout:
     strategy:
       type: RollingUpdate
@@ -536,7 +548,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-kubeadm
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"demo-gcp-kubeadm","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"demo-gcp-kubeadm","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -580,7 +592,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-kubeadm-cp-308286e0
+  name: demo-gcp-kubeadm-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -590,6 +602,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: KubeadmControlPlane
@@ -607,7 +623,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-kubeadm-cp-308286e0
+        name: demo-gcp-kubeadm-cp-366f5fdf
   rollout:
     strategy:
       type: RollingUpdate
@@ -920,7 +936,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-rke2-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-gcp-rke2-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6","zone":"europe-west6-b"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-gcp-rke2-aio","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -966,7 +982,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-rke2-aio-cp-308286e0
+  name: demo-gcp-rke2-aio-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -976,6 +992,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: RKE2ControlPlane
@@ -994,7 +1014,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-rke2-aio-cp-308286e0
+        name: demo-gcp-rke2-aio-cp-366f5fdf
   rolloutStrategy:
     type: RollingUpdate
     rollingUpdate:
@@ -1031,7 +1051,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-rke2
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-gcp-rke2","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"demo-gcp-rke2","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":3},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":2,"rootVolumeSizeGB":80,"rootVolumeType":"pd-balanced"}]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -1075,7 +1095,7 @@ spec:
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: GCPMachineTemplate
 metadata:
-  name: demo-gcp-rke2-cp-308286e0
+  name: demo-gcp-rke2-cp-366f5fdf
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1085,6 +1105,10 @@ spec:
     spec:
       instanceType: e2-standard-2
       image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
 ---
 apiVersion: controlplane.cluster.x-k8s.io/v1beta2
 kind: RKE2ControlPlane
@@ -1103,7 +1127,7 @@ spec:
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
-        name: demo-gcp-rke2-cp-308286e0
+        name: demo-gcp-rke2-cp-366f5fdf
   rolloutStrategy:
     type: RollingUpdate
     rollingUpdate:

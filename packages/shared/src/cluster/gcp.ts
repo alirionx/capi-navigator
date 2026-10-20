@@ -70,6 +70,15 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
         default: '10.6.0.0/24',
         cols: 4,
       },
+      {
+        path: 'controlPlaneServiceAccount',
+        kind: 'text',
+        label: 'wizard.gcpServiceAccount',
+        hint: 'wizard.gcpServiceAccountHint',
+        fromCredential: (summary) => summary.serviceAccount,
+        clearable: true,
+        cols: 12,
+      },
     ],
     notes: ['wizard.gcpLbInfo'],
     machine: {
@@ -124,12 +133,21 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
     };
   },
 
-  machineTemplateSpec(_spec, infra, group: MachineGroup) {
+  machineTemplateSpec(_spec, infra, group: MachineGroup, role) {
     return compact({
       instanceType: group.machineSize,
       image: group.image ?? infra.image,
       rootDeviceSize: group.rootVolumeSizeGB,
       rootDeviceType: group.rootVolumeType,
+      // ADR-0023: CCM and CSI controller on the control plane use this account via the metadata
+      // server. CAPG drops its default scope when an account is set, so the scope is explicit.
+      serviceAccounts:
+        role === 'control-plane' && infra.controlPlaneServiceAccount
+          ? {
+              email: infra.controlPlaneServiceAccount,
+              scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+            }
+          : undefined,
     });
   },
 

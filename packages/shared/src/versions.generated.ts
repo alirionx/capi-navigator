@@ -271,6 +271,30 @@ export const VERSIONS: VersionsFile = {
       "sha256": "202d70b43e38b60ebc60736c96e64e6de683053aab2e89da84ea9d904a9ef24c"
     }
   },
+  "addonManifests": {
+    "gcp-ccm": {
+      "version": "v36.4.9",
+      "source": {
+        "datasource": "docker",
+        "package": "cloud-provider-gcp/cloud-controller-manager",
+        "registry": "https://registry.k8s.io"
+      },
+      "verified": "2026-10-20",
+      "note": "The repository has tags but no GitHub releases; the image follows the Kubernetes minor (v36 = 1.36) and supports the minors around it. The manifest is meant for tooling (empty args, cloud config from the host); the app fills both (gcp-addons.ts).",
+      "manifest": "gcp-ccm-v36.4.9.yaml",
+      "sha256": "46ffa27d31d17a8f7cbfbabefa61b6031def573763bb7be1b3bc0d5525e91970"
+    },
+    "gcp-csi": {
+      "version": "v1.27.5",
+      "source": {
+        "datasource": "github-releases",
+        "package": "kubernetes-sigs/gcp-compute-persistent-disk-csi-driver"
+      },
+      "verified": "2026-10-20",
+      "manifest": "gcp-pd-csi-noauth-v1.27.5.yaml",
+      "sha256": "72d2f057d3d69bad407cea926e2de62d9ca4e19aef9a0c383e3d6c48500e9b22"
+    }
+  },
   "images": {
     "node-shell": {
       "version": "3.24",

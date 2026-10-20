@@ -26,3 +26,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0020](0020-oidc-settings-in-the-web-ui.md)                 | OpenID Connect settings in the web UI                                            | accepted |
 | [0021](0021-plugin-described-provider-forms.md)             | Provider forms described by the infrastructure plugins                           | accepted |
 | [0022](0022-gcp-api-load-balancer.md)                       | Distributions behind the Google Cloud API load balancer                          | accepted |
+| [0023](0023-gcp-ccm-and-csi-as-manifests.md)                | Google Cloud CCM and CSI driver as manifests with node credentials               | accepted |
