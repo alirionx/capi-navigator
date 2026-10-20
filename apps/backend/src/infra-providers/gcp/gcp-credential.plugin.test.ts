@@ -10,6 +10,7 @@ import { GCP_SECRET_KEY, GcpCredentialPlugin } from './gcp-credential.plugin.js'
 class FakeGoogle {
   readonly key = generateKeyPairSync('rsa', { modulusLength: 2048 });
   computeDisabled = false;
+  resourceManagerDisabled = false;
   revoked = false;
   granted: string[] = [...GCP_REQUIRED_PERMISSIONS];
   base = '';
@@ -60,6 +61,23 @@ class FakeGoogle {
                 'Compute Engine API has not been used in project demo-proj before or it is disabled.',
               status: 'PERMISSION_DENIED',
               details: [{ reason: 'SERVICE_DISABLED' }],
+            },
+          });
+        }
+        if (url.pathname.startsWith('/crm') && this.resourceManagerDisabled) {
+          return json(403, {
+            error: {
+              code: 403,
+              message:
+                'Cloud Resource Manager API has not been used in project 123 before or it is disabled.',
+              status: 'PERMISSION_DENIED',
+              details: [
+                {
+                  '@type': 'type.googleapis.com/google.rpc.ErrorInfo',
+                  reason: 'SERVICE_DISABLED',
+                  metadata: { service: 'cloudresourcemanager.googleapis.com' },
+                },
+              ],
             },
           });
         }
@@ -150,6 +168,7 @@ describe('Google Cloud credentials (FP25-F-02..04)', () => {
   afterAll(() => google.stop());
   beforeEach(() => {
     google.computeDisabled = false;
+    google.resourceManagerDisabled = false;
     google.revoked = false;
     google.granted = [...GCP_REQUIRED_PERMISSIONS];
   });
@@ -200,6 +219,18 @@ describe('Google Cloud credentials (FP25-F-02..04)', () => {
       ['Region europe-west6', true],
       ['Permissions for Cluster API', true],
     ]);
+  });
+
+  it('only warns when the Resource Manager API is off, naming that API', async () => {
+    google.resourceManagerDisabled = true;
+    const result = await plugin.test(data(), summary);
+    expect(result.ok).toBe(true);
+    expect(result.checks.at(-1)).toMatchObject({
+      ok: false,
+      warning: true,
+      message:
+        'The Cloud Resource Manager API is not enabled in the project; permissions not checked (optional)',
+    });
   });
 
   it('names missing permissions with the role to grant', async () => {
