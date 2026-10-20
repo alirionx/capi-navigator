@@ -28,6 +28,8 @@ export function renderScriptEnv(versions: VersionsFile): string {
     '# Generated from versions.yaml by `pnpm versions:generate` (FP-20). Do not edit.',
     `CERT_MANAGER_VERSION_DEFAULT=${versions.prerequisites['cert-manager'].version}`,
     `CAPI_OPERATOR_VERSION_DEFAULT=${versions.prerequisites['capi-operator'].version.replace(/^v/, '')}`,
+    `DEX_CHART_VERSION_DEFAULT=${versions.testTools.dex.version}`,
+    `SOCAT_IMAGE_DEFAULT=${versions.testTools.socat.source.package}:${versions.testTools.socat.version}`,
     '',
   ].join('\n');
 }

@@ -40,6 +40,7 @@ const GROUPS: [prefix: string, title: string][] = [
   ['kubeadmRuntime.', 'kubeadm node runtime'],
   ['cni.', 'CNI'],
   ['images.', 'Images'],
+  ['testTools.', 'Local test tools'],
 ];
 const RANK: Record<string, number> = { major: 3, minor: 2, patch: 1 };
 

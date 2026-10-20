@@ -80,5 +80,7 @@ export const VersionsFileSchema = z.strictObject({
     }),
   }),
   images: z.strictObject({ 'node-shell': EntrySchema }),
+  /** Tools of the local test setup, not part of the app (e.g. Dex for FP-14). */
+  testTools: z.strictObject({ dex: EntrySchema, socat: EntrySchema }),
 });
 export type VersionsFile = z.output<typeof VersionsFileSchema>;

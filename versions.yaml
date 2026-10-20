@@ -213,3 +213,24 @@ images:
       package: alpine
       registry: docker.io
     verified: 2026-10-20
+
+# ---- Local test setup (not shipped with the app) -------------------------------------------------
+testTools:
+  dex:
+    # OpenID Connect provider for the FP-14 tests in kind (`pnpm dex:up`); Helm chart of Dex v2.46.0,
+    # the first Dex with groups for static users.
+    version: 0.26.0
+    source:
+      datasource: helm
+      package: dex
+      registry: https://charts.dexidp.io
+    verified: 2026-10-20
+  socat:
+    # Forwards 127.0.0.1:5556 to the Dex NodePort in kind, so the browser and the backend reach
+    # Dex under one issuer URL also with Docker Desktop (no route to the kind network).
+    version: 1.8.1.1
+    source:
+      datasource: docker
+      package: alpine/socat
+      registry: docker.io
+    verified: 2026-10-20

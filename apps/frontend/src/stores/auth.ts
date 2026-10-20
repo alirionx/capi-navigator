@@ -4,6 +4,7 @@ import {
   allows,
   isScopable,
   isUnlimited,
+  LogoutResponseSchema,
   MeSchema,
   type ChangePasswordRequest,
   type LoginRequest,
@@ -11,7 +12,7 @@ import {
   type Permission,
   type PermissionScope,
 } from '@capi-navigator/shared';
-import { api, ApiError, apiVoid } from '../api/client.js';
+import { api, ApiError } from '../api/client.js';
 
 export const useAuthStore = defineStore('auth', () => {
   const me = ref<Me | null>(null);
@@ -71,9 +72,10 @@ export const useAuthStore = defineStore('auth', () => {
     return me.value;
   }
 
-  async function logout(): Promise<void> {
+  /** Signs out; for OIDC people the URL to sign out at the provider too (FP14-F-10). */
+  async function logout(): Promise<string | undefined> {
     try {
-      await apiVoid('POST', '/api/auth/logout');
+      return (await api('POST', '/api/auth/logout', LogoutResponseSchema)).endSessionUrl;
     } finally {
       me.value = null;
     }

@@ -7,14 +7,14 @@ versions, decide, change, verify and release them ([ADR-0018](adr/0018-versions-
 
 ## Where versions live
 
-| What                                                                                                                                      | Where                                              | How to change                                   |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------- |
-| App versions: providers, cert-manager, CAPI Operator, ORC, Kubernetes versions, preset charts, containerd, runc, Calico, node shell image | [versions.yaml](../versions.yaml)                  | Edit, then `pnpm versions:generate`             |
-| npm packages                                                                                                                              | the four `package.json` files and `pnpm-lock.yaml` | `pnpm up -r --latest <package>` (never by hand) |
-| GitHub Actions                                                                                                                            | `.github/workflows/*.yaml`                         | Edit the `uses:` version                        |
-| Node.js                                                                                                                                   | `.nvmrc` and the `FROM` lines of the `Dockerfile`  | Edit both together                              |
-| Node scripts (kubeadm install)                                                                                                            | `packages/shared/src/cluster/templates/*.sh.tmpl`  | Edit, then `pnpm templates:generate`            |
-| The app's own version                                                                                                                     | `deploy/helm/capi-navigator/Chart.yaml`            | Only for a release (README, "Releases")         |
+| What                                                                                                                                                                     | Where                                              | How to change                                   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- | ----------------------------------------------- |
+| App versions: providers, cert-manager, CAPI Operator, ORC, Kubernetes versions, preset charts, containerd, runc, Calico, node shell image; local test tools (Dex, socat) | [versions.yaml](../versions.yaml)                  | Edit, then `pnpm versions:generate`             |
+| npm packages                                                                                                                                                             | the four `package.json` files and `pnpm-lock.yaml` | `pnpm up -r --latest <package>` (never by hand) |
+| GitHub Actions                                                                                                                                                           | `.github/workflows/*.yaml`                         | Edit the `uses:` version                        |
+| Node.js                                                                                                                                                                  | `.nvmrc` and the `FROM` lines of the `Dockerfile`  | Edit both together                              |
+| Node scripts (kubeadm install)                                                                                                                                           | `packages/shared/src/cluster/templates/*.sh.tmpl`  | Edit, then `pnpm templates:generate`            |
+| The app's own version                                                                                                                                                    | `deploy/helm/capi-navigator/Chart.yaml`            | Only for a release (README, "Releases")         |
 
 Code comments such as "Field names verified against CAPO v0.15.0" record what an implementation was
 checked against; they are documentation, not pins, but must be reviewed when that version changes.
