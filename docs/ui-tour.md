@@ -42,9 +42,10 @@ from the pinned catalog ([versions.yaml](../versions.yaml)); downgrades are refu
 
 ![Providers](images/ui-tour/04-providers.png)
 
-**Credentials**: an OpenStack `clouds.yaml` or AWS access keys are stored once as a Secret plus a
-cluster-wide identity (`OpenStackClusterIdentity`, `AWSClusterStaticIdentity`). Clusters only
-reference them, and a test checks authentication and the required permissions.
+**Credentials**: an OpenStack `clouds.yaml`, AWS access keys or a Google Cloud service account key
+are stored once as a Secret, for OpenStack and AWS plus a cluster-wide identity
+(`OpenStackClusterIdentity`, `AWSClusterStaticIdentity`); Google Cloud clusters reference the Secret
+directly ([setup](gcp.md)). A test checks authentication and the required permissions.
 
 ![Cloud credentials](images/ui-tour/05-credentials.png)
 

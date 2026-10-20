@@ -69,6 +69,10 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
       operator: 'Exists',
       effect: 'NoSchedule',
     });
+    // The node plugin runs on control plane nodes too (all-in-one clusters).
+    expect(find(objects, 'DaemonSet', 'csi-gce-pd-node').spec.template.spec).not.toHaveProperty(
+      'affinity',
+    );
     // noauth overlay: no key mounted.
     expect(JSON.stringify(pod)).not.toContain('cloud-sa');
     expect(find(objects, 'StorageClass', 'pd-balanced')).toMatchObject({
