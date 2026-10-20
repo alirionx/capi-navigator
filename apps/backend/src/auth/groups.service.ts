@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,9 +13,9 @@ import type {
   RoleBinding,
   UpdateGroupMappingRequest,
 } from '@capi-navigator/shared';
-import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
+import { AuthSettingsService } from './auth-settings.service.js';
 
 type GroupResource = NavigatorResource<NavigatorGroupSpec>;
 
@@ -33,7 +32,7 @@ export function groupResourceName(group: string): string {
 export class GroupsService {
   constructor(
     private readonly store: StoreService,
-    @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly settings: AuthSettingsService,
   ) {}
 
   list(): GroupMapping[] {
@@ -62,7 +61,7 @@ export class GroupsService {
 
   /** FP14-F-05: the configured default role without limits; none if unset or unknown. */
   defaultBindings(): RoleBinding[] {
-    const role = this.config.OIDC_DEFAULT_ROLE.trim();
+    const role = this.settings.active()?.defaultRole.trim() ?? '';
     return role && this.store.rolePermissions(role) ? [{ role }] : [];
   }
 

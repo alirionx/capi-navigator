@@ -5,6 +5,7 @@ import type { Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isConflict } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
+import { AuthSettingsService } from './auth-settings.service.js';
 import { GroupsService } from './groups.service.js';
 import {
   OIDC_FLOW_COOKIE,
@@ -38,8 +39,13 @@ export class SessionService implements OnModuleInit {
     private readonly store: StoreService,
     private readonly tokens: TokensService,
     private readonly groups: GroupsService,
+    private readonly authSettings: AuthSettingsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
+
+  private oidcActive(): boolean {
+    return this.authSettings.active() !== undefined;
+  }
 
   async onModuleInit(): Promise<void> {
     this.key = await this.loadOrCreateKey();
@@ -87,6 +93,8 @@ export class SessionService implements OnModuleInit {
     const payload = verifySession(token, this.signingKey);
     if (!payload) return undefined;
     if (payload.o) {
+      // Switching OIDC off ends its sessions at once (ADR-0020).
+      if (!this.oidcActive()) return undefined;
       // FP14-F-04: access from the mapped groups, resolved on every request.
       return {
         username: `${payload.u} (oidc)`,

@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AUTH_PROVIDER } from './auth-provider.js';
 import { AuthController } from './auth.controller.js';
+import { AuthSettingsController } from './auth-settings.controller.js';
+import { AuthSettingsService } from './auth-settings.service.js';
 import { AuthGuard } from './auth.guard.js';
 import { GroupsController } from './groups.controller.js';
 import { GroupsService } from './groups.service.js';
@@ -25,8 +27,10 @@ import { UsersService } from './users.service.js';
     RolesController,
     TokensController,
     GroupsController,
+    AuthSettingsController,
   ],
   providers: [
+    AuthSettingsService,
     GroupsService,
     OidcService,
     RolesService,

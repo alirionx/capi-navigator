@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OidcSettingsSchema } from './crds/navigator-auth-settings.js';
 import { NavigatorGroupSpecSchema, OidcGroupNameSchema } from './crds/navigator-group.js';
 import { RoleBindingSchema } from './permissions.js';
 
@@ -39,3 +40,41 @@ export const UpdateGroupMappingRequestSchema = NavigatorGroupSpecSchema.omit({ g
 export type UpdateGroupMappingRequest = z.input<typeof UpdateGroupMappingRequestSchema>;
 
 export { OidcGroupNameSchema };
+
+/** The Authentication page (FP14-F-12): settings without the secret, and the deployment values. */
+export const AuthSettingsSchema = z.object({
+  /** null until the provider was configured once. */
+  oidc: OidcSettingsSchema.extend({ secretSet: z.boolean() }).nullable(),
+  /** Helm value publicUrl; OIDC cannot be enabled without it (FP14-F-03). */
+  publicUrl: z.string().nullable(),
+  /** The redirect URI to register at the provider; null without public URL. */
+  redirectUri: z.string().nullable(),
+});
+export type AuthSettings = z.infer<typeof AuthSettingsSchema>;
+
+/**
+ * Saving the provider settings. `clientSecret` is write-only (FP14-F-14): left out, the stored one
+ * is kept.
+ */
+export const UpdateOidcSettingsRequestSchema = OidcSettingsSchema.extend({
+  clientSecret: z.string().min(1).max(1024).optional(),
+});
+export type UpdateOidcSettingsRequest = z.input<typeof UpdateOidcSettingsRequestSchema>;
+
+/** Discovery test with the entered values, before saving (FP14-F-12). */
+export const OidcTestRequestSchema = z.object({ issuerUrl: OidcSettingsSchema.shape.issuerUrl });
+export type OidcTestRequest = z.infer<typeof OidcTestRequestSchema>;
+
+export const OidcTestResultSchema = z.object({
+  ok: z.boolean(),
+  /** Why the test failed, in words. */
+  message: z.string().optional(),
+  issuer: z.string().optional(),
+  authorizationEndpoint: z.string().optional(),
+  tokenEndpoint: z.string().optional(),
+  userinfoEndpoint: z.string().optional(),
+  endSessionEndpoint: z.string().optional(),
+  scopesSupported: z.array(z.string()).optional(),
+  claimsSupported: z.array(z.string()).optional(),
+});
+export type OidcTestResult = z.infer<typeof OidcTestResultSchema>;

@@ -39,6 +39,9 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'POST /api/oidc-groups': 'admin',
     'PATCH /api/oidc-groups/:name': 'admin',
     'DELETE /api/oidc-groups/:name': 'admin',
+    'GET /api/auth-settings': 'admin',
+    'PUT /api/auth-settings/oidc': 'admin',
+    'POST /api/auth-settings/oidc/test': 'admin',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 
