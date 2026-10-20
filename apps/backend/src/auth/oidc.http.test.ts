@@ -12,7 +12,13 @@ import { StoreModule } from '../store/store.module.js';
 import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { TestOidcProvider } from '../testing/oidc-provider.js';
-import type { RoleBinding } from '@capi-navigator/shared';
+import {
+  AUTH_SETTINGS_NAME,
+  OIDC_CLIENT_SECRET_NAME,
+  type OidcSettings,
+  type RoleBinding,
+} from '@capi-navigator/shared';
+import { AuthSettingsService } from './auth-settings.service.js';
 import { AuthModule } from './auth.module.js';
 import { groupResourceName } from './groups.service.js';
 import { safeReturnPath } from './oidc.controller.js';
@@ -64,11 +70,6 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
       LOG_JSON: 'false',
       COOKIE_SECURE: 'false',
       PUBLIC_URL,
-      OIDC_ISSUER_URL: idp.issuer,
-      OIDC_CLIENT_ID: idp.clientId,
-      OIDC_CLIENT_SECRET: idp.clientSecret,
-      OIDC_SCOPES: 'openid profile groups',
-      OIDC_BUTTON_LABEL: 'Sign in with Test',
     });
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, KubeModule, StoreModule, AuditModule, AuthModule],
@@ -90,10 +91,33 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
     await idp.stop();
   });
 
+  /** Stores the provider settings as the Authentication page would (ADR-0020). */
+  function configure(over: Partial<OidcSettings> = {}) {
+    fake.authSettings.set(AUTH_SETTINGS_NAME, {
+      apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+      kind: 'NavigatorAuthSettings',
+      metadata: { name: AUTH_SETTINGS_NAME, resourceVersion: '1' },
+      spec: {
+        oidc: {
+          enabled: true,
+          issuerUrl: idp.issuer,
+          clientId: idp.clientId,
+          scopes: 'openid profile groups',
+          groupsClaim: 'groups',
+          usernameClaim: 'preferred_username',
+          buttonLabel: 'Sign in with Test',
+          defaultRole: 'viewer',
+          ...over,
+        },
+      },
+    });
+    fake.secrets.set(OIDC_CLIENT_SECRET_NAME, { clientSecret: idp.clientSecret });
+  }
+
   beforeEach(() => {
     idp.person = { sub: 'sub-jane', name: 'jane', groups: ['team-a', 'unrelated'] };
     idp.tamper = {};
-    config.OIDC_DEFAULT_ROLE = 'viewer';
+    configure();
     fake.groups.clear();
   });
 
@@ -166,7 +190,7 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
     const me = await http().get('/api/auth/me').set('Cookie', viewer.session!).expect(200);
     expect(me.body.bindings).toMatchObject([{ role: 'viewer' }]);
 
-    config.OIDC_DEFAULT_ROLE = '';
+    configure({ defaultRole: '' });
     const refused = await signIn();
     expect(refused.callback.headers.location).toBe('/login?error=oidc_no_access');
     expect(refused.session).toBeUndefined();
@@ -341,6 +365,78 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
     await http().get('/api/oidc-groups').set('Cookie', viewer.session!).expect(403);
   });
 
+  it('lets admins configure the provider in the UI, without ever returning the secret (FP14-F-12..F-14)', async () => {
+    await mapGroup('capi-admins', [{ role: 'admin' }]);
+    idp.person = { sub: 'sub-admin', name: 'alice', groups: ['capi-admins'] };
+    const { session } = await signIn();
+    const api = (method: 'get' | 'post' | 'put', path: string) =>
+      http()[method](path).set(CSRF).set('Cookie', session!);
+
+    const read = await api('get', '/api/auth-settings').expect(200);
+    expect(read.body).toMatchObject({
+      oidc: { enabled: true, issuerUrl: idp.issuer, secretSet: true },
+      publicUrl: PUBLIC_URL,
+      redirectUri: `${PUBLIC_URL}/api/auth/oidc/callback`,
+    });
+    expect(JSON.stringify(read.body)).not.toContain(idp.clientSecret);
+
+    // Test before saving: what the provider offers, and a clear message for a wrong URL.
+    const ok = await api('post', '/api/auth-settings/oidc/test')
+      .send({ issuerUrl: idp.issuer })
+      .expect(200);
+    expect(ok.body).toMatchObject({
+      ok: true,
+      issuer: idp.issuer,
+      endSessionEndpoint: `${idp.issuer}/logout`,
+    });
+    const bad = await api('post', '/api/auth-settings/oidc/test')
+      .send({ issuerUrl: `${idp.issuer}/nothing` })
+      .expect(200);
+    expect(bad.body.ok).toBe(false);
+    expect(bad.body.message).toBeTruthy();
+
+    // Save with a new label and secret; the secret is kept write-only.
+    const settings = { ...read.body.oidc, buttonLabel: 'Sign in with Company SSO' };
+    delete settings.secretSet;
+    await api('put', '/api/auth-settings/oidc')
+      .send({ ...settings, clientSecret: 'rotated-secret' })
+      .expect(200);
+    expect(fake.secrets.get(OIDC_CLIENT_SECRET_NAME)).toEqual({ clientSecret: 'rotated-secret' });
+    const options = await http().get('/api/auth/options').expect(200);
+    expect(options.body).toEqual({ oidc: { label: 'Sign in with Company SSO' } });
+    const audit = fake.auditEvents.filter((e) => e.spec.action === 'auth-settings.update');
+    expect(audit).toHaveLength(1);
+    expect(JSON.stringify(fake.auditEvents)).not.toContain('rotated-secret');
+
+    // Unknown default role is refused.
+    await api('put', '/api/auth-settings/oidc')
+      .send({ ...settings, defaultRole: 'no-such-role' })
+      .expect(400);
+    fake.secrets.set(OIDC_CLIENT_SECRET_NAME, { clientSecret: idp.clientSecret });
+
+    // Switching OIDC off hides the button and ends OIDC sessions at once (ADR-0020).
+    await api('put', '/api/auth-settings/oidc')
+      .send({ ...settings, enabled: false })
+      .expect(200);
+    expect((await http().get('/api/auth/options').expect(200)).body).toEqual({ oidc: null });
+    await http().get('/api/auth/me').set('Cookie', session!).expect(401);
+    await http().get('/api/auth/oidc/login').expect(404);
+  });
+
+  it('refuses to enable OIDC without client secret', async () => {
+    fake.authSettings.clear();
+    fake.secrets.delete(OIDC_CLIENT_SECRET_NAME);
+    const app2 = await http().get('/api/auth/options').expect(200);
+    expect(app2.body).toEqual({ oidc: null });
+    // Without OIDC only the local admin can save; checked in the service directly.
+    const service = app.get(AuthSettingsService);
+    await expect(
+      service.update({ enabled: true, issuerUrl: idp.issuer, clientId: 'x' }),
+    ).rejects.toThrow(/client secret/);
+    await service.update({ enabled: false, issuerUrl: idp.issuer, clientId: 'x' });
+    expect(fake.authSettings.get(AUTH_SETTINGS_NAME)?.spec.oidc.enabled).toBe(false);
+  });
+
   it('only returns to paths inside the app', () => {
     expect(safeReturnPath('/clusters/a/b?tab=1')).toBe('/clusters/a/b?tab=1');
     for (const bad of [
@@ -356,16 +452,19 @@ describe('OpenID Connect sign-in over HTTP (FP-14)', () => {
   });
 });
 
-describe('OpenID Connect configuration (FP14-F-03)', () => {
-  it('refuses to start without public URL, client ID or secret', () => {
-    expect(() => loadConfig({ OIDC_ISSUER_URL: 'https://idp.example' })).toThrow(
-      /OIDC_CLIENT_ID, OIDC_CLIENT_SECRET, PUBLIC_URL/,
-    );
-    expect(() =>
-      loadConfig({
-        OIDC_ISSUER_URL: '',
-        PUBLIC_URL: '',
+describe('OpenID Connect settings without public URL (FP14-F-03)', () => {
+  it('cannot enable OIDC, and stored settings stay inactive', async () => {
+    const fake = createFakeStore();
+    const service = new AuthSettingsService(fake.store, loadConfig({ PUBLIC_URL: '' }));
+    await expect(
+      service.update({
+        enabled: true,
+        issuerUrl: 'https://idp.example',
+        clientId: 'x',
+        clientSecret: 's',
       }),
-    ).not.toThrow();
+    ).rejects.toThrow(/public URL/);
+    expect(service.redirectUri).toBeUndefined();
+    expect((await service.get()).redirectUri).toBeNull();
   });
 });

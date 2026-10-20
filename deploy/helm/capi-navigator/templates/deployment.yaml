@@ -46,35 +46,6 @@ spec:
             - name: PUBLIC_URL
               value: {{ . | quote }}
             {{- end }}
-            {{- with .Values.oidc }}
-            {{- if .issuerUrl }}
-            {{- if not $.Values.publicUrl }}
-            {{- fail "oidc.issuerUrl needs publicUrl (the redirect URI is <publicUrl>/api/auth/oidc/callback)" }}
-            {{- end }}
-            {{- if not .clientId }}
-            {{- fail "oidc.issuerUrl needs oidc.clientId" }}
-            {{- end }}
-            - name: OIDC_ISSUER_URL
-              value: {{ .issuerUrl | quote }}
-            - name: OIDC_CLIENT_ID
-              value: {{ .clientId | quote }}
-            - name: OIDC_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .existingSecret | quote }}
-                  key: {{ .existingSecretKey | quote }}
-            - name: OIDC_SCOPES
-              value: {{ .scopes | quote }}
-            - name: OIDC_GROUPS_CLAIM
-              value: {{ .groupsClaim | quote }}
-            - name: OIDC_USERNAME_CLAIM
-              value: {{ .usernameClaim | quote }}
-            - name: OIDC_BUTTON_LABEL
-              value: {{ .buttonLabel | quote }}
-            - name: OIDC_DEFAULT_ROLE
-              value: {{ .defaultRole | quote }}
-            {{- end }}
-            {{- end }}
             {{- $trustProxy := .Values.trustProxy }}
             {{- if and (not $trustProxy) (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
             {{- $trustProxy = "loopback,linklocal,uniquelocal" }}

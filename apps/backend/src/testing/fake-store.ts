@@ -3,6 +3,7 @@ import type {
   HelmRepositorySpec,
   ManagementClusterSpec,
   ManagementClusterStatus,
+  NavigatorAuthSettingsSpec,
   NavigatorGroupSpec,
   NavigatorResource,
   NavigatorRoleSpec,
@@ -29,6 +30,7 @@ export function createFakeStore() {
   const roles = new Map<string, NavigatorResource<NavigatorRoleSpec>>();
   const tokens = new Map<string, NavigatorResource<NavigatorTokenSpec, { lastUsedAt?: string }>>();
   const groups = new Map<string, NavigatorResource<NavigatorGroupSpec>>();
+  const authSettings = new Map<string, NavigatorResource<NavigatorAuthSettingsSpec>>();
 
   let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
 
@@ -176,6 +178,37 @@ export function createFakeStore() {
       delete: async (name: string) => {
         if (!groups.delete(name)) throw err(404);
       },
+    },
+    authSettings: {
+      create: async (meta: { name: string }, spec: NavigatorAuthSettingsSpec) => {
+        if (authSettings.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'NavigatorAuthSettings',
+          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          spec,
+        };
+        authSettings.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchSpec: async (name: string, spec: Partial<NavigatorAuthSettingsSpec>) => {
+        const current = authSettings.get(name);
+        if (!current) throw err(404);
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          spec: { ...current.spec, ...spec },
+        };
+        authSettings.set(name, updated);
+        return structuredClone(updated);
+      },
+    },
+    authSettingsCache: {
+      get: (name: string) => structuredClone(authSettings.get(name)),
+      list: () => [...authSettings.values()].map((a) => structuredClone(a)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
     },
     groupCache: {
       get: (name: string) => structuredClone(groups.get(name)),
@@ -334,5 +367,6 @@ export function createFakeStore() {
     helmRepositories,
     tokens,
     groups,
+    authSettings,
   };
 }

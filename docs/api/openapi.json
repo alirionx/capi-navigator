@@ -85,6 +85,141 @@
         ]
       }
     },
+    "/api/auth-settings": {
+      "get": {
+        "operationId": "AuthSettings_get",
+        "tags": [
+          "AuthSettings"
+        ],
+        "summary": "OpenID Connect settings, public URL and redirect URI",
+        "description": "The client secret is never returned, only whether one is set (FP14-F-14).\n\nRequires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
+    "/api/auth-settings/oidc": {
+      "put": {
+        "operationId": "AuthSettings_update",
+        "tags": [
+          "AuthSettings"
+        ],
+        "summary": "Save the OpenID Connect settings; applies without restart",
+        "description": "Without `clientSecret` the stored secret is kept.\n\nRequires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOidcSettingsRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
+    "/api/auth-settings/oidc/test": {
+      "post": {
+        "operationId": "AuthSettings_test",
+        "tags": [
+          "AuthSettings"
+        ],
+        "summary": "Test an issuer: run the discovery and show what the provider offers",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OidcTestRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OidcTestResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
     "/api/auth/change-password": {
       "post": {
         "operationId": "Auth_changePassword",
@@ -6462,6 +6597,97 @@
         ],
         "additionalProperties": false
       },
+      "AuthSettings": {
+        "type": "object",
+        "properties": {
+          "oidc": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "issuerUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "scopes": {
+                    "default": "openid profile email",
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "groupsClaim": {
+                    "default": "groups",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "usernameClaim": {
+                    "default": "preferred_username",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "buttonLabel": {
+                    "default": "Sign in with OIDC",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "defaultRole": {
+                    "default": "viewer",
+                    "type": "string",
+                    "maxLength": 63
+                  },
+                  "secretSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "issuerUrl",
+                  "clientId",
+                  "scopes",
+                  "groupsClaim",
+                  "usernameClaim",
+                  "buttonLabel",
+                  "defaultRole",
+                  "secretSet"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "publicUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "redirectUri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "oidc",
+          "publicUrl",
+          "redirectUri"
+        ],
+        "additionalProperties": false
+      },
       "AuthType": {
         "type": "string",
         "enum": [
@@ -9048,6 +9274,48 @@
         ],
         "additionalProperties": false
       },
+      "OidcTestResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "authorizationEndpoint": {
+            "type": "string"
+          },
+          "tokenEndpoint": {
+            "type": "string"
+          },
+          "userinfoEndpoint": {
+            "type": "string"
+          },
+          "endSessionEndpoint": {
+            "type": "string"
+          },
+          "scopesSupported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claimsSupported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
       "OpenStackInfra": {
         "type": "object",
         "properties": {
@@ -10631,6 +10899,18 @@
         "minLength": 1,
         "maxLength": 256
       },
+      "OidcTestRequestInput": {
+        "type": "object",
+        "properties": {
+          "issuerUrl": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "required": [
+          "issuerUrl"
+        ]
+      },
       "OpenStackAuthInput": {
         "oneOf": [
           {
@@ -11383,6 +11663,61 @@
             ]
           }
         }
+      },
+      "UpdateOidcSettingsRequestInput": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "type": "boolean"
+          },
+          "issuerUrl": {
+            "type": "string",
+            "format": "uri"
+          },
+          "clientId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "scopes": {
+            "default": "openid profile email",
+            "type": "string",
+            "maxLength": 500
+          },
+          "groupsClaim": {
+            "default": "groups",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "usernameClaim": {
+            "default": "preferred_username",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "buttonLabel": {
+            "default": "Sign in with OIDC",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "defaultRole": {
+            "default": "viewer",
+            "type": "string",
+            "maxLength": 63
+          },
+          "clientSecret": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "issuerUrl",
+          "clientId"
+        ]
       },
       "UpdateRoleRequestInput": {
         "type": "object",

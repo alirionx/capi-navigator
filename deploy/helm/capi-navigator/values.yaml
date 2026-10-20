@@ -64,29 +64,10 @@ auth:
   # (key "password") in the release namespace. If it does not exist, a random password is
   # generated into that Secret on first start.
 
-# Public URL of the app, e.g. https://capi-navigator.example.com (PUBLIC_URL). Required for
-# OpenID Connect: the redirect URI is <publicUrl>/api/auth/oidc/callback.
+# Public URL of the app, e.g. https://capi-navigator.example.com (PUBLIC_URL). Needed for sign-in
+# with an OpenID Connect provider, which is set up in the app under Administration → Authentication
+# (FP-14, ADR-0020): the redirect URI is <publicUrl>/api/auth/oidc/callback.
 publicUrl: ''
-
-# FP-14: sign-in with an OpenID Connect provider (Okta, Auth0, Dex, Keycloak, Rancher, ...), in
-# addition to the local users. Access comes from the provider's groups, mapped to roles in the user
-# management; see docs/oidc.md. Enabled when issuerUrl is set.
-oidc:
-  issuerUrl: ''
-  clientId: ''
-  # Secret in the release namespace with the client secret, e.g.
-  #   kubectl create secret generic capi-navigator-oidc --from-literal=clientSecret=...
-  existingSecret: capi-navigator-oidc
-  existingSecretKey: clientSecret
-  # Space-separated; e.g. add "groups" for Dex and Keycloak client scopes named so.
-  scopes: openid profile email
-  # Claim with the groups; Auth0 needs a namespaced claim such as https://capi-navigator/groups.
-  groupsClaim: groups
-  # Claim with the display name; falls back to email, then the subject.
-  usernameClaim: preferred_username
-  buttonLabel: Sign in with OIDC
-  # Role for people without a mapped group; empty refuses them.
-  defaultRole: viewer
 
 audit:
   retentionDays: 90

@@ -48,22 +48,11 @@ const EnvSchema = z.object({
   /** Image of the node shell pod (FP-17); e.g. a registry mirror in air-gapped setups. */
   NODE_SHELL_IMAGE: z.string().min(1).default(SHELL_DEFAULT_IMAGE),
 
-  /** Public base URL of the app, e.g. https://capi.example.com (FP14-F-03). */
+  /**
+   * Public base URL of the app, e.g. https://capi.example.com. The redirect URI of the OpenID
+   * Connect sign-in is built from it (FP14-F-03); the provider itself is set in the UI (ADR-0020).
+   */
   PUBLIC_URL: optional(z.url({ protocol: /^https?$/ })),
-  /** FP14-F-01: OpenID Connect sign-in; enabled when the issuer is set. */
-  OIDC_ISSUER_URL: optional(z.url({ protocol: /^https?$/ })),
-  OIDC_CLIENT_ID: optional(z.string()),
-  /** From a Kubernetes Secret; never logged. */
-  OIDC_CLIENT_SECRET: optional(z.string()),
-  /** Space-separated; e.g. add "groups" for Dex. */
-  OIDC_SCOPES: z.string().default('openid profile email'),
-  /** Claim with the person's groups; may be a URL-like name (Auth0 namespaced claims). */
-  OIDC_GROUPS_CLAIM: z.string().min(1).default('groups'),
-  /** Claim with the display name; falls back to email, then the subject. */
-  OIDC_USERNAME_CLAIM: z.string().min(1).default('preferred_username'),
-  OIDC_BUTTON_LABEL: z.string().min(1).default('Sign in with OIDC'),
-  /** FP14-F-05: role for people without a mapped group; empty refuses them. */
-  OIDC_DEFAULT_ROLE: z.string().default('viewer'),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema>;
@@ -74,17 +63,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`Invalid configuration: ${z.prettifyError(result.error)}`);
   }
   const config = result.data;
-  if (config.OIDC_ISSUER_URL) {
-    // FP14-F-03: the redirect URI comes from PUBLIC_URL, never from request headers.
-    const missing = (['OIDC_CLIENT_ID', 'OIDC_CLIENT_SECRET', 'PUBLIC_URL'] as const).filter(
-      (key) => !config[key],
-    );
-    if (missing.length) {
-      throw new Error(
-        `Invalid configuration: OIDC_ISSUER_URL is set, so ${missing.join(', ')} must be set too`,
-      );
-    }
-  }
   return config;
 }
 
