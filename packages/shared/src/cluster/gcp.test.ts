@@ -60,8 +60,9 @@ const objects = (input: ClusterSpecInput) => transform(ClusterSpecSchema.parse(i
 const render = (input: ClusterSpecInput) => renderManifests(objects(input));
 // Deep manifest paths in assertions; a missing field fails the expectation anyway.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Manifest = Record<string, any>;
 const find = (input: ClusterSpecInput, kind: string) =>
-  objects(input).find((o) => o.kind === kind) as Record<string, any>;
+  objects(input).find((o) => o.kind === kind) as Manifest;
 
 describe('Google Cloud snapshots (FP25-F-06)', () => {
   for (const flavor of ['rke2', 'k0s', 'kubeadm'] as const) {
