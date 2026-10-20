@@ -867,6 +867,32 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 
 Verified on 2026-10-20 with HTTP tests against an in-process test provider (all failure cases), a Playwright test against Dex v2.46 in kind (`pnpm dex:up`) and live checks: an OIDC operator of `team-a` passed the permission check in `team-a` and got 403 in `team-b` and on `/api/users`. The tests showed that `openid-client` accepts ID tokens with a foreign signature from the token endpoint unless `enableNonRepudiationChecks` is set; it is set (ADR-0019). The settings moved to the web UI the same day (ADR-0020): `pnpm dex:up` configured a running backend without restart, and a Playwright test saves, switches off and on again on the Authentication page. Person mappings followed for providers without groups: tested in HTTP tests (issuer binding, immediate effect), in Playwright (Dex user carol mapped in the UI) and by hand with Rancher local accounts.
 
+### FP-25: Google Cloud as third infrastructure provider (optional)
+
+**Goal:** workload clusters on Google Cloud (Compute Engine) with the Cluster API provider for GCP (CAPG), for RKE2, k0s and kubeadm on stock images, managed like those on OpenStack and AWS. Before GCP, the forms of the UI become plugin-driven, so a further provider needs no provider checks in the frontend.
+
+Order of work: credentials first (so real credentials can be stored early), then the UI rework, then the transformation, CCM and CSI, live tests.
+
+- **FP25-F-01** MUST add CAPG to the provider catalog (`versions.yaml`, verified version), installable and upgradable on the Providers page like CAPO and CAPA.
+- **FP25-F-02** MUST offer a credential type "Google Cloud": a service account key (JSON) is uploaded and stored once as a Secret with the key `credentials` in the CAPG namespace; clusters reference it with `GCPCluster.spec.credentialsRef`. The allowed namespaces work as for OpenStack and AWS. The key never reaches the browser, logs or audit events (hard rule 8).
+- **FP25-F-03** MUST test a Google Cloud credential without new dependencies: an access token from the key (JWT signed with `node:crypto`), the project, whether the Compute Engine API is enabled, and the permissions CAPG needs (`testIamPermissions`); missing permissions are named with a hint.
+- **FP25-F-04** MUST provide lookups for the wizard: regions, zones, machine types (vCPUs, memory), networks and images from public image families (e.g. Ubuntu, Debian, Rocky Linux).
+- **FP25-F-05** MUST make the provider-specific forms plugin-driven before GCP is added: each infrastructure plugin describes its fields (type, lookup, help text with default, the CAPI resource and field for learn mode, POS-04) for the wizard, machine groups, bastion, credentials, cluster details and day 2; the frontend renders them and contains no checks for a specific provider. Forms and behaviour for OpenStack and AWS stay unchanged.
+- **FP25-F-06** MUST generate `GCPCluster` and `GCPMachineTemplate` (field names verified against the pinned CAPG release): network, firewall rules derived from the distribution's `FlavorNetwork` (ADR-0012), the API load balancer, image or image family, machine type and boot disk, labels, `credentialsRef`; with snapshot tests for RKE2, k0s and kubeadm, standard and all-in-one.
+- **FP25-F-07** MUST set provider ID and node name from cloud-init instance data in the form the GCP cloud controller manager expects (`gce://<project>/<zone>/<instance>`, ADR-0004), verified live.
+- **FP25-F-08** MUST roll out the GCP cloud controller manager (kubernetes/cloud-provider-gcp) and the Compute Engine persistent disk CSI driver (kubernetes-sigs/gcp-compute-persistent-disk-csi-driver) as presets. Neither project publishes a Helm chart, so the manifests are pinned with a checksum and applied with a ClusterResourceSet, as for Calico (FP-10); versions in `versions.yaml`, decision in an ADR.
+- **FP25-F-09** SHOULD support the bastion host where CAPG offers one, otherwise document the alternative (e.g. SSH through Identity-Aware Proxy).
+- **FP25-F-10** MUST document the Google Cloud setup (project, Compute Engine API, service account and its roles, key, quota, the organisation policy that may block key creation) and list Google Cloud in the README, the architecture overview and the UI tour.
+
+**Acceptance criteria**
+
+- [ ] An admin installs CAPG, stores a service account key and the test shows project, Compute Engine API and permissions; the key appears in no API response, log or audit event.
+- [ ] The wizard offers regions, zones, machine types and images from the project.
+- [ ] The frontend has no provider-specific checks (checked by a test); the existing OpenStack and AWS tests pass unchanged.
+- [ ] A cluster with RKE2, one with k0s and one with kubeadm come up on Google Cloud with CCM and CSI: a LoadBalancer service gets an address and a PVC is bound.
+- [ ] Upgrade, rebuild of a worker pool and deletion work; deletion leaves no resources in the project.
+- [ ] Snapshot tests cover all three distributions on GCP.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -910,7 +936,7 @@ These requirements apply to all feature packs and are checked in every pack.
 
 ### Outlook after FP-10
 
-- **FP-11: Further infrastructure providers** (e.g. Azure, GCP), purely as new plugins as described in section 5. AWS is part of FP-4 and FP-5.
+- **FP-11: Further infrastructure providers** (e.g. Azure, Hetzner), purely as new plugins as described in section 5. AWS is part of FP-4 and FP-5; Google Cloud is specified as FP-25 in section 6.
 - **FP-12: ClusterClass support**, so teams can offer their own cluster templates in the UI.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
 - **FP-14: External identity provider**: specified above as an optional pack (OpenID Connect sign-in with group mapping).
