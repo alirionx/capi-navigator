@@ -59,26 +59,27 @@ from it (`pnpm crds:generate`).
 
 One NestJS module per domain:
 
-| Module             | Path                                                                       | What it does                                                                                                                                                                                          |
-| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auth`             | [auth](../apps/backend/src/auth)                                           | Local users (`NavigatorUser` CRs, password hashes in Secrets) with role assignments, custom roles (`NavigatorRole`), sign-in with rate limit, sessions as signed cookies, the global permission guard |
-| `audit`            | [audit](../apps/backend/src/audit)                                         | Interceptor that writes an `AuditEvent` for every mutating request and sensitive reads; cleanup after the retention period                                                                            |
-| `store`            | [store](../apps/backend/src/store)                                         | Typed access to the app's CRDs (informer-backed cache, so reads do not hit the API server), Secrets and ConfigMaps in the home cluster                                                                |
-| `kube`             | [kube](../apps/backend/src/kube)                                           | Kubernetes client helpers: server-side apply and dry runs, diffs, conflict parsing, error translation, Leases, live channels (watches → SSE)                                                          |
-| `connections`      | [connections](../apps/backend/src/connections)                             | Management cluster connections (`ManagementCluster` CR + Secret with kubeconfig or token), connection tests, one cached client per connection                                                         |
-| `operator`         | [operator](../apps/backend/src/operator)                                   | Prerequisites (cert-manager, CAPI Operator), ORC, provider CRs of the CAPI Operator                                                                                                                   |
-| `credentials`      | [credentials](../apps/backend/src/credentials)                             | Cloud credentials on the management cluster; tests and lookups (images, flavors, networks) against the cloud                                                                                          |
-| `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client) and AWS                                                                                                                |
-| `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                              |
-| `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets                                                                                          |
-| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                                                                              |
-| `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                     |
-| `health`, `config` | [health](../apps/backend/src/health), [config](../apps/backend/src/config) | Liveness/readiness and health of connections; environment variables validated with Zod                                                                                                                |
+| Module             | Path                                                                       | What it does                                                                                                                                                                                                                                                         |
+| ------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth`             | [auth](../apps/backend/src/auth)                                           | Local users (`NavigatorUser` CRs, password hashes in Secrets) with role assignments, custom roles (`NavigatorRole`), sign-in with rate limit, OpenID Connect sign-in with group mappings (`NavigatorGroup`), sessions as signed cookies, the global permission guard |
+| `audit`            | [audit](../apps/backend/src/audit)                                         | Interceptor that writes an `AuditEvent` for every mutating request and sensitive reads; cleanup after the retention period                                                                                                                                           |
+| `store`            | [store](../apps/backend/src/store)                                         | Typed access to the app's CRDs (informer-backed cache, so reads do not hit the API server), Secrets and ConfigMaps in the home cluster                                                                                                                               |
+| `kube`             | [kube](../apps/backend/src/kube)                                           | Kubernetes client helpers: server-side apply and dry runs, diffs, conflict parsing, error translation, Leases, live channels (watches → SSE)                                                                                                                         |
+| `connections`      | [connections](../apps/backend/src/connections)                             | Management cluster connections (`ManagementCluster` CR + Secret with kubeconfig or token), connection tests, one cached client per connection                                                                                                                        |
+| `operator`         | [operator](../apps/backend/src/operator)                                   | Prerequisites (cert-manager, CAPI Operator), ORC, provider CRs of the CAPI Operator                                                                                                                                                                                  |
+| `credentials`      | [credentials](../apps/backend/src/credentials)                             | Cloud credentials on the management cluster; tests and lookups (images, flavors, networks) against the cloud                                                                                                                                                         |
+| `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client) and AWS                                                                                                                                                                               |
+| `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                                                                                             |
+| `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets                                                                                                                                                         |
+| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                                                                                                                                             |
+| `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                                                                                    |
+| `health`, `config` | [health](../apps/backend/src/health), [config](../apps/backend/src/config) | Liveness/readiness and health of connections; environment variables validated with Zod                                                                                                                                                                               |
 
 ## Where state lives
 
 | State                              | Stored as                                                                                                                                                                                  | Where                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| OIDC group mappings                | `NavigatorGroup` CR (provider group → role assignments)                                                                                                                                    | Home cluster            |
 | Custom roles                       | `NavigatorRole` CR                                                                                                                                                                         | Home cluster            |
 | API tokens of technical users      | `NavigatorToken` CR with the SHA-256 hash of the token (never the token)                                                                                                                   | Home cluster            |
 | Users and role assignments         | `NavigatorUser` CR, password hash in a Secret                                                                                                                                              | Home cluster            |
@@ -171,9 +172,26 @@ subscriber of that channel. Watches stop when nobody listens
    expiry and the user, and continues with the role assignments of that user. A request with a
    token ignores the session cookie and needs no CSRF header; tokens never reach endpoints that need
    `users.manage` or the node shell.
+   People who signed in with the **OpenID Connect provider** carry no user record: their session
+   cookie holds their subject and the provider groups that are mapped in the app, and the guard
+   takes their role assignments from the cached `NavigatorGroup` resources of these groups, or the
+   default role ([ADR-0019](adr/0019-oidc-sign-in-with-group-mapping.md)).
 2. The audit interceptor ([audit.interceptor.ts](../apps/backend/src/audit/audit.interceptor.ts))
    writes an `AuditEvent` with actor, action, target and outcome for every mutating request.
 3. Kubernetes errors are translated into a message with a hint; the original stays expandable.
+
+### Sign-in with an OpenID Connect provider
+
+1. The login page offers "Sign in with …" when `OIDC_ISSUER_URL` is set. The button opens
+   `/api/auth/oidc/login`; the backend ([oidc.service.ts](../apps/backend/src/auth/oidc.service.ts),
+   `openid-client`) creates `state`, `nonce` and a PKCE verifier, keeps them in a short-lived signed
+   cookie and redirects to the provider.
+2. The provider redirects back to `<PUBLIC_URL>/api/auth/oidc/callback`. The backend exchanges the
+   code with the client secret, validates the ID token (signature from the provider's JWKS, issuer,
+   audience, expiry, nonce) and reads the groups claim (or UserInfo).
+3. It keeps only the groups that have a `NavigatorGroup` mapping; without one and without a default
+   role the sign-in is refused. It sets the normal session cookie and records `auth.oidc.login`.
+   The provider's tokens are dropped. Sign-out returns the provider's end-session URL.
 
 ### Connecting a management cluster and installing providers
 

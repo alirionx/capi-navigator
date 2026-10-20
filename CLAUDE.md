@@ -43,7 +43,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-20 | Version maintenance: versions.yaml and update report (optional) | done |
 | FP-22 | API tokens for technical users (optional) | done |
 | FP-23 | OpenAPI description and Swagger UI (optional) | done |
-| FP-14 | Sign-in with an OpenID Connect provider (optional) | in progress |
+| FP-14 | Sign-in with an OpenID Connect provider (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 
@@ -120,6 +120,7 @@ pnpm test:int         # Vitest integration tests against the kind cluster; opt-i
 pnpm test:e2e         # Playwright
 pnpm docs:screenshots # screenshots for docs/ui-tour.md against the running app (read-only)
 pnpm kind:up          # local kind cluster as home + management cluster
+pnpm dex:up           # Dex with test users as OIDC provider in kind (FP-14); restart pnpm dev
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
 pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP-20)
