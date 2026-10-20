@@ -60,6 +60,8 @@ export interface InfraForm {
       /** Size the provider uses when empty (shown as placeholder). */
       defaultGB?: number;
       defaultType?: string;
+      /** Hint for the size with `defaultGB` (i18n key, gets `def` and `target`). */
+      sizeHint?: string;
       /** Sizes with `details.diskGB === 0` have no local disk and need a root volume. */
       neededWithoutLocalDisk?: boolean;
       /** The disk type only applies with an explicit size. */

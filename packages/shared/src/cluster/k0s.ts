@@ -181,6 +181,13 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           args: [
             '--enable-worker',
             ...(spec.topology.mode === 'all-in-one' ? ['--no-taints'] : []),
+            // ADR-0022: Konnectivity agents connect through the load balancer on 8132; where it
+            // forwards only the API port (Google Cloud), the API server reaches the kubelets
+            // directly instead. Further controllers join on 9443 via the first controller's
+            // internal IP (k0smotron falls back to it when the endpoint does not answer).
+            ...(infra.apiLoadBalancer?.apiPortOnly
+              ? ['--disable-components=konnectivity-server']
+              : []),
             // FP9-F-04: kubelet with an external cloud provider when the CCM is rolled out.
             ...(spec.addons.cloudControllerManager ? ['--enable-cloud-provider'] : []),
             KUBELET_ROOT_DIR,

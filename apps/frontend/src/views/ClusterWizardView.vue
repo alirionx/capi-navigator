@@ -171,9 +171,12 @@ watch(
   { immediate: true },
 );
 
+/** Only the latest request may fill the lists: answers for another credential are dropped. */
+let listRequest = 0;
 async function loadLists(): Promise<void> {
   const c = credential.value;
   if (!c) return;
+  const request = ++listRequest;
   listLoading.value = true;
   listError.value = null;
   const f = form.value;
@@ -181,17 +184,19 @@ async function loadLists(): Promise<void> {
     ? String(infraValues.value[f.regionField] || c.summary.region || '') || undefined
     : undefined;
   try {
-    await Promise.all(
+    const loaded = await Promise.all(
       f.lookups.map(async ({ kind, optional }) => {
         const options = credentialsStore.lookup(c, kind, region).then((r) => r.options);
-        lists[kind] = optional ? await options.catch(() => []) : await options;
+        return [kind, optional ? await options.catch(() => []) : await options] as const;
       }),
     );
+    if (request !== listRequest) return;
+    for (const [kind, options] of loaded) lists[kind] = options;
     applyDefaults();
   } catch (err) {
-    listError.value = err;
+    if (request === listRequest) listError.value = err;
   } finally {
-    listLoading.value = false;
+    if (request === listRequest) listLoading.value = false;
   }
 }
 

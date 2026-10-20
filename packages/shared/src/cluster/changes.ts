@@ -63,7 +63,10 @@ export const BastionRequestSchema = z.object({
 export type BastionRequest = z.input<typeof BastionRequestSchema>;
 
 export function setBastion(spec: ClusterSpec, bastion: Bastion): ClusterSpec {
-  const current = spec.infrastructure.bastion;
+  if (spec.infrastructure.provider === 'gcp') {
+    throw new SpecChangeError('Google Cloud (CAPG) offers no bastion host');
+  }
+  const current = 'bastion' in spec.infrastructure ? spec.infrastructure.bastion : undefined;
   if (
     current?.enabled &&
     bastion.enabled &&

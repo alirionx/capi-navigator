@@ -8500,6 +8500,68 @@
         ],
         "additionalProperties": false
       },
+      "GcpInfra": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "const": "gcp"
+          },
+          "credentialRef": {
+            "$ref": "#/components/schemas/CredentialName"
+          },
+          "project": {
+            "type": "string",
+            "pattern": "^[a-z][-a-z0-9]{4,28}[a-z0-9]$"
+          },
+          "region": {
+            "$ref": "#/components/schemas/GcpRegion"
+          },
+          "zone": {
+            "type": "string",
+            "pattern": "^[a-z]+-[a-z]+\\d+-[a-z]$"
+          },
+          "image": {
+            "type": "string",
+            "pattern": "^projects\\/[a-z][-a-z0-9]{4,61}[a-z0-9]\\/global\\/images\\/[a-z][-a-z0-9]{0,62}$"
+          },
+          "network": {
+            "default": {
+              "nodeCidr": "10.6.0.0/24"
+            },
+            "type": "object",
+            "properties": {
+              "nodeCidr": {
+                "default": "10.6.0.0/24",
+                "type": "string"
+              }
+            },
+            "required": [
+              "nodeCidr"
+            ],
+            "additionalProperties": false
+          },
+          "apiServerLoadBalancer": {
+            "default": true,
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "provider",
+          "credentialRef",
+          "project",
+          "region",
+          "image",
+          "network",
+          "apiServerLoadBalancer"
+        ],
+        "additionalProperties": false
+      },
+      "GcpRegion": {
+        "type": "string",
+        "pattern": "^[a-z]+-[a-z]+\\d+$"
+      },
       "GroupMapping": {
         "type": "object",
         "properties": {
@@ -8809,6 +8871,9 @@
           },
           {
             "$ref": "#/components/schemas/AwsInfra"
+          },
+          {
+            "$ref": "#/components/schemas/GcpInfra"
           }
         ]
       },
@@ -10979,7 +11044,7 @@
             "$ref": "#/components/schemas/GcpServiceAccountKeyInput"
           },
           "region": {
-            "$ref": "#/components/schemas/GcpRegionInput"
+            "$ref": "#/components/schemas/GcpRegion"
           }
         },
         "required": [
@@ -10987,9 +11052,56 @@
           "region"
         ]
       },
-      "GcpRegionInput": {
-        "type": "string",
-        "pattern": "^[a-z]+-[a-z]+\\d+$"
+      "GcpInfraInput": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "const": "gcp"
+          },
+          "credentialRef": {
+            "$ref": "#/components/schemas/CredentialName"
+          },
+          "project": {
+            "type": "string",
+            "pattern": "^[a-z][-a-z0-9]{4,28}[a-z0-9]$"
+          },
+          "region": {
+            "$ref": "#/components/schemas/GcpRegion"
+          },
+          "zone": {
+            "type": "string",
+            "pattern": "^[a-z]+-[a-z]+\\d+-[a-z]$"
+          },
+          "image": {
+            "type": "string",
+            "pattern": "^projects\\/[a-z][-a-z0-9]{4,61}[a-z0-9]\\/global\\/images\\/[a-z][-a-z0-9]{0,62}$"
+          },
+          "network": {
+            "default": {
+              "nodeCidr": "10.6.0.0/24"
+            },
+            "type": "object",
+            "properties": {
+              "nodeCidr": {
+                "default": "10.6.0.0/24",
+                "type": "string"
+              }
+            }
+          },
+          "apiServerLoadBalancer": {
+            "default": true,
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "provider",
+          "credentialRef",
+          "project",
+          "region",
+          "image"
+        ]
       },
       "GcpServiceAccountKeyInput": {
         "type": "string",

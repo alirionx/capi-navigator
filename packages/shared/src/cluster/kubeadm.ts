@@ -55,7 +55,7 @@ function kubeletArgs(
   return [
     // FP10-F-06: nodes are initialized by the cloud controller manager when it is rolled out.
     ...(spec.addons.cloudControllerManager ? [{ name: 'cloud-provider', value: 'external' }] : []),
-    { name: 'provider-id', value: infra.nodeIdentity.providerId },
+    { name: 'provider-id', value: infra.nodeIdentity(spec.infrastructure).providerId },
     ...(nodeLabels && Object.keys(nodeLabels).length
       ? [
           {
@@ -159,7 +159,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;
     const nodeRegistration = {
-      name: infra.nodeIdentity.nodeName,
+      name: infra.nodeIdentity(spec.infrastructure).nodeName,
       kubeletExtraArgs: kubeletArgs(spec, infra),
       // All-in-one: no control plane taint, workloads run on the only node. An empty list is
       // "no taints" for kubeadm (unset means the default taint), so it is set after compact().
@@ -191,7 +191,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
       ...bootstrapFields(spec, pool, version),
       joinConfiguration: {
         nodeRegistration: {
-          name: infra.nodeIdentity.nodeName,
+          name: infra.nodeIdentity(spec.infrastructure).nodeName,
           kubeletExtraArgs: kubeletArgs(spec, infra, pool.nodeLabels),
         },
       },

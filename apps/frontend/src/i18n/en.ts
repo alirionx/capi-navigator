@@ -631,7 +631,7 @@ export const en = {
     nodeLabels: 'Node labels',
     nodeLabelsHint: 'key=value on the Kubernetes nodes of this pool. Default: none.',
     addPool: 'Add worker pool',
-    machineSize: { openstack: 'Flavor', aws: 'Instance type' },
+    machineSize: { openstack: 'Flavor', aws: 'Instance type', gcp: 'Machine type' },
     machineSizeHint: 'Maps to {target} {field}.',
     rootVolume: 'Root disk',
     rootVolumeHint:
@@ -646,6 +646,10 @@ export const en = {
     rootVolumeTypeOpenStack:
       'Cinder volume type. Default: the default type of the cloud. Needs a root disk size. Maps to rootVolume.type.',
     rootVolumeTypeAws: 'EBS volume type. Default: gp3. Maps to rootVolume.type.',
+    rootVolumeHintGcp:
+      'Size of the boot persistent disk. Default: {def} GB. Maps to {target} rootDeviceSize.',
+    rootVolumeTypeGcp:
+      'Persistent disk type; pd-balanced is SSD-backed at a moderate price. Default: pd-standard. Maps to rootDeviceType.',
     rootDiskLocked: 'Taken from the control plane (same root disk for all groups).',
     sameRootDisk: 'Same root disk for all groups',
     sameRootDiskHint:
@@ -678,6 +682,19 @@ export const en = {
     vpcCidrHint: 'Dedicated VPC per cluster. Default: 10.0.0.0/16.',
     azCount: 'Availability zones',
     azCountHint: 'Number of zones for subnets. Default: 1.',
+    gcpProject: 'Project',
+    gcpProjectHint:
+      'Project ID the cluster is created in. Default: the project of the credentials. Maps to GCPCluster.spec.project.',
+    gcpRegionHint: 'Default: the region of the credentials. Maps to GCPCluster.spec.region.',
+    gcpZone: 'Zone',
+    gcpZoneHint:
+      'Optional; default: CAPG spreads the control plane over all zones of the region. Set: all machines in this zone. Maps to GCPCluster.spec.failureDomains.',
+    gcpImageHint:
+      'Public Ubuntu, Debian or Rocky Linux image; Ubuntu 24.04 by default. Maps to GCPMachineTemplate image.',
+    gcpNodeCidrHint:
+      'Subnet of the dedicated VPC per cluster (with Cloud NAT, no public node IPs). Default: 10.6.0.0/24. Maps to GCPCluster.spec.network.subnets.',
+    gcpLbInfo:
+      'Google Cloud always uses a global TCP proxy load balancer for the API server on port 6443; it only forwards the API port, so k0s runs without Konnectivity and RKE2 and k0s allow anonymous health checks (ADR-0022). CAPG has no bastion host; reach nodes with SSH through Identity-Aware Proxy.',
     awsLbInfo:
       "AWS always uses a network load balancer for the API server. Node user data is not stored in Secrets Manager because stock images lack the AWS CLI (ADR-0003). IMDSv2 is enforced with hop limit 2, so pods on the nodes can read the node's user data (including the join token) and instance profile credentials.",
     ccm: 'Cloud controller manager',

@@ -25,3 +25,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0019](0019-oidc-sign-in-with-group-mapping.md)             | OpenID Connect sign-in with group mapping                                        | accepted |
 | [0020](0020-oidc-settings-in-the-web-ui.md)                 | OpenID Connect settings in the web UI                                            | accepted |
 | [0021](0021-plugin-described-provider-forms.md)             | Provider forms described by the infrastructure plugins                           | accepted |
+| [0022](0022-gcp-api-load-balancer.md)                       | Distributions behind the Google Cloud API load balancer                          | accepted |

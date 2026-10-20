@@ -74,7 +74,7 @@ describe('spec changes (FP6-F-05, FP6-F-07)', () => {
     ]);
     // Disabling keeps the size, which CAPO needs while it deletes the bastion.
     const off = setBastion(on, { enabled: false });
-    expect(off.infrastructure.bastion).toEqual({
+    expect('bastion' in off.infrastructure && off.infrastructure.bastion).toEqual({
       enabled: false,
       machineSize: 'a1-ram2-disk20-perf1',
     });

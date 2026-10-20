@@ -66,7 +66,7 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
     provider: infra.provider,
     credentialRef: infra.credentialRef,
     ...('region' in infra ? { region: infra.region } : {}),
-    ...(infra.sshKeyName ? { sshKeyName: infra.sshKeyName } : {}),
+    ...('sshKeyName' in infra && infra.sshKeyName ? { sshKeyName: infra.sshKeyName } : {}),
     facts: plugin.infraFacts(infra),
     groups: [
       group('control plane', 'control-plane', cp.replicas, cp),

@@ -233,10 +233,10 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     ...(infra.sshKeyName ? [{ label: 'SSH key pair', value: infra.sshKeyName }] : []),
   ],
 
-  nodeIdentity: {
+  nodeIdentity: () => ({
     providerId: 'openstack:///{{ v1.instance_id }}',
     nodeName: '{{ v1.local_hostname }}',
-  },
+  }),
 
   addonLabels(spec) {
     return {
