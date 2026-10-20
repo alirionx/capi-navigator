@@ -619,8 +619,14 @@ export class ClustersService {
     if (cpUpdates?.replacementBlocked && cpReplaced) {
       const fixed = cpUpdates.replacementFixedIn;
       const installed = fixed ? await this.installedVersion(connection, fixed.provider) : undefined;
+      const nodes = Math.max(
+        current.topology.controlPlane.replicas,
+        next.topology.controlPlane.replicas,
+      );
       if (!fixed || !installed || compareVersions(installed, fixed.version) < 0) {
         blockers.push(cpUpdates.replacementBlocked);
+      } else if (fixed.maxReplicas !== undefined && nodes > fixed.maxReplicas) {
+        blockers.push(fixed.multiNodeReason ?? cpUpdates.replacementBlocked);
       }
     }
     // FP7-F-09: pre-checks before an upgrade.

@@ -1,6 +1,6 @@
 # ADR-0013: k0s control planes are upgraded in place and never replaced
 
-- Status: accepted
+- Status: accepted; updated 2026-10-20 for k0smotron v2.3.0 (see below)
 - Date: 2026-10-18
 - Pack: FP-9
 
@@ -46,3 +46,36 @@ path. Worker machines are not affected: Cluster API replaces them through Machin
 - The incident logs are kept for an upstream report; the block is lifted once a fixed k0smotron
   version is verified.
 - Deleting a cluster whose API is gone needs node draining skipped (ADR-0006, update 2026-10-18).
+
+## Update 2026-10-20: k0smotron v2.3.0
+
+k0smotron v2.3.0 changed the scale down (`reconcileMachineDeletions`): while a deleted control
+plane machine is still draining, it waits instead of removing the next one, and it marks the etcd
+member to leave only after the drain (#1690). `isNeededScaleDown` is unchanged. Live tests on
+Infomaniak (k0s v1.35.8, CAPO v0.15.0, a control plane rebuild through the app):
+
+- **One control plane node:** clean. The replacement joined etcd (two healthy members), then the
+  old machine drained for 26 seconds, its member left, and it was removed. The API never became
+  unreachable.
+- **Three control plane nodes:** quorum kept, but not one node at a time. After the first
+  replacement was ready (four members), k0smotron deleted all three old machines within 53
+  seconds, because it continues as soon as a deleted machine waits for its pre-terminate hook.
+  The members left one by one, so etcd shrank 4 → 3 → 2 → 1 without losing quorum, and the API
+  was unreachable once for about five seconds. For two minutes the control plane ran on a single
+  etcd member, until two more replacements had joined.
+
+The tests also showed an app bug: k0smotron v2.3.0 prefers
+`machineTemplate.spec.infrastructureRef` and its webhook fills it from the deprecated reference
+only while it is empty; nobody owns the filled field, so server-side apply kept it on the old
+template and a rebuild changed nothing. The app now writes both references.
+
+Decision:
+
+- With k0smotron v2.3.0 or later installed, changes that replace control plane machines are
+  allowed for control planes with **one** node. The change preview checks the installed version.
+- Control planes with three or five nodes stay blocked with the measured reason: losing
+  redundancy for minutes is not acceptable for a highly available control plane. Version upgrades
+  keep running in place.
+- The logs of both runs are kept for an upstream report (scale down should wait until a deleted
+  machine is gone, as Cluster API's KubeadmControlPlane does). Re-test with every k0smotron
+  release.

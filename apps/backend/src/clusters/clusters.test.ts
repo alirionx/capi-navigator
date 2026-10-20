@@ -785,6 +785,14 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     const fixed = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
     expect(fixed.body.blockers.join()).not.toMatch(/control plane machines/);
     expect(fixed.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'replace' });
+    // Three nodes: still blocked with v2.3.0 (all old nodes removed at once, measured live).
+    k8s.storedSpec = JSON.stringify({
+      ...spec,
+      topology: { ...spec.topology, controlPlane: { ...spec.topology.controlPlane, replicas: 3 } },
+    });
+    const threeNodes = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
+    expect(threeNodes.body.blockers.join()).toMatch(/more than one node/);
+    k8s.storedSpec = JSON.stringify(spec);
     state.providers.pop();
     // Worker changes stay possible.
     const rebuildWorkers = await post({ type: 'rebuild', group: 'default' }).expect(200);
