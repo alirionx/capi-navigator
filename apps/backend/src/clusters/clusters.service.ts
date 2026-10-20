@@ -610,12 +610,19 @@ export class ClustersService {
     if (current.kubernetes.workerVersion && replaces && !opts.finishUpgrade) {
       blockers.push('An upgrade is still running; wait until the worker pools have followed.');
     }
-    // ADR-0013: some distributions cannot replace control plane machines.
-    const blocked = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates?.replacementBlocked;
+    // ADR-0013: some distributions cannot replace control plane machines, or only from a fixed
+    // provider version on.
+    const cpUpdates = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates;
     const cpReplaced = rollouts.some(
       (r) => r.action === 'replace' && CONTROL_PLANE_RESOURCES.some((c) => c.kind === r.kind),
     );
-    if (blocked && cpReplaced) blockers.push(blocked);
+    if (cpUpdates?.replacementBlocked && cpReplaced) {
+      const fixed = cpUpdates.replacementFixedIn;
+      const installed = fixed ? await this.installedVersion(connection, fixed.provider) : undefined;
+      if (!fixed || !installed || compareVersions(installed, fixed.version) < 0) {
+        blockers.push(cpUpdates.replacementBlocked);
+      }
+    }
     // FP7-F-09: pre-checks before an upgrade.
     if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];
@@ -632,6 +639,17 @@ export class ClustersService {
       blockers,
     };
     return { preview, changed, removed, kc: plan.kc };
+  }
+
+  /** Version of an installed provider by catalog ID, as the operator reports it. */
+  private async installedVersion(
+    connection: string,
+    provider: string,
+  ): Promise<string | undefined> {
+    const p = (await this.operator.state(connection)).providers.find(
+      (x) => x.catalogId === provider,
+    );
+    return p?.installedVersion ?? p?.version;
   }
 
   /** FP7-F-09: all machines healthy; the providers support the target version. */

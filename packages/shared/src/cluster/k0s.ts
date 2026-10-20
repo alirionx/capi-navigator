@@ -3,8 +3,8 @@ import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
 /**
- * k0s via k0smotron v2.2.0 (controlplane/bootstrap.cluster.x-k8s.io/v1beta2), control plane on
- * regular machines. Field names verified against the CRDs of the v2.2.0 release
+ * k0s via k0smotron v2.3.0 (controlplane/bootstrap.cluster.x-k8s.io/v1beta2), control plane on
+ * regular machines. Field names verified against the CRDs of the v2.3.0 release
  * (control-plane-components.yaml, bootstrap-components.yaml) and the k0s configuration reference.
  *
  * - `updateStrategy: InPlace`: version upgrades of the control plane run via k0s autopilot; changes
@@ -89,11 +89,13 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
   // ADR-0013: k0smotron v2.2.0 removes all old control plane machines (and their etcd members)
   // right after the first replacement is ready, so etcd loses quorum. Version upgrades therefore
-  // run in place (k0s autopilot); changes that would replace control plane machines are refused.
+  // run in place (k0s autopilot); changes that would replace control plane machines are refused
+  // unless k0smotron v2.3.0 or later is installed, which waits for draining machines.
   controlPlaneUpdates: {
     versionInPlace: true,
     replacementBlocked:
-      'k0smotron v2.2.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Version upgrades run in place; image, flavor, customization and rebuild changes of the control plane are not possible.',
+      'k0smotron before v2.3.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Upgrade the k0smotron providers to v2.3.0 or later on the Providers page; version upgrades run in place meanwhile.',
+    replacementFixedIn: { provider: 'k0smotron-control-plane', version: 'v2.3.0' },
   },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {

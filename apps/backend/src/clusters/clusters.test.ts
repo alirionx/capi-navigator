@@ -770,6 +770,22 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       http().post(`${url}/preview`).set(CSRF).set('Cookie', operatorCookie).send({ change });
     const rebuildCp = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
     expect(rebuildCp.body.blockers.join()).toMatch(/cannot replace k0s control plane machines/);
+    // k0smotron v2.2.0 installed: still blocked; v2.3.0 waits for draining machines.
+    const withK0smotron = (version: string) =>
+      state.providers.push({
+        ...ready('k0smotron-control-plane'),
+        installedVersion: version,
+      } as OperatorState['providers'][number]);
+    withK0smotron('v2.2.0');
+    expect(
+      (await post({ type: 'rebuild', group: 'control-plane' }).expect(200)).body.blockers.join(),
+    ).toMatch(/before v2.3.0/);
+    state.providers.pop();
+    withK0smotron('v2.3.0');
+    const fixed = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
+    expect(fixed.body.blockers.join()).not.toMatch(/control plane machines/);
+    expect(fixed.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'replace' });
+    state.providers.pop();
     // Worker changes stay possible.
     const rebuildWorkers = await post({ type: 'rebuild', group: 'default' }).expect(200);
     expect(rebuildWorkers.body.blockers.join()).not.toMatch(/control plane machines/);

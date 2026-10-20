@@ -23,13 +23,13 @@ export const VERSIONS: VersionsFile = {
       "note": "v0.27.0 was taken one day after its release, before the minimum release age, to test the update and rollback procedure. No API changes from v0.26.0; built on CAPI v1.14.3."
     },
     "k0smotron": {
-      "version": "v2.2.0",
+      "version": "v2.3.0",
       "source": {
         "datasource": "github-releases",
         "package": "k0sproject/k0smotron"
       },
-      "verified": "2026-10-17",
-      "note": "Control plane machine replacement is blocked (ADR-0013); check the release notes first."
+      "verified": "2026-10-20",
+      "note": "v2.3.0 taken on its release day to test the fix of ADR-0013 (control plane scale down waits for draining machines; etcd members leave after the drain). The deprecated `version` of the worker config is still honoured."
     },
     "openstack": {
       "version": "v0.15.0",
@@ -68,13 +68,13 @@ export const VERSIONS: VersionsFile = {
       "note": "Install command uses the Helm chart oci://quay.io/jetstack/charts/cert-manager with this version."
     },
     "capi-operator": {
-      "version": "v0.29.0",
+      "version": "v0.30.0",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-operator"
       },
-      "verified": "2026-10-17",
-      "note": "The Helm chart version is this version without the leading \"v\"."
+      "verified": "2026-10-20",
+      "note": "The Helm chart version is this version without the leading \"v\". v0.30.0 taken on its release day together with k0smotron v2.3.0; no API changes."
     },
     "orc": {
       "source": {
@@ -128,26 +128,26 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "k0sproject/k0s"
       },
-      "verified": "2026-10-18",
+      "verified": "2026-10-20",
       "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9.",
       "versions": [
         {
           "version": "v1.36.4+k0s.1",
-          "verifiedWithProvider": "v2.2.0",
+          "verifiedWithProvider": "v2.3.0",
           "untested": true
         },
         {
           "version": "v1.35.8+k0s.1",
-          "verifiedWithProvider": "v2.2.0",
+          "verifiedWithProvider": "v2.3.0",
           "default": true
         },
         {
           "version": "v1.34.11+k0s.1",
-          "verifiedWithProvider": "v2.2.0"
+          "verifiedWithProvider": "v2.3.0"
         },
         {
           "version": "v1.33.13+k0s.1",
-          "verifiedWithProvider": "v2.2.0"
+          "verifiedWithProvider": "v2.3.0"
         }
       ]
     },
