@@ -5,8 +5,21 @@ import type { Request, Response } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isConflict } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
+import { GroupsService } from './groups.service.js';
+import {
+  OIDC_FLOW_COOKIE,
+  OIDC_FLOW_SECONDS,
+  OidcFlowSchema,
+  type OidcFlow,
+} from './oidc.service.js';
 import type { Principal } from './principal.js';
-import { parseCookies, signSession, verifySession } from './session-token.js';
+import {
+  parseCookies,
+  signPayload,
+  signSession,
+  verifyPayload,
+  verifySession,
+} from './session-token.js';
 import { TokensService } from './tokens.service.js';
 
 export const SESSION_COOKIE = 'capi_navigator_session';
@@ -24,6 +37,7 @@ export class SessionService implements OnModuleInit {
   constructor(
     private readonly store: StoreService,
     private readonly tokens: TokensService,
+    private readonly groups: GroupsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -72,6 +86,15 @@ export class SessionService implements OnModuleInit {
     if (!token) return undefined;
     const payload = verifySession(token, this.signingKey);
     if (!payload) return undefined;
+    if (payload.o) {
+      // FP14-F-04: access from the mapped groups, resolved on every request.
+      return {
+        username: `${payload.u} (oidc)`,
+        bindings: this.groups.bindings(payload.o.gr),
+        mustChangePassword: false,
+        oidc: { subject: payload.o.s, groups: payload.o.gr },
+      };
+    }
     const user = this.store.userCache.get(payload.u);
     if (!user || user.spec.disabled || user.spec.sessionGeneration !== payload.g) return undefined;
     return {
@@ -91,8 +114,53 @@ export class SessionService implements OnModuleInit {
     res.cookie(SESSION_COOKIE, token, { ...this.cookieOptions, maxAge: ttl * 1000 });
   }
 
+  /** Session of a person signed in with OpenID Connect; holds only the mapped groups (FP14-F-06). */
+  issueOidc(res: Response, person: { subject: string; name: string; groups: string[] }): void {
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = Math.round(this.config.SESSION_TTL_HOURS * 3600);
+    const token = signSession(
+      {
+        u: person.name,
+        g: 0,
+        iat: now,
+        exp: now + ttl,
+        o: { s: person.subject, gr: person.groups },
+      },
+      this.signingKey,
+    );
+    res.cookie(SESSION_COOKIE, token, { ...this.cookieOptions, maxAge: ttl * 1000 });
+  }
+
   clear(res: Response): void {
     res.clearCookie(SESSION_COOKIE, this.cookieOptions);
+  }
+
+  /**
+   * The checks of a running OpenID Connect sign-in. SameSite=Lax: the provider's redirect back is
+   * a cross-site navigation, which does not carry Strict cookies (ADR-0019).
+   */
+  issueFlow(res: Response, flow: Omit<OidcFlow, 'exp'>): void {
+    const exp = Math.floor(Date.now() / 1000) + OIDC_FLOW_SECONDS;
+    res.cookie(OIDC_FLOW_COOKIE, signPayload({ ...flow, exp }, this.signingKey), {
+      ...this.flowCookieOptions,
+      maxAge: OIDC_FLOW_SECONDS * 1000,
+    });
+  }
+
+  /** The flow of the request, if its cookie is valid; the cookie is single-use. */
+  takeFlow(req: Pick<Request, 'headers'>, res: Response): OidcFlow | undefined {
+    const token = parseCookies(req.headers.cookie)[OIDC_FLOW_COOKIE];
+    res.clearCookie(OIDC_FLOW_COOKIE, this.flowCookieOptions);
+    return token ? verifyPayload(token, this.signingKey, OidcFlowSchema) : undefined;
+  }
+
+  private get flowCookieOptions() {
+    return {
+      httpOnly: true,
+      secure: this.config.COOKIE_SECURE,
+      sameSite: 'lax' as const,
+      path: '/api/auth/oidc',
+    };
   }
 
   private get cookieOptions() {

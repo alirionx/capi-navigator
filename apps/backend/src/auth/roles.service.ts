@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -17,15 +18,21 @@ import {
   type RoleInfo,
   type UpdateRoleRequest,
 } from '@capi-navigator/shared';
+import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
+import { GroupsService } from './groups.service.js';
 
 type RoleResource = NavigatorResource<NavigatorRoleSpec>;
 
 /** Custom roles as NavigatorRole resources; built-in roles are fixed in code (FP19-F-01/02/08). */
 @Injectable()
 export class RolesService {
-  constructor(private readonly store: StoreService) {}
+  constructor(
+    private readonly store: StoreService,
+    private readonly groups: GroupsService,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
+  ) {}
 
   list(): RoleInfo[] {
     const builtin = ROLES.map((name) => ({
@@ -84,6 +91,21 @@ export class RolesService {
         statusCode: 409,
         message: `Role "${name}" is still assigned to ${users.join(', ')}`,
         hint: 'Remove the assignments in the user management first.',
+      });
+    }
+    const groups = this.groups.groupsWithRole(name);
+    if (groups.length > 0) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Role "${name}" is still mapped to the OIDC groups ${groups.join(', ')}`,
+        hint: 'Change the group mappings in the user management first.',
+      });
+    }
+    if (this.config.OIDC_ISSUER_URL && this.config.OIDC_DEFAULT_ROLE.trim() === name) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Role "${name}" is the default role for OpenID Connect sign-in`,
+        hint: 'Change OIDC_DEFAULT_ROLE (Helm value oidc.defaultRole) first.',
       });
     }
     await this.kube(`Delete role ${name}`, () => this.store.roles.delete(name));

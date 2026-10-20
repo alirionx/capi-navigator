@@ -3,6 +3,7 @@ import type {
   HelmRepositorySpec,
   ManagementClusterSpec,
   ManagementClusterStatus,
+  NavigatorGroupSpec,
   NavigatorResource,
   NavigatorRoleSpec,
   NavigatorTokenSpec,
@@ -27,6 +28,7 @@ export function createFakeStore() {
   const helmRepositories = new Map<string, NavigatorResource<HelmRepositorySpec>>();
   const roles = new Map<string, NavigatorResource<NavigatorRoleSpec>>();
   const tokens = new Map<string, NavigatorResource<NavigatorTokenSpec, { lastUsedAt?: string }>>();
+  const groups = new Map<string, NavigatorResource<NavigatorGroupSpec>>();
 
   let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
 
@@ -135,6 +137,49 @@ export function createFakeStore() {
     tokenCache: {
       get: (name: string) => structuredClone(tokens.get(name)),
       list: () => [...tokens.values()].map((t) => structuredClone(t)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
+    },
+    groups: {
+      create: async (meta: { name: string }, spec: NavigatorGroupSpec) => {
+        if (groups.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'NavigatorGroup',
+          metadata: {
+            name: meta.name,
+            resourceVersion: String(rv++),
+            creationTimestamp: new Date().toISOString(),
+          },
+          spec,
+        };
+        groups.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      patchSpec: async (
+        name: string,
+        spec: Partial<NavigatorGroupSpec>,
+        resourceVersion?: string,
+      ) => {
+        const current = groups.get(name);
+        if (!current) throw err(404);
+        if (resourceVersion && current.metadata.resourceVersion !== resourceVersion) throw err(409);
+        const updated = {
+          ...current,
+          metadata: { ...current.metadata, resourceVersion: String(rv++) },
+          spec: { ...current.spec, ...spec },
+        };
+        groups.set(name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!groups.delete(name)) throw err(404);
+      },
+    },
+    groupCache: {
+      get: (name: string) => structuredClone(groups.get(name)),
+      list: () => [...groups.values()].map((g) => structuredClone(g)),
       upsert: () => undefined,
       remove: () => undefined,
       isSynced: true,
@@ -288,5 +333,6 @@ export function createFakeStore() {
     connections,
     helmRepositories,
     tokens,
+    groups,
   };
 }
