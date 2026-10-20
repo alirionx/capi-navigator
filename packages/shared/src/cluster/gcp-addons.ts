@@ -48,9 +48,11 @@ export function gcpCcmManifestForCluster(manifest: string): string {
     '--leader-elect=true',
     // The manifest grants its RBAC to the CCM's own service account only.
     '--use-service-account-credentials=false',
-    // The CNI (Calico, Canal) assigns pod networks and routes itself.
+    // The CNI (Calico, Canal) assigns pod networks and routes itself. The IPAM controller exits
+    // the CCM when CIDR allocation is off, so it is not started (seen live with v36.4.9).
     '--allocate-node-cidrs=false',
     '--configure-cloud-routes=false',
+    '--controllers=*,-node-ipam-controller',
     '--v=2',
   ];
   // Host network: the API server on the same node, on 6443 for all distributions (ADR-0022).
@@ -70,6 +72,27 @@ export function gcpCcmManifestForCluster(manifest: string): string {
       data: { 'cloud.config': '[Global]\nmultizone = true\n' },
     },
     ...objects,
+    // The first LoadBalancer Service makes the CCM store the cluster ID in the ConfigMap
+    // kube-system/ingress-uid, which the manifest's RBAC does not allow (seen live).
+    {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'Role',
+      metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
+      rules: [{ apiGroups: [''], resources: ['configmaps'], verbs: ['get', 'create', 'update'] }],
+    },
+    {
+      apiVersion: 'rbac.authorization.k8s.io/v1',
+      kind: 'RoleBinding',
+      metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
+      roleRef: {
+        apiGroup: 'rbac.authorization.k8s.io',
+        kind: 'Role',
+        name: 'capi-navigator:cloud-controller-manager',
+      },
+      subjects: [
+        { kind: 'ServiceAccount', name: 'cloud-controller-manager', namespace: 'kube-system' },
+      ],
+    },
   ]);
 }
 

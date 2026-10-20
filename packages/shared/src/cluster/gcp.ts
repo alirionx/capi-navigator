@@ -14,6 +14,9 @@ export const GCP_API_VERSION = 'infrastructure.cluster.x-k8s.io/v1beta1';
 /** Namespace of the CAPG provider, where the app stores the credential Secrets. */
 export const GCP_PROVIDER_NAMESPACE = 'capg-system';
 
+/** The one subnet of a cluster's dedicated network. */
+export const gcpSubnetName = (cluster: string) => `${cluster}-nodes`;
+
 export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
   provider: 'gcp',
   infraClusterKind: 'GCPCluster',
@@ -122,7 +125,7 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
           autoCreateSubnetworks: false,
           subnets: [
             {
-              name: `${spec.name}-nodes`,
+              name: gcpSubnetName(spec.name),
               cidrBlock: infra.network.nodeCidr,
               region: infra.region,
             },
@@ -133,9 +136,12 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
     };
   },
 
-  machineTemplateSpec(_spec, infra, group: MachineGroup, role) {
+  machineTemplateSpec(spec, infra, group: MachineGroup, role) {
     return compact({
       instanceType: group.machineSize,
+      // Required in a custom-mode network: CAPG sends an empty subnetwork otherwise, which
+      // Google rejects (InstanceNetworkInterfaceSpec in cloud/scope/machine.go, seen live).
+      subnet: gcpSubnetName(spec.name),
       image: group.image ?? infra.image,
       rootDeviceSize: group.rootVolumeSizeGB,
       rootDeviceType: group.rootVolumeType,
