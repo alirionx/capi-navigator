@@ -832,6 +832,32 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests and with `curl` agai
 
 Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and in the built container image (document, Swagger UI, CSP unchanged). The image test also showed that `apps/backend/assets` was missing from the published images (Calico manifest of FP-10); fixed separately. Swagger UI sends the CSRF header from the documented parameter; its start script adds it as a fallback.
 
+### FP-14: Sign-in with an OpenID Connect provider (optional)
+
+**Goal:** people sign in to the web UI with the organisation's identity provider (any OpenID Connect provider, e.g. Okta, Auth0, Dex, Keycloak or Rancher). Access comes from the provider's groups, mapped to roles in the app; nobody has to be created in the app first. Local users stay available (break-glass admin, technical users of FP-22).
+
+- **FP14-F-01** MUST support one OpenID Connect provider per installation, configured through Helm values and environment variables: issuer URL (discovery via `/.well-known/openid-configuration`), client ID, client secret from a Kubernetes Secret, scopes, the name of the groups claim (also URL-like names such as Auth0's namespaced claims), the claim for the display name (default `preferred_username`, then `email`, then `sub`), the label of the sign-in button, a default role and the app's public URL. No provider is hard-coded; anything beyond OpenID Connect Core and Discovery is configuration.
+- **FP14-F-02** MUST sign in with the authorization code flow with PKCE, `state` and `nonce`, run by the backend as a confidential client. The backend validates the ID token (signature from the provider's JWKS, issuer, audience, expiry, nonce). Tokens of the provider never reach the browser and are not stored; the app issues its own session cookie (FP1-F-03) as for local users.
+- **FP14-F-03** MUST build the redirect URI from the configured public URL (`<publicUrl>/api/auth/oidc/callback`), never from request headers, and refuse to start with OIDC enabled but no public URL.
+- **FP14-F-04** MUST let users with `users.manage` map provider groups to role assignments (role plus optional scope of connections and namespaces, as in FP-19), stored as a `NavigatorGroup` custom resource in the home cluster. A person's access is the union of the assignments of their groups, resolved on every request (FP19-F-06): changing a mapping applies at once, a changed group membership with the next sign-in.
+- **FP14-F-05** MUST give a person whose groups have no mapping the configured default role (default `viewer`) with unlimited scope, or refuse the sign-in with an understandable message if no default role is configured.
+- **FP14-F-06** MUST keep the session cookie small: it holds the person's subject, display name and only those groups that are mapped in the app, and the same lifetime as local sessions (`SESSION_TTL_HOURS`).
+- **FP14-F-07** MUST keep local sign-in available. The sign-in page shows the local form and, when OIDC is configured, a button "Sign in with …" below it. OIDC users and local users are separate; an OIDC user is shown as `<name> (oidc)` in the user menu and in the audit log (with the subject).
+- **FP14-F-08** MUST NOT give OIDC users API tokens or a password; their user menu shows their groups instead of "Change password".
+- **FP14-F-09** MUST audit successful and failed OIDC sign-ins (without tokens or codes) and every change of group mappings.
+- **FP14-F-10** SHOULD sign the person out at the provider too when it offers an `end_session_endpoint`.
+- **FP14-F-11** MUST document the setup, including the redirect URI and the groups claim, with examples in this order: Okta and Auth0, then Dex and Keycloak, then Rancher (explaining that Rancher can itself act as an OpenID Connect provider). Examples use placeholder URLs only.
+
+**Acceptance criteria**
+
+- [ ] With Dex, a person in a group mapped to "operator in `home/team-a`" signs in with the button, changes a cluster in `team-a` and gets 403 in `team-b`; nobody was created in the app beforehand.
+- [ ] A person without a mapped group gets the default role; with no default role the sign-in is refused with a message.
+- [ ] Removing a group mapping takes effect on the next request; local sign-in keeps working with OIDC enabled.
+- [ ] Wrong issuer, wrong audience, an expired ID token, a wrong `nonce` or `state` and a replayed callback are refused (tests against a test provider).
+- [ ] No provider token or authorization code appears in API responses, logs, the audit log or the browser.
+- [ ] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
+- [ ] A Playwright test signs in through a test provider.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -878,7 +904,7 @@ These requirements apply to all feature packs and are checked in every pack.
 - **FP-11: Further infrastructure providers** (e.g. Azure, GCP), purely as new plugins as described in section 5. AWS is part of FP-4 and FP-5.
 - **FP-12: ClusterClass support**, so teams can offer their own cluster templates in the UI.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
-- **FP-14: External identity provider** (OIDC, e.g. Keycloak, Dex, Entra ID) with role mapping from group claims.
+- **FP-14: External identity provider**: specified above as an optional pack (OpenID Connect sign-in with group mapping).
 - **FP-15: Immutable OS images** such as openSUSE MicroOS. To check first: MicroOS is usually configured with Ignition or Combustion rather than cloud-init, so it may need its own bootstrap path.
 - **FP-16: Operation behind an HTTP(S) proxy** (optional, after FP-10), for OpenStack in an own data center. Agreed scope:
   - The proxy is configured and enabled **per cluster**: per management cluster connection (CAPI Operator, providers, CAAPH, backend access) and per workload cluster (defaults from the management cluster connection, overridable or disabled per cluster). Hybrid setups are supported, e.g. management cluster in the intranet behind a proxy and workload clusters on a public cloud without one, or the other way round.
@@ -898,7 +924,7 @@ These requirements apply to all feature packs and are checked in every pack.
 
 | Topic | Decision |
 | --- | --- |
-| Identity provider | None for now; local user accounts (FP-1). OIDC may follow later (FP-14). |
+| Identity provider | Local user accounts (FP-1); OpenID Connect sign-in as optional pack FP-14. |
 | Backend access to clusters | Via kubeconfig or service account token (FP-2). |
 | Test and target cloud | [Infomaniak Public Cloud](https://www.infomaniak.com/en/support/faq/2601/getting-started-public-cloud): largely vanilla OpenStack with [Octavia load balancers](https://www.infomaniak.com/public-cloud), access via `clouds.yaml`. |
 | AWS | Second target cloud from FP-4/FP-5 (CAPA). Credentials as `AWSClusterStaticIdentity` of a dedicated IAM user; the app checks the CAPA IAM prerequisites and shows the `clusterawsadm` command, but never creates IAM resources itself. Real AWS resources in tests only after explicit confirmation. |
