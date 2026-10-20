@@ -248,6 +248,11 @@ spec:
       kind: AWSMachineTemplate
       name: demo-aws-k0s-cp-b4e495a5
       namespace: default
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: demo-aws-k0s-cp-b4e495a5
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -472,6 +477,11 @@ spec:
       kind: OpenStackMachineTemplate
       name: demo-k0s-aio-cp-a6815c13
       namespace: team-a
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-k0s-aio-cp-a6815c13
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
@@ -614,6 +624,11 @@ spec:
       kind: OpenStackMachineTemplate
       name: demo-k0s-cp-a6815c13
       namespace: team-a
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: demo-k0s-cp-a6815c13
   k0sConfigSpec:
     k0s:
       apiVersion: k0s.k0sproject.io/v1beta1
