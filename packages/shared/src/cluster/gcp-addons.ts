@@ -109,6 +109,9 @@ export function gcpCsiManifestForCluster(manifest: string): string {
   const pod = controller.spec.template.spec;
   pod.affinity = CONTROL_PLANE_AFFINITY;
   pod.tolerations = [...(pod.tolerations ?? []), ...CONTROL_PLANE_TOLERATIONS];
+  // Upstream keeps the node plugin off control plane nodes (as on GKE). All-in-one clusters run
+  // their workloads there, so volumes need it on every node (seen live: no topology, PVC pending).
+  delete findObject(objects, 'DaemonSet', 'csi-gce-pd-node').spec.template.spec.affinity;
   return renderObjects([
     { apiVersion: 'v1', kind: 'Namespace', metadata: { name: 'gce-pd-csi-driver' } },
     ...objects,
