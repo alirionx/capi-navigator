@@ -135,10 +135,16 @@ watch(
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
 const flavorPlugin = computed(() => FLAVOR_PLUGINS[draft.flavor]);
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
-/** ADR-0013: the distribution cannot replace control plane machines later. */
+/** ADR-0013: the distribution cannot replace control plane machines later, or only one node. */
 const cpReplacementWarning = computed(() => {
-  const blocked = FLAVOR_PLUGINS[draft.flavor]?.controlPlaneUpdates?.replacementBlocked;
-  return blocked ? t('wizard.cpReplacementWarning', { reason: blocked }) : '';
+  const updates = FLAVOR_PLUGINS[draft.flavor]?.controlPlaneUpdates;
+  if (!updates?.replacementBlocked) return '';
+  const fixed = updates.replacementFixedIn;
+  const reason =
+    fixed?.maxReplicas !== undefined && draft.cp.replicas > fixed.maxReplicas
+      ? (fixed.multiNodeReason ?? updates.replacementBlocked)
+      : updates.replacementBlocked;
+  return t('wizard.cpReplacementWarning', { reason });
 });
 watch(
   () => draft.flavor,

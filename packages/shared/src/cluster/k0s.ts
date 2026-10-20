@@ -90,12 +90,20 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   // ADR-0013: k0smotron v2.2.0 removes all old control plane machines (and their etcd members)
   // right after the first replacement is ready, so etcd loses quorum. Version upgrades therefore
   // run in place (k0s autopilot); changes that would replace control plane machines are refused
-  // unless k0smotron v2.3.0 or later is installed, which waits for draining machines.
+  // unless k0smotron v2.3.0 or later is installed and the control plane has one node: v2.3.0
+  // replaced a single node cleanly, but removed all three old nodes of a three-node control plane
+  // within a minute, leaving etcd on one member for two minutes (measured live, ADR-0013).
   controlPlaneUpdates: {
     versionInPlace: true,
     replacementBlocked:
       'k0smotron before v2.3.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Upgrade the k0smotron providers to v2.3.0 or later on the Providers page; version upgrades run in place meanwhile.',
-    replacementFixedIn: { provider: 'k0smotron-control-plane', version: 'v2.3.0' },
+    replacementFixedIn: {
+      provider: 'k0smotron-control-plane',
+      version: 'v2.3.0',
+      maxReplicas: 1,
+      multiNodeReason:
+        'k0smotron v2.3.0 replaces a control plane with more than one node too fast: it removes all old machines within a minute, and etcd runs on a single member until the replacements are ready, without redundancy (ADR-0013, measured live). Version upgrades run in place; image, flavor, customization and rebuild changes of the control plane are possible with one control plane node only.',
+    },
   },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
