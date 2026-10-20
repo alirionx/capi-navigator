@@ -7869,7 +7869,8 @@
         "type": "string",
         "enum": [
           "openstack",
-          "aws"
+          "aws",
+          "gcp"
         ]
       },
       "CredentialSummary": {
@@ -7891,6 +7892,12 @@
             "type": "string"
           },
           "accessKeyIdSuffix": {
+            "type": "string"
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "serviceAccount": {
             "type": "string"
           },
           "hasCaCert": {
@@ -10734,6 +10741,43 @@
               "name",
               "aws"
             ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "string",
+                "const": "gcp"
+              },
+              "name": {
+                "$ref": "#/components/schemas/CredentialName"
+              },
+              "displayName": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "allowedNamespaces": {
+                "default": [
+                  "default"
+                ],
+                "minItems": 1,
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 63,
+                  "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+                }
+              },
+              "gcp": {
+                "$ref": "#/components/schemas/GcpCredentialInputInput"
+              }
+            },
+            "required": [
+              "provider",
+              "name",
+              "gcp"
+            ]
           }
         ]
       },
@@ -10927,6 +10971,30 @@
         "required": [
           "confirmName"
         ]
+      },
+      "GcpCredentialInputInput": {
+        "type": "object",
+        "properties": {
+          "serviceAccountKey": {
+            "$ref": "#/components/schemas/GcpServiceAccountKeyInput"
+          },
+          "region": {
+            "$ref": "#/components/schemas/GcpRegionInput"
+          }
+        },
+        "required": [
+          "serviceAccountKey",
+          "region"
+        ]
+      },
+      "GcpRegionInput": {
+        "type": "string",
+        "pattern": "^[a-z]+-[a-z]+\\d+$"
+      },
+      "GcpServiceAccountKeyInput": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 65536
       },
       "KubeconfigContextsRequestInput": {
         "type": "object",
@@ -11760,6 +11828,9 @@
           },
           "aws": {
             "$ref": "#/components/schemas/AwsCredentialInputInput"
+          },
+          "gcp": {
+            "$ref": "#/components/schemas/GcpCredentialInputInput"
           }
         }
       },

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import {
   AwsCredentialInputSchema,
   CredentialNameSchema,
+  GcpCredentialInputSchema,
   type CloudsYamlInfo,
   type CreateCredentialRequest,
   type Credential,
@@ -16,7 +17,7 @@ import { useCredentialsStore } from '../stores/credentials.js';
 import ErrorAlert from './ErrorAlert.vue';
 import YamlViewer from './YamlViewer.vue';
 
-/** Create or edit OpenStack/AWS credentials (FP4-F-01, FP4-F-07), with YAML preview. */
+/** Create or edit OpenStack, AWS and Google Cloud credentials (FP4-F-01, FP4-F-07, FP25-F-02). */
 const props = defineProps<{ provider: CredentialProvider; credential?: Credential | null }>();
 const emit = defineEmits<{ close: []; saved: [Credential] }>();
 const { t } = useI18n();
@@ -50,6 +51,31 @@ const cacert = ref('');
 const accessKeyId = ref('');
 const secretAccessKey = ref('');
 const awsRegion = ref(props.credential?.summary.region ?? 'eu-central-1');
+
+// Google Cloud (FP25-F-02): the JSON key of a service account.
+const gcpKey = ref('');
+const gcpKeyFile = ref<File | File[] | null>(null);
+const gcpRegion = ref(props.credential?.summary.region ?? 'europe-west6');
+const gcpShape = GcpCredentialInputSchema.shape;
+watch(gcpKeyFile, async (f) => {
+  const file = Array.isArray(f) ? f[0] : f;
+  if (file) gcpKey.value = await file.text();
+});
+/** Project and service account of the pasted key, shown before saving (no secret parts). */
+const gcpKeyInfo = computed(() => {
+  try {
+    const k = JSON.parse(gcpKey.value) as {
+      type?: string;
+      project_id?: string;
+      client_email?: string;
+    };
+    return k.type === 'service_account' && k.project_id
+      ? { project: k.project_id, account: k.client_email ?? '' }
+      : null;
+  } catch {
+    return null;
+  }
+});
 
 const valid = ref(false);
 const busy = ref(false);
@@ -124,15 +150,27 @@ const awsInput = () => ({
   region: awsRegion.value.trim(),
 });
 
+const gcpInput = () => ({ serviceAccountKey: gcpKey.value.trim(), region: gcpRegion.value.trim() });
+
+/** The secret part of the form, keyed by provider as the API expects it. */
+function secretInput() {
+  switch (props.provider) {
+    case 'aws':
+      return { aws: awsInput() };
+    case 'gcp':
+      return { gcp: gcpInput() };
+    default:
+      return { openstack: openstackInput() };
+  }
+}
+
 function createRequest(): CreateCredentialRequest {
   const common = {
     name: name.value,
     allowedNamespaces: namespaces.value,
     ...(displayName.value ? { displayName: displayName.value } : {}),
   };
-  return props.provider === 'aws'
-    ? { provider: 'aws', ...common, aws: awsInput() }
-    : { provider: 'openstack', ...common, openstack: openstackInput() };
+  return { provider: props.provider, ...common, ...secretInput() } as CreateCredentialRequest;
 }
 
 async function next(): Promise<void> {
@@ -143,11 +181,7 @@ async function next(): Promise<void> {
       const saved = await store.update(props.credential!, {
         displayName: displayName.value,
         allowedNamespaces: namespaces.value,
-        ...(replaceSecret.value
-          ? props.provider === 'aws'
-            ? { aws: awsInput() }
-            : { openstack: openstackInput() }
-          : {}),
+        ...(replaceSecret.value ? secretInput() : {}),
       });
       emit('saved', saved);
     } else {
@@ -372,6 +406,50 @@ async function save(): Promise<void> {
           />
         </template>
 
+        <template v-if="replaceSecret && provider === 'gcp'">
+          <v-alert type="info" variant="tonal" density="compact" class="mb-3">{{
+            t('credentials.gcp.recommend')
+          }}</v-alert>
+          <v-file-input
+            v-model="gcpKeyFile"
+            :label="t('credentials.gcp.keyFile')"
+            accept=".json,application/json"
+            prepend-icon="mdi-file-key"
+            show-size
+            data-testid="gcp-key-file"
+          />
+          <v-textarea
+            v-model="gcpKey"
+            :label="t('credentials.gcp.keyPaste')"
+            :hint="t('credentials.gcp.keyHint')"
+            persistent-hint
+            :rules="[zodRule(gcpShape.serviceAccountKey)]"
+            :error-messages="fieldErrors(serverFieldErrors, 'gcp.serviceAccountKey')"
+            rows="3"
+            class="secret-text"
+            autocomplete="off"
+            data-testid="gcp-key"
+          />
+          <v-alert
+            v-if="gcpKeyInfo"
+            type="success"
+            variant="tonal"
+            density="compact"
+            class="my-3"
+            data-testid="gcp-key-info"
+            >{{ t('credentials.gcp.keyInfo', gcpKeyInfo) }}</v-alert
+          >
+          <v-text-field
+            v-model="gcpRegion"
+            :label="t('credentials.gcp.region')"
+            :rules="[zodRule(gcpShape.region)]"
+            :hint="t('credentials.gcp.regionHint')"
+            persistent-hint
+            name="gcpRegion"
+            data-testid="gcp-region"
+          />
+        </template>
+
         <ErrorAlert v-if="error" :error="error" class="mt-3" />
       </v-form>
     </v-card-text>
@@ -416,3 +494,10 @@ async function save(): Promise<void> {
     </v-card-actions>
   </v-card>
 </template>
+
+<style scoped>
+/* The key is a secret: blur it until the field is focused. */
+.secret-text :deep(textarea:not(:focus)) {
+  filter: blur(4px);
+}
+</style>

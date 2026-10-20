@@ -15,6 +15,7 @@ import {
   type AwsClients,
 } from '../infra-providers/aws/aws-credential.plugin.js';
 import type { HttpFn } from '../infra-providers/openstack/openstack-client.js';
+import { GcpCredentialPlugin } from '../infra-providers/gcp/gcp-credential.plugin.js';
 import { OpenStackCredentialPlugin } from '../infra-providers/openstack/openstack-credential.plugin.js';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { KubeModule } from '../kube/kube.module.js';
@@ -44,7 +45,7 @@ const mc = vi.hoisted(() => ({
   providers: [] as { kind: string; metadata: { name: string; namespace: string } }[],
   clusters: [] as {
     metadata: { name: string; namespace: string };
-    spec: { identityRef: { name: string } };
+    spec: Record<string, unknown>;
   }[],
 }));
 vi.mock('../kube/apply.js', () => ({
@@ -199,6 +200,11 @@ describe('credentials API (FP-4)', () => {
     const plugins: CredentialPlugin[] = [
       new OpenStackCredentialPlugin(http()),
       new AwsCredentialPlugin(awsClients),
+      // Google endpoints that refuse at once: these tests cover storage, not the cloud test.
+      new GcpCredentialPlugin({
+        compute: 'http://127.0.0.1:1',
+        resourceManager: 'http://127.0.0.1:1',
+      }),
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, KubeModule, StoreModule, AuditModule, AuthModule, CredentialsModule],
@@ -233,6 +239,7 @@ describe('credentials API (FP-4)', () => {
     mc.providers = [
       { kind: 'InfrastructureProvider', metadata: { name: 'openstack', namespace: 'capo-system' } },
       { kind: 'InfrastructureProvider', metadata: { name: 'aws', namespace: 'capa-system' } },
+      { kind: 'InfrastructureProvider', metadata: { name: 'gcp', namespace: 'capg-system' } },
     ];
   });
 
@@ -379,6 +386,60 @@ describe('credentials API (FP-4)', () => {
     mc.clusters = [];
     await req().delete(`${base}/openstack/infomaniak`).set(CSRF).set('Cookie', admin).expect(204);
     expect(mc.secrets.size + mc.identities.size).toBe(0);
+  });
+
+  it('stores Google Cloud credentials without identity resource, namespaces on the Secret (FP25-F-02)', async () => {
+    const key = JSON.stringify({
+      type: 'service_account',
+      project_id: 'demo-proj',
+      private_key: '-----BEGIN PRIVATE KEY-----\nsecret-material\n-----END PRIVATE KEY-----\n',
+      client_email: 'capi@demo-proj.iam.gserviceaccount.com',
+      token_uri: 'http://127.0.0.1:1/token',
+    });
+    const created = await post('', {
+      provider: 'gcp',
+      name: 'gcloud',
+      allowedNamespaces: ['team-a'],
+      gcp: { serviceAccountKey: key, region: 'europe-west6' },
+    }).expect(201);
+    expect(created.body).toMatchObject({
+      provider: 'gcp',
+      allowedNamespaces: ['team-a'],
+      summary: { projectId: 'demo-proj', region: 'europe-west6' },
+      identity: { apiVersion: 'v1', kind: 'Secret', name: 'capi-navigator-credential-gcloud' },
+      secret: { name: 'capi-navigator-credential-gcloud', namespace: 'capg-system' },
+      lastTest: { ok: false },
+    });
+    expect(JSON.stringify(created.body)).not.toContain('secret-material');
+    expect(mc.identities.size).toBe(0);
+    const secret = mc.secrets.get('capg-system/capi-navigator-credential-gcloud')!;
+    expect(Buffer.from(secret.data!.credentials!, 'base64').toString()).toBe(key);
+
+    const updated = await req()
+      .patch(`${base}/gcp/gcloud`)
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ allowedNamespaces: ['team-a', 'team-b'] })
+      .expect(200);
+    expect(updated.body.allowedNamespaces).toEqual(['team-a', 'team-b']);
+
+    mc.clusters = [
+      {
+        metadata: { name: 'gke-less', namespace: 'team-a' },
+        spec: {
+          credentialsRef: { name: 'capi-navigator-credential-gcloud', namespace: 'capg-system' },
+        },
+      },
+    ];
+    const refused = await req()
+      .delete(`${base}/gcp/gcloud`)
+      .set(CSRF)
+      .set('Cookie', admin)
+      .expect(409);
+    expect(refused.body.hint).toContain('team-a/gke-less');
+    mc.clusters = [];
+    await req().delete(`${base}/gcp/gcloud`).set(CSRF).set('Cookie', admin).expect(204);
+    expect(mc.secrets.size).toBe(0);
   });
 
   it('enforces roles: viewers read, operators look up, admins change', async () => {

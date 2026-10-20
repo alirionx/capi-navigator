@@ -148,6 +148,15 @@ async function loadLookup(c: Credential): Promise<void> {
         >
           {{ t('credentials.addAws') }}
         </v-btn>
+        <v-btn
+          variant="tonal"
+          color="primary"
+          prepend-icon="mdi-plus"
+          data-testid="add-gcp"
+          @click="dialog = { kind: 'edit', provider: 'gcp', credential: null }"
+        >
+          {{ t('credentials.addGcp') }}
+        </v-btn>
       </template>
     </div>
 
@@ -183,6 +192,12 @@ async function loadLookup(c: Credential): Promise<void> {
               <template v-if="item.provider === 'openstack'">
                 {{ item.summary.authUrl }}<br />{{ t('credentials.regionLabel') }}:
                 {{ item.summary.region ?? '–' }} · {{ item.summary.authType }}
+              </template>
+              <template v-else-if="item.provider === 'gcp'">
+                {{ t('credentials.projectLabel') }}: {{ item.summary.projectId }} ·
+                {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
+                  item.summary.serviceAccount
+                }}
               </template>
               <template v-else>
                 {{ t('credentials.regionLabel') }}: {{ item.summary.region }}<br />{{
