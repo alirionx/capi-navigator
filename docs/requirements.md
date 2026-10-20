@@ -836,9 +836,9 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 
 **Goal:** people sign in to the web UI with the organisation's identity provider (any OpenID Connect provider, e.g. Okta, Auth0, Dex, Keycloak or Rancher). Access comes from the provider's groups, mapped to roles in the app; nobody has to be created in the app first. Local users stay available (break-glass admin, technical users of FP-22).
 
-- **FP14-F-01** MUST support one OpenID Connect provider per installation, configured through Helm values and environment variables: issuer URL (discovery via `/.well-known/openid-configuration`), client ID, client secret from a Kubernetes Secret, scopes, the name of the groups claim (also URL-like names such as Auth0's namespaced claims), the claim for the display name (default `preferred_username`, then `email`, then `sub`), the label of the sign-in button, a default role and the app's public URL. No provider is hard-coded; anything beyond OpenID Connect Core and Discovery is configuration.
+- **FP14-F-01** MUST support one OpenID Connect provider per installation. Users with `users.manage` configure it in the web UI (ADR-0020): issuer URL (discovery via `/.well-known/openid-configuration`), client ID, client secret, scopes, the name of the groups claim (also URL-like names such as Auth0's namespaced claims), the claim for the display name (default `preferred_username`, then `email`, then `sub`), the label of the sign-in button and a default role. Only the app's public URL is a deployment setting (Helm value `publicUrl`). No provider is hard-coded; anything beyond OpenID Connect Core and Discovery is configuration.
 - **FP14-F-02** MUST sign in with the authorization code flow with PKCE, `state` and `nonce`, run by the backend as a confidential client. The backend validates the ID token (signature from the provider's JWKS, issuer, audience, expiry, nonce). Tokens of the provider never reach the browser and are not stored; the app issues its own session cookie (FP1-F-03) as for local users.
-- **FP14-F-03** MUST build the redirect URI from the configured public URL (`<publicUrl>/api/auth/oidc/callback`), never from request headers, and refuse to start with OIDC enabled but no public URL.
+- **FP14-F-03** MUST build the redirect URI from the configured public URL (`<publicUrl>/api/auth/oidc/callback`), never from request headers, and refuse to enable OIDC while no public URL is configured.
 - **FP14-F-04** MUST let users with `users.manage` map provider groups to role assignments (role plus optional scope of connections and namespaces, as in FP-19), stored as a `NavigatorGroup` custom resource in the home cluster. A person's access is the union of the assignments of their groups, resolved on every request (FP19-F-06): changing or removing a mapping applies at once; a new mapping and a changed group membership apply with the next sign-in.
 - **FP14-F-05** MUST give a person whose groups have no mapping the configured default role (default `viewer`) with unlimited scope, or refuse the sign-in with an understandable message if no default role is configured.
 - **FP14-F-06** MUST keep the session cookie small: it holds the person's subject, display name and only those groups that are mapped in the app, and the same lifetime as local sessions (`SESSION_TTL_HOURS`).
@@ -847,6 +847,9 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 - **FP14-F-09** MUST audit successful and failed OIDC sign-ins (without tokens or codes) and every change of group mappings.
 - **FP14-F-10** SHOULD sign the person out at the provider too when it offers an `end_session_endpoint`.
 - **FP14-F-11** MUST document the setup, including the redirect URI and the groups claim, with examples in this order: Okta and Auth0, then Dex and Keycloak, then Rancher (explaining that Rancher can itself act as an OpenID Connect provider). Examples use placeholder URLs only.
+- **FP14-F-12** MUST offer a page "Authentication" under Administration with the settings, the redirect URI to register at the provider, a test that runs the discovery with the entered values and shows what the provider offers (endpoints, scopes, end-session), and a switch to turn OIDC on and off without losing the settings. Saving shows a preview of the change and writes an `AuditEvent`.
+- **FP14-F-13** MUST store the settings as a `NavigatorAuthSettings` resource and the client secret in a Secret in the home cluster, and apply changes without a restart on all replicas.
+- **FP14-F-14** MUST treat the client secret as write-only: no API response, log or audit event contains it; the page shows only whether one is set and can replace it.
 
 **Acceptance criteria**
 
@@ -857,6 +860,8 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 - [x] No provider token or authorization code appears in API responses, logs, the audit log or the browser.
 - [x] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
 - [x] A Playwright test signs in through a test provider.
+- [ ] An admin configures Dex on the Authentication page, runs the test, saves, and the sign-in button appears without a restart; switching OIDC off hides it again.
+- [ ] The client secret appears in no API response, log or audit event.
 
 Verified on 2026-10-20 with HTTP tests against an in-process test provider (all failure cases), a Playwright test against Dex v2.46 in kind (`pnpm dex:up`) and live checks: an OIDC operator of `team-a` passed the permission check in `team-a` and got 403 in `team-b` and on `/api/users`. The tests showed that `openid-client` accepts ID tokens with a foreign signature from the token endpoint unless `enableNonRepudiationChecks` is set; it is set (ADR-0019).
 

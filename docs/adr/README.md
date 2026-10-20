@@ -23,3 +23,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0017](0017-api-tokens-for-technical-users.md)              | API tokens for technical users                                                   | accepted |
 | [0018](0018-versions-yaml-and-update-report.md)             | versions.yaml and an update report instead of update bots                        | accepted |
 | [0019](0019-oidc-sign-in-with-group-mapping.md)             | OpenID Connect sign-in with group mapping                                        | accepted |
+| [0020](0020-oidc-settings-in-the-web-ui.md)                 | OpenID Connect settings in the web UI                                            | accepted |

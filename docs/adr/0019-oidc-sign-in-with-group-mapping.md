@@ -1,6 +1,6 @@
 # ADR-0019: OpenID Connect sign-in with group mapping
 
-- Status: accepted
+- Status: accepted; configuration moved to the web UI by [ADR-0020](0020-oidc-settings-in-the-web-ui.md)
 - Date: 2026-10-20
 - Pack: FP-14
 
