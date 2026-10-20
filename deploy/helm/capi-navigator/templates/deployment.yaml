@@ -20,6 +20,9 @@ spec:
       serviceAccountName: {{ .Release.Name }}
       securityContext:
         runAsNonRoot: true
+        # The user "node" of the image; numeric, so runAsNonRoot can be verified.
+        runAsUser: 1000
+        runAsGroup: 1000
       containers:
         - name: capi-navigator
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

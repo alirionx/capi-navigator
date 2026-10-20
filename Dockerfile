@@ -28,6 +28,7 @@ ENV NODE_ENV=production \
     STATIC_DIR=/app/public
 WORKDIR /app
 COPY --from=build --chown=node:node /out /app
-USER node
+# Numeric (the user "node"), so Kubernetes can verify runAsNonRoot of the chart.
+USER 1000:1000
 EXPOSE 3000
 CMD ["node", "--enable-source-maps", "dist/main.js"]
