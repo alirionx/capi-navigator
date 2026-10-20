@@ -136,19 +136,22 @@ kubectl --kubeconfig .kube/kind-capi-navigator.yaml -n capi-navigator-system \
 
 ### Install into a cluster with Helm
 
-Every release publishes the image `ghcr.io/alirionx/capi-navigator:<version>` and attaches the
-packaged chart to the [GitHub release](https://github.com/alirionx/capi-navigator/releases). Pick
-the version there; the notes of each release also contain these commands with the version filled
-in.
+Every release publishes the image `ghcr.io/alirionx/capi-navigator:<version>` and the chart as OCI
+artifact `oci://ghcr.io/alirionx/charts/capi-navigator`, and attaches the packaged chart to the
+[GitHub release](https://github.com/alirionx/capi-navigator/releases). Pick the version there; the
+notes of each release also contain these commands with the version filled in.
 
 ```sh
 VERSION=x.y.z   # a version from the releases page, without the leading "v"
-helm install capi-navigator \
-  https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz \
+helm install capi-navigator oci://ghcr.io/alirionx/charts/capi-navigator --version ${VERSION} \
   -n capi-navigator-system --create-namespace \
   --set homeClusterAsManagementCluster=true   # optional: use this cluster as management cluster
 kubectl -n capi-navigator-system port-forward svc/capi-navigator 8080:80
 ```
+
+Versions up to 0.7.0 exist only as release attachment: use
+`https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz`
+in place of the OCI reference and drop `--version`.
 
 The chart uses the image of its own version by default. To run a local build instead (for kind):
 
@@ -173,9 +176,9 @@ server:
 
 ```sh
 VERSION=x.y.z   # the version to upgrade to
-CHART=https://github.com/alirionx/capi-navigator/releases/download/v${VERSION}/capi-navigator-${VERSION}.tgz
-helm show crds "$CHART" | kubectl apply --server-side -f -
-helm upgrade capi-navigator "$CHART" -n capi-navigator-system --reuse-values
+CHART=oci://ghcr.io/alirionx/charts/capi-navigator
+helm show crds "$CHART" --version ${VERSION} | kubectl apply --server-side -f -
+helm upgrade capi-navigator "$CHART" --version ${VERSION} -n capi-navigator-system --reuse-values
 ```
 
 ### Exposing the app
