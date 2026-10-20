@@ -860,10 +860,10 @@ Verified on 2026-10-19 with unit, HTTP and Playwright tests, in `pnpm dev` and i
 - [x] No provider token or authorization code appears in API responses, logs, the audit log or the browser.
 - [x] The setup guide covers Okta, Auth0, Dex, Keycloak and Rancher, in this order.
 - [x] A Playwright test signs in through a test provider.
-- [ ] An admin configures Dex on the Authentication page, runs the test, saves, and the sign-in button appears without a restart; switching OIDC off hides it again.
-- [ ] The client secret appears in no API response, log or audit event.
+- [x] An admin configures Dex on the Authentication page, runs the test, saves, and the sign-in button appears without a restart; switching OIDC off hides it again.
+- [x] The client secret appears in no API response, log or audit event.
 
-Verified on 2026-10-20 with HTTP tests against an in-process test provider (all failure cases), a Playwright test against Dex v2.46 in kind (`pnpm dex:up`) and live checks: an OIDC operator of `team-a` passed the permission check in `team-a` and got 403 in `team-b` and on `/api/users`. The tests showed that `openid-client` accepts ID tokens with a foreign signature from the token endpoint unless `enableNonRepudiationChecks` is set; it is set (ADR-0019).
+Verified on 2026-10-20 with HTTP tests against an in-process test provider (all failure cases), a Playwright test against Dex v2.46 in kind (`pnpm dex:up`) and live checks: an OIDC operator of `team-a` passed the permission check in `team-a` and got 403 in `team-b` and on `/api/users`. The tests showed that `openid-client` accepts ID tokens with a foreign signature from the token endpoint unless `enableNonRepudiationChecks` is set; it is set (ADR-0019). The settings moved to the web UI the same day (ADR-0020): `pnpm dex:up` configured a running backend without restart, and a Playwright test saves, switches off and on again on the Authentication page.
 
 ## 7. Non-functional requirements
 

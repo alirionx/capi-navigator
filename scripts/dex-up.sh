@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # FP-14: Dex as OpenID Connect provider in the local kind cluster, for tests and development.
 #
-# Usage: pnpm dex:up      then restart `pnpm dev`; it picks up the OIDC_* settings.
-#        pnpm dex:down    removes Dex and the settings again.
+# Usage: pnpm dex:up      configures the app's sign-in with Dex (Authentication page), no restart.
+#        pnpm dex:down    removes Dex and these settings again.
 #
 # Test users (password DEX_TEST_PASSWORD, default "Dex-Test-Password-1"):
 #   alice@example.com  groups: capi-admins
@@ -24,14 +24,16 @@ SOCAT_IMAGE="${SOCAT_IMAGE:-${SOCAT_IMAGE_DEFAULT}}"
 PROXY="${KIND_CLUSTER_NAME}-dex-proxy"
 DEX_TEST_PASSWORD="${DEX_TEST_PASSWORD:-Dex-Test-Password-1}"
 PUBLIC_URL="${PUBLIC_URL:-http://localhost:5173}"
-ENV_FILE="${ROOT_DIR}/.kube/dex-${KIND_CLUSTER_NAME}.env"
+APP_NAMESPACE=capi-navigator-system
+SECRET=capi-navigator-oidc-client
 
 [[ -f "${KIND_KUBECONFIG}" ]] || die "No kind cluster found. Run 'pnpm kind:up' first."
 
 issuer="http://127.0.0.1:${DEX_PORT}"
 
 # Client secret of the test client: kept from an earlier run, otherwise random.
-client_secret="$(sed -n 's/^OIDC_CLIENT_SECRET=//p' "${ENV_FILE}" 2>/dev/null || true)"
+client_secret="$(kubectl -n "${APP_NAMESPACE}" get secret "${SECRET}" \
+  -o jsonpath='{.data.clientSecret}' 2>/dev/null | base64 -d 2>/dev/null || true)"
 [[ -n "${client_secret}" ]] || client_secret="$(head -c 24 /dev/urandom | base64 | tr -d '/+=')"
 
 if command -v htpasswd >/dev/null 2>&1; then
@@ -95,16 +97,29 @@ done
 curl -fsS -m 3 "${issuer}/.well-known/openid-configuration" >/dev/null ||
   die "Dex is not reachable at ${issuer}."
 
-umask 077
-cat >"${ENV_FILE}" <<EOF
-# Written by pnpm dex:up for the local Dex in kind; read by pnpm dev. Not a real credential.
-PUBLIC_URL=${PUBLIC_URL}
-OIDC_ISSUER_URL=${issuer}
-OIDC_CLIENT_ID=capi-navigator
-OIDC_CLIENT_SECRET=${client_secret}
-OIDC_SCOPES="openid profile email groups"
-OIDC_BUTTON_LABEL="Sign in with Dex"
+log "Configuring the app's OpenID Connect sign-in (NavigatorAuthSettings oidc, Secret ${SECRET})"
+kubectl -n "${APP_NAMESPACE}" create secret generic "${SECRET}" \
+  --from-literal=clientSecret="${client_secret}" --dry-run=client -o yaml |
+  kubectl apply --server-side --field-manager=capi-navigator-dex-up --force-conflicts -f - >/dev/null
+kubectl apply --server-side --field-manager=capi-navigator-dex-up --force-conflicts -f - >/dev/null <<EOF
+apiVersion: navigator.capi-navigator.io/v1alpha1
+kind: NavigatorAuthSettings
+metadata:
+  name: oidc
+  namespace: ${APP_NAMESPACE}
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+spec:
+  oidc:
+    enabled: true
+    issuerUrl: ${issuer}
+    clientId: capi-navigator
+    scopes: openid profile email groups
+    groupsClaim: groups
+    usernameClaim: preferred_username
+    buttonLabel: Sign in with Dex
+    defaultRole: viewer
 EOF
-log "Done. Settings for pnpm dev in ${ENV_FILE#"${ROOT_DIR}"/}; restart pnpm dev to use them."
+log "Done. The sign-in page of pnpm dev (${PUBLIC_URL}) now offers \"Sign in with Dex\"."
 log "Test users: alice@example.com (capi-admins), bob@example.com (team-a), carol@example.com"
 log "Dex has new signing keys after each install: a running backend accepts them within a minute."

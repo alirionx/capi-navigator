@@ -14,6 +14,7 @@ import HelmRepositoriesView from '../views/HelmRepositoriesView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
+import AuthSettingsView from '../views/AuthSettingsView.vue';
 import RolesView from '../views/RolesView.vue';
 import UsersView from '../views/UsersView.vue';
 
@@ -146,6 +147,17 @@ export const routes: RouteRecordRaw[] = [
       permission: 'users.manage',
       titleKey: 'nav.roles',
       icon: 'mdi-shield-account',
+      navGroup: 'administration',
+    },
+  },
+  {
+    path: '/authentication',
+    name: 'authentication',
+    component: AuthSettingsView,
+    meta: {
+      permission: 'users.manage',
+      titleKey: 'nav.authentication',
+      icon: 'mdi-shield-key',
       navGroup: 'administration',
     },
   },

@@ -79,6 +79,7 @@ One NestJS module per domain:
 
 | State                              | Stored as                                                                                                                                                                                  | Where                   |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| OIDC provider settings             | `NavigatorAuthSettings` CR `oidc`, client secret in a Secret                                                                                                                               | Home cluster            |
 | OIDC group mappings                | `NavigatorGroup` CR (provider group → role assignments)                                                                                                                                    | Home cluster            |
 | Custom roles                       | `NavigatorRole` CR                                                                                                                                                                         | Home cluster            |
 | API tokens of technical users      | `NavigatorToken` CR with the SHA-256 hash of the token (never the token)                                                                                                                   | Home cluster            |
@@ -182,11 +183,14 @@ subscriber of that channel. Watches stop when nobody listens
 
 ### Sign-in with an OpenID Connect provider
 
-1. The login page offers "Sign in with …" when `OIDC_ISSUER_URL` is set. The button opens
+1. The login page offers "Sign in with …" when OpenID Connect is enabled on the Authentication
+   page (`NavigatorAuthSettings` resource `oidc` plus Secret, [ADR-0020](adr/0020-oidc-settings-in-the-web-ui.md); changes apply
+   without restart). The button opens
    `/api/auth/oidc/login`; the backend ([oidc.service.ts](../apps/backend/src/auth/oidc.service.ts),
    `openid-client`) creates `state`, `nonce` and a PKCE verifier, keeps them in a short-lived signed
    cookie and redirects to the provider.
-2. The provider redirects back to `<PUBLIC_URL>/api/auth/oidc/callback`. The backend exchanges the
+2. The provider redirects back to `<PUBLIC_URL>/api/auth/oidc/callback` (`PUBLIC_URL` is the only
+   deployment setting). The backend exchanges the
    code with the client secret, validates the ID token (signature from the provider's JWKS, issuer,
    audience, expiry, nonce) and reads the groups claim (or UserInfo).
 3. It keeps only the groups that have a `NavigatorGroup` mapping; without one and without a default

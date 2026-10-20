@@ -25,6 +25,7 @@ export const en = {
     clusters: 'Clusters',
     users: 'Users',
     roles: 'Roles',
+    authentication: 'Authentication',
     addons: 'Add-ons',
     helmRepositories: 'Helm repositories',
     groups: {
@@ -43,6 +44,8 @@ export const en = {
   },
   common: {
     cancel: 'Cancel',
+    copy: 'Copy',
+    reset: 'Reset',
     save: 'Save',
     create: 'Create',
     delete: 'Delete',
@@ -968,10 +971,60 @@ export const en = {
     technical: 'technical',
     tokens: 'API tokens',
   },
+  authSettings: {
+    title: 'Authentication',
+    subtitle:
+      'Sign-in with an OpenID Connect provider (Okta, Auth0, Dex, Keycloak, Rancher, …) next to the local users. Access comes from the provider groups mapped under Users. Changes apply at once, without restart.',
+    publicUrlMissing:
+      'The public URL of the app is not set (Helm value publicUrl). OpenID Connect cannot be enabled without it, because the redirect URI is built from it.',
+    enabled: 'Sign-in with OpenID Connect',
+    enabledHint:
+      'Off hides the sign-in button and ends the sessions of people signed in with it; the settings are kept. Local users can always sign in. Default: off.',
+    redirectUri: 'Redirect URI',
+    redirectUriHint: 'Register this URI at the provider for the client.',
+    issuerUrlHint:
+      'Exactly the "issuer" of the provider\'s discovery document, e.g. https://idp.example.com/realms/main (including a final "/" if the provider uses one).',
+    test: 'Test',
+    testOk: 'Provider found: {issuer}',
+    testScopes: 'Scopes offered',
+    testLogout: 'Sign-out at the provider',
+    secretHint: 'Client secret of the confidential client. Stored in a Secret; never shown again.',
+    secretSetHint: 'A secret is stored. Leave empty to keep it, or enter a new one to replace it.',
+    secretReplaced: 'replaced',
+    scopesHint:
+      'Space-separated; openid is always added. Dex and Rancher need "groups". Default: openid profile email.',
+    groupsClaimHint:
+      'Claim with the groups; URL-like names (Auth0) and dotted paths (realm_access.roles) work. Default: groups.',
+    usernameClaimHint:
+      'Shown as "<name> (oidc)"; falls back to email, then the subject. Rancher: name. Default: preferred_username.',
+    buttonLabelHint: 'Text of the button on the sign-in page. Default: Sign in with OIDC.',
+    defaultRoleHint:
+      'Role for people whose groups have no mapping; "nobody" refuses them. Use it with providers where anyone can register. Default: Viewer.',
+    noDefaultRole: 'Nobody (refuse sign-in)',
+    preview: 'Preview and save',
+    confirmTitle: 'Save the sign-in settings?',
+    confirmText:
+      'Applies at once on all replicas. Stored as NavigatorAuthSettings "oidc" and the Secret capi-navigator-oidc-client; the change is recorded in the audit log.',
+    field: 'Setting',
+    before: 'Now',
+    after: 'New',
+    saved: 'Saved. The sign-in page shows the change now.',
+    fields: {
+      enabled: 'Enabled',
+      issuerUrl: 'Issuer URL',
+      clientId: 'Client ID',
+      clientSecret: 'Client secret',
+      scopes: 'Scopes',
+      groupsClaim: 'Groups claim',
+      usernameClaim: 'Name claim',
+      buttonLabel: 'Button label',
+      defaultRole: 'Default role',
+    },
+  },
   oidcGroups: {
     title: 'OpenID Connect groups',
     subtitle:
-      'People who sign in with the identity provider get the role assignments of their groups; nobody has to be created here. Without a mapped group they get the default role (Helm value oidc.defaultRole).',
+      'People who sign in with the identity provider get the role assignments of their groups; nobody has to be created here. Without a mapped group they get the default role (Authentication page).',
     add: 'Map group',
     group: 'Group',
     groupHint:
@@ -986,7 +1039,7 @@ export const en = {
       'Members of this group lose these assignments on their next request; without another mapped group they get the default role.',
     empty: 'No groups mapped yet.',
     notConfigured:
-      'Sign-in with an OpenID Connect provider is not configured (Helm values oidc.*). Mappings can be prepared already.',
+      'Sign-in with an OpenID Connect provider is not enabled (Administration → Authentication). Mappings can be prepared already.',
   },
   tokens: {
     title: 'API tokens of {username}',
