@@ -12,7 +12,9 @@ export type ApiResponseDoc =
   /** A non-JSON body, e.g. a kubeconfig or YAML download. */
   | { contentType: string; description: string }
   /** No body (e.g. 204). */
-  | 'empty';
+  | 'empty'
+  /** A 302 redirect for the browser (OpenID Connect sign-in). */
+  | 'redirect';
 
 export interface ApiDoc {
   /** One line: what the endpoint does. */

@@ -189,15 +189,22 @@
           "Auth"
         ],
         "summary": "Sign out; clears the session cookie",
-        "description": "Public: no session needed.",
+        "description": "For people signed in with OpenID Connect, `endSessionUrl` signs them out at the provider too.\n\nPublic: no session needed.",
         "parameters": [
           {
             "$ref": "#/components/parameters/Csrf"
           }
         ],
         "responses": {
-          "204": {
-            "description": "Done; no body."
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponse"
+                }
+              }
+            }
           },
           "default": {
             "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
@@ -245,6 +252,108 @@
           }
         },
         "x-permission": "signed-in"
+      }
+    },
+    "/api/auth/oidc/callback": {
+      "get": {
+        "operationId": "Oidc_callback",
+        "tags": [
+          "Oidc"
+        ],
+        "summary": "Return from the OpenID Connect provider; sets the session cookie",
+        "description": "Validates state, nonce, PKCE and the ID token, then redirects into the app.\n\nPublic: no session needed.",
+        "responses": {
+          "302": {
+            "description": "Redirect for the browser; the target is in the Location header.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public"
+      }
+    },
+    "/api/auth/oidc/login": {
+      "get": {
+        "operationId": "Oidc_login",
+        "tags": [
+          "Oidc"
+        ],
+        "summary": "Start the OpenID Connect sign-in; redirects to the provider",
+        "description": "`redirect` is the app path to return to after sign-in. 404 without OIDC.\n\nPublic: no session needed.",
+        "responses": {
+          "302": {
+            "description": "Redirect for the browser; the target is in the Location header.",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public"
+      }
+    },
+    "/api/auth/options": {
+      "get": {
+        "operationId": "Oidc_options",
+        "tags": [
+          "Oidc"
+        ],
+        "summary": "Sign-in options for the login page (local form, OpenID Connect button)",
+        "description": "Public: no session needed.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthOptions"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "x-permission": "public"
       }
     },
     "/api/connections": {
@@ -4936,6 +5045,186 @@
         ]
       }
     },
+    "/api/oidc-groups": {
+      "get": {
+        "operationId": "Groups_list",
+        "tags": [
+          "Groups"
+        ],
+        "summary": "List the mappings of OpenID Connect groups",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMappingList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      },
+      "post": {
+        "operationId": "Groups_create",
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Map an OpenID Connect group to role assignments",
+        "description": "Applies to members of the group from their next sign-in.\n\nRequires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupMappingRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMapping"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
+    "/api/oidc-groups/{name}": {
+      "delete": {
+        "operationId": "Groups_delete",
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Remove the mapping of a group; its members lose that access on the next request",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      },
+      "patch": {
+        "operationId": "Groups_update",
+        "tags": [
+          "Groups"
+        ],
+        "summary": "Change the role assignments of a group; applies on the next request",
+        "description": "Requires permission `users.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupMappingRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMapping"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "users.manage"
+        ]
+      }
+    },
     "/api/openapi.json": {
       "get": {
         "operationId": "OpenApi_openApi",
@@ -6142,6 +6431,34 @@
         "required": [
           "statusCode",
           "message"
+        ],
+        "additionalProperties": false
+      },
+      "AuthOptions": {
+        "type": "object",
+        "properties": {
+          "oidc": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "oidc"
         ],
         "additionalProperties": false
       },
@@ -7915,6 +8232,41 @@
         ],
         "additionalProperties": false
       },
+      "GroupMapping": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "bindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleBinding"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "group",
+          "bindings"
+        ],
+        "additionalProperties": false
+      },
+      "GroupMappingList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/GroupMapping"
+        }
+      },
       "HealthResponse": {
         "type": "object",
         "properties": {
@@ -8310,6 +8662,15 @@
           "maxLength": 63,
           "pattern": "^(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])?$"
         }
+      },
+      "LogoutResponse": {
+        "type": "object",
+        "properties": {
+          "endSessionUrl": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
       },
       "LookupOption": {
         "type": "object",
@@ -9990,6 +10351,30 @@
           }
         ]
       },
+      "CreateGroupMappingRequestInput": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/OidcGroupNameInput"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "bindings": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleBindingInput"
+            }
+          }
+        },
+        "required": [
+          "group",
+          "bindings"
+        ]
+      },
       "CreateHelmRepositoryRequestInput": {
         "type": "object",
         "properties": {
@@ -10240,6 +10625,11 @@
             }
           }
         }
+      },
+      "OidcGroupNameInput": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
       },
       "OpenStackAuthInput": {
         "oneOf": [
@@ -10935,6 +11325,26 @@
             "$ref": "#/components/schemas/AwsCredentialInputInput"
           }
         }
+      },
+      "UpdateGroupMappingRequestInput": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "bindings": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RoleBindingInput"
+            }
+          }
+        },
+        "required": [
+          "bindings"
+        ]
       },
       "UpdateHelmRepositoryRequestInput": {
         "type": "object",

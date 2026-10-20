@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -15,7 +16,9 @@ import {
   MeSchema,
   ChangePasswordRequestSchema,
   LoginRequestSchema,
+  LogoutResponseSchema,
   type ChangePasswordRequest,
+  type LogoutResponse,
   type LoginRequest,
   type Me,
 } from '@capi-navigator/shared';
@@ -25,6 +28,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AUTH_PROVIDER, type AuthProvider } from './auth-provider.js';
 import { AllowPendingPasswordChange, Audit, CurrentUser, Public, SignedIn } from './decorators.js';
 import { LoginRateLimiter } from './login-rate-limiter.js';
+import { OidcService } from './oidc.service.js';
 import type { AuthenticatedRequest, Principal } from './principal.js';
 import { SessionService } from './session.service.js';
 import { UsersService } from './users.service.js';
@@ -38,6 +42,7 @@ export class AuthController {
     @Inject(AUTH_PROVIDER) private readonly auth: AuthProvider,
     private readonly sessions: SessionService,
     private readonly users: UsersService,
+    private readonly oidc: OidcService,
     @Inject(APP_CONFIG) config: AppConfig,
   ) {
     this.limiter = new LoginRateLimiter(
@@ -89,12 +94,24 @@ export class AuthController {
   }
 
   @Public()
-  @Api({ summary: 'Sign out; clears the session cookie', response: 'empty' })
+  @Api({
+    summary: 'Sign out; clears the session cookie',
+    description:
+      'For people signed in with OpenID Connect, `endSessionUrl` signs them out at the provider too.',
+    response: LogoutResponseSchema,
+  })
   @Post('logout')
-  @HttpCode(204)
+  @HttpCode(200)
   @Audit({ action: 'auth.logout' })
-  logout(@Res({ passthrough: true }) res: Response): void {
+  async logout(
+    @Req() req: Request & AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LogoutResponse> {
+    const principal = this.sessions.authenticateSession(req);
+    if (principal) req.auditActor = principal.username;
     this.sessions.clear(res);
+    const endSessionUrl = principal?.oidc ? await this.oidc.endSessionUrl() : undefined;
+    return endSessionUrl ? { endSessionUrl } : {};
   }
 
   @SignedIn()
@@ -116,6 +133,13 @@ export class AuthController {
     @CurrentUser() principal: Principal,
     @Res({ passthrough: true }) res: Response,
   ): Promise<Me> {
+    if (principal.oidc) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'People signed in with OpenID Connect have no password here',
+        hint: 'Change it at your identity provider.',
+      });
+    }
     const generation = await this.users.changeOwnPassword(
       principal.username,
       body.currentPassword,

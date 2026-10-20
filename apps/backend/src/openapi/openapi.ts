@@ -284,6 +284,11 @@ export function buildOpenApi(controllers: Type[], opts: { version: string }): Js
           },
         },
       };
+    } else if (response === 'redirect') {
+      responses['302'] = {
+        description: 'Redirect for the browser; the target is in the Location header.',
+        headers: { Location: { schema: { type: 'string' } } },
+      };
     } else if (response === 'empty' || route.status === 204) {
       responses[ok] = { description: 'Done; no body.' };
     } else if (response && typeof response === 'object' && 'contentType' in response) {

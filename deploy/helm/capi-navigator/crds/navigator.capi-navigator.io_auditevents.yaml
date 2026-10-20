@@ -84,6 +84,8 @@ spec:
                   type: string
                 token:
                   type: string
+                subject:
+                  type: string
                 message:
                   type: string
               required:

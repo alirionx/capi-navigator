@@ -31,6 +31,14 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'POST /api/roles': 'admin',
     'PATCH /api/roles/:name': 'admin',
     'DELETE /api/roles/:name': 'admin',
+    // FP-14: OpenID Connect sign-in and group mappings.
+    'GET /api/auth/options': 'public',
+    'GET /api/auth/oidc/login': 'public',
+    'GET /api/auth/oidc/callback': 'public',
+    'GET /api/oidc-groups': 'admin',
+    'POST /api/oidc-groups': 'admin',
+    'PATCH /api/oidc-groups/:name': 'admin',
+    'DELETE /api/oidc-groups/:name': 'admin',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

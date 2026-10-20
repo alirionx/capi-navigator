@@ -23,6 +23,8 @@ export const AuditEventSpecSchema = z.object({
   managementCluster: z.string().optional(),
   /** Name of the API token the request used (FP22-F-07); never the token itself. */
   token: z.string().optional(),
+  /** OpenID Connect subject of the actor (FP14-F-07); the actor is "<name> (oidc)". */
+  subject: z.string().optional(),
   /** Short reason for a failure. Never contains credentials (NF-01). */
   message: z.string().optional(),
 });

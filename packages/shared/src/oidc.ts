@@ -16,6 +16,10 @@ export const AuthOptionsSchema = z.object({
 });
 export type AuthOptions = z.infer<typeof AuthOptionsSchema>;
 
+/** After sign-out: where to send the browser to sign out at the provider too (FP14-F-10). */
+export const LogoutResponseSchema = z.object({ endSessionUrl: z.string().optional() });
+export type LogoutResponse = z.infer<typeof LogoutResponseSchema>;
+
 /** A group mapping (FP14-F-04) as shown in the user management. */
 export const GroupMappingSchema = z.object({
   /** Resource name, derived from the group. */

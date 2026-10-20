@@ -31,7 +31,10 @@ Two models were considered for OIDC users:
 - **The backend runs the flow.** Authorization code flow with PKCE, `state` and `nonce`, as a
   confidential client, with `openid-client` (OpenID certified; discovery, PKCE, ID token
   validation, end-session). The provider's tokens are validated and dropped; the browser only gets
-  the app's own signed session cookie.
+  the app's own signed session cookie. The ID token signature is always checked against the
+  provider's JWKS (`enableNonRepudiationChecks`), although OIDC Core allows skipping it for tokens
+  from the token endpoint over TLS: a test showed that tokens signed with a foreign key were
+  accepted otherwise, and a local Dex may run over plain HTTP.
 - **Stateless sessions as before.** The session cookie carries the subject, the display name and
   the mapped groups only (small even with many groups in the token), and the issuer. Assignments
   are resolved from the groups on every request, so a changed mapping applies at once; a changed
