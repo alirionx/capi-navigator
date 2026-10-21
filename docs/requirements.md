@@ -905,9 +905,9 @@ Order of work: credentials first (so real credentials can be stored early), then
 
 **Acceptance criteria**
 
-- [ ] The wizard creates an all-in-one cluster with three nodes; workloads are scheduled on all three.
-- [ ] An all-in-one cluster is scaled from one to three nodes and back in the app, with preview.
-- [ ] Snapshot tests cover all-in-one with three nodes for RKE2, k0s and kubeadm.
+- [x] The wizard creates an all-in-one cluster with three nodes; workloads are scheduled on all three.
+- [x] An all-in-one cluster is scaled from one to three nodes and back in the app, with preview.
+- [x] Snapshot tests cover all-in-one with three nodes for RKE2, k0s and kubeadm.
 
 ## 7. Non-functional requirements
 
