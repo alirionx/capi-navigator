@@ -207,6 +207,38 @@ describe('chart source: OCI registries (FP8-F-03, FP8-F-04)', () => {
     );
   });
 
+  it('explains refused access to a chart: missing, private or the chart name in the URL', async () => {
+    // ghcr.io answers 403 instead of 404 for a package that does not exist (seen with the chart
+    // name in the repository URL: oci://ghcr.io/alirionx/charts/capi-navigator).
+    const doubled = { ...oci, url: 'oci://ghcr.io/alirionx/charts/capi-navigator' };
+    routes({
+      [`${R}/v2/alirionx/charts/capi-navigator/capi-navigator/manifests/0.8.0`]: challenge,
+      [`${R}/token`]: { status: 403 },
+    });
+    const err = await new ChartSource()
+      .values(doubled, 'capi-navigator', '0.8.0')
+      .catch((e: unknown) => e as { message: string; hint?: string; status?: number });
+    expect(err).toMatchObject({
+      message:
+        'ghcr.io/alirionx/charts/capi-navigator/capi-navigator cannot be read anonymously: the chart does not exist there, or it is private',
+      hint: 'The repository URL already ends with the chart name "capi-navigator"; use oci://ghcr.io/alirionx/charts as repository URL.',
+      status: 403,
+    });
+
+    routes({
+      [`${R}/v2/stefanprodan/charts/podinfo/tags/list?n=1000`]: (h) =>
+        h.authorization ? { status: 403 } : challenge,
+      [`${R}/token`]: { body: JSON.stringify({ token: 't' }) },
+    });
+    await expect(
+      new ChartSource().versions({ ...oci, username: 'u', password: 'p' }, 'podinfo'),
+    ).rejects.toMatchObject({
+      message:
+        'The registry refused access to ghcr.io/stefanprodan/charts/podinfo: the credentials lack access, or the chart does not exist there',
+      hint: expect.stringMatching(/without the chart name/),
+    });
+  });
+
   it('tests anonymous access to a registry', async () => {
     routes({ [`${R}/v2/`]: challenge });
     expect(await new ChartSource().test(oci)).toEqual({

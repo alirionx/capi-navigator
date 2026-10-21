@@ -23,6 +23,8 @@ export class FetchError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /** What the user can do about it, shown with the error. */
+    readonly hint?: string,
   ) {
     super(message);
   }
