@@ -148,6 +148,8 @@ export interface BootstrapFlavorPlugin {
    */
   controlPlaneUpdates?: {
     versionInPlace: boolean;
+    /** Shown in the preview when the control plane shrinks (FP26-F-03). */
+    scaleDownWarning?: string;
     replacementBlocked?: string;
     replacementFixedIn?: {
       provider: string;
