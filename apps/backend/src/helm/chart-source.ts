@@ -272,8 +272,18 @@ export class ChartSource {
   }
 }
 
+/**
+ * Docker Hub's registry API is registry-1.docker.io; docker.io redirects to the website. Helm and
+ * Docker map the host the same way, so oci://docker.io/... works for them (seen with envoy-gateway).
+ */
+const REGISTRY_HOSTS: Record<string, string> = {
+  'docker.io': 'registry-1.docker.io',
+  'index.docker.io': 'registry-1.docker.io',
+};
+
 function httpsBase(repo: RepoAccess): string {
-  return `https://${repo.url.replace(/^oci:\/\//, '').split('/')[0]}`;
+  const host = repo.url.replace(/^oci:\/\//, '').split('/')[0]!;
+  return `https://${REGISTRY_HOSTS[host] ?? host}`;
 }
 
 /**
