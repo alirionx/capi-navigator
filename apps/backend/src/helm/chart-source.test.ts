@@ -239,6 +239,29 @@ describe('chart source: OCI registries (FP8-F-03, FP8-F-04)', () => {
     });
   });
 
+  it('reads Docker Hub charts from registry-1.docker.io, as Helm does', async () => {
+    // docker.io answers /v2/ with a redirect to www.docker.com (seen with envoy-gateway).
+    const hub = { ...oci, url: 'oci://docker.io/envoyproxy' };
+    routes({
+      'https://registry-1.docker.io/v2/envoyproxy/gateway-helm/tags/list?n=1000': (h) =>
+        h.authorization === 'Bearer hub'
+          ? { body: JSON.stringify({ tags: ['v1.9.2', '1.9.2'] }) }
+          : {
+              status: 401,
+              headers: {
+                'www-authenticate':
+                  'Bearer realm="https://auth.docker.io/token",service="registry.docker.io"',
+              },
+            },
+      'https://auth.docker.io/token': { body: JSON.stringify({ token: 'hub' }) },
+    });
+    const versions = await new ChartSource().versions(hub, 'gateway-helm');
+    expect(versions.map((v) => v.version)).toContain('1.9.2');
+    expect(getMock.mock.calls.every(([url]) => !String(url).startsWith('https://docker.io'))).toBe(
+      true,
+    );
+  });
+
   it('tests anonymous access to a registry', async () => {
     routes({ [`${R}/v2/`]: challenge });
     expect(await new ChartSource().test(oci)).toEqual({
