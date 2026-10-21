@@ -891,7 +891,7 @@ Order of work: credentials first (so real credentials can be stored early), then
 - [x] The wizard offers regions, zones, machine types and images from the project.
 - [x] The frontend has no provider-specific checks (checked by a test); the existing OpenStack and AWS tests pass unchanged.
 - [x] A cluster with RKE2, one with k0s and one with kubeadm come up on Google Cloud with CCM and CSI: a LoadBalancer service gets an address and a PVC is bound.
-- [ ] Upgrade, rebuild of a worker pool and deletion work; deletion leaves no resources in the project.
+- [x] Upgrade, rebuild of a worker pool and deletion work; deletion leaves no resources in the project.
 - [x] Snapshot tests cover all three distributions on GCP.
 
 ### FP-26: All-in-one clusters with three or five nodes (optional)
