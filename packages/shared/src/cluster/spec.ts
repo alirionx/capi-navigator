@@ -333,9 +333,8 @@ export const ClusterSpecSchema = z
     }
 
     const { mode, controlPlane, workerPools } = spec.topology;
+    // FP26-F-01: all-in-one with 1, 3 or 5 nodes (the replicas schema allows only these).
     if (mode === 'all-in-one') {
-      if (controlPlane.replicas !== 1)
-        issue(['topology', 'controlPlane', 'replicas'], 'All-in-one uses exactly one node');
       if (workerPools.length > 0)
         issue(['topology', 'workerPools'], 'All-in-one has no worker pools');
     } else if (workerPools.length === 0) {

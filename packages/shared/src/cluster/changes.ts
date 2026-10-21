@@ -264,9 +264,7 @@ export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date
     case 'bastion':
       return setBastion(spec, change.bastion);
     case 'scaleControlPlane':
-      if (spec.topology.mode === 'all-in-one' && change.replicas !== 1) {
-        throw new SpecChangeError('An all-in-one cluster has exactly one control plane node');
-      }
+      // FP26-F-02: all-in-one clusters scale like standard ones.
       next = updateGroup(spec, CONTROL_PLANE_GROUP, (g) => ({ ...g, replicas: change.replicas }));
       break;
     case 'addPool':

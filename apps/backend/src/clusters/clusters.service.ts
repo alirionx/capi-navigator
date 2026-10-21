@@ -969,6 +969,12 @@ export class ClustersService {
       }
     }
 
+    // FP26-F-04: every node of a multi-node all-in-one cluster carries workloads and etcd.
+    if (spec.topology.mode === 'all-in-one' && spec.topology.controlPlane.replicas > 1) {
+      warnings.push(
+        `All ${spec.topology.controlPlane.replicas} nodes run the control plane, etcd and the workloads: choose machines with room for both, and SSD disks for etcd.`,
+      );
+    }
     if (spec.infrastructure.provider === 'aws') {
       warnings.push(
         'AWS: node user data is not stored in Secrets Manager (stock images, ADR-0003); IMDSv2 with hop limit 2 lets pods read the user data (join token) and instance profile credentials.',

@@ -253,12 +253,6 @@ watch(
     void loadLists();
   },
 );
-watch(
-  () => draft.mode,
-  (m) => {
-    if (m === 'all-in-one') draft.cp.replicas = 1;
-  },
-);
 
 const sizes = computed(() => lists[form.value.machine.sizeLookup] ?? []);
 const images = computed(() => lists.images ?? []);
@@ -606,7 +600,6 @@ const canPreview = computed(() => issues.value.length === 0);
               mandatory
               density="compact"
               variant="outlined"
-              :disabled="draft.mode === 'all-in-one'"
               :aria-label="t('wizard.cpNodes')"
             >
               <v-btn :value="1">1</v-btn>

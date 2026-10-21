@@ -195,7 +195,7 @@ CAPI Navigator keeps no database. All of its own state lives in the home cluster
 ### Operations
 
 - **MUST** ship as a single container image (the backend serves the built frontend statically).
-- **SHOULD** publish each release from a version tag: the image `ghcr.io/<owner>/capi-navigator:<version>` and the packaged Helm chart as a GitHub release asset, with chart version and app version equal to the tag.
+- **SHOULD** publish each release from a version tag: the image `ghcr.io/<owner>/capi-navigator:<version>`, the Helm chart as OCI artifact `oci://ghcr.io/<owner>/charts/capi-navigator` and the packaged chart as a GitHub release asset, with chart version and app version equal to the tag.
 - **MUST** run locally with `pnpm dev` and a kind cluster as home and management cluster; the backend uses `KUBECONFIG` for the home cluster.
 - **MUST** be installable into a Kubernetes cluster via Helm chart, including CRDs, RBAC and the in-cluster service account as home cluster access.
 - **MUST** let the Helm chart expose the app through a Service of type `ClusterIP`, `NodePort` or `LoadBalancer` (with annotations and load balancer settings), an optional Ingress and an optional Gateway API `HTTPRoute`, alone or combined. When an Ingress or HTTPRoute is enabled, the app trusts `X-Forwarded-For` from private proxy addresses by default; the Secure cookie flag can be disabled only explicitly for plain-HTTP test setups.
@@ -354,6 +354,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-20 | Version maintenance: versions.yaml and update report (optional) | FP-10 |
 | FP-22 | API tokens for technical users (optional) | FP-19, FP-23 |
 | FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
+| FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
 
 ### FP-0: Project scaffold
 
@@ -485,7 +486,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 **Wizard (Vuetify stepper)**
 
 1. **Basics:** name, namespace, labels, Kubernetes distribution (RKE2; k0s from FP-9; kubeadm, experimental, from FP-10) and version.
-2. **Topology:** standard (control plane with 1, 3 or 5 nodes + one or more worker pools) or all-in-one (1 node); per group: replicas, machine size, optional image override.
+2. **Topology:** standard (control plane with 1, 3 or 5 nodes + one or more worker pools) or all-in-one (1, 3 or 5 nodes since FP-26); per group: replicas, machine size, optional image override.
 3. **Infrastructure:** provider (OpenStack or AWS) and credentials; OpenStack: image, external network, node CIDR, DNS servers, API load balancer yes/no, availability zone, SSH key; AWS: region, availability zones, VPC CIDR, AMI (default: Ubuntu 24.04), API load balancer yes/no, key pair.
 4. **Add-ons:** cloud controller manager and CSI driver of the selected provider (OpenStack CCM and Cinder CSI, or AWS cloud controller manager and EBS CSI driver), both preselected and individually deselectable; shows chart version and lets the user override values.
 5. **Node customization (collapsed):** per control plane and per worker pool, extra files and commands before or after the Kubernetes installation.
@@ -892,6 +893,21 @@ Order of work: credentials first (so real credentials can be stored early), then
 - [x] A cluster with RKE2, one with k0s and one with kubeadm come up on Google Cloud with CCM and CSI: a LoadBalancer service gets an address and a PVC is bound.
 - [ ] Upgrade, rebuild of a worker pool and deletion work; deletion leaves no resources in the project.
 - [x] Snapshot tests cover all three distributions on GCP.
+
+### FP-26: All-in-one clusters with three or five nodes (optional)
+
+**Goal:** small highly available clusters without separate workers: the control plane nodes run the workloads too, with 1, 3 or 5 nodes for the etcd quorum.
+
+- **FP26-F-01** MUST offer 1, 3 or 5 nodes for the all-in-one topology in the wizard; all nodes are control plane nodes without the control plane taint.
+- **FP26-F-02** MUST allow scaling the control plane of an all-in-one cluster between 1, 3 and 5 nodes as a day-2 change with preview, as for standard clusters (FP-7).
+- **FP26-F-03** MUST keep the rules of the providers and distributions: several nodes need the API load balancer (OpenStack); changes that k0smotron cannot apply safely to several control plane nodes stay blocked with their reason (ADR-0013), and scaling down is refused where it would remove etcd members faster than the distribution keeps quorum.
+- **FP26-F-04** SHOULD point out in the preview that all nodes carry workloads and etcd, so larger machines and SSD disks are advisable.
+
+**Acceptance criteria**
+
+- [ ] The wizard creates an all-in-one cluster with three nodes; workloads are scheduled on all three.
+- [ ] An all-in-one cluster is scaled from one to three nodes and back in the app, with preview.
+- [ ] Snapshot tests cover all-in-one with three nodes for RKE2, k0s and kubeadm.
 
 ## 7. Non-functional requirements
 
