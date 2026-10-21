@@ -33,6 +33,7 @@ import {
 } from '@capi-navigator/shared';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { isNotFound } from '../kube/errors.js';
+import { StartupError } from '../startup-error.js';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { FIELD_MANAGER } from './custom-resource.client.js';
 import { CustomResourceClient } from './custom-resource.client.js';
@@ -163,6 +164,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   }
 
   async onModuleInit(): Promise<void> {
+    await this.checkNamespace();
     try {
       await Promise.all([
         this.userCache.start(),
@@ -179,6 +181,22 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
         `Cannot read the app's resources in namespace ${this.namespace}. Are the CRDs installed (pnpm crds:install) and does the namespace exist? ${err instanceof Error ? err.message : ''}`,
       );
       throw err;
+    }
+  }
+
+  /**
+   * The namespace must exist before the app starts: informers of a missing namespace just stay
+   * empty, and the first Secret write would fail with a raw API error. Without permission to read
+   * namespaces (the Helm chart grants none, and creates the namespace) the check is skipped.
+   */
+  private async checkNamespace(): Promise<void> {
+    try {
+      await this.core.readNamespace({ name: this.namespace });
+    } catch (err) {
+      if (!isNotFound(err)) return;
+      throw new StartupError(
+        `Namespace ${this.namespace} does not exist. Create it with "kubectl create namespace ${this.namespace}", or set NAVIGATOR_NAMESPACE to an existing one; the Helm chart uses its release namespace.`,
+      );
     }
   }
 
