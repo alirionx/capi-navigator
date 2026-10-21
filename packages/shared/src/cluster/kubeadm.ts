@@ -113,7 +113,16 @@ function bootstrapFields(
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,
     ],
-    postKubeadmCommands: c.postCommands,
+    postKubeadmCommands: [
+      // All-in-one: kubeadm marks control plane nodes as excluded from external load balancers,
+      // so a LoadBalancer Service found no backends (seen on OpenStack). The workloads run here.
+      ...(spec.topology.mode === 'all-in-one'
+        ? [
+            `kubectl --kubeconfig /etc/kubernetes/admin.conf label node "${infra.nodeIdentity(spec.infrastructure).nodeName}" node.kubernetes.io/exclude-from-external-load-balancers- || true`,
+          ]
+        : []),
+      ...c.postCommands,
+    ],
   });
 }
 

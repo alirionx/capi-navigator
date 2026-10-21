@@ -525,6 +525,8 @@ spec:
     preKubeadmCommands:
       - hostnamectl set-hostname "$(hostname -s)"
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
+    postKubeadmCommands:
+      - kubectl --kubeconfig /etc/kubernetes/admin.conf label node "{{ v1.local_hostname }}" node.kubernetes.io/exclude-from-external-load-balancers- || true
     initConfiguration:
       nodeRegistration:
         name: "{{ v1.local_hostname }}"

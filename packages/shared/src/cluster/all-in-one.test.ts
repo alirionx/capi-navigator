@@ -47,6 +47,23 @@ describe('all-in-one with three or five nodes (FP-26)', () => {
     expect(kcp.kubeadmConfigSpec.joinConfiguration.nodeRegistration.taints).toEqual([]);
   });
 
+  it('lets LoadBalancer Services use kubeadm all-in-one nodes', () => {
+    // kubeadm excludes control plane nodes from external load balancers (seen on OpenStack).
+    const label = 'node.kubernetes.io/exclude-from-external-load-balancers-';
+    const post = find(aio('kubeadm'), 'KubeadmControlPlane').spec.kubeadmConfigSpec
+      .postKubeadmCommands as string[];
+    expect(post.some((c) => c.includes(label))).toBe(true);
+    const standard = {
+      ...aio('kubeadm'),
+      topology: {
+        mode: 'standard' as const,
+        controlPlane: { replicas: 3 as const, machineSize: 'a4' },
+        workerPools: [{ name: 'w', replicas: 1, machineSize: 'a4' }],
+      },
+    };
+    expect(JSON.stringify(find(standard, 'KubeadmControlPlane'))).not.toContain(label);
+  });
+
   it('scales an all-in-one control plane as a day-2 change (FP26-F-02)', () => {
     const one = ClusterSpecSchema.parse(aio('rke2', 1));
     const three = applySpecChange(one, { type: 'scaleControlPlane', replicas: 3 }, new Date());
