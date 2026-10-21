@@ -607,6 +607,21 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     ]);
   });
 
+  it('points out that all nodes of a multi-node all-in-one cluster carry workloads (FP26-F-04)', async () => {
+    const res = await preview({
+      ...OS_SPEC,
+      topology: {
+        mode: 'all-in-one',
+        controlPlane: { replicas: 3, machineSize: 'a4-ram8-disk50-perf1' },
+        workerPools: [],
+      },
+    }).expect(200);
+    expect(res.body.blockers).toEqual([]);
+    expect(res.body.warnings.join('\n')).toMatch(
+      /All 3 nodes run the control plane, etcd and the workloads/,
+    );
+  });
+
   it('offers to allow the namespace for the credential and does it on create', async () => {
     k8s.namespaces = new Set();
     const spec = { ...OS_SPEC, namespace: 'new-ns' };

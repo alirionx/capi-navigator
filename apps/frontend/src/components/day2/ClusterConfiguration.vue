@@ -502,7 +502,7 @@ const provider = computed(() => spec.value?.infrastructure.provider);
               </v-alert>
               <div class="d-flex flex-wrap ga-2">
                 <v-btn
-                  v-if="!g.pool && spec.topology.mode === 'standard'"
+                  v-if="!g.pool"
                   size="small"
                   variant="tonal"
                   prepend-icon="mdi-arrow-expand-vertical"

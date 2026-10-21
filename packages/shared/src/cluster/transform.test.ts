@@ -277,9 +277,12 @@ describe('spec validation (acceptance FP-5)', () => {
     const noPools = openstack();
     noPools.topology.workerPools = [];
     expect(issues(noPools).join()).toMatch(/at least one worker pool/);
+    // FP26-F-01: all-in-one with three nodes, but not without the API load balancer.
     const aio = allInOne(openstack());
     aio.topology.controlPlane.replicas = 3;
-    expect(issues(aio).join()).toMatch(/exactly one node/);
+    expect(issues(aio)).toEqual([]);
+    (aio.infrastructure as { apiServerLoadBalancer?: boolean }).apiServerLoadBalancer = false;
+    expect(issues(aio).join()).toMatch(/load balancer/);
     const dup = openstack();
     dup.topology.workerPools![1]!.name = 'default';
     expect(issues(dup).join()).toMatch(/used twice/);

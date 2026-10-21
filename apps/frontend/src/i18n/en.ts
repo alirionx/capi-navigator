@@ -616,9 +616,9 @@ export const en = {
     labels: 'Cluster labels',
     labelsHint: 'key=value, e.g. env=prod. Used to assign Helm add-ons later. Default: none.',
     modeHint:
-      'Standard: control plane plus worker pools. All-in-one: a single node that runs everything.',
+      'Standard: control plane plus worker pools. All-in-one: 1, 3 or 5 control plane nodes that also run the workloads.',
     modeStandard: 'Standard',
-    modeAio: 'All-in-one (1 node)',
+    modeAio: 'All-in-one',
     controlPlane: 'Control plane',
     cpNodes: 'Control plane nodes',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',
