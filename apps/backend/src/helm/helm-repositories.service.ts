@@ -249,7 +249,9 @@ export class HelmRepositoriesService {
         if (err.status === 404) throw new NotFoundException(err.message);
         throw new BadGatewayException({
           message: err.message,
-          hint: 'The repository could not be read from the backend. Test it on the repositories page.',
+          hint:
+            err.hint ??
+            'The repository could not be read from the backend. Test it on the repositories page.',
         });
       }
       throw err;

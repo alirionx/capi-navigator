@@ -92,7 +92,7 @@ export class ChartSource {
       const tags: string[] = [];
       let path: string | undefined = `/v2/${ociRepository(repo, chart)}/tags/list?n=1000`;
       for (let page = 0; path && page < 20; page++) {
-        const res = await this.oci(repo, path, 'application/json');
+        const res = await this.oci(repo, path, 'application/json', chart);
         tags.push(...((JSON.parse(res.body.toString('utf8')) as { tags?: string[] }).tags ?? []));
         const next = /<([^>]+)>;\s*rel="?next"?/.exec(String(res.headers.link ?? ''))?.[1];
         path = next
@@ -194,16 +194,32 @@ export class ChartSource {
     const tag = version.replace(/\+/g, '_');
     const manifest = JSON.parse(
       (
-        await this.oci(repo, `/v2/${name}/manifests/${encodeURIComponent(tag)}`, OCI_MANIFEST)
+        await this.oci(
+          repo,
+          `/v2/${name}/manifests/${encodeURIComponent(tag)}`,
+          OCI_MANIFEST,
+          chart,
+        )
       ).body.toString('utf8'),
     ) as { layers?: { mediaType: string; digest: string }[] };
     const layer = manifest.layers?.find((l) => l.mediaType === HELM_CHART_LAYER);
     if (!layer) throw new FetchError(`${chart}:${version} is not a Helm chart`);
-    return (await this.oci(repo, `/v2/${name}/blobs/${layer.digest}`, '*/*')).body;
+    return (await this.oci(repo, `/v2/${name}/blobs/${layer.digest}`, '*/*', chart)).body;
   }
 
-  /** GET against the registry with the token or basic auth flow of the distribution spec. */
-  private async oci(repo: RepoAccess, path: string, accept: string): Promise<FetchResult> {
+  /**
+   * GET against the registry with the token or basic auth flow of the distribution spec. With a
+   * chart, refused access is explained for it: registries such as ghcr.io answer 403 instead of
+   * 404 for a package that does not exist.
+   */
+  private async oci(
+    repo: RepoAccess,
+    path: string,
+    accept: string,
+    chart?: string,
+  ): Promise<FetchResult> {
+    const refused = (status: number, fallback: string) =>
+      chart ? accessRefused(repo, chart, status) : new FetchError(fallback, status);
     const base = httpsBase(repo);
     const tls: FetchOptions = {
       ...(repo.ca ? { ca: repo.ca } : {}),
@@ -230,12 +246,9 @@ export class ChartSource {
           headers: basic ? { authorization: basic } : {},
         });
         if (tokenRes.status !== 200) {
-          throw new FetchError(
-            tokenRes.status === 401 || tokenRes.status === 403
-              ? 'The registry refused the credentials'
-              : `Token request: HTTP ${tokenRes.status}`,
-            tokenRes.status,
-          );
+          throw tokenRes.status === 401 || tokenRes.status === 403
+            ? refused(tokenRes.status, 'The registry refused the credentials')
+            : new FetchError(`Token request: HTTP ${tokenRes.status}`, tokenRes.status);
         }
         const body = JSON.parse(tokenRes.body.toString('utf8')) as {
           token?: string;
@@ -250,7 +263,7 @@ export class ChartSource {
       res = await get(`${base}${path}`, { ...tls, headers: { accept, authorization } });
     }
     if (res.status === 401 || res.status === 403) {
-      throw new FetchError('The registry refused access; check the credentials', res.status);
+      throw refused(res.status, 'The registry refused access; check the credentials');
     }
     if (res.status === 404) throw new FetchError(`Not found in the registry: ${path}`, 404);
     if (res.status !== 200)
@@ -261,6 +274,26 @@ export class ChartSource {
 
 function httpsBase(repo: RepoAccess): string {
   return `https://${repo.url.replace(/^oci:\/\//, '').split('/')[0]}`;
+}
+
+/**
+ * Refused access to a chart: without credentials the chart may not exist or be private, with them
+ * the credentials may lack access. A repository URL ending in the chart name is the common slip
+ * (helm takes oci://host/path/chart, the repository only oci://host/path).
+ */
+function accessRefused(repo: RepoAccess, chart: string, status: number): FetchError {
+  const where = `${repo.url.replace(/^oci:\/\//, '').replace(/\/$/, '')}/${chart}`;
+  const doubled = repo.url.replace(/\/$/, '').endsWith(`/${chart}`);
+  const message =
+    repo.username === undefined
+      ? `${where} cannot be read anonymously: the chart does not exist there, or it is private`
+      : `The registry refused access to ${where}: the credentials lack access, or the chart does not exist there`;
+  const hint = doubled
+    ? `The repository URL already ends with the chart name "${chart}"; use ${repo.url.replace(/\/$/, '').slice(0, -chart.length - 1)} as repository URL.`
+    : repo.username === undefined
+      ? 'Check the repository URL (oci://host/path, without the chart name) and the chart name; for a private chart, add the registry login to the repository.'
+      : 'Check the repository URL (oci://host/path, without the chart name), the chart name and the credentials.';
+  return new FetchError(message, status, hint);
 }
 
 /** Repository name in the registry: URL path plus chart name. */
