@@ -109,6 +109,39 @@ resources the app writes, which controllers act on them, and the main flows step
 
 ## Quick start
 
+### Try the image with Docker
+
+The app needs only a Kubernetes cluster for its own state (its CRDs, Secrets and ConfigMaps); no
+database or volume. Prerequisites: Docker, kubectl, Helm and a kubeconfig for that cluster.
+
+```sh
+VERSION=0.8.0
+# 1. The app's CRDs and namespace in the cluster
+helm show crds oci://ghcr.io/alirionx/charts/capi-navigator --version ${VERSION} \
+  | kubectl apply --server-side -f -
+kubectl create namespace capi-navigator-system
+
+# 2. The app with your kubeconfig, on http://localhost:3000
+docker run --rm -p 3000:3000 \
+  -e KUBECONFIG=/kube/config -v ~/.kube/config:/kube/config:ro \
+  ghcr.io/alirionx/capi-navigator:${VERSION}
+
+# 3. Sign in as "admin" with the generated password (to be changed at first sign-in)
+kubectl -n capi-navigator-system get secret capi-navigator-initial-admin \
+  -o jsonpath='{.data.password}' | base64 -d
+```
+
+- The container reaches the API server at the address in the kubeconfig, so `127.0.0.1` (kind,
+  k3d, Docker Desktop) points to the container itself. For kind, use the internal kubeconfig and
+  the kind network: `kind get kubeconfig --name <cluster> --internal > kind.yaml`, then mount
+  `kind.yaml` and add `--network kind`.
+- The kubeconfig must be readable for the container user (UID 1000) and must not need an exec
+  plugin (`aws`, `gcloud`, `kubelogin`): the image has none. The app acts with its permissions.
+- Over plain HTTP on another host than `localhost`, add `-e COOKIE_SECURE=false`; otherwise the
+  browser drops the session cookie.
+- For anything beyond a trial, install the Helm chart (below): it adds RBAC, a service account
+  and the in-cluster home cluster access.
+
 ### Local development with kind
 
 Prerequisites: Node.js 24 (`.nvmrc`), pnpm via corepack (`corepack enable`), Docker, kind,
