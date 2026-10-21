@@ -651,6 +651,10 @@ export class ClustersService {
     // FP7-F-09: pre-checks before an upgrade.
     if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];
+    const scaleDown = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates?.scaleDownWarning;
+    if (scaleDown && next.topology.controlPlane.replicas < current.topology.controlPlane.replicas) {
+      warnings.push(scaleDown);
+    }
     for (const d of drift.filter((x) => !x.blocking)) {
       warnings.push(
         `${d.kind} ${d.name} was changed outside the app (${d.fields.join(', ') || 'fields'} by ${d.managers.join(', ')}); this change does not touch it.`,

@@ -824,6 +824,46 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.existingCluster = false;
   });
 
+  it('k0s: scaling an all-in-one control plane down warns about short API outages (FP26-F-03)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+      addons: { cloudControllerManager: false, csiDriver: false },
+      topology: {
+        mode: 'all-in-one',
+        controlPlane: { replicas: 3, machineSize: 'a4-ram8-disk50-perf1' },
+        workerPools: [],
+      },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      const replicas = (o.spec as { replicas?: number }).replicas;
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, {
+        ...o,
+        status: { replicas, readyReplicas: replicas, upToDateReplicas: replicas },
+      });
+    }
+    k8s.machines = [];
+    for (const id of ['k0smotron-bootstrap', 'k0smotron-control-plane']) {
+      state.providers.push(ready(id) as OperatorState['providers'][number]);
+    }
+    const post = (replicas: number) =>
+      http()
+        .post('/api/connections/home/clusters/team-a/demo/changes/preview')
+        .set(CSRF)
+        .set('Cookie', operatorCookie)
+        .send({ change: { type: 'scaleControlPlane', replicas } });
+    const down = await post(1).expect(200);
+    expect(down.body.blockers).toEqual([]);
+    expect(down.body.warnings.join()).toMatch(/k0smotron removes the control plane nodes/);
+    const up = await post(5).expect(200);
+    expect(up.body.warnings.join()).not.toMatch(/k0smotron removes/);
+    k8s.live.clear();
+    k8s.existingCluster = false;
+    k8s.storedSpec = undefined;
+  });
+
   it('k0s: control plane upgrades run in place, replacements are blocked (ADR-0013)', async () => {
     const spec = ClusterSpecSchema.parse({
       ...OS_SPEC,

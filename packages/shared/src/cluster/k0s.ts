@@ -99,6 +99,11 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   // within a minute, leaving etcd on one member for two minutes (measured live, ADR-0013).
   controlPlaneUpdates: {
     versionInPlace: true,
+    // FP26-F-03, measured live (3 → 1 on Google Cloud): k0smotron removes the etcd members one
+    // after another, so quorum holds, but starts deleting the next node before the previous one is
+    // gone; the API was unreachable through the load balancer several times for 5 to 25 seconds.
+    scaleDownWarning:
+      'k0smotron removes the control plane nodes in quick succession: etcd keeps its quorum, but the API can be unreachable for up to half a minute at a time while the nodes leave.',
     replacementBlocked:
       'k0smotron before v2.3.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Upgrade the k0smotron providers to v2.3.0 or later on the Providers page; version upgrades run in place meanwhile.',
     replacementFixedIn: {
