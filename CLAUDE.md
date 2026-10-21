@@ -45,7 +45,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-23 | OpenAPI description and Swagger UI (optional) | done |
 | FP-14 | Sign-in with an OpenID Connect provider (optional) | done |
 | FP-25 | Google Cloud as third infrastructure provider (optional) | done |
-| FP-26 | All-in-one clusters with three or five nodes (optional) | in progress |
+| FP-26 | All-in-one clusters with three or five nodes (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 
