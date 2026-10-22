@@ -215,7 +215,7 @@ export class ClustersController {
       namespace,
       name,
       (s) => applySpecChange(s, body.change, now),
-      { upgrade: body.change.type === 'upgrade' },
+      { upgrade: body.change.type === 'upgrade', all: body.change.type === 'reapply' },
     );
   }
 
@@ -247,7 +247,7 @@ export class ClustersController {
       name,
       (s) => applySpecChange(s, body.change, now),
       body.takeOver,
-      { upgrade: body.change.type === 'upgrade' },
+      { upgrade: body.change.type === 'upgrade', all: body.change.type === 'reapply' },
     );
   }
 

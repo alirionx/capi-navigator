@@ -870,6 +870,17 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.applied = [];
     await http().post(url).set(CSRF).set('Cookie', operatorCookie).send(body).expect(200);
     expect(k8s.applied.filter((a) => !a.dryRun)).toEqual([{ kinds: ['Cluster'], dryRun: false }]);
+    // FP7-F-19: reapply is the explicit way to take the newer objects over.
+    const reapply = await http()
+      .post('/api/connections/home/clusters/team-a/demo/changes/preview')
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send({ change: { type: 'reapply' } })
+      .expect(200);
+    expect(reapply.body.diffs.map((d: { kind: string }) => d.kind)).toContain(
+      'KubeadmControlPlane',
+    );
+    expect(reapply.body.warnings.join(' ')).not.toMatch(/Not part of this change/);
     state.providers.splice(-kubeadm.length);
     k8s.live.clear();
     k8s.storedSpec = undefined;

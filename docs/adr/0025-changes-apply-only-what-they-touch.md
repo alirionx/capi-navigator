@@ -36,7 +36,8 @@ from the app version and not from the label change.
 - A label, scaling or bastion change never rolls machines because of an app update. A change that
   does touch an object (e.g. an upgrade touching the control plane) applies the whole object as the
   current code generates it, including the newer parts; the rollout happens anyway.
-- Clusters can stay on objects of an older app version indefinitely. Bringing them up to date is a
-  separate, explicit action ("apply app version update", with its own preview and rollout warning),
-  planned as a follow-up; until then the preview lists the outdated objects.
+- Clusters can stay on objects of an older app version. Bringing them up to date is the explicit
+  **reapply** change (FP7-F-19), which applies every generated object that differs from the live
+  one, with its own preview, rollout plan and warnings; the preview of other changes points out the
+  outdated objects.
 - The comparison doubles the transformation per preview; it is pure and fast.

@@ -71,6 +71,11 @@ export interface ChangeOptions {
   upgrade?: boolean;
   /** The rollout controller lets the workers follow an upgrade (FP7-F-08). */
   finishUpgrade?: boolean;
+  /**
+   * FP7-F-19: apply every generated object that differs from the live one, including differences
+   * from a newer app version (the explicit update action of ADR-0025).
+   */
+  all?: boolean;
 }
 import {
   CLUSTER_NAME_LABEL,
@@ -525,7 +530,7 @@ export class ClustersService {
       throw err;
     }
     // ADR-0025: only what the change itself touches; older generated objects stay as they are.
-    const plan = await this.plan(connection, next, false, current);
+    const plan = await this.plan(connection, next, false, opts.all ? undefined : current);
     const outdated: string[] = [];
     const diffs: ObjectDiff[] = [];
     const drift: Drift[] = [];
