@@ -226,6 +226,54 @@ describe('Helm repositories API (FP8-F-02 to F-04)', () => {
       .expect(400);
   });
 
+  it('lets only operators change manifest add-ons and refuses Secrets (FP30-F-06)', async () => {
+    const base = '/api/connections/home/addons/manifests';
+    const spec = {
+      name: 'issuer',
+      namespace: 'team-a',
+      manifests: 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\n',
+      clusterSelector: { 'addon/issuer': 'true' },
+    };
+    await http().post(`${base}/preview`).set(CSRF).set('Cookie', viewer).send({ spec }).expect(403);
+    await http()
+      .put(`${base}/team-a/issuer`)
+      .set(CSRF)
+      .set('Cookie', viewer)
+      .send({ spec })
+      .expect(403);
+    await http()
+      .put(`${base}/team-a/other`)
+      .set(CSRF)
+      .set('Cookie', operator)
+      .send({ spec })
+      .expect(400);
+    const secret = await http()
+      .post(`${base}/preview`)
+      .set(CSRF)
+      .set('Cookie', operator)
+      .send({
+        spec: { ...spec, manifests: 'apiVersion: v1\nkind: Secret\nmetadata:\n  name: s\n' },
+      })
+      .expect(400);
+    expect(JSON.stringify(secret.body)).toContain('Secret s is not allowed');
+  });
+
+  it('keeps a repository that is the manifest chart source of a connection (FP30-F-02)', async () => {
+    fake.connections.set('edge', {
+      apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+      kind: 'ManagementCluster',
+      metadata: { name: 'edge' },
+      spec: { authType: 'token', credentialsRevision: 0, manifestChartRepository: 'private' },
+    });
+    const res = await http()
+      .delete('/api/helm-repositories/private')
+      .set(CSRF)
+      .set('Cookie', admin)
+      .expect(409);
+    expect(res.body.hint).toBe('Reset the chart source of these connections first: edge');
+    fake.connections.delete('edge');
+  });
+
   it('stores preset overrides for admins only (FP8-F-14)', async () => {
     await http()
       .put('/api/addon-presets/openstack-csi')

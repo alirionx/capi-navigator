@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { ConditionSchema } from '../cluster/api.js';
 import { DriftSchema, ObjectDiffSchema } from '../cluster/changes.js';
 import { LabelsSchema } from '../cluster/spec.js';
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
@@ -201,62 +200,6 @@ export function addonSpecFromHelmChartProxy(hcp: HcpLike): AddonSpec | undefined
   });
   return parsed.success ? parsed.data : undefined;
 }
-
-/** Release of an add-on on one cluster (HelmReleaseProxy, FP8-F-11). */
-export const HelmReleaseStatusSchema = z.object({
-  name: z.string(),
-  cluster: z.string(),
-  releaseName: z.string().optional(),
-  releaseNamespace: z.string().optional(),
-  chartVersion: z.string().optional(),
-  revision: z.number().optional(),
-  status: z.string().optional(),
-  ready: z.boolean(),
-  conditions: z.array(ConditionSchema),
-});
-export type HelmReleaseStatus = z.infer<typeof HelmReleaseStatusSchema>;
-
-export const AddonStatusSchema = z.object({
-  name: z.string(),
-  namespace: z.string(),
-  /** Created by the app; others are read-only in the UI. */
-  managed: z.boolean(),
-  presetId: z.string().optional(),
-  repository: z.string().optional(),
-  /** Form model, when the HelmChartProxy fits the form. */
-  spec: AddonSpecSchema.optional(),
-  chartName: z.string(),
-  repoURL: z.string(),
-  version: z.string().optional(),
-  releaseName: z.string().optional(),
-  releaseNamespace: z.string().optional(),
-  reconcileStrategy: z.string().optional(),
-  clusterSelector: z.object({
-    matchLabels: z.record(z.string(), z.string()).optional(),
-    matchExpressions: z.array(z.unknown()).optional(),
-  }),
-  matchingClusters: z.array(z.string()),
-  ready: z.boolean(),
-  conditions: z.array(ConditionSchema),
-  releases: z.array(HelmReleaseStatusSchema),
-  createdAt: z.string().optional(),
-});
-export type AddonStatus = z.infer<typeof AddonStatusSchema>;
-
-/** CAAPH availability (FP8-F-01). */
-export const CaaphStatusSchema = z.object({
-  installed: z.boolean(),
-  ready: z.boolean(),
-  version: z.string().optional(),
-  message: z.string().optional(),
-});
-export type CaaphStatus = z.infer<typeof CaaphStatusSchema>;
-
-export const AddonOverviewSchema = z.object({
-  caaph: CaaphStatusSchema,
-  addons: z.array(AddonStatusSchema),
-});
-export type AddonOverview = z.infer<typeof AddonOverviewSchema>;
 
 export const AddonApplyRequestSchema = z.object({
   spec: AddonSpecSchema,

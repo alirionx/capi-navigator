@@ -70,6 +70,8 @@ spec:
                   default: 0
                   type: integer
                   minimum: 0
+                manifestChartRepository:
+                  type: string
               required:
                 - authType
             status:

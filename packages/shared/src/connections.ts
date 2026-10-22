@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HelmRepositoryNameSchema } from './helm/repository.js';
 
 /** DNS label, so the name can be used in Kubernetes object names. */
 export const ConnectionNameSchema = z
@@ -65,10 +66,16 @@ export const UpdateConnectionRequestSchema = z
     displayName: DisplayNameSchema.optional(),
     /** New credentials; omit to keep the stored ones. */
     credentials: ConnectionCredentialsSchema.optional(),
+    /** Helm repository serving the manifest add-on chart (FP30-F-02); `null`: the default. */
+    manifestChartRepository: HelmRepositoryNameSchema.nullable().optional(),
   })
-  .refine((v) => v.displayName !== undefined || v.credentials !== undefined, {
-    message: 'Nothing to update',
-  });
+  .refine(
+    (v) =>
+      v.displayName !== undefined ||
+      v.credentials !== undefined ||
+      v.manifestChartRepository !== undefined,
+    { message: 'Nothing to update' },
+  );
 export type UpdateConnectionRequest = z.infer<typeof UpdateConnectionRequestSchema>;
 
 /** Request to list the contexts of a kubeconfig before saving it (no credentials returned). */
@@ -116,6 +123,8 @@ export const ConnectionSchema = z.object({
   authType: AuthTypeSchema,
   server: z.string().optional(),
   context: z.string().optional(),
+  /** FP30-F-02; unset: the chart on ghcr.io. */
+  manifestChartRepository: z.string().optional(),
   createdAt: z.string().optional(),
   status: ManagementClusterStatusSchema,
 });

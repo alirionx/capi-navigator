@@ -94,6 +94,17 @@ export class ConnectionsService {
     const conn = this.require(name);
     const patch: Record<string, unknown> = {};
     if (req.displayName !== undefined) patch.displayName = req.displayName || null;
+    if (req.manifestChartRepository !== undefined) {
+      const repo = req.manifestChartRepository;
+      if (repo && !this.store.helmRepositoryCache.get(repo)) {
+        throw new BadRequestException({
+          message: `Helm repository ${repo} not found`,
+          hint: 'Add the mirror on the Helm repositories page first.',
+          fieldErrors: { manifestChartRepository: [`Helm repository ${repo} not found`] },
+        });
+      }
+      patch.manifestChartRepository = repo || null;
+    }
     if (req.credentials) {
       const creds = this.resolve(name, req.credentials);
       await this.kube(`Store credentials of ${name}`, () => this.writeCredentials(name, creds));
@@ -223,6 +234,9 @@ function toConnection(c: ConnectionResource): Connection {
     ...(c.spec.displayName ? { displayName: c.spec.displayName } : {}),
     ...(c.spec.server ? { server: c.spec.server } : {}),
     ...(c.spec.context ? { context: c.spec.context } : {}),
+    ...(c.spec.manifestChartRepository
+      ? { manifestChartRepository: c.spec.manifestChartRepository }
+      : {}),
     ...(c.metadata.creationTimestamp ? { createdAt: String(c.metadata.creationTimestamp) } : {}),
     status: c.status ?? { phase: 'Unknown' },
   };

@@ -43,6 +43,10 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'GET /api/auth-settings': 'admin',
     'PUT /api/auth-settings/oidc': 'admin',
     'POST /api/auth-settings/oidc/test': 'admin',
+    // FP-30: manifest add-ons, with the access of the Helm add-ons.
+    'GET /api/connections/:connection/addons/manifest-chart': 'viewer',
+    'POST /api/connections/:connection/addons/manifests/preview': 'operator',
+    'PUT /api/connections/:connection/addons/manifests/:namespace/:name': 'operator',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

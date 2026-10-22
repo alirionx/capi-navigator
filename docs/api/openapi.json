@@ -1052,6 +1052,191 @@
         ]
       }
     },
+    "/api/connections/{connection}/addons/manifest-chart": {
+      "get": {
+        "operationId": "Addons_manifestChartStatus",
+        "tags": [
+          "Addons"
+        ],
+        "summary": "Chart source of the manifest add-ons and whether the needed version is there",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestChartStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
+    "/api/connections/{connection}/addons/manifests/{namespace}/{name}": {
+      "put": {
+        "operationId": "Addons_applyManifests",
+        "tags": [
+          "Addons"
+        ],
+        "summary": "Create or change a manifest add-on (HelmChartProxy)",
+        "description": "Drift must be taken over explicitly. Server-side apply with field manager capi-navigator; recorded as AuditEvent.\n\nRequires permission `addons.manage`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManifestAddonApplyRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddonPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "addons.manage"
+        ]
+      }
+    },
+    "/api/connections/{connection}/addons/manifests/preview": {
+      "post": {
+        "operationId": "Addons_previewManifests",
+        "tags": [
+          "Addons"
+        ],
+        "summary": "Preview creating or changing a manifest add-on",
+        "description": "Dry run on the management cluster; nothing is changed. Shows the generated HelmChartProxy or diff first (hard rule 6).\n\nRequires permission `addons.manage`. Checked in the connection of the route and the namespace in `spec.namespace`.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "spec": {
+                    "$ref": "#/components/schemas/ManifestAddonSpecInput"
+                  }
+                },
+                "required": [
+                  "spec"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddonPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "addons.manage"
+        ]
+      }
+    },
     "/api/connections/{connection}/addons/matching": {
       "post": {
         "operationId": "Addons_matching",
@@ -6491,8 +6676,18 @@
           "repository": {
             "type": "string"
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "helm",
+              "manifests"
+            ]
+          },
           "spec": {
             "$ref": "#/components/schemas/AddonSpec"
+          },
+          "manifestSpec": {
+            "$ref": "#/components/schemas/ManifestAddonSpec"
           },
           "chartName": {
             "type": "string"
@@ -6560,6 +6755,7 @@
           "name",
           "namespace",
           "managed",
+          "type",
           "chartName",
           "repoURL",
           "clusterSelector",
@@ -7650,6 +7846,9 @@
             "type": "string"
           },
           "context": {
+            "type": "string"
+          },
+          "manifestChartRepository": {
             "type": "string"
           },
           "createdAt": {
@@ -9201,6 +9400,114 @@
         },
         "required": [
           "phase"
+        ],
+        "additionalProperties": false
+      },
+      "ManifestAddonSpec": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 53,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "namespace": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "manifests": {},
+          "releaseNamespace": {
+            "default": "default",
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "clusterSelector": {
+            "$ref": "#/components/schemas/Labels"
+          },
+          "reconcileStrategy": {
+            "default": "Continuous",
+            "type": "string",
+            "enum": [
+              "Continuous",
+              "InstallOnce"
+            ]
+          },
+          "options": {
+            "default": {
+              "wait": true,
+              "timeout": "10m0s",
+              "createNamespace": true
+            },
+            "type": "object",
+            "properties": {
+              "wait": {
+                "default": true,
+                "type": "boolean"
+              },
+              "timeout": {
+                "default": "10m0s",
+                "type": "string",
+                "pattern": "^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$"
+              },
+              "createNamespace": {
+                "default": true,
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "wait",
+              "timeout",
+              "createNamespace"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "namespace",
+          "manifests",
+          "releaseNamespace",
+          "clusterSelector",
+          "reconcileStrategy",
+          "options"
+        ],
+        "additionalProperties": false
+      },
+      "ManifestChartStatus": {
+        "type": "object",
+        "properties": {
+          "repository": {
+            "type": "string"
+          },
+          "repositoryUrl": {
+            "type": "string"
+          },
+          "chart": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "mirrorCommands": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "repositoryUrl",
+          "chart",
+          "available",
+          "mirrorCommands"
         ],
         "additionalProperties": false
       },
@@ -11165,6 +11472,86 @@
           "password"
         ]
       },
+      "ManifestAddonApplyRequestInput": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "$ref": "#/components/schemas/ManifestAddonSpecInput"
+          },
+          "takeOver": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spec"
+        ]
+      },
+      "ManifestAddonSpecInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 53,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "namespace": {
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "manifests": {
+            "type": "string",
+            "maxLength": 262144
+          },
+          "releaseNamespace": {
+            "default": "default",
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "clusterSelector": {
+            "$ref": "#/components/schemas/Labels"
+          },
+          "reconcileStrategy": {
+            "default": "Continuous",
+            "type": "string",
+            "enum": [
+              "Continuous",
+              "InstallOnce"
+            ]
+          },
+          "options": {
+            "default": {
+              "wait": true,
+              "timeout": "10m0s",
+              "createNamespace": true
+            },
+            "type": "object",
+            "properties": {
+              "wait": {
+                "default": true,
+                "type": "boolean"
+              },
+              "timeout": {
+                "default": "10m0s",
+                "type": "string",
+                "pattern": "^(\\d+(\\.\\d+)?(ns|us|µs|ms|s|m|h))+$"
+              },
+              "createNamespace": {
+                "default": true,
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "name",
+          "namespace",
+          "manifests",
+          "clusterSelector"
+        ]
+      },
       "NodeCustomizationInput": {
         "type": "object",
         "properties": {
@@ -11922,6 +12309,16 @@
           },
           "credentials": {
             "$ref": "#/components/schemas/ConnectionCredentialsInput"
+          },
+          "manifestChartRepository": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HelmRepositoryName"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },

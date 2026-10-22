@@ -12,11 +12,18 @@ import {
   buildHelmChartProxy,
   buildRepositorySecretCopy,
   HELM_CHART_PROXY_NAME_LABEL,
+  buildManifestHelmChartProxy,
+  describeManifestObject,
+  checkManifests,
   HELM_REPOSITORY_ANNOTATION,
+  isManifestAddon,
   MANAGED_BY_LABEL,
+  manifestAddonSpecFromHelmChartProxy,
+  manifestObjectKey,
   MANAGED_BY_VALUE,
   matchesSelector,
   PRESET_LABEL,
+  selectorsCanOverlap,
   stableStringify,
   type AddonDeletePreview,
   type AddonOverview,
@@ -27,6 +34,7 @@ import {
   type Condition,
   type Drift,
   type HelmReleaseStatus,
+  type ManifestAddonSpec,
   type ObjectDiff,
 } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
@@ -42,6 +50,7 @@ import { toHttpException } from '../kube/errors.js';
 import { LiveChannels } from '../kube/live-channels.js';
 import { listProviders, providerPhase } from '../operator/providers.js';
 import { HelmRepositoriesService } from './helm-repositories.service.js';
+import { ManifestChartService } from './manifest-chart.service.js';
 
 const ADDONS = { group: 'addons.cluster.x-k8s.io', version: 'v1alpha1' };
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
@@ -121,16 +130,20 @@ export function buildAddonStatuses(hcps: Obj[], hrps: Obj[], clusters: Obj[]): A
                 matchesSelector(c.metadata.labels ?? {}, selector.matchLabels ?? {}),
             )
             .map((c) => c.metadata.name);
-      const parsed = addonSpecFromHelmChartProxy(h);
+      const manifests = isManifestAddon(h);
+      const parsed = manifests ? undefined : addonSpecFromHelmChartProxy(h);
+      const manifestSpec = manifests ? manifestAddonSpecFromHelmChartProxy(h) : undefined;
       const presetId = h.metadata.labels?.[PRESET_LABEL];
       const repository = h.metadata.annotations?.[HELM_REPOSITORY_ANNOTATION];
       return {
         name: h.metadata.name,
         namespace: h.metadata.namespace,
         managed: h.metadata.labels?.[MANAGED_BY_LABEL] === MANAGED_BY_VALUE,
+        type: manifests ? 'manifests' : 'helm',
         ...(presetId ? { presetId } : {}),
         ...(repository ? { repository } : {}),
         ...(parsed && !presetId ? { spec: parsed } : {}),
+        ...(manifestSpec ? { manifestSpec } : {}),
         chartName: spec.chartName ?? '',
         repoURL: spec.repoURL ?? '',
         ...(spec.version ? { version: spec.version } : {}),
@@ -163,6 +176,7 @@ export class AddonsService implements OnApplicationShutdown {
   constructor(
     private readonly clients: ManagementClusterClients,
     private readonly repositories: HelmRepositoriesService,
+    private readonly manifestChart: ManifestChartService,
   ) {
     this.live = new LiveChannels('addons', {
       kubeConfig: (connection) => clients.forConnection(connection),
@@ -243,7 +257,27 @@ export class AddonsService implements OnApplicationShutdown {
   }
 
   async apply(connection: string, spec: AddonSpec, takeOver: boolean): Promise<AddonPreview> {
-    const { preview, kc, changed } = await this.plan(connection, spec);
+    return this.applyPlan(spec, takeOver, await this.plan(connection, spec));
+  }
+
+  /** FP30-F-09: preview of a manifest add-on. */
+  async previewManifests(connection: string, spec: ManifestAddonSpec): Promise<AddonPreview> {
+    return (await this.planManifests(connection, spec)).preview;
+  }
+
+  async applyManifests(
+    connection: string,
+    spec: ManifestAddonSpec,
+    takeOver: boolean,
+  ): Promise<AddonPreview> {
+    return this.applyPlan(spec, takeOver, await this.planManifests(connection, spec));
+  }
+
+  private async applyPlan(
+    spec: { name: string },
+    takeOver: boolean,
+    { preview, kc, changed }: Awaited<ReturnType<AddonsService['compare']>>,
+  ): Promise<AddonPreview> {
     if (preview.blockers.length) {
       throw new BadRequestException({
         message: preview.blockers[0],
@@ -276,7 +310,9 @@ export class AddonsService implements OnApplicationShutdown {
         ]
       : status.releases.length
         ? [
-            `The Helm release is uninstalled from all ${status.releases.length} matching cluster(s).`,
+            status.type === 'manifests'
+              ? `The objects of the add-on are deleted from all ${status.releases.length} matching cluster(s) (FP30-F-09).`
+              : `The Helm release is uninstalled from all ${status.releases.length} matching cluster(s).`,
           ]
         : [];
     return {
@@ -337,11 +373,6 @@ export class AddonsService implements OnApplicationShutdown {
 
   private async plan(connection: string, spec: AddonSpec) {
     const kc = await this.clients.forConnection(connection);
-    const blockers: string[] = [];
-    const warnings: string[] = [];
-    const caaph = await this.caaph(kc);
-    if (!caaph.ready) blockers.push(caaph.message ?? 'CAAPH is not ready');
-    const repo = this.repositories.ref(spec.repository);
     const objects: KubernetesObject[] = [];
     const copyData = await this.repositories.copyData(spec.repository);
     if (copyData) {
@@ -349,8 +380,73 @@ export class AddonsService implements OnApplicationShutdown {
         buildRepositorySecretCopy(spec.repository, spec.namespace, copyData) as KubernetesObject,
       );
     }
-    const hcp = buildHelmChartProxy(spec, repo) as KubernetesObject;
-    objects.push(hcp);
+    objects.push(buildHelmChartProxy(spec, this.repositories.ref(spec.repository)));
+    return this.compare(connection, kc, spec, objects, 'helm', [], []);
+  }
+
+  /** FP30-F-02 to F-09: chart source, overlaps with other manifest add-ons, then as above. */
+  private async planManifests(connection: string, spec: ManifestAddonSpec) {
+    const kc = await this.clients.forConnection(connection);
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+    const { source, status } = await this.manifestChart.source(connection);
+    if (!source) {
+      const message = status.message ?? 'The manifest chart is not available';
+      blockers.push(status.hint ? `${message}. ${status.hint}` : message);
+    }
+    const objects: KubernetesObject[] = [];
+    if (source?.repository) {
+      const copyData = await this.repositories.copyData(source.repository.name);
+      if (copyData) {
+        objects.push(
+          buildRepositorySecretCopy(
+            source.repository.name,
+            spec.namespace,
+            copyData,
+          ) as KubernetesObject,
+        );
+      }
+    }
+    // Without a source the preview still shows the object, with the version left open.
+    objects.push(buildManifestHelmChartProxy(spec, source ?? { version: status.version ?? '' }));
+    warnings.push(...(await this.overlaps(connection, spec)));
+    return this.compare(connection, kc, spec, objects, 'manifests', blockers, warnings);
+  }
+
+  /** FP30-F-08: objects that another manifest add-on may already install on the same cluster. */
+  private async overlaps(connection: string, spec: ManifestAddonSpec): Promise<string[]> {
+    const mine = new Map(
+      checkManifests(spec.manifests).objects.map((o) => [manifestObjectKey(o), o]),
+    );
+    const out: string[] = [];
+    for (const other of (await this.overview(connection)).addons) {
+      const s = other.manifestSpec;
+      if (!s || s.namespace !== spec.namespace || s.name === spec.name) continue;
+      if (!selectorsCanOverlap(s.clusterSelector, spec.clusterSelector)) continue;
+      const shared = checkManifests(s.manifests)
+        .objects.filter((o) => mine.has(manifestObjectKey(o)))
+        .map(describeManifestObject);
+      if (shared.length) {
+        out.push(
+          `${shared.join(', ')} ${shared.length > 1 ? 'are' : 'is'} also part of the manifest add-on ${s.name}, whose selector can match the same clusters; Helm refuses to install an object owned by another release.`,
+        );
+      }
+    }
+    return out;
+  }
+
+  private async compare(
+    connection: string,
+    kc: KubeConfig,
+    spec: Pick<AddonSpec, 'name' | 'namespace' | 'reconcileStrategy' | 'clusterSelector'>,
+    objects: KubernetesObject[],
+    type: 'helm' | 'manifests',
+    blockers: string[],
+    warnings: string[],
+  ) {
+    const caaph = await this.caaph(kc);
+    if (!caaph.ready) blockers.unshift(caaph.message ?? 'CAAPH is not ready');
+    const hcp = objects[objects.length - 1]!;
 
     const diffs: ObjectDiff[] = [];
     const drift: Drift[] = [];
@@ -363,6 +459,10 @@ export class AddonsService implements OnApplicationShutdown {
         } else if (live.metadata.labels?.[MANAGED_BY_LABEL] !== MANAGED_BY_VALUE) {
           blockers.push(
             `A HelmChartProxy ${spec.namespace}/${spec.name} exists that was not created by the app; choose another name`,
+          );
+        } else if (isManifestAddon(live) !== (type === 'manifests')) {
+          blockers.push(
+            `${spec.name} is a ${type === 'manifests' ? 'Helm' : 'manifest'} add-on; choose another name`,
           );
         }
         const liveStrategy = (live.spec?.reconcileStrategy as string | undefined) || 'Continuous';

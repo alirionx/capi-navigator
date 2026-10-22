@@ -239,6 +239,32 @@ describe('connections API (FP-2)', () => {
     expect(testConnection).not.toHaveBeenCalled();
   });
 
+  it('sets and resets the chart source of the manifest add-ons (FP30-F-02)', async () => {
+    const patch = (body: object) =>
+      http().patch('/api/connections/prod').set(CSRF).set('Cookie', admin).send(body);
+    const unknown = await patch({ manifestChartRepository: 'mirror' }).expect(400);
+    expect(unknown.body.message).toBe('Helm repository mirror not found');
+    fake.helmRepositories.set('mirror', {
+      apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+      kind: 'HelmRepository',
+      metadata: { name: 'mirror' },
+      spec: {
+        type: 'oci',
+        url: 'oci://registry.example.com/charts',
+        insecureSkipTLSVerify: false,
+        hasCredentials: false,
+        hasCaCertificate: false,
+        credentialsRevision: 0,
+      },
+    });
+    const set = await patch({ manifestChartRepository: 'mirror' }).expect(200);
+    expect(set.body.manifestChartRepository).toBe('mirror');
+    const reset = await patch({ manifestChartRepository: null }).expect(200);
+    expect(reset.body.manifestChartRepository).toBeUndefined();
+    expect(testConnection).not.toHaveBeenCalled();
+    fake.helmRepositories.delete('mirror');
+  });
+
   it('replaces credentials, bumps the revision and re-tests', async () => {
     const before = fake.connections.get('prod')!.spec.credentialsRevision;
     const res = await http()

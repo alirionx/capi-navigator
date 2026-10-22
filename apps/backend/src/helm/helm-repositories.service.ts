@@ -145,6 +145,16 @@ export class HelmRepositoriesService {
   /** Refuses while add-ons of any connection still use the repository. */
   async delete(name: string): Promise<void> {
     this.resource(name);
+    const sources = this.store.connectionCache
+      .list()
+      .filter((c) => c.spec.manifestChartRepository === name)
+      .map((c) => c.metadata.name);
+    if (sources.length) {
+      throw new ConflictException({
+        message: `Helm repository ${name} is the manifest chart source of ${sources.length} connection(s)`,
+        hint: `Reset the chart source of these connections first: ${sources.join(', ')}`,
+      });
+    }
     const users = await this.usedBy(name);
     if (users.length) {
       throw new ConflictException({
@@ -190,6 +200,15 @@ export class HelmRepositoriesService {
     const access = await this.access(name);
     const values = await this.browse(() => this.source.values(access, chart, version));
     return { chart, version, values };
+  }
+
+  /**
+   * Versions of a chart in a repository of the app, or without one at an anonymous OCI URL
+   * (FP30-F-03). Fetch errors are passed on unchanged.
+   */
+  async chartVersions(name: string | undefined, url: string, chart: string): Promise<string[]> {
+    const access: RepoAccess = name ? await this.access(name) : { type: 'oci', url };
+    return (await this.source.versions(access, chart)).map((v) => v.version);
   }
 
   /** Repository facts for the HelmChartProxy builder. */

@@ -20,12 +20,17 @@ import {
   AddonPresetOverrideSchema,
   AddonSpecSchema,
   LabelsSchema,
+  ManifestAddonApplyRequestSchema,
+  ManifestAddonSpecSchema,
+  ManifestChartStatusSchema,
   type AddonDeletePreview,
   type AddonPresetOverride,
   type AddonPresetView,
   type AddonOverview,
   type AddonPreview,
   type AddonSpec,
+  type ManifestAddonSpec,
+  type ManifestChartStatus,
 } from '@capi-navigator/shared';
 import { interval, map, merge, type Observable } from 'rxjs';
 import { z } from 'zod';
@@ -33,6 +38,7 @@ import { Audit, Requires } from '../auth/decorators.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AddonPresetsService } from './addon-presets.service.js';
 import { AddonsService } from './addons.service.js';
+import { ManifestChartService } from './manifest-chart.service.js';
 import { Api, liveEvents } from '../openapi/api.decorator.js';
 
 const HEARTBEAT_MS = 25_000;
@@ -47,13 +53,17 @@ export const MatchingRequestSchema = z.object({
   selector: LabelsSchema,
 });
 export const PreviewRequestSchema = z.object({ spec: AddonSpecSchema });
+export const ManifestPreviewRequestSchema = z.object({ spec: ManifestAddonSpecSchema });
 
 /**
  * Helm add-ons of one management cluster (FP-8): viewers read, operators assign (section 3).
  */
 @Controller('api/connections/:connection/addons')
 export class AddonsController {
-  constructor(private readonly addons: AddonsService) {}
+  constructor(
+    private readonly addons: AddonsService,
+    private readonly manifestChart: ManifestChartService,
+  ) {}
 
   @Requires('view')
   @Api({
@@ -134,6 +144,57 @@ export class AddonsController {
       throw new BadRequestException('Name and namespace must match the URL');
     }
     return this.addons.apply(connection, body.spec, body.takeOver);
+  }
+
+  /** FP30-F-02, FP30-F-03: chart source of the manifest add-ons and its version. */
+  @Requires('view')
+  @Api({
+    summary: 'Chart source of the manifest add-ons and whether the needed version is there',
+    response: ManifestChartStatusSchema,
+  })
+  @Get('manifest-chart')
+  manifestChartStatus(@Param('connection') connection: string): Promise<ManifestChartStatus> {
+    return this.manifestChart.status(connection);
+  }
+
+  @Requires('addons.manage', { namespaceFromBody: 'spec.namespace' })
+  @Api({
+    summary: 'Preview creating or changing a manifest add-on',
+    description:
+      'Dry run on the management cluster; nothing is changed. Shows the generated HelmChartProxy or diff first (hard rule 6).',
+    response: AddonPreviewSchema,
+  })
+  @Post('manifests/preview')
+  @HttpCode(200)
+  @Audit({ action: 'addon.preview', skip: true })
+  previewManifests(
+    @Param('connection') connection: string,
+    @Body(new ZodValidationPipe(ManifestPreviewRequestSchema)) body: { spec: ManifestAddonSpec },
+  ): Promise<AddonPreview> {
+    return this.addons.previewManifests(connection, body.spec);
+  }
+
+  /** FP30-F-04: one HelmChartProxy for the generic manifest chart. */
+  @Requires('addons.manage')
+  @Api({
+    summary: 'Create or change a manifest add-on (HelmChartProxy)',
+    description:
+      'Drift must be taken over explicitly. Server-side apply with field manager capi-navigator; recorded as AuditEvent.',
+    response: AddonPreviewSchema,
+  })
+  @Put('manifests/:namespace/:name')
+  @Audit({ action: 'addon.apply', ...AUDIT })
+  applyManifests(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(ManifestAddonApplyRequestSchema))
+    body: { spec: ManifestAddonSpec; takeOver: boolean },
+  ): Promise<AddonPreview> {
+    if (body.spec.namespace !== namespace || body.spec.name !== name) {
+      throw new BadRequestException('Name and namespace must match the URL');
+    }
+    return this.addons.applyManifests(connection, body.spec, body.takeOver);
   }
 
   @Requires('addons.manage')
