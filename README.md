@@ -383,6 +383,8 @@ stored in the home cluster (the app has no database).
 | Regenerate the pinned versions / node script templates after editing them                                                             | `pnpm versions:generate` / `pnpm templates:generate` |
 | Report newer versions of `versions.yaml`, Actions and Docker images (needs Docker)                                                    | `pnpm versions:report`                               |
 | Regenerate the committed OpenAPI document from the routes and Zod schemas                                                             | `pnpm openapi:generate`                              |
+| Scan the Git history and the working tree for secrets with gitleaks, e.g. before pushing (needs Docker; rules in `.gitleaks.toml`)    | `pnpm secrets:scan`                                  |
+| Third-party notices and license gate (also part of the image build)                                                                   | `pnpm notices:generate`                              |
 | Container image                                                                                                                       | `docker build -t capi-navigator .`                   |
 
 ### Repository layout

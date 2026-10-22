@@ -109,3 +109,4 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 - [ ] lint, typecheck, tests, coverage green; snapshot diffs reviewed
 - [ ] kind and live test for medium and high risk updates
 - [ ] Report regenerated and committed
+- [ ] `pnpm secrets:scan` clean before pushing

@@ -129,6 +129,8 @@ pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP
 pnpm templates:generate  # regenerate the node script templates (kubeadm install script)
 pnpm versions:report     # newer versions of versions.yaml, Actions and Docker → docs/versions-report.md
 pnpm crds:install     # install the app's CRDs into the current cluster
+pnpm secrets:scan     # gitleaks (Docker) over the Git history and the working tree; run before pushing
+pnpm notices:generate # third-party notices and license gate (scripts/third-party-notices.mjs)
 ```
 
 The backend uses `KUBECONFIG` for the home cluster in local development.

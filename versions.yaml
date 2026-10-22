@@ -280,3 +280,11 @@ testTools:
       package: alpine/socat
       registry: docker.io
     verified: 2026-10-20
+  gitleaks:
+    # Secret scan of the whole Git history before pushing (`pnpm secrets:scan`, run in Docker).
+    version: v8.30.1
+    source:
+      datasource: docker
+      package: gitleaks/gitleaks
+      registry: https://ghcr.io
+    verified: 2026-10-22
