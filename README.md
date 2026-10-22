@@ -115,7 +115,7 @@ The app needs only a Kubernetes cluster for its own state (its CRDs, Secrets and
 database or volume. Prerequisites: Docker, kubectl, Helm and a kubeconfig for that cluster.
 
 ```sh
-VERSION=0.8.0
+VERSION=0.8.1
 # 1. The app's CRDs and namespace in the cluster
 helm show crds oci://ghcr.io/alirionx/charts/capi-navigator --version ${VERSION} \
   | kubectl apply --server-side -f -
