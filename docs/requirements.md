@@ -1019,6 +1019,15 @@ These requirements apply to all feature packs and are checked in every pack.
   - Preloaded images need `imagePullPolicy: IfNotPresent` and must not be removed by the kubelet's image garbage collection (to check per distribution).
   - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
   - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
+- **FP-31: Proxmox VE as infrastructure provider** (optional; not started). Provider [CAPMOX](https://github.com/ionos-cloud/cluster-api-provider-proxmox) (IONOS, Apache-2.0; checked 2026-10-23: v0.9.1 of 2026-09-08, API `v1alpha2` with the CAPI v1beta2 contract, clusterctl name `proxmox`). Findings so far:
+  - Compatibility: the provider lists CAPI v1.11 and v1.12; the app runs v1.14. First step is a spike that creates and deletes a cluster with the app's CAPI version.
+  - No cloud load balancer: the API endpoint is a virtual IP held by kube-vip on the control plane nodes, mandatory and in the subnet of the control plane machines. kube-vip has to be delivered per distribution (kubeadm documented upstream; RKE2 as static pod; k0s has its own control plane load balancing with keepalived). Services of type `LoadBalancer` need MetalLB or kube-vip's cloud provider with an IP range of their own, as an additional preset.
+  - Addresses: node IPs come from the in-cluster IPAM provider (IP ranges, gateway, prefix, DNS); the app has to install an `IPAMProvider` through the CAPI Operator and the wizard asks for the IP pool and the virtual IP.
+  - Images: a Proxmox VM template (template ID, source node); an Ubuntu cloud image with cloud-init and qemu-guest-agent fits the app's stock image approach.
+  - Optional CCM and CSI: [proxmox-cloud-controller-manager](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) and [proxmox-csi-plugin](https://github.com/sergelogvinov/proxmox-csi-plugin) (one maintainer each, active); volumes are bound to a Proxmox node or storage unless the storage is shared (e.g. Ceph).
+  - Credentials: Proxmox API token (URL, token ID, secret) in a Secret; lookups for nodes, templates, bridges and storage. The backend and the management cluster need network access to the Proxmox API.
+  - No floating IPs, bastion host or security groups; the nodes share a bridge network.
+  - Start with kubeadm (the upstream path); RKE2 and k0s after the kube-vip question is solved for them.
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
