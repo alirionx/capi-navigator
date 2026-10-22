@@ -45,3 +45,15 @@ while RKE2 and k0s set `"true"`.
 - Runtime updates follow the app's pinned versions (FP-20 version maintenance), not the image.
 - Existing CCM/CSI presets show as outdated after this change; rolling them out changes nothing for
   RKE2 and k0s clusters.
+
+## Revisit
+
+- Calico through CAAPH (the upstream `tigera-operator` chart, like the CCM presets of the other
+  clouds) would bring Helm upgrades and one delivery path for all add-ons. Check again when a Calico
+  release fits into one Helm release (CRDs below the 1 MiB release Secret limit, or installed by the
+  operator itself) or CAAPH can apply CRDs outside the release. Until then the ClusterResourceSet
+  stays: it also keeps the CNI, which every node needs to become ready, independent of a chart
+  registry (air-gapped setups, FP-29).
+- The generic manifest chart of FP-30 is no alternative for Calico: the manifest would be copied into
+  the `HelmChartProxy`, every `HelmReleaseProxy` and the release Secret, and the CNI would depend on
+  the chart source ([ADR-0024](0024-manifest-addons-through-caaph.md)).
