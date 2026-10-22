@@ -14,6 +14,8 @@ describe('shipped Calico manifest (ADR-0014)', () => {
     expect(content).toContain('- name: CALICO_IPV4POOL_VXLAN\n              value: "Always"');
     expect(content).not.toMatch(/POOL_VXLAN\n\s+value: "CrossSubnet"/);
     expect(content.length).toBeLessThan(1_000_000);
+    // Apache-2.0 4b: the adapted manifest names its source and the change.
+    expect(content.startsWith('# Upstream manifest: Project Calico')).toBe(true);
   });
 });
 

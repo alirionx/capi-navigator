@@ -501,4 +501,13 @@ changes the end-to-end tests. npm dependencies are kept current by Renovate (`re
 
 ## License
 
-No license has been chosen yet.
+CAPI Navigator is licensed under the [Apache License, Version 2.0](LICENSE); see also [NOTICE](NOTICE).
+It is provided "as is", without warranties or conditions of any kind (sections 7 and 8 of the
+license).
+
+The app ships upstream manifests (Calico, the Google Cloud cloud controller manager and CSI driver,
+all Apache-2.0) in adapted form, listed with their changes in
+[apps/backend/assets/README.md](apps/backend/assets/README.md). The licenses of all bundled
+third-party packages are collected at build time (`pnpm notices:generate`, which also fails on
+licenses outside an allow list) and served by the app at `/third-party-notices.txt` (user menu →
+Open source licenses).

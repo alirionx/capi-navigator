@@ -1,5 +1,6 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
 import { CNI_LABEL } from './addons.js';
+import { modificationNotice } from './manifest-addons.js';
 import { shortHash } from './util.js';
 import { VERSIONS } from '../versions.generated.js';
 
@@ -29,7 +30,12 @@ export function calicoManifestForCluster(manifest: string): string {
     if (!out.includes(from)) throw new Error(`Calico manifest: ${name} not found`);
     out = out.replace(from, `- name: ${name}\n              value: "Always"`);
   }
-  return out;
+  return (
+    modificationNotice(
+      `Project Calico ${CALICO_MANIFEST.version}, manifests/calico-vxlan.yaml`,
+      'VXLAN mode "Always" for all pod traffic (CALICO_IPV4POOL_VXLAN, CALICO_IPV6POOL_VXLAN).',
+    ) + out
+  );
 }
 
 /**

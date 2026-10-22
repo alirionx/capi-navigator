@@ -1,5 +1,11 @@
 import { VERSIONS } from '../versions.generated.js';
-import { findObject, parseManifest, renderObjects, type ManifestAddon } from './manifest-addons.js';
+import {
+  findObject,
+  modificationNotice,
+  parseManifest,
+  renderObjects,
+  type ManifestAddon,
+} from './manifest-addons.js';
 
 /**
  * Cloud controller manager and persistent disk CSI driver for Google Cloud (FP25-F-08,
@@ -66,36 +72,42 @@ export function gcpCcmManifestForCluster(manifest: string): string {
     { name: 'cloudconfig', mountPath: '/etc/kubernetes/gce', readOnly: true },
   ];
   pod.volumes = [{ name: 'cloudconfig', configMap: { name: 'gce-cloud-config' } }];
-  return renderObjects([
-    {
-      apiVersion: 'v1',
-      kind: 'ConfigMap',
-      metadata: { name: 'gce-cloud-config', namespace: 'kube-system' },
-      data: { 'cloud.config': '[Global]\nmultizone = true\n' },
-    },
-    ...objects,
-    // The first LoadBalancer Service makes the CCM store the cluster ID in the ConfigMap
-    // kube-system/ingress-uid, which the manifest's RBAC does not allow (seen live).
-    {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'Role',
-      metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
-      rules: [{ apiGroups: [''], resources: ['configmaps'], verbs: ['get', 'create', 'update'] }],
-    },
-    {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'RoleBinding',
-      metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
-      roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'Role',
-        name: 'capi-navigator:cloud-controller-manager',
+  return (
+    modificationNotice(
+      `Cloud Provider GCP ${ccm.version}, deploy/packages/default/manifest.yaml`,
+      'pinned image, arguments, cloud config as ConfigMap, API server env removed, ConfigMap Role added.',
+    ) +
+    renderObjects([
+      {
+        apiVersion: 'v1',
+        kind: 'ConfigMap',
+        metadata: { name: 'gce-cloud-config', namespace: 'kube-system' },
+        data: { 'cloud.config': '[Global]\nmultizone = true\n' },
       },
-      subjects: [
-        { kind: 'ServiceAccount', name: 'cloud-controller-manager', namespace: 'kube-system' },
-      ],
-    },
-  ]);
+      ...objects,
+      // The first LoadBalancer Service makes the CCM store the cluster ID in the ConfigMap
+      // kube-system/ingress-uid, which the manifest's RBAC does not allow (seen live).
+      {
+        apiVersion: 'rbac.authorization.k8s.io/v1',
+        kind: 'Role',
+        metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
+        rules: [{ apiGroups: [''], resources: ['configmaps'], verbs: ['get', 'create', 'update'] }],
+      },
+      {
+        apiVersion: 'rbac.authorization.k8s.io/v1',
+        kind: 'RoleBinding',
+        metadata: { name: 'capi-navigator:cloud-controller-manager', namespace: 'kube-system' },
+        roleRef: {
+          apiGroup: 'rbac.authorization.k8s.io',
+          kind: 'Role',
+          name: 'capi-navigator:cloud-controller-manager',
+        },
+        subjects: [
+          { kind: 'ServiceAccount', name: 'cloud-controller-manager', namespace: 'kube-system' },
+        ],
+      },
+    ])
+  );
 }
 
 /**
@@ -112,22 +124,28 @@ export function gcpCsiManifestForCluster(manifest: string): string {
   // Upstream keeps the node plugin off control plane nodes (as on GKE). All-in-one clusters run
   // their workloads there, so volumes need it on every node (seen live: no topology, PVC pending).
   delete findObject(objects, 'DaemonSet', 'csi-gce-pd-node').spec.template.spec.affinity;
-  return renderObjects([
-    { apiVersion: 'v1', kind: 'Namespace', metadata: { name: 'gce-pd-csi-driver' } },
-    ...objects,
-    {
-      apiVersion: 'storage.k8s.io/v1',
-      kind: 'StorageClass',
-      metadata: {
-        name: 'pd-balanced',
-        annotations: { 'storageclass.kubernetes.io/is-default-class': 'true' },
+  return (
+    modificationNotice(
+      `Compute Engine PD CSI driver ${VERSIONS.addonManifests['gcp-csi'].version}, overlay noauth`,
+      'namespace added, controller on control plane nodes, node plugin on all nodes, default StorageClass.',
+    ) +
+    renderObjects([
+      { apiVersion: 'v1', kind: 'Namespace', metadata: { name: 'gce-pd-csi-driver' } },
+      ...objects,
+      {
+        apiVersion: 'storage.k8s.io/v1',
+        kind: 'StorageClass',
+        metadata: {
+          name: 'pd-balanced',
+          annotations: { 'storageclass.kubernetes.io/is-default-class': 'true' },
+        },
+        provisioner: 'pd.csi.storage.gke.io',
+        parameters: { type: 'pd-balanced' },
+        volumeBindingMode: 'WaitForFirstConsumer',
+        allowVolumeExpansion: true,
       },
-      provisioner: 'pd.csi.storage.gke.io',
-      parameters: { type: 'pd-balanced' },
-      volumeBindingMode: 'WaitForFirstConsumer',
-      allowVolumeExpansion: true,
-    },
-  ]);
+    ])
+  );
 }
 
 export const GCP_MANIFEST_ADDONS: ManifestAddon[] = [

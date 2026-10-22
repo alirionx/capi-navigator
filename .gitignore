@@ -25,3 +25,6 @@ clouds.yml
 .DS_Store
 .idea/
 *.log
+
+# Generated third-party notices (pnpm notices:generate, image build)
+apps/frontend/public/third-party-notices.txt

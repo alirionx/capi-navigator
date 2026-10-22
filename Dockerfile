@@ -13,11 +13,16 @@ COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/backend apps/backend
 COPY apps/frontend apps/frontend
+COPY LICENSE NOTICE ./
+COPY scripts/third-party-notices.mjs scripts/
+# Third-party notices (served at /third-party-notices.txt) and the license gate.
+RUN node scripts/third-party-notices.mjs
 RUN pnpm --filter @capi-navigator/shared build \
  && pnpm --filter @capi-navigator/backend build \
  && pnpm --filter @capi-navigator/frontend build \
  && pnpm --filter @capi-navigator/backend deploy --prod --legacy /out \
- && cp -r apps/frontend/dist /out/public
+ && cp -r apps/frontend/dist /out/public \
+ && cp LICENSE NOTICE /out/
 
 FROM node:24-bookworm-slim AS runtime
 # Set by the release workflow from the tag; local builds are development versions.
