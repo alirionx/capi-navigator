@@ -15,12 +15,18 @@ const statusColor = (r: HelmReleaseStatus) =>
       : r.status?.startsWith('pending')
         ? 'info'
         : 'warning';
+/** Fixed widths, so the columns line up across the add-on cards of a cluster. */
+const widths = (hideCluster: boolean) =>
+  hideCluster ? ['40%', '18%', '12%', '22%', '8%'] : ['20%', '28%', '14%', '10%', '20%', '8%'];
 const problem = (r: HelmReleaseStatus) =>
   r.conditions.find((c) => c.status === 'False' && c.message)?.message;
 </script>
 
 <template>
-  <v-table density="compact" data-testid="addon-releases">
+  <v-table density="compact" class="releases" data-testid="addon-releases">
+    <colgroup>
+      <col v-for="(w, i) in widths(!!hideCluster)" :key="i" :style="{ width: w }" />
+    </colgroup>
     <thead>
       <tr>
         <th v-if="!hideCluster">{{ t('addons.cluster') }}</th>
@@ -60,3 +66,12 @@ const problem = (r: HelmReleaseStatus) =>
     </tbody>
   </v-table>
 </template>
+
+<style scoped>
+.releases :deep(table) {
+  table-layout: fixed;
+}
+.releases :deep(td) {
+  overflow-wrap: anywhere;
+}
+</style>
