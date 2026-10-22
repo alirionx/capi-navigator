@@ -48,7 +48,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-26 | All-in-one clusters with three or five nodes (optional) | done |
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
-| FP-30 | Manifest add-ons through CAAPH (optional) | in progress |
+| FP-30 | Manifest add-ons through CAAPH (optional) | done |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
 

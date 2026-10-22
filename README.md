@@ -64,9 +64,11 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Visibility**: live cluster list and status, resource tree, machines with images and addresses,
   events, read-only YAML of every resource, and a dashboard with nodes, workloads, services,
   ingresses and resource usage of the workload cluster.
-- **Helm add-ons** via the Cluster API Add-on Provider for Helm (CAAPH): Helm repositories (HTTP
+- **Add-ons** via the Cluster API Add-on Provider for Helm (CAAPH): Helm repositories (HTTP
   and private OCI), chart browser with default values, add-ons assigned to clusters by label,
-  release status per cluster, editable CCM/CSI presets and the kured reboot daemon.
+  release status per cluster, editable CCM/CSI presets and the kured reboot daemon. **Manifest
+  add-ons** roll out plain objects (e.g. a `ClusterIssuer`) the same way, with per-cluster
+  templates, through a small chart released with the app (mirrorable).
 - **Node shell**: a root shell on any node through a temporary privileged pod (operators for
   workload clusters, admins for the management cluster).
 - **Kubeconfig**: view and download the admin kubeconfig of a workload cluster (audited).

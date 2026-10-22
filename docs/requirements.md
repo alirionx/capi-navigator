@@ -932,11 +932,11 @@ Order of work: credentials first (so real credentials can be stored early), then
 
 **Acceptance criteria**
 
-- [ ] After cert-manager is rolled out as Helm add-on, a manifest add-on with a `ClusterIssuer` is assigned to a labelled cluster and the issuer is ready there; removing the label removes the issuer.
-- [ ] A manifest with `{{ .Cluster.metadata.name }}` renders the cluster's name in two clusters.
-- [ ] Manifests with a `Secret` or with an object listed twice are refused before saving.
-- [ ] With the chart source of a connection pointed to a mirror, releases are installed from the mirror; a missing chart version is reported in the app.
-- [ ] The chart is published with a release and installable with `helm install` from ghcr.io.
+- [x] After cert-manager is rolled out as Helm add-on, a manifest add-on with a `ClusterIssuer` is assigned to a labelled cluster and the issuer is ready there; removing the label removes the issuer. (Verified live on 2026-10-22, kubeadm on OpenStack.)
+- [x] A manifest with `{{ .Cluster.metadata.name }}` renders the cluster's name in two clusters. (Verified live on 2026-10-22: kubeadm on OpenStack and RKE2 on AWS; CAAPH retried until cert-manager brought the CRDs.)
+- [x] Manifests with a `Secret` or with an object listed twice are refused before saving.
+- [x] With the chart source of a connection pointed to a mirror, releases are installed from the mirror; a missing chart version is reported in the app. (Verified live on 2026-10-22 with an HTTP repository as mirror, see the chart README.)
+- [x] The chart is published with a release and installable with `helm install` from ghcr.io. (Since v0.9.0.)
 
 ## 7. Non-functional requirements
 
