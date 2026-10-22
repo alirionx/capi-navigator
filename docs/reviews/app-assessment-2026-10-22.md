@@ -1,8 +1,8 @@
 # CAPI Navigator – Application Assessment
 
 - **Version assessed:** 0.8.1 (commit `d502f61`, 22 October 2026)
-- **Scope:** technology stack, maintainability, security, use case, UX of the web UI
-- **Method:** review of the repository (code, Helm chart, Dockerfile, CI workflows, requirements, ADRs), dependency audit (`pnpm audit --prod`), inspection of the running app in a local kind environment. No penetration test, no load test.
+- **Scope:** technology stack, maintainability, security, use case, UX of the web UI, licensing
+- **Method:** review of the repository (code, Helm chart, Dockerfile, CI workflows, requirements, ADRs), dependency audit (`pnpm audit --prod`), license review of all shipped packages and bundled upstream manifests, inspection of the running app in a local kind environment. No penetration test, no load test, no legal advice.
 - **Perspective:** an external reviewer seeing the project for the first time.
 
 ## Summary
