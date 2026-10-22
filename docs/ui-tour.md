@@ -140,7 +140,9 @@ cloud controller manager and Cinder CSI.
 ![Add-ons of a cluster](images/ui-tour/17-cluster-addons.png)
 
 The **add-ons** page manages `HelmChartProxy` resources: a chart with values and a label selector
-that picks the clusters. The presets for CCM, CSI and kured can be overridden here.
+that picks the clusters, or plain manifests (manifest add-ons) rolled out with the app's small
+generic chart. It also shows where that chart comes from; admins can point a connection to a
+mirror. The presets for CCM, CSI and kured can be overridden here.
 
 ![Helm add-ons and presets](images/ui-tour/30-addons.png)
 

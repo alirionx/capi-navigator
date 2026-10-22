@@ -265,7 +265,7 @@ all replicas ready, then removes `workerVersion` through the normal change pipel
 workers follow. When nothing rolls, it deletes templates that nothing references anymore
 ([ADR-0010](adr/0010-rollout-controller.md)).
 
-### Helm add-ons
+### Add-ons
 
 An add-on is a `HelmChartProxy` in one namespace of the management cluster with chart, version,
 values and a **label selector**. Assigning an add-on to a cluster means adding the selector's
@@ -275,6 +275,17 @@ these releases. Presets (OpenStack CCM and Cinder CSI, AWS CCM and EBS CSI, kure
 app creates per namespace, selected by reserved labels that the transformation sets
 ([addons.ts](../packages/shared/src/cluster/addons.ts)). Admins can override their version and
 values ([ADR-0011](adr/0011-helm-addons.md)).
+
+**Manifest add-ons** (FP-30, [ADR-0024](adr/0024-manifest-addons-through-caaph.md)) are plain
+Kubernetes objects, such as a `ClusterIssuer` or a `Gateway`, rolled out the same way: each is a
+`HelmChartProxy` for the generic chart
+[capi-navigator-manifests](../deploy/helm/capi-navigator-manifests/README.md), with the manifests
+in its `valuesTemplate`, so CAAPH resolves templates like `{{ .Cluster.metadata.name }}` per
+cluster and Helm owns, updates and removes the objects. The chart is released with the app and
+pulled from ghcr.io, or from a Helm repository of the app that an admin sets as chart source of the
+connection (`ManagementCluster.spec.manifestChartRepository`, e.g. a mirror); the backend checks
+that the chart version of the app exists there. Secrets are refused, since the values are stored in
+plain text in the `HelmChartProxy`.
 
 ### Deleting a cluster
 
