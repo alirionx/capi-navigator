@@ -9887,6 +9887,10 @@
           },
           "bastion": {
             "$ref": "#/components/schemas/Bastion"
+          },
+          "zoneBoundVolumes": {
+            "default": true,
+            "type": "boolean"
           }
         },
         "required": [
@@ -9895,7 +9899,8 @@
           "image",
           "externalNetwork",
           "network",
-          "apiServerLoadBalancer"
+          "apiServerLoadBalancer",
+          "zoneBoundVolumes"
         ],
         "additionalProperties": false
       },
@@ -11839,6 +11844,10 @@
           },
           "bastion": {
             "$ref": "#/components/schemas/BastionInput"
+          },
+          "zoneBoundVolumes": {
+            "default": true,
+            "type": "boolean"
           }
         },
         "required": [

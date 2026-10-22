@@ -5,6 +5,12 @@ import { GCP_MANIFEST_ADDONS } from './gcp-addons.js';
 import type { ManifestAddon } from './manifest-addons.js';
 
 /**
+ * Cluster label that switches off the zone binding of Cinder volumes (ADR-0026); the preset reads
+ * it per cluster, so one preset per namespace serves clusters with either setting.
+ */
+export const VOLUME_TOPOLOGY_LABEL = 'capi-navigator.io/volume-topology';
+
+/**
  * CCM and CSI presets as HelmChartProxy (CAAPH, addons.cluster.x-k8s.io/v1alpha1), one set per
  * namespace, selecting clusters by add-on label (FP5-F-09, FP5-F-17). Charts and versions live in
  * versions.yaml (addonPresets); value keys were verified against the charts' values.yaml.
@@ -73,6 +79,8 @@ export const ADDON_PRESETS: AddonPreset[] = [
       '    provisioner: cinder.csi.openstack.org\n    reclaimPolicy: Delete\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n',
       'clusterID: {{ .Cluster.metadata.name }}\n',
+      // ADR-0026: `--with-topology` of both plugins; off when the cluster asks for it.
+      `csi:\n  provisioner:\n    topology: '{{ if eq (index .Cluster.metadata.labels "${VOLUME_TOPOLOGY_LABEL}") "off" }}false{{ else }}true{{ end }}'\n`,
     ].join(''),
   },
   {

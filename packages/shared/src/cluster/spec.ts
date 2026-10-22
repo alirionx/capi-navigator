@@ -165,6 +165,11 @@ export const OpenStackInfraSchema = z.object({
   failureDomain: z.string().trim().max(255).optional(),
   sshKeyName: z.string().trim().max(255).optional(),
   bastion: BastionSchema.optional(),
+  /**
+   * Cinder volumes bound to their availability zone (CSI topology, the default). Off for clouds
+   * that attach volumes across zones, so pods may move to nodes in any zone (ADR-0026).
+   */
+  zoneBoundVolumes: z.boolean().default(true),
 });
 export type OpenStackInfra = z.infer<typeof OpenStackInfraSchema>;
 

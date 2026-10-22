@@ -36,6 +36,7 @@ describe('infrastructure forms of the plugins (FP25-F-05)', () => {
       sshKeyName: 'ops',
       // CAPO opens SSH to everyone: no source networks.
       bastion: { enabled: true, machineSize: 'a1-ram2-disk20' },
+      zoneBoundVolumes: true,
     });
     expect(InfrastructureSchema.safeParse(infra).success).toBe(true);
   });
