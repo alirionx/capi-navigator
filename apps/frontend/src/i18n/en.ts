@@ -301,11 +301,17 @@ export const en = {
     label: 'YAML (read-only)',
   },
   addons: {
-    title: 'Helm add-ons',
+    title: 'Add-ons',
     subtitle:
-      'Helm charts rolled out to workload clusters by CAAPH: a HelmChartProxy selects clusters of its namespace by label, one HelmReleaseProxy per cluster.',
+      'Helm charts and plain manifests rolled out to workload clusters by CAAPH: a HelmChartProxy selects clusters of its namespace by label, one HelmReleaseProxy per cluster.',
     tab: 'Add-ons',
     new: 'New add-on',
+    newHelm: 'Helm chart',
+    newHelmHint: 'A chart from a Helm repository of the app, with values.',
+    newManifests: 'Manifests',
+    newManifestsHint:
+      'Plain Kubernetes objects such as a ClusterIssuer or a Gateway, rolled out with a small generic chart.',
+    manifestsType: 'manifests',
     newTitle: 'New Helm add-on',
     editTitle: 'Edit add-on {name}',
     edit: 'Edit add-on',
@@ -374,6 +380,39 @@ export const en = {
     unassignText:
       'Removes the selector labels from the cluster; CAAPH then uninstalls the release (Continuous).',
     noneForCluster: 'No add-on selects this cluster.',
+  },
+  manifestAddons: {
+    newTitle: 'New manifest add-on',
+    editTitle: 'Edit manifest add-on {name}',
+    nameHint:
+      'Also the Helm release name: lowercase letters, digits and "-", at most 53 characters.',
+    releaseNamespaceHint:
+      'Objects without a namespace are created here in the workload cluster; default "default".',
+    strategyHint:
+      'Cannot be changed later. Default: Continuous, which also deletes the objects when a cluster loses the labels.',
+    continuous: 'Continuous: create, update and delete the objects with the add-on',
+    manifests: 'Manifests',
+    manifestsHint:
+      'Multi-document YAML, applied unchanged by Helm. Go templates are rendered per cluster by CAAPH first; Secrets are not allowed.',
+    objects: '{count} object(s):',
+    secretsInfo:
+      'Secrets are refused: the manifests are stored in plain text in the HelmChartProxy. Create Secrets with kubectl or an external secret operator.',
+    example: 'Example: {title}',
+    templates: 'Templates and ordering',
+    templatesHelp:
+      'CAAPH renders Go templates such as {name} or {label} before Helm applies the manifests. A literal "{open}" is written as {escaped}. Objects that need CRDs (e.g. a ClusterIssuer) install once the CRDs exist: CAAPH retries until the chart that brings them is installed.',
+    chartTitle: 'Chart of the manifest add-ons',
+    chartSubtitle:
+      'Manifest add-ons use the generic chart capi-navigator-manifests of this app version. Admins can point a connection to a mirror.',
+    chartFrom: 'Chart {chart} {version} from {url}',
+    mirrorCommands: 'Copy the chart into a mirror (OCI registry):',
+    changeSource: 'Change source',
+    sourceTitle: 'Chart source of this connection',
+    sourceInfo:
+      'CAAPH pulls the chart in the management cluster; the backend checks that the version of this app exists there. Use a Helm repository of the app as mirror, e.g. for clusters without access to ghcr.io.',
+    source: 'Source',
+    sourceHint: 'Default: the chart published with every release on ghcr.io.',
+    defaultSource: 'ghcr.io (default)',
   },
   presets: {
     title: 'CCM and CSI presets',

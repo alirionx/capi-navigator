@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import type { AddonSpec, AddonStatus } from '@capi-navigator/shared';
+import type { AddonSpec, AddonStatus, ManifestAddonSpec } from '@capi-navigator/shared';
 import AddonDialog from '../components/addons/AddonDialog.vue';
 import AddonReleases from '../components/addons/AddonReleases.vue';
 import DeleteAddonDialog from '../components/addons/DeleteAddonDialog.vue';
+import ManifestAddonDialog from '../components/addons/ManifestAddonDialog.vue';
+import ManifestChartPanel from '../components/addons/ManifestChartPanel.vue';
 import PresetsPanel from '../components/addons/PresetsPanel.vue';
 import YamlButton from '../components/YamlButton.vue';
 import { useAddonsStore } from '../stores/addons.js';
@@ -13,7 +15,10 @@ import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useHelmRepositoriesStore } from '../stores/helm-repositories.js';
 
-/** Helm add-ons via CAAPH (FP-8): list, releases per cluster, create, edit, delete. */
+/**
+ * Add-ons via CAAPH: Helm charts (FP-8) and plain manifests (FP-30); list, releases per cluster,
+ * create, edit, delete.
+ */
 const { t } = useI18n();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
@@ -68,14 +73,27 @@ const deployed = (a: AddonStatus) =>
 
 const dialogOpen = ref(false);
 const editing = ref<AddonSpec | undefined>(undefined);
+const manifestDialogOpen = ref(false);
+const editingManifests = ref<ManifestAddonSpec | undefined>(undefined);
 function openNew(): void {
   editing.value = undefined;
   dialogOpen.value = true;
 }
+function openNewManifests(): void {
+  editingManifests.value = undefined;
+  manifestDialogOpen.value = true;
+}
 function openEdit(a: AddonStatus): void {
+  if (a.type === 'manifests') {
+    editingManifests.value = a.manifestSpec;
+    manifestDialogOpen.value = true;
+    return;
+  }
   editing.value = a.spec;
   dialogOpen.value = true;
 }
+/** Form model of the add-on's type; without one the add-on is read-only in the app. */
+const editable = (a: AddonStatus) => (a.type === 'manifests' ? !!a.manifestSpec : !!a.spec);
 const deleting = ref<AddonStatus | null>(null);
 const deleteOpen = ref(false);
 </script>
@@ -96,15 +114,38 @@ const deleteOpen = ref(false);
       >
         {{ store.live ? t('providers.live') : t('providers.connecting') }}
       </v-chip>
-      <v-btn
-        v-if="canChange && connections.active"
-        color="primary"
-        prepend-icon="mdi-plus"
-        :disabled="!caaph?.ready || !repos.repositories.length"
-        data-testid="new-addon"
-        @click="openNew"
-        >{{ t('addons.new') }}</v-btn
-      >
+      <v-menu v-if="canChange && connections.active">
+        <template #activator="{ props: p }">
+          <v-btn
+            v-bind="p"
+            color="primary"
+            prepend-icon="mdi-plus"
+            append-icon="mdi-menu-down"
+            :disabled="!caaph?.ready"
+            data-testid="new-addon"
+            >{{ t('addons.new') }}</v-btn
+          >
+        </template>
+        <v-list density="compact" max-width="420">
+          <v-list-item
+            prepend-icon="mdi-package-variant"
+            :title="t('addons.newHelm')"
+            :subtitle="t('addons.newHelmHint')"
+            lines="two"
+            :disabled="!repos.repositories.length"
+            data-testid="new-helm-addon"
+            @click="openNew"
+          />
+          <v-list-item
+            prepend-icon="mdi-file-document-multiple-outline"
+            :title="t('addons.newManifests')"
+            :subtitle="t('addons.newManifestsHint')"
+            lines="two"
+            data-testid="new-manifest-addon"
+            @click="openNewManifests"
+          />
+        </v-list>
+      </v-menu>
     </div>
 
     <v-alert v-if="!connections.active" type="info" variant="tonal">
@@ -167,6 +208,14 @@ const deleteOpen = ref(false);
             >
           </template>
           <template #[`item.chartName`]="{ item }">
+            <v-chip
+              v-if="item.type === 'manifests'"
+              size="x-small"
+              variant="tonal"
+              color="secondary"
+              class="mr-1"
+              >{{ t('addons.manifestsType') }}</v-chip
+            >
             {{ item.chartName }}<span class="text-medium-emphasis ml-1">{{ item.version }}</span>
             <div class="text-caption text-medium-emphasis">
               {{ item.repository ?? item.repoURL }}
@@ -211,7 +260,7 @@ const deleteOpen = ref(false);
                 }"
               />
               <v-btn
-                v-if="canChangeIn(item.namespace) && item.managed && item.spec"
+                v-if="canChangeIn(item.namespace) && item.managed && editable(item)"
                 icon="mdi-pencil"
                 size="small"
                 variant="text"
@@ -251,12 +300,19 @@ const deleteOpen = ref(false);
         </v-data-table>
       </v-card>
 
+      <ManifestChartPanel v-if="caaph?.installed" :connection="connections.activeName!" />
       <PresetsPanel v-if="caaph?.installed" :connection="connections.activeName!" />
 
       <AddonDialog
         v-model="dialogOpen"
         :connection="connections.activeName!"
         :initial="editing"
+        :namespaces="namespaces"
+      />
+      <ManifestAddonDialog
+        v-model="manifestDialogOpen"
+        :connection="connections.activeName!"
+        :initial="editingManifests"
         :namespaces="namespaces"
       />
       <DeleteAddonDialog
