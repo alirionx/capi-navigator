@@ -12,7 +12,7 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 IMAGE="${GITLEAKS_IMAGE:-${GITLEAKS_IMAGE_DEFAULT}}"
 SCAN="${SCAN:-all}"
-cd "${ROOT_DIR}"
+cd "${ROOT_DIR}" || exit 1
 
 run() {
   local mount="$1"
