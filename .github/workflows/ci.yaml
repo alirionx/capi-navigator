@@ -21,6 +21,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @capi-navigator/shared build
       - run: pnpm lint
+      # License gate: fails on a dependency whose license is not on the allow list.
+      - run: pnpm notices:generate
       - run: pnpm typecheck
       - run: pnpm test
       # FP20-F-07: development scripts and the node script templates (preinstalled on the runner).

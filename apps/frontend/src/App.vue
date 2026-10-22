@@ -190,6 +190,15 @@ async function signOut(): Promise<void> {
             rel="noopener"
             data-testid="api-docs"
           />
+          <!-- Licenses of the bundled third-party software (Apache-2.0, MIT, OFL notices). -->
+          <v-list-item
+            prepend-icon="mdi-scale-balance"
+            :title="t('app.licenses')"
+            href="/third-party-notices.txt"
+            target="_blank"
+            rel="noopener"
+            data-testid="licenses"
+          />
           <v-list-item
             prepend-icon="mdi-logout"
             :title="t('app.signOut')"

@@ -1,0 +1,15 @@
+CAPI Navigator
+Copyright 2026 The CAPI Navigator Authors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes upstream Kubernetes manifests, adapted by CAPI Navigator before they are delivered to
+workload clusters; their licenses and the changes are listed in apps/backend/assets/README.md:
+
+- Calico (Project Calico / Tigera, Inc.), Apache License 2.0
+- Cloud Provider GCP (The Kubernetes Authors), Apache License 2.0
+- Google Compute Engine Persistent Disk CSI Driver (The Kubernetes Authors), Apache License 2.0
+
+The container image and the web UI bundle third-party open source packages. Their copyright
+notices and license texts are collected in THIRD_PARTY_NOTICES, which is generated at build time
+(`pnpm notices:generate`) and served by the app at /third-party-notices.txt.

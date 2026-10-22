@@ -5,6 +5,7 @@ export const en = {
     subtitle: 'Cluster API web UI',
     toggleTheme: 'Toggle light/dark theme',
     lightMode: 'Light mode',
+    licenses: 'Open source licenses',
     darkMode: 'Dark mode',
     mainNavigation: 'Main navigation',
     userMenu: 'User menu',

@@ -37,6 +37,19 @@ export interface ManifestAddon {
 
 type Obj = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/**
+ * Header of an adapted upstream manifest (Apache-2.0 section 4b: modified files carry a prominent
+ * notice of the changes). Details in apps/backend/assets/README.md.
+ */
+export function modificationNotice(source: string, changes: string): string {
+  return [
+    `# Upstream manifest: ${source}`,
+    '# License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)',
+    `# Modified by CAPI Navigator: ${changes}`,
+    '',
+  ].join('\n');
+}
+
 /** Objects of a multi-document manifest; empty documents are dropped. */
 export function parseManifest(manifest: string): Obj[] {
   return parseAllDocuments(manifest)

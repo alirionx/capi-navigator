@@ -82,6 +82,17 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
     });
   });
 
+  it('marks every adapted manifest with source, license and changes (Apache-2.0 4b)', () => {
+    for (const a of MANIFEST_ADDONS) {
+      const text = a.forCluster(asset(a.dir, a.file));
+      expect(text.split('\n').slice(0, 3)).toEqual([
+        expect.stringMatching(/^# Upstream manifest: /),
+        '# License: Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0)',
+        expect.stringMatching(/^# Modified by CAPI Navigator: /),
+      ]);
+    }
+  });
+
   it('fails instead of rolling out a manifest that lacks the expected objects', () => {
     expect(() => addon('gcp-ccm').forCluster('kind: ConfigMap\nmetadata: {name: x}\n')).toThrow(
       /DaemonSet cloud-controller-manager not found/,

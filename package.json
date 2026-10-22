@@ -1,5 +1,6 @@
 {
   "name": "capi-navigator",
+  "license": "Apache-2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.14.0",
@@ -11,6 +12,7 @@
     "build": "pnpm -r build",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
+    "notices:generate": "node scripts/third-party-notices.mjs",
     "typecheck": "pnpm -r typecheck",
     "test:coverage": "pnpm --filter @capi-navigator/backend test:coverage",
     "test": "pnpm -r test",
