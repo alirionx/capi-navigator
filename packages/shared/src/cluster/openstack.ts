@@ -1,5 +1,6 @@
 import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
+import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -73,6 +74,14 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         kind: 'switch',
         label: 'wizard.apiLb',
         hint: 'wizard.apiLbHint',
+        default: true,
+        cols: 4,
+      },
+      {
+        path: 'zoneBoundVolumes',
+        kind: 'switch',
+        label: 'wizard.zoneBoundVolumes',
+        hint: 'wizard.zoneBoundVolumesHint',
         default: true,
         cols: 4,
       },
@@ -230,6 +239,9 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       value: infra.apiServerLoadBalancer ? 'Octavia load balancer' : 'Floating IP',
     },
     ...(infra.failureDomain ? [{ label: 'Availability zone', value: infra.failureDomain }] : []),
+    ...(infra.zoneBoundVolumes === false
+      ? [{ label: 'Volumes', value: 'not bound to an availability zone' }]
+      : []),
     ...(infra.sshKeyName ? [{ label: 'SSH key pair', value: infra.sshKeyName }] : []),
   ],
 
@@ -242,6 +254,12 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     return {
       ...(spec.addons.cloudControllerManager ? { 'capi-navigator.io/ccm': 'openstack' } : {}),
       ...(spec.addons.csiDriver ? { 'capi-navigator.io/csi': 'openstack' } : {}),
+      // ADR-0026: read by the Cinder CSI preset per cluster.
+      ...(spec.addons.csiDriver &&
+      spec.infrastructure.provider === 'openstack' &&
+      !spec.infrastructure.zoneBoundVolumes
+        ? { [VOLUME_TOPOLOGY_LABEL]: 'off' }
+        : {}),
     };
   },
 

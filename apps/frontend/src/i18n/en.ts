@@ -709,6 +709,9 @@ export const en = {
     apiLb: 'API load balancer',
     apiLbHint:
       'Octavia load balancer for the API server; required for several control plane nodes. Default: on.',
+    zoneBoundVolumes: 'Volumes bound to their zone',
+    zoneBoundVolumesHint:
+      'Default: on. Off lets pods with volumes move to nodes in any availability zone; only for clouds that attach volumes across zones (Nova cross_az_attach), and only for new volumes. Maps to the Cinder CSI preset (csi.provisioner.topology) through the cluster label capi-navigator.io/volume-topology.',
     az: 'Availability zone',
     azHint: 'Optional; default: any zone.',
     sshKey: 'SSH key pair',

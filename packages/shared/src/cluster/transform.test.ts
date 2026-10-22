@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { renderManifests } from '../operator-manifests.js';
 import { ClusterSpecSchema, type ClusterSpecInput } from './spec.js';
+import { ADDON_PRESETS, VOLUME_TOPOLOGY_LABEL } from './addons.js';
 import { kubeadmInstallScript } from './kubeadm.js';
 import { transform, type TransformContext } from './transform.js';
 
@@ -105,6 +106,38 @@ describe('transformation snapshots (FP5-F-01, NF-14)', () => {
       postCommands: ['echo after'],
     };
     expect(render(spec)).toMatchSnapshot();
+  });
+});
+
+describe('volumes across availability zones (ADR-0026)', () => {
+  const clusterLabels = (input: ClusterSpecInput) =>
+    transform(ClusterSpecSchema.parse(input), ctx).find((o) => o.kind === 'Cluster')!.metadata
+      .labels!;
+  const zoneFree = (base: ClusterSpecInput): ClusterSpecInput => ({
+    ...base,
+    infrastructure: {
+      ...base.infrastructure,
+      zoneBoundVolumes: false,
+    } as ClusterSpecInput['infrastructure'],
+  });
+
+  it('labels the cluster for the Cinder CSI preset only when switched off', () => {
+    expect(clusterLabels(openstack())[VOLUME_TOPOLOGY_LABEL]).toBeUndefined();
+    expect(clusterLabels(zoneFree(openstack()))[VOLUME_TOPOLOGY_LABEL]).toBe('off');
+    // Without the CSI driver there is nothing to switch.
+    expect(
+      clusterLabels({
+        ...zoneFree(openstack()),
+        addons: { cloudControllerManager: true, csiDriver: false },
+      })[VOLUME_TOPOLOGY_LABEL],
+    ).toBeUndefined();
+  });
+
+  it('the preset sets the CSI topology per cluster from the label', () => {
+    const csi = ADDON_PRESETS.find((p) => p.id === 'openstack-csi')!;
+    expect(csi.valuesTemplate).toContain(
+      `topology: '{{ if eq (index .Cluster.metadata.labels "${VOLUME_TOPOLOGY_LABEL}") "off" }}false{{ else }}true{{ end }}'`,
+    );
   });
 });
 
