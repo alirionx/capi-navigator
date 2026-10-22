@@ -5,8 +5,10 @@ import {
   AddonDeletePreviewSchema,
   AddonOverviewSchema,
   AddonPreviewSchema,
+  ManifestChartStatusSchema,
   type AddonOverview,
   type AddonSpecInput,
+  type ManifestAddonSpecInput,
 } from '@capi-navigator/shared';
 import { api, apiVoid } from '../api/client.js';
 import { liveStream } from '../api/live.js';
@@ -15,7 +17,7 @@ const base = (connection: string) => `/api/connections/${encodeURIComponent(conn
 const item = (connection: string, namespace: string, name: string) =>
   `${base(connection)}/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`;
 
-/** Helm add-ons of the active management cluster, live (FP-8). */
+/** Helm and manifest add-ons of the active management cluster, live (FP-8, FP-30). */
 export const useAddonsStore = defineStore('addons', () => {
   const overview = ref<AddonOverview | null>(null);
   const error = ref<string | null>(null);
@@ -69,10 +71,36 @@ export const useAddonsStore = defineStore('addons', () => {
       spec,
       takeOver,
     });
+  /** FP-30: manifest add-ons and the source of their chart. */
+  const previewManifests = (connection: string, spec: ManifestAddonSpecInput) =>
+    api('POST', `${base(connection)}/manifests/preview`, AddonPreviewSchema, { spec });
+  const applyManifests = (connection: string, spec: ManifestAddonSpecInput, takeOver: boolean) =>
+    api(
+      'PUT',
+      `${base(connection)}/manifests/${encodeURIComponent(spec.namespace)}/${encodeURIComponent(spec.name)}`,
+      AddonPreviewSchema,
+      { spec, takeOver },
+    );
+  const manifestChart = (connection: string) =>
+    api('GET', `${base(connection)}/manifest-chart`, ManifestChartStatusSchema);
   const deletePreview = (connection: string, namespace: string, name: string) =>
     api('GET', `${item(connection, namespace, name)}/delete-preview`, AddonDeletePreviewSchema);
   const remove = (connection: string, namespace: string, name: string) =>
     apiVoid('DELETE', item(connection, namespace, name));
 
-  return { overview, error, live, loading, watch, matching, preview, apply, deletePreview, remove };
+  return {
+    overview,
+    error,
+    live,
+    loading,
+    watch,
+    matching,
+    preview,
+    apply,
+    previewManifests,
+    applyManifests,
+    manifestChart,
+    deletePreview,
+    remove,
+  };
 });

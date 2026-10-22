@@ -5,8 +5,9 @@ import { useTheme } from 'vuetify';
 import type * as Monaco from 'monaco-editor/editor/editor.api';
 
 /**
- * Editor for Helm values (FP8-F-06). The only editable YAML in the app: values are an input of
- * the HelmChartProxy, not a manifest (manifests stay read-only, hard rule 4).
+ * Editor for Helm values (FP8-F-06) and the manifests of manifest add-ons (FP30-F-04). The only
+ * editable YAML in the app: both are inputs of a HelmChartProxy, not generated manifests (those
+ * stay read-only, hard rule 4).
  */
 const props = withDefaults(defineProps<{ height?: string; label?: string }>(), {
   height: '320px',

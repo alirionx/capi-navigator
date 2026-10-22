@@ -13,7 +13,9 @@ import {
 import ChangeDialog from '../ChangeDialog.vue';
 import ErrorAlert from '../ErrorAlert.vue';
 import YamlViewer from '../YamlViewer.vue';
+import ClusterSelectorField from './ClusterSelectorField.vue';
 import ValuesEditor from './ValuesEditor.vue';
+import { selectorLabels as labelsOf, selectorRows, type SelectorRow } from './selector.js';
 import { useAddonsStore } from '../../stores/addons.js';
 import { useHelmRepositoriesStore } from '../../stores/helm-repositories.js';
 
@@ -45,7 +47,7 @@ const version = ref('');
 const releaseName = ref('');
 const releaseNamespace = ref('default');
 const valuesTemplate = ref('');
-const selector = ref<{ key: string; value: string }[]>([]);
+const selector = ref<SelectorRow[]>([]);
 const reconcileStrategy = ref<'Continuous' | 'InstallOnce'>('Continuous');
 const wait = ref(true);
 const timeout = ref('10m0s');
@@ -64,11 +66,7 @@ watch(
     releaseName.value = i?.releaseName ?? '';
     releaseNamespace.value = i?.releaseNamespace ?? 'default';
     valuesTemplate.value = i?.valuesTemplate ?? '';
-    selector.value = Object.entries(i?.clusterSelector ?? {}).map(([key, value]) => ({
-      key,
-      value,
-    }));
-    if (!selector.value.length) selector.value = [{ key: '', value: 'true' }];
+    selector.value = selectorRows(i?.clusterSelector);
     reconcileStrategy.value = i?.reconcileStrategy ?? 'Continuous';
     wait.value = i?.options.wait ?? true;
     timeout.value = i?.options.timeout ?? '10m0s';
@@ -143,30 +141,7 @@ async function loadDefaults(): Promise<void> {
   }
 }
 
-// ---- selector with live matches (FP8-F-07) ----
-const selectorLabels = computed(() =>
-  Object.fromEntries(
-    selector.value.filter((s) => s.key.trim()).map((s) => [s.key.trim(), s.value.trim()]),
-  ),
-);
-const matching = ref<string[] | null>(null);
-let matchTimer: ReturnType<typeof setTimeout> | undefined;
-watch(
-  [namespace, selectorLabels, open],
-  ([ns, sel, o]) => {
-    clearTimeout(matchTimer);
-    matching.value = null;
-    if (!o || !ns || !Object.keys(sel).length) return;
-    matchTimer = setTimeout(async () => {
-      try {
-        matching.value = await addons.matching(props.connection, ns, sel);
-      } catch {
-        matching.value = null;
-      }
-    }, 400);
-  },
-  { deep: true },
-);
+const selectorLabels = computed(() => labelsOf(selector.value));
 
 const spec = (): AddonSpecInput => ({
   name: name.value.trim(),
@@ -313,58 +288,12 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           </v-col>
         </v-row>
 
-        <div class="text-subtitle-2 mt-4">{{ t('addons.selector') }}</div>
-        <p class="text-caption text-medium-emphasis mb-2">
-          {{ t('addons.selectorHint') }} {{ hcpField('spec.clusterSelector.matchLabels') }}
-        </p>
-        <div v-for="(s, i) in selector" :key="i" class="d-flex ga-2 align-center">
-          <v-text-field
-            v-model="s.key"
-            :label="t('addons.labelKey')"
-            density="compact"
-            hide-details
-            :data-testid="`selector-key-${i}`"
-          />
-          <v-text-field
-            v-model="s.value"
-            :label="t('addons.labelValue')"
-            density="compact"
-            hide-details
-            :data-testid="`selector-value-${i}`"
-          />
-          <v-btn
-            icon="mdi-close"
-            size="small"
-            variant="text"
-            :aria-label="t('common.delete')"
-            :disabled="selector.length === 1"
-            @click="selector.splice(i, 1)"
-          />
-        </div>
-        <v-btn
-          size="small"
-          variant="text"
-          prepend-icon="mdi-plus"
-          class="mt-1"
-          @click="selector.push({ key: '', value: '' })"
-          >{{ t('addons.addLabel') }}</v-btn
-        >
-        <div class="mt-2" data-testid="addon-matching">
-          <span class="text-caption text-medium-emphasis mr-2">{{ t('addons.matching') }}</span>
-          <template v-if="matching">
-            <v-chip
-              v-for="c in matching"
-              :key="c"
-              size="small"
-              color="success"
-              variant="tonal"
-              class="mr-1"
-              >{{ c }}</v-chip
-            >
-            <span v-if="!matching.length" class="text-caption">{{ t('addons.noMatch') }}</span>
-          </template>
-          <span v-else class="text-caption">–</span>
-        </div>
+        <ClusterSelectorField
+          v-model="selector"
+          :connection="connection"
+          :namespace="namespace"
+          :active="open"
+        />
 
         <v-radio-group
           v-model="reconcileStrategy"

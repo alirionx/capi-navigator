@@ -59,6 +59,7 @@ test.describe('Helm add-ons (FP-8)', () => {
       // FP8-F-04 to F-10: form with chart browser, defaults and preview.
       await page.goto('/addons');
       await page.getByTestId('new-addon').click();
+      await page.getByTestId('new-helm-addon').click();
       await page.getByTestId('addon-name').locator('input').fill(addon);
       await page.getByTestId('addon-namespace').locator('input').fill(namespace);
       await page.getByTestId('addon-repository').click();
@@ -92,6 +93,59 @@ test.describe('Helm add-ons (FP-8)', () => {
       await expect(table).not.toContainText(addon, { timeout: 30_000 });
     } finally {
       await cleanup(request, repo, addon);
+    }
+  });
+});
+
+test.describe('Manifest add-ons (FP-30)', () => {
+  test.skip(!adminPassword, 'set E2E_ADMIN_PASSWORD to run');
+
+  // Needs the chart capi-navigator-manifests at the chart source of the connection (ghcr.io).
+  test('example, object check, preview, apply and delete of a manifest add-on', async ({
+    page,
+    request,
+  }) => {
+    test.setTimeout(120_000);
+    const addon = `e2e-manifests-${Date.now().toString(36)}`;
+    try {
+      await signIn(page, adminUser, adminPassword!);
+      await page.goto('/addons');
+      // FP30-F-03: the chart source and its version.
+      await expect(page.getByTestId('manifest-chart-ok')).toBeVisible({ timeout: 30_000 });
+
+      await page.getByTestId('new-addon').click();
+      await page.getByTestId('new-manifest-addon').click();
+      await page.getByTestId('manifest-addon-name').locator('input').fill(addon);
+      await page.getByTestId('manifest-addon-namespace').locator('input').fill(namespace);
+      await page.getByTestId('selector-key-0').locator('input').fill(`e2e/${addon}`);
+      // FP30-F-07: example with a CAAPH template; FP30-F-05: objects listed while typing.
+      await page.getByText('Example: cert-manager ClusterIssuer').click();
+      await page.getByTestId('use-example-cluster-issuer').click();
+      await expect(page.getByTestId('manifest-addon-check')).toContainText(
+        'ClusterIssuer letsencrypt',
+      );
+      await expect(page.getByTestId('addon-matching')).toContainText('none yet');
+
+      // FP30-F-09: preview of the HelmChartProxy for the generic chart.
+      await page.getByTestId('change-preview').click();
+      const dialog = page.getByTestId('change-dialog');
+      await expect(dialog).toContainText('capi-navigator-manifests', { timeout: 30_000 });
+      await page.getByTestId('change-apply').click();
+
+      const table = page.getByTestId('addons-table');
+      await expect(table).toContainText(addon, { timeout: 30_000 });
+      await expect(page.getByTestId(`addon-releases-${addon}`)).toHaveText('0/0');
+
+      await page.getByTestId(`delete-addon-${addon}`).click();
+      await page.getByTestId('delete-addon-confirm').locator('input').fill(addon);
+      await page.getByTestId('delete-addon-apply').click();
+      await expect(table).not.toContainText(addon, { timeout: 30_000 });
+    } finally {
+      await request.post('/api/auth/login', {
+        headers: CSRF,
+        data: { username: adminUser, password: adminPassword },
+      });
+      await request.delete(`/api/connections/home/addons/${namespace}/${addon}`, { headers: CSRF });
     }
   });
 });
