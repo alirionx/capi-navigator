@@ -1,6 +1,7 @@
 # Release: a tag vX.Y.Z publishes the container image ghcr.io/<owner>/capi-navigator:X.Y.Z, pushes
 # the Helm chart as OCI artifact to ghcr.io/<owner>/charts/capi-navigator:X.Y.Z and attaches the
-# packaged chart (capi-navigator-X.Y.Z.tgz + .sha256) to the GitHub release.
+# packaged chart (capi-navigator-X.Y.Z.tgz + .sha256) to the GitHub release. The chart of the
+# manifest add-ons (capi-navigator-manifests, FP-30) is released the same way with the same version.
 #
 # To release: set `version` and `appVersion` in deploy/helm/capi-navigator/Chart.yaml to X.Y.Z,
 # commit, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
@@ -21,6 +22,7 @@ permissions:
 env:
   IMAGE: ghcr.io/${{ github.repository }}
   CHART: deploy/helm/capi-navigator
+  MANIFESTS_CHART: deploy/helm/capi-navigator-manifests
 
 jobs:
   version:
@@ -90,22 +92,28 @@ jobs:
       - uses: azure/setup-helm@v5
       - name: Lint and package
         id: package
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
           helm lint "$CHART" --strict
+          helm lint "$MANIFESTS_CHART" --strict
           mkdir -p dist
           helm package "$CHART" --destination dist
-          file="dist/capi-navigator-${{ needs.version.outputs.version }}.tgz"
-          (cd dist && sha256sum "$(basename "$file")" > "$(basename "$file").sha256")
-          echo "file=$file" >> "$GITHUB_OUTPUT"
+          # Same version as the app (FP30-F-01); its Chart.yaml stays at 0.0.0-dev.
+          helm package "$MANIFESTS_CHART" --destination dist --version "$VERSION" --app-version "$VERSION"
+          (cd dist && for f in *.tgz; do sha256sum "$f" > "$f.sha256"; done)
+          echo "file=dist/capi-navigator-${VERSION}.tgz" >> "$GITHUB_OUTPUT"
       # Next to the container image, under charts/ (same name would clash with the image). A new
       # package starts private: set it to public once in the package settings, like the image.
-      - name: Push chart to ghcr.io (OCI)
+      # Workload clusters pull capi-navigator-manifests through CAAPH, so it must be public too.
+      - name: Push charts to ghcr.io (OCI)
         env:
           GH_TOKEN: ${{ github.token }}
-          FILE: ${{ steps.package.outputs.file }}
         run: |
           echo "$GH_TOKEN" | helm registry login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-          helm push "$FILE" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+          for file in dist/*.tgz; do
+            helm push "$file" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/charts"
+          done
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -134,9 +142,11 @@ jobs:
 
           The packaged chart is also attached to this release (\`${base}/$(basename "$FILE")\`).
 
+          Manifest add-ons (FP-30) use the chart \`${chart}-manifests\` with the same version.
+
           See the README for exposure options (Service, Ingress, HTTPRoute) and all values.
           NOTES
-          gh release create "$GITHUB_REF_NAME" "$FILE" "$FILE.sha256" \
+          gh release create "$GITHUB_REF_NAME" dist/*.tgz dist/*.sha256 \
             --title "CAPI Navigator ${VERSION}" \
             --notes-file notes.md \
             --generate-notes \
