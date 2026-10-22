@@ -355,6 +355,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-22 | API tokens for technical users (optional) | FP-19, FP-23 |
 | FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
 | FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
+| FP-30 | Manifest add-ons through CAAPH (optional) | FP-8 |
 
 ### FP-0: Project scaffold
 
@@ -908,6 +909,34 @@ Order of work: credentials first (so real credentials can be stored early), then
 - [x] The wizard creates an all-in-one cluster with three nodes; workloads are scheduled on all three.
 - [x] An all-in-one cluster is scaled from one to three nodes and back in the app, with preview.
 - [x] Snapshot tests cover all-in-one with three nodes for RKE2, k0s and kubeadm.
+
+### FP-30: Manifest add-ons (optional)
+
+**Goal:** besides Helm charts, users keep plain Kubernetes manifests in the app – typically the objects that complete an installed chart, such as a cert-manager `ClusterIssuer` or a Gateway API `Gateway` – and assign them to clusters by label. They are rolled out through CAAPH with a small generic chart of the project, so assignment, status and removal work like Helm add-ons (FP-8) and everything stays upstream (ADR-0024).
+
+**Chart and source**
+
+- **FP30-F-01** MUST provide a generic chart `capi-navigator-manifests` in the repository that renders the manifests passed in its values unchanged; the release workflow publishes it with every app release as OCI artifact next to the app chart (`oci://ghcr.io/<owner>/charts/capi-navigator-manifests`), with the app version as chart version.
+- **FP30-F-02** MUST use that chart source by default and let admins override it per management cluster connection (e.g. a mirror in an internal registry, with the credentials and CA options of FP-8); the app shows the `helm pull` and `helm push` commands for mirroring the matching version.
+- **FP30-F-03** SHOULD check that the chart version belonging to the app exists at the configured source and otherwise show a clear hint, instead of failing releases in the clusters.
+
+**Manifest add-ons**
+
+- **FP30-F-04** MUST let users create, edit and delete manifest add-ons: name, manifests (multi-document YAML in Monaco), release namespace, cluster selector and reconcile strategy, as for Helm add-ons (FP8-F-05 to FP8-F-09). Each manifest add-on becomes one `HelmChartProxy` for the generic chart; one Helm release per matching cluster.
+- **FP30-F-05** MUST validate the manifests before saving: valid YAML, every document a Kubernetes object with `apiVersion`, `kind` and `metadata.name`, and no object listed twice.
+- **FP30-F-06** MUST refuse objects of kind `Secret`, with a hint (e.g. External Secrets or `kubectl`): their content would be stored in plain text in the `HelmChartProxy` (hard rule 8). Support for secrets may follow.
+- **FP30-F-07** MUST support CAAPH's values templating inside the manifests (e.g. `{{ .Cluster.metadata.name }}` in a host name) and show an example; MUST offer examples for a `ClusterIssuer` and a `Gateway`.
+- **FP30-F-08** SHOULD warn when an object of the add-on is also part of another manifest add-on whose selector matches the same clusters, since Helm refuses the second release.
+- **FP30-F-09** MUST show the generated `HelmChartProxy` and the objects as a preview before applying (hard rule 6), list status per cluster like Helm add-ons (FP8-F-11, FP8-F-12) and warn before deletion that the objects are removed from all matching clusters.
+- **FP30-F-10** MUST use the permissions and audit of Helm add-ons (`addons.manage`, scoped by connection and namespace): whoever may roll out manifests is close to cluster-admin on the matching clusters.
+
+**Acceptance criteria**
+
+- [ ] After cert-manager is rolled out as Helm add-on, a manifest add-on with a `ClusterIssuer` is assigned to a labelled cluster and the issuer is ready there; removing the label removes the issuer.
+- [ ] A manifest with `{{ .Cluster.metadata.name }}` renders the cluster's name in two clusters.
+- [ ] Manifests with a `Secret` or with an object listed twice are refused before saving.
+- [ ] With the chart source of a connection pointed to a mirror, releases are installed from the mirror; a missing chart version is reported in the app.
+- [ ] The chart is published with a release and installable with `helm install` from ghcr.io.
 
 ## 7. Non-functional requirements
 
