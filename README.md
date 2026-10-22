@@ -419,7 +419,10 @@ A release is published by pushing a version tag `vX.Y.Z`
 ([release.yaml](.github/workflows/release.yaml)). It checks that the tag matches `Chart.yaml`,
 pushes the image `ghcr.io/alirionx/capi-navigator` with the tags `X.Y.Z`, `X.Y` and `latest`, and
 creates the GitHub release with `capi-navigator-X.Y.Z.tgz`, its SHA-256 checksum and notes with
-the install and upgrade commands.
+the install and upgrade commands. The chart of the manifest add-ons
+([capi-navigator-manifests](deploy/helm/capi-navigator-manifests/README.md), FP-30) is published
+next to it with the same version; its `Chart.yaml` stays at `0.0.0-dev`, the workflow sets the
+version when packaging.
 
 **Choosing the version** (semantic versioning, `0.x` while the app is young): new features or
 changes to the chart's CRDs, RBAC or values raise the minor version (`0.3.0` → `0.4.0`), fixes
@@ -474,7 +477,9 @@ release is fixed by the next patch version.
 3. Tag that commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
 4. Check the run under Actions → Release, then the release page. The first image push creates
    the package private on ghcr.io; make it public once (Packages → capi-navigator → Package
-   settings → Change visibility) so the chart can pull it without credentials.
+   settings → Change visibility) so the chart can pull it without credentials. The same applies
+   once to the chart packages `charts/capi-navigator` and `charts/capi-navigator-manifests`
+   (workload clusters pull the latter through CAAPH).
 5. If the release adds or changes CRDs, edit the release on GitHub and add a line at the top
    ("Changes CRDs: apply them before upgrading"). The generated notes always contain the CRD
    command, but only this line tells users that skipping it breaks the upgrade (see

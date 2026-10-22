@@ -1,0 +1,3 @@
+{{- /* The manifests of one manifest add-on (FP30-F-01). Not passed through `tpl`: Helm does not
+  template them a second time. */ -}}
+{{ .Values.manifests }}

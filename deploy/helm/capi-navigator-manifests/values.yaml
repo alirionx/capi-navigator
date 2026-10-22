@@ -1,0 +1,4 @@
+# Multi-document YAML, rendered unchanged (FP30-F-01). CAPI Navigator sets it through the
+# `valuesTemplate` of a HelmChartProxy, so CAAPH has already resolved Go templates such as
+# {{ .Cluster.metadata.name }} when Helm renders the chart.
+manifests: ''

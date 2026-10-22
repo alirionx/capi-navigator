@@ -1,0 +1,12 @@
+apiVersion: v2
+name: capi-navigator-manifests
+description: >-
+  Plain Kubernetes manifests as a Helm release: the chart behind the manifest add-ons of CAPI
+  Navigator (FP-30), rolled out to workload clusters through CAAPH
+type: application
+# Released together with the app chart: the release workflow packages it with the version of
+# deploy/helm/capi-navigator/Chart.yaml, the only source of the app version (FP30-F-01).
+version: 0.0.0-dev
+appVersion: 0.0.0-dev
+annotations:
+  artifacthub.io/license: Apache-2.0
