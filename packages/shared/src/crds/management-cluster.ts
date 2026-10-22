@@ -15,6 +15,11 @@ export const ManagementClusterSpecSchema = z.object({
   context: z.string().optional(),
   /** Incremented on every credential change; lets all replicas rebuild cached clients. */
   credentialsRevision: z.int().min(0).default(0),
+  /**
+   * Helm repository of the app that serves the chart of the manifest add-ons, e.g. a mirror
+   * (FP30-F-02); default: the chart published on ghcr.io.
+   */
+  manifestChartRepository: z.string().optional(),
 });
 export type ManagementClusterSpec = z.infer<typeof ManagementClusterSpecSchema>;
 

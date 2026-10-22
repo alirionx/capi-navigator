@@ -1,3 +1,4 @@
+import { buildManifestHelmChartProxy, ManifestAddonSpecSchema } from '@capi-navigator/shared';
 import { describe, expect, it } from 'vitest';
 import { buildAddonStatuses } from './addons.service.js';
 
@@ -84,5 +85,23 @@ describe('add-on status (FP8-F-11)', () => {
     expect(rows.find((r) => r.name === 'capi-navigator-openstack-ccm')!.spec).toBeUndefined();
     expect(rows.find((r) => r.name === 'external')).toMatchObject({ managed: false });
     expect(rows.find((r) => r.name === 'external')!.spec).toBeUndefined();
+  });
+
+  it('marks manifest add-ons and returns their form model (FP30-F-04)', () => {
+    const spec = ManifestAddonSpecSchema.parse({
+      name: 'issuer',
+      namespace: 'team-a',
+      manifests: 'apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\n',
+      clusterSelector: { 'addon/issuer': 'true' },
+    });
+    const manifests = buildManifestHelmChartProxy(spec, { version: '0.9.0' });
+    const [helm, row] = buildAddonStatuses(
+      [hcp('a-podinfo'), manifests as unknown as ReturnType<typeof hcp>],
+      [],
+      [cluster('a', { 'addon/issuer': 'true' })],
+    );
+    expect(helm).toMatchObject({ type: 'helm', name: 'a-podinfo' });
+    expect(row).toMatchObject({ type: 'manifests', matchingClusters: ['a'], manifestSpec: spec });
+    expect(row!.spec).toBeUndefined();
   });
 });

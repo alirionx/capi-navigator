@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Manifest add-ons (FP-30) > builds a HelmChartProxy for the generic chart from ghcr.io (FP30-F-01, FP30-F-04) 1`] = `
+"apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: issuer
+  namespace: capi-test
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/addon-type: manifests
+spec:
+  clusterSelector:
+    matchLabels:
+      addon/issuer: "true"
+  repoURL: oci://ghcr.io/alirionx/charts
+  chartName: capi-navigator-manifests
+  version: 0.9.0
+  releaseName: issuer
+  namespace: default
+  valuesTemplate: |
+    manifests: |2
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: selfsigned
+      spec:
+        selfSigned: {}
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: info
+      data:
+        cluster: {{ .Cluster.metadata.name }}
+        indented: |
+            deeper
+  reconcileStrategy: Continuous
+  options:
+    wait: true
+    timeout: 10m0s
+    install:
+      createNamespace: true
+"
+`;
