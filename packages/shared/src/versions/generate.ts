@@ -30,6 +30,7 @@ export function renderScriptEnv(versions: VersionsFile): string {
     `CAPI_OPERATOR_VERSION_DEFAULT=${versions.prerequisites['capi-operator'].version.replace(/^v/, '')}`,
     `DEX_CHART_VERSION_DEFAULT=${versions.testTools.dex.version}`,
     `SOCAT_IMAGE_DEFAULT=${versions.testTools.socat.source.package}:${versions.testTools.socat.version}`,
+    `GITLEAKS_IMAGE_DEFAULT=ghcr.io/${versions.testTools.gitleaks.source.package}:${versions.testTools.gitleaks.version}`,
     '',
   ].join('\n');
 }

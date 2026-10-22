@@ -324,6 +324,15 @@ export const VERSIONS: VersionsFile = {
         "registry": "docker.io"
       },
       "verified": "2026-10-20"
+    },
+    "gitleaks": {
+      "version": "v8.30.1",
+      "source": {
+        "datasource": "docker",
+        "package": "gitleaks/gitleaks",
+        "registry": "https://ghcr.io"
+      },
+      "verified": "2026-10-22"
     }
   }
 };

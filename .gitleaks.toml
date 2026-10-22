@@ -1,0 +1,13 @@
+# gitleaks configuration for `pnpm secrets:scan` (scripts/secret-scan.sh).
+# Default rules of the pinned gitleaks version, plus allowlists for deliberate test fixtures.
+[extend]
+useDefault = true
+
+# Deliberate fake values in tests. Matched by value, not by file, so a real secret in the same file
+# is still found. Add a value only after checking that it is not a credential.
+[[allowlists]]
+description = "Fake credentials in tests"
+regexTarget = "secret"
+regexes = [
+  '''^dummySecretKeyThatIsNotValid0123456789ABCD$''', # credentials.int.test.ts: invalid AWS key on purpose
+]
