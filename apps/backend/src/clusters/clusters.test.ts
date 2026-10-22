@@ -824,6 +824,58 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.existingCluster = false;
   });
 
+  it('a label change leaves objects of an older app version alone (ADR-0025)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+      topology: {
+        mode: 'all-in-one',
+        controlPlane: { replicas: 1, machineSize: 'a2-ram4-disk50-perf1' },
+        workerPools: [],
+      },
+      // Namespace-wide add-on objects are not part of the simulated live state.
+      addons: { cloudControllerManager: false, csiDriver: false, cni: 'none' },
+    });
+    const kubeadm = ['kubeadm-bootstrap', 'kubeadm-control-plane'].map(
+      (id) => ready(id) as OperatorState['providers'][number],
+    );
+    state.providers.push(...kubeadm);
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    // Live state as an older app version generated it: the control plane differs.
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      const live = structuredClone(o) as typeof o & { spec?: Record<string, unknown> };
+      if (o.kind === 'KubeadmControlPlane') {
+        const cfg = (live.spec!.kubeadmConfigSpec ?? {}) as { postKubeadmCommands?: string[] };
+        cfg.postKubeadmCommands = (cfg.postKubeadmCommands ?? []).slice(0, -1);
+      }
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, live);
+    }
+    const url = '/api/connections/home/clusters/team-a/demo/labels';
+    const body = { labels: { env: 'test', knecht: 'true' } };
+    const preview = await http()
+      .post(`${url}/preview`)
+      .set(CSRF)
+      .set('Cookie', operatorCookie)
+      .send(body)
+      .expect(200);
+    expect(preview.body.blockers).toEqual([]);
+    expect(preview.body.diffs.map((d: { kind: string }) => d.kind)).toEqual(['Cluster']);
+    expect(preview.body.rollouts.filter((r: { action: string }) => r.action === 'replace')).toEqual(
+      [],
+    );
+    expect(preview.body.warnings.join(' ')).toMatch(
+      /Not part of this change: KubeadmControlPlane demo-control-plane differs from what this app version generates/,
+    );
+    k8s.applied = [];
+    await http().post(url).set(CSRF).set('Cookie', operatorCookie).send(body).expect(200);
+    expect(k8s.applied.filter((a) => !a.dryRun)).toEqual([{ kinds: ['Cluster'], dryRun: false }]);
+    state.providers.splice(-kubeadm.length);
+    k8s.live.clear();
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
+  });
+
   it('k0s: scaling an all-in-one control plane down warns about short API outages (FP26-F-03)', async () => {
     const spec = ClusterSpecSchema.parse({
       ...OS_SPEC,
