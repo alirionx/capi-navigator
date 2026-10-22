@@ -28,3 +28,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0022](0022-gcp-api-load-balancer.md)                       | Distributions behind the Google Cloud API load balancer                          | accepted |
 | [0023](0023-gcp-ccm-and-csi-as-manifests.md)                | Google Cloud CCM and CSI driver as manifests with node credentials               | accepted |
 | [0024](0024-manifest-addons-through-caaph.md)               | Manifest add-ons through CAAPH with a generic chart of the project               | proposed |
+| [0025](0025-changes-apply-only-what-they-touch.md)          | Cluster changes apply only the objects they touch                                | accepted |

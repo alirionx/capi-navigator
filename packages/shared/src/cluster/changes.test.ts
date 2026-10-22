@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scalePool, setBastion, setLabels, SpecChangeError } from './changes.js';
+import { objectsTouchedBy, scalePool, setBastion, setLabels, SpecChangeError } from './changes.js';
 import { ClusterSpecSchema, type ClusterSpec } from './spec.js';
 import { transform } from './transform.js';
 
@@ -82,5 +82,44 @@ describe('spec changes (FP6-F-05, FP6-F-07)', () => {
       /Disable the bastion first/,
     );
     expect(() => setBastion(spec, { enabled: true, machineSize: 'x' })).toThrow(/key pair/);
+  });
+});
+
+describe('objects touched by a change (ADR-0025)', () => {
+  const kubeadmAio = ClusterSpecSchema.parse({
+    ...spec,
+    kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+    topology: {
+      mode: 'all-in-one',
+      controlPlane: { replicas: 1, machineSize: 'a2-ram4-disk50-perf1' },
+      workerPools: [],
+    },
+  });
+
+  it('a label change touches only the Cluster, even if the live objects are older', () => {
+    const touched = objectsTouchedBy(
+      transform(kubeadmAio, ctx),
+      transform(setLabels(kubeadmAio, { knecht: 'true' }), ctx),
+    );
+    expect([...touched]).toEqual(['Cluster/demo']);
+  });
+
+  it('a scale change touches the control plane, an unchanged spec nothing', () => {
+    const scaled = ClusterSpecSchema.parse({
+      ...kubeadmAio,
+      topology: {
+        ...kubeadmAio.topology,
+        controlPlane: { ...kubeadmAio.topology.controlPlane, replicas: 3 },
+      },
+    });
+    const touched = objectsTouchedBy(transform(kubeadmAio, ctx), transform(scaled, ctx));
+    expect([...touched].some((k) => k.startsWith('KubeadmControlPlane/'))).toBe(true);
+    expect(objectsTouchedBy(transform(kubeadmAio, ctx), transform(kubeadmAio, ctx)).size).toBe(0);
+  });
+
+  it('new objects count as touched', () => {
+    expect([...objectsTouchedBy([], transform(kubeadmAio, ctx))].length).toBe(
+      transform(kubeadmAio, ctx).length,
+    );
   });
 });

@@ -574,7 +574,7 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 - **FP7-F-11** MUST offer “Rebuild nodes” without any change, replacing all nodes of a group with fresh ones (via `rolloutAfter` where supported, otherwise template rotation).
 - **FP7-F-12** SHOULD detect when a newer image of the same OS appears in OpenStack (by name pattern or image properties such as `os_distro` and `os_version`) and suggest a rebuild.
 - **FP7-F-13** MUST edit node customization per group; the change is rolled out by rebuilding that group's nodes.
-- **FP7-F-14** MUST apply every change by updating the stored cluster spec first and then regenerating and applying the manifests through the same transformation as cluster creation.
+- **FP7-F-14** MUST apply every change by updating the stored cluster spec first and then regenerating and applying the manifests through the same transformation as cluster creation. Only the objects the change touches are applied; differences that come from a newer app version are left alone and shown (ADR-0025).
 - **FP7-F-15** MUST implement all machine-affecting changes by template rotation: create new machine and bootstrap templates with new names and switch the references. Existing templates are never modified. Old templates SHOULD be deleted after the rollout.
 - **FP7-F-16** MUST show a preview before applying: manifest diff, which nodes will be replaced, in which order, with which surge settings.
 - **FP7-F-17** MUST allow only one rollout per cluster at a time, and show its progress live (old and new machines, current step).

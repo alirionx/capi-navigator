@@ -20,6 +20,8 @@ import {
   ClusterSpecSchema,
   infraSummary,
   SpecChangeError,
+  objectKey,
+  objectsTouchedBy,
   stableStringify,
   type ClusterChangePreview,
   type Drift,
@@ -136,6 +138,10 @@ interface Plan {
   credentialNamespaceMissing: boolean;
   /** Older versions of the namespace's add-on resource sets, replaced by the new ones. */
   removed: KubernetesObject[];
+  /** Keys of the objects from the transformation (not namespace, presets or resource sets). */
+  generated: Set<string>;
+  /** With a baseline spec: the generated objects the change touches (ADR-0025). */
+  touched?: Set<string>;
 }
 
 /**
@@ -518,7 +524,9 @@ export class ClustersService {
       }
       throw err;
     }
-    const plan = await this.plan(connection, next, false);
+    // ADR-0025: only what the change itself touches; older generated objects stay as they are.
+    const plan = await this.plan(connection, next, false, current);
+    const outdated: string[] = [];
     const diffs: ObjectDiff[] = [];
     const drift: Drift[] = [];
     const changed: KubernetesObject[] = [];
@@ -532,6 +540,21 @@ export class ClustersService {
         const { result, conflict } = await dryRunApply(plan.kc, obj);
         const before = live ? normalizeForDiff(live) : undefined;
         const after = normalizeForDiff(result);
+        const key = objectKey(obj);
+        if (live && plan.touched && plan.generated.has(key) && !plan.touched.has(key)) {
+          // Not part of this change: compared as unchanged, reported if this app version would
+          // generate it differently (e.g. after an app update).
+          planned.push({
+            kind: obj.kind ?? '',
+            name: obj.metadata?.name ?? '',
+            before: { ...before, status: (live as { status?: unknown }).status },
+            after: before!,
+          });
+          if (stableStringify(before) !== stableStringify(after)) {
+            outdated.push(`${obj.kind} ${obj.metadata?.name}`);
+          }
+          continue;
+        }
         planned.push({
           kind: obj.kind ?? '',
           name: obj.metadata?.name ?? '',
@@ -651,6 +674,20 @@ export class ClustersService {
     // FP7-F-09: pre-checks before an upgrade.
     if (opts.upgrade) blockers.push(...(await this.upgradeChecks(connection, next, machines)));
     const warnings = [...plan.warnings];
+    if (replaces) {
+      const onlyNode =
+        next.topology.mode === 'all-in-one' && next.topology.controlPlane.replicas === 1;
+      warnings.unshift(
+        onlyNode
+          ? 'This change replaces the only node of the cluster: all workloads restart, and volumes bound to another availability zone cannot follow.'
+          : 'This change replaces machines (see the rollout plan); workloads move to the new nodes.',
+      );
+    }
+    if (outdated.length) {
+      warnings.push(
+        `Not part of this change: ${outdated.join(', ')} ${outdated.length > 1 ? 'differ' : 'differs'} from what this app version generates (e.g. after an app update) and ${outdated.length > 1 ? 'are' : 'is'} left as is, since applying ${outdated.length > 1 ? 'them' : 'it'} may replace machines.`,
+      );
+    }
     const scaleDown = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates?.scaleDownWarning;
     if (scaleDown && next.topology.controlPlane.replicas < current.topology.controlPlane.replicas) {
       warnings.push(scaleDown);
@@ -723,6 +760,8 @@ export class ClustersService {
     connection: string,
     spec: ClusterSpec,
     grantNamespace: boolean,
+    /** The stored spec before a change; limits the change to what it touches (ADR-0025). */
+    baseline?: ClusterSpec,
   ): Promise<Plan> {
     const kc = await this.clients.forConnection(connection);
     const infra = spec.infrastructure;
@@ -792,12 +831,17 @@ export class ClustersService {
     }
 
     const cloudName = resolved?.credential.summary.cloudName;
-    const objects: KubernetesObject[] = transform(spec, {
+    const transformContext = {
       credential: {
         ...(cloudName ? { cloudName } : {}),
         ...(resolved ? { secret: resolved.credential.secret } : {}),
       },
-    }) as KubernetesObject[];
+    };
+    const generated = transform(spec, transformContext);
+    const objects = generated as KubernetesObject[];
+    const touched = baseline
+      ? objectsTouchedBy(transform(baseline, transformContext), generated)
+      : undefined;
     const extra: KubernetesObject[] = [];
     const extraPreview: KubernetesObject[] = [];
     const removed: KubernetesObject[] = [];
@@ -1013,6 +1057,8 @@ export class ClustersService {
       blockers,
       credentialNamespaceMissing,
       removed,
+      generated: new Set(generated.map(objectKey)),
+      ...(touched ? { touched } : {}),
     };
   }
 
