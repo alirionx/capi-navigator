@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** Infrastructure providers with stored credentials (FP-4). */
-export const CREDENTIAL_PROVIDERS = ['openstack', 'aws', 'gcp'] as const;
+export const CREDENTIAL_PROVIDERS = ['openstack', 'aws', 'gcp', 'proxmox'] as const;
 export const CredentialProviderSchema = z.enum(CREDENTIAL_PROVIDERS);
 export type CredentialProvider = z.infer<typeof CredentialProviderSchema>;
 
@@ -115,6 +115,61 @@ export const GcpCredentialInputSchema = z.object({
 });
 export type GcpCredentialInput = z.input<typeof GcpCredentialInputSchema>;
 
+// ---- Proxmox VE (FP31-F-02..05) ----
+
+/** A machine size of a Proxmox credential (FP31-F-04); its name is the cluster spec's machineSize. */
+export const ProxmoxMachineSizeSchema = z.object({
+  name: z
+    .string()
+    .regex(/^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$/, 'Lowercase letters, digits, "-" and "."')
+    .max(40),
+  vcpus: z.int().min(1).max(128),
+  memoryMiB: z
+    .int()
+    .min(1024)
+    .max(1024 * 1024),
+});
+export type ProxmoxMachineSize = z.infer<typeof ProxmoxMachineSizeSchema>;
+
+/**
+ * Annotation on the ProxmoxCluster naming the stored credential; clusters reference a copy of
+ * the Secret, which CAPMOX owns (FP31-F-09).
+ */
+export const PROXMOX_CREDENTIAL_ANNOTATION = 'capi-navigator.io/credential';
+
+/** Sizes a new Proxmox credential starts with (FP31-F-04). */
+export const DEFAULT_PROXMOX_MACHINE_SIZES: ProxmoxMachineSize[] = [
+  { name: 'small', vcpus: 2, memoryMiB: 4096 },
+  { name: 'medium', vcpus: 4, memoryMiB: 8192 },
+  { name: 'large', vcpus: 8, memoryMiB: 16384 },
+  { name: 'xlarge', vcpus: 8, memoryMiB: 32768 },
+];
+
+export const ProxmoxMachineSizesSchema = z
+  .array(ProxmoxMachineSizeSchema)
+  .min(1, 'At least one size')
+  .max(20)
+  .refine((l) => new Set(l.map((x) => x.name)).size === l.length, 'Size names must be unique');
+
+export const ProxmoxCredentialInputSchema = z.object({
+  /** API endpoint, e.g. https://pve.example.com:8006 (without /api2/json). */
+  url: z
+    .url({ protocol: /^https$/, message: 'An https:// URL like https://pve.example.com:8006' })
+    .max(512)
+    .transform((u) => u.replace(/\/+$/, '').replace(/\/api2\/json$/, '')),
+  /** API token ID, user@realm!tokenname. */
+  tokenId: z
+    .string()
+    .trim()
+    .regex(/^[^@!\s]+@[^@!\s]+![A-Za-z][A-Za-z0-9._-]*$/, 'A token ID like capmox@pve!capi'),
+  tokenSecret: z.string().trim().min(1, 'Required').max(256),
+  /** CA certificate of the Proxmox API (PEM), e.g. /etc/pve/pve-root-ca.pem; empty: trust store. */
+  caCert: PemSchema.optional(),
+  /** Unset: the defaults for a new credential, the stored sizes for an update. */
+  machineSizes: ProxmoxMachineSizesSchema.optional(),
+});
+export type ProxmoxCredentialInput = z.input<typeof ProxmoxCredentialInputSchema>;
+
 // ---- API ----
 
 export const CreateCredentialRequestSchema = z.discriminatedUnion('provider', [
@@ -139,6 +194,13 @@ export const CreateCredentialRequestSchema = z.discriminatedUnion('provider', [
     allowedNamespaces: AllowedNamespacesSchema,
     gcp: GcpCredentialInputSchema,
   }),
+  z.object({
+    provider: z.literal('proxmox'),
+    name: CredentialNameSchema,
+    displayName: z.string().trim().max(80).optional(),
+    allowedNamespaces: AllowedNamespacesSchema,
+    proxmox: ProxmoxCredentialInputSchema,
+  }),
 ]);
 export type CreateCredentialRequest = z.input<typeof CreateCredentialRequestSchema>;
 
@@ -150,6 +212,9 @@ export const UpdateCredentialRequestSchema = z
     openstack: OpenStackCredentialInputSchema.optional(),
     aws: AwsCredentialInputSchema.optional(),
     gcp: GcpCredentialInputSchema.optional(),
+    proxmox: ProxmoxCredentialInputSchema.optional(),
+    /** Only the machine sizes (FP31-F-04), keeping the stored token. */
+    machineSizes: ProxmoxMachineSizesSchema.optional(),
   })
   .refine(
     (v) =>
@@ -157,7 +222,9 @@ export const UpdateCredentialRequestSchema = z
       v.allowedNamespaces !== undefined ||
       v.openstack !== undefined ||
       v.aws !== undefined ||
-      v.gcp !== undefined,
+      v.gcp !== undefined ||
+      v.proxmox !== undefined ||
+      v.machineSizes !== undefined,
     { message: 'Nothing to update' },
   );
 export type UpdateCredentialRequest = z.input<typeof UpdateCredentialRequestSchema>;
@@ -222,6 +289,10 @@ export const CredentialSummarySchema = z.object({
   projectId: z.string().optional(),
   serviceAccount: z.string().optional(),
   hasCaCert: z.boolean().optional(),
+  /** Proxmox VE: API URL, token ID and the machine sizes offered in the wizard (FP31-F-02, F-04). */
+  url: z.string().optional(),
+  tokenId: z.string().optional(),
+  machineSizes: z.array(ProxmoxMachineSizeSchema).optional(),
 });
 export type CredentialSummary = z.infer<typeof CredentialSummarySchema>;
 
@@ -253,6 +324,7 @@ export const LOOKUP_KINDS = {
   ],
   aws: ['regions', 'availabilityZones', 'instanceTypes', 'images', 'keyPairs'],
   gcp: ['regions', 'zones', 'machineTypes', 'images', 'networks'],
+  proxmox: ['nodes', 'templates', 'bridges', 'storages', 'machineSizes'],
 } as const;
 export type LookupKind = (typeof LOOKUP_KINDS)[keyof typeof LOOKUP_KINDS][number];
 
@@ -337,3 +409,34 @@ export const GCP_REQUIRED_PERMISSIONS = [
   'compute.disks.create',
   'iam.serviceAccounts.actAs',
 ] as const;
+
+/**
+ * Proxmox VE privileges the token needs (FP31-F-03): CAPMOX clones and configures VMs, uploads the
+ * cloud-init ISO and reads the guest agent; the CSI plugin allocates disks; the CCM reads VMs.
+ * Alternatives: Proxmox VE 9 split VM.Monitor into VM.GuestAgent.*.
+ */
+export const PROXMOX_REQUIRED_PRIVILEGES: {
+  privilege: string;
+  alternatives?: string[];
+  for: string;
+}[] = [
+  { privilege: 'VM.Allocate', for: 'CAPMOX' },
+  { privilege: 'VM.Clone', for: 'CAPMOX' },
+  { privilege: 'VM.Config.CDROM', for: 'CAPMOX' },
+  { privilege: 'VM.Config.CPU', for: 'CAPMOX' },
+  { privilege: 'VM.Config.Cloudinit', for: 'CAPMOX' },
+  { privilege: 'VM.Config.Disk', for: 'CAPMOX, CSI' },
+  { privilege: 'VM.Config.HWType', for: 'CAPMOX' },
+  { privilege: 'VM.Config.Memory', for: 'CAPMOX' },
+  { privilege: 'VM.Config.Network', for: 'CAPMOX' },
+  { privilege: 'VM.Config.Options', for: 'CAPMOX' },
+  { privilege: 'VM.PowerMgmt', for: 'CAPMOX' },
+  { privilege: 'VM.Audit', for: 'CAPMOX, CCM, CSI' },
+  { privilege: 'VM.GuestAgent.Audit', alternatives: ['VM.Monitor'], for: 'CAPMOX' },
+  { privilege: 'Datastore.Allocate', for: 'CSI' },
+  { privilege: 'Datastore.AllocateSpace', for: 'CAPMOX, CSI' },
+  { privilege: 'Datastore.AllocateTemplate', for: 'CAPMOX (cloud-init ISO)' },
+  { privilege: 'Datastore.Audit', for: 'CAPMOX, CSI' },
+  { privilege: 'Sys.Audit', for: 'CAPMOX, CCM' },
+  { privilege: 'SDN.Use', for: 'CAPMOX (bridge)' },
+];

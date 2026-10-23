@@ -12,10 +12,10 @@ import { ApiError } from '../api/client.js';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useCredentialsStore } from '../stores/credentials.js';
 import ErrorAlert from './ErrorAlert.vue';
-import { CREDENTIAL_FIELDS } from './credentials/index.js';
+import { CREDENTIAL_FIELDS, CREDENTIAL_SETTINGS } from './credentials/index.js';
 import YamlViewer from './YamlViewer.vue';
 
-/** Create or edit OpenStack, AWS and Google Cloud credentials (FP4-F-01, FP4-F-07, FP25-F-02). */
+/** Create or edit infrastructure credentials (FP4-F-01, FP4-F-07, FP25-F-02, FP31-F-02). */
 const props = defineProps<{ provider: CredentialProvider; credential?: Credential | null }>();
 const emit = defineEmits<{ close: []; saved: [Credential] }>();
 const { t } = useI18n();
@@ -30,6 +30,9 @@ const replaceSecret = ref(!props.credential);
 
 /** Secret part from the provider's field component (FP25-F-05). */
 const secret = ref<unknown>(null);
+/** Non-secret settings, e.g. machine sizes (FP31-F-04); null while invalid. */
+const settings = ref<Record<string, unknown> | null>(null);
+const settingsValid = computed(() => !CREDENTIAL_SETTINGS[props.provider] || !!settings.value);
 
 const valid = ref(false);
 const busy = ref(false);
@@ -39,7 +42,9 @@ const serverFieldErrors = computed(() =>
   error.value instanceof ApiError ? error.value.fieldErrors : undefined,
 );
 /** The secret part of the form, keyed by provider as the API expects it. */
-const secretInput = () => ({ [props.provider]: secret.value });
+const secretInput = () => ({
+  [props.provider]: { ...(secret.value as object), ...(settings.value ?? {}) },
+});
 
 function createRequest(): CreateCredentialRequest {
   const common = {
@@ -59,6 +64,7 @@ async function next(): Promise<void> {
         displayName: displayName.value,
         allowedNamespaces: namespaces.value,
         ...(replaceSecret.value ? secretInput() : {}),
+        ...(settings.value ?? {}),
       });
       emit('saved', saved);
     } else {
@@ -144,6 +150,12 @@ async function save(): Promise<void> {
           :credential="credential"
           :server-field-errors="serverFieldErrors"
         />
+        <component
+          :is="CREDENTIAL_SETTINGS[provider]"
+          v-if="CREDENTIAL_SETTINGS[provider]"
+          v-model="settings"
+          :credential="credential"
+        />
 
         <ErrorAlert v-if="error" :error="error" class="mt-3" />
       </v-form>
@@ -170,7 +182,7 @@ async function save(): Promise<void> {
         color="primary"
         variant="flat"
         :loading="busy"
-        :disabled="!valid"
+        :disabled="!valid || !settingsValid"
         data-testid="credential-next"
         @click="next"
       >
