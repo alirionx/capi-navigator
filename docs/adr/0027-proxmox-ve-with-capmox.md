@@ -20,11 +20,13 @@ found what the app has to add.
   load balancer for services can be added by users). One pure function renders the kube-vip
   container for all distributions (version pinned in `versions.yaml`); the infrastructure plugin
   declares that the distribution provides the endpoint, and each flavor plugin delivers it its way:
-  RKE2 as DaemonSet with in-cluster credentials through the RKE2 manifests, k0s as DaemonSet
-  through its manifest deployer with the node's admin kubeconfig (k0s advertises the VIP for the
-  `kubernetes` Service, so in-cluster credentials cannot reach the API before the VIP exists),
-  kubeadm as static pod with the `super-admin.conf` workaround during `kubeadm init`. The interface
-  is detected by kube-vip.
+  RKE2 as DaemonSet through the RKE2 manifests, k0s as DaemonSet through its manifest deployer,
+  kubeadm as static pod with the `super-admin.conf` workaround during `kubeadm init`. kube-vip always
+  uses the node's admin kubeconfig through localhost, never in-cluster credentials: a leader must
+  lose its lease when its own API server stops. With in-cluster credentials (first used for RKE2)
+  the old leader kept renewing through the `kubernetes` Service during a rollout and held the VIP
+  for a dead API server; on k0s, which advertises the VIP for that Service, they cannot reach the
+  API at all. The interface is detected by kube-vip.
 - **Addresses: a range per cluster** (node range, prefix, gateway, DNS, VIP) in the wizard,
   written to `ProxmoxCluster.spec.ipv4Config`; CAPMOX creates the `InClusterIPPool`. The backend
   refuses ranges and VIPs that overlap other Proxmox clusters of the management cluster and VIPs

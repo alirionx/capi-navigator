@@ -210,18 +210,14 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           ],
           useSystemHostname: true,
           ...custom,
-          // FP31-F-07: k0s advertises the VIP for the kubernetes Service, so kube-vip uses the
-          // controller's admin kubeconfig (localhost) instead of in-cluster credentials (spike).
+          // FP31-F-07: kube-vip with the controller's admin kubeconfig (localhost).
           ...(vip
             ? {
                 files: [
                   ...(custom.files ?? []),
                   {
                     path: K0S_KUBE_VIP_PATH,
-                    content: kubeVipDaemonSet(vip, {
-                      kind: 'host-kubeconfig',
-                      path: K0S_ADMIN_KUBECONFIG,
-                    }),
+                    content: kubeVipDaemonSet(vip, K0S_ADMIN_KUBECONFIG),
                     permissions: '0644',
                   },
                 ],

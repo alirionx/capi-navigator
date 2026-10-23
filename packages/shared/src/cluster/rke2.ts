@@ -14,6 +14,8 @@ export const RKE2_BOOTSTRAP_API = 'bootstrap.cluster.x-k8s.io/v1beta2';
 
 /** RKE2 deploys the manifests in this directory once the server's API runs (FP31-F-07). */
 export const RKE2_KUBE_VIP_PATH = '/var/lib/rancher/rke2/server/manifests/kube-vip.yaml';
+/** The server's admin kubeconfig, pointing to localhost. */
+const RKE2_ADMIN_KUBECONFIG = '/etc/rancher/rke2/rke2.yaml';
 
 /**
  * Node preparation for stock images: RKE2 on RHEL 10 and derivatives (Rocky) needs
@@ -158,15 +160,14 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
         }),
         agentConfig: agentConfig(spec, infra, { worker: false }),
         ...custom,
-        // FP31-F-07: kube-vip with in-cluster credentials; RKE2 advertises the node's address
-        // for the kubernetes Service, so it reaches the API before the VIP exists (spike).
+        // FP31-F-07: kube-vip with the server's admin kubeconfig (localhost).
         ...(vip
           ? {
               files: [
                 ...(custom.files ?? []),
                 {
                   path: RKE2_KUBE_VIP_PATH,
-                  content: kubeVipDaemonSet(vip, { kind: 'in-cluster' }),
+                  content: kubeVipDaemonSet(vip, RKE2_ADMIN_KUBECONFIG),
                   permissions: '0644',
                 },
               ],

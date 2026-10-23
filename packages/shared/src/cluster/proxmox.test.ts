@@ -153,10 +153,12 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     ).toEqual(['infrastructure.network.addresses: Must not contain the gateway']);
   });
 
-  it('kube-vip per distribution: in-cluster for RKE2, the admin kubeconfig for k0s (spike)', () => {
+  it('kube-vip per distribution, always with the node admin kubeconfig (FP31-F-07)', () => {
+    // In-cluster credentials kept a leader with a dead API server holding the VIP (live test).
     const rke2 = JSON.stringify(find(allInOne(pve()), 'RKE2ControlPlane')[0]!.spec);
     expect(rke2).toContain('/var/lib/rancher/rke2/server/manifests/kube-vip.yaml');
-    expect(rke2).toContain('serviceAccountName: kube-vip');
+    expect(rke2).toContain('path: /etc/rancher/rke2/rke2.yaml');
+    expect(rke2).not.toContain('serviceAccountName');
     expect(rke2).toContain('"tlsSan":["192.168.10.89"]');
     const k = JSON.stringify(find(allInOne(k0s(pve())), 'K0sControlPlane')[0]!.spec);
     expect(k).toContain('/var/lib/k0s/manifests/kube-vip/kube-vip.yaml');
