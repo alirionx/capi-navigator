@@ -50,6 +50,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 | FP-30 | Manifest add-ons through CAAPH (optional) | done |
 | FP-31 | Proxmox VE as infrastructure provider (optional) | in progress |
+| UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
 

@@ -473,7 +473,9 @@ release is fixed by the next patch version.
 **Steps:**
 
 1. Make sure `main` is green in CI and the versions are current
-   ([docs/maintenance.md](docs/maintenance.md)).
+   ([docs/maintenance.md](docs/maintenance.md)). Before a minor or major release, review the
+   recurring UI and UX pack ([docs/requirements.md](docs/requirements.md), section "UX") and
+   note the result in its review log.
 2. Set `version` and `appVersion` in `Chart.yaml`, commit and push:
    `git commit -am "chore(release): version X.Y.Z" && git push`
 3. Tag that commit and push the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`
