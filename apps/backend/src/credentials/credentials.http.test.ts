@@ -17,6 +17,8 @@ import {
 import type { HttpFn } from '../infra-providers/openstack/openstack-client.js';
 import { GcpCredentialPlugin } from '../infra-providers/gcp/gcp-credential.plugin.js';
 import { OpenStackCredentialPlugin } from '../infra-providers/openstack/openstack-credential.plugin.js';
+import { ProxmoxCredentialPlugin } from '../infra-providers/proxmox/proxmox-credential.plugin.js';
+import { PROXMOX_REQUIRED_PRIVILEGES } from '@capi-navigator/shared';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { KubeModule } from '../kube/kube.module.js';
 import { StoreModule } from '../store/store.module.js';
@@ -44,7 +46,7 @@ const mc = vi.hoisted(() => ({
   refuseIdentities: false,
   providers: [] as { kind: string; metadata: { name: string; namespace: string } }[],
   clusters: [] as {
-    metadata: { name: string; namespace: string };
+    metadata: { name: string; namespace: string; annotations?: Record<string, string> };
     spec: Record<string, unknown>;
   }[],
 }));
@@ -154,6 +156,22 @@ const awsClients = (): AwsClients => {
   return { sts: { send }, iam: { send }, ec2: { send } } as AwsClients;
 };
 
+/** Fake Proxmox VE API for the credential test. */
+const pveHttp: HttpFn = async (url) => {
+  const path = url.replace(/^https:\/\/pve\.example:8006\/api2\/json/, '');
+  const data: Record<string, unknown> = {
+    '/version': { version: '9.2.21' },
+    '/access/permissions': {
+      '/': Object.fromEntries(PROXMOX_REQUIRED_PRIVILEGES.map((p) => [p.privilege, 1])),
+    },
+    '/nodes': [{ node: 'pve1', status: 'online' }],
+  };
+  return path in data
+    ? { status: 200, headers: {}, body: JSON.stringify({ data: data[path] }) }
+    : { status: 404, headers: {}, body: '{}' };
+};
+const PEM = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+
 const CLOUDS = `clouds:
   infomaniak:
     auth: { auth_url: "https://api.example/identity", application_credential_id: id, application_credential_secret: TOP-SECRET }
@@ -205,6 +223,7 @@ describe('credentials API (FP-4)', () => {
         compute: 'http://127.0.0.1:1',
         resourceManager: 'http://127.0.0.1:1',
       }),
+      new ProxmoxCredentialPlugin(pveHttp),
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, KubeModule, StoreModule, AuditModule, AuthModule, CredentialsModule],
@@ -240,6 +259,7 @@ describe('credentials API (FP-4)', () => {
       { kind: 'InfrastructureProvider', metadata: { name: 'openstack', namespace: 'capo-system' } },
       { kind: 'InfrastructureProvider', metadata: { name: 'aws', namespace: 'capa-system' } },
       { kind: 'InfrastructureProvider', metadata: { name: 'gcp', namespace: 'capg-system' } },
+      { kind: 'InfrastructureProvider', metadata: { name: 'proxmox', namespace: 'capmox-system' } },
     ];
   });
 
@@ -440,6 +460,76 @@ describe('credentials API (FP-4)', () => {
     mc.clusters = [];
     await req().delete(`${base}/gcp/gcloud`).set(CSRF).set('Cookie', admin).expect(204);
     expect(mc.secrets.size).toBe(0);
+  });
+
+  it('stores Proxmox VE credentials with machine sizes and a CA (FP31-F-02..04, F-09)', async () => {
+    const pve = (over: object = {}) => ({
+      url: 'https://pve.example:8006',
+      tokenId: 'capmox@pve!capi',
+      tokenSecret: 'PVE-TOKEN-SECRET',
+      caCert: PEM,
+      ...over,
+    });
+    const created = await post('', {
+      provider: 'proxmox',
+      name: 'homelab',
+      allowedNamespaces: ['default'],
+      proxmox: pve(),
+    }).expect(201);
+    expect(created.body.summary.machineSizes.map((m: { name: string }) => m.name)).toEqual([
+      'small',
+      'medium',
+      'large',
+      'xlarge',
+    ]);
+    expect(JSON.stringify(created.body)).not.toContain('PVE-TOKEN-SECRET');
+    // The installed CAPMOX does not run with this CA yet: the test says so.
+    expect(created.body.lastTest.checks).toContainEqual(
+      expect.objectContaining({ id: 'provider-ca', ok: false, warning: true }),
+    );
+    const secret = mc.secrets.get('capmox-system/capi-navigator-credential-homelab')!;
+    expect(Object.keys(secret.data!).sort()).toEqual(['ca.crt', 'secret', 'token', 'url']);
+
+    const patch = (body: object) =>
+      req().patch(`${base}/proxmox/homelab`).set(CSRF).set('Cookie', admin).send(body);
+    const sizes = [{ name: 'tiny', vcpus: 1, memoryMiB: 2048 }];
+    // Sizes only, without the token (FP31-F-04).
+    expect((await patch({ machineSizes: sizes }).expect(200)).body.summary.machineSizes).toEqual(
+      sizes,
+    );
+    expect(mc.secrets.get('capmox-system/capi-navigator-credential-homelab')!.data!.secret).toBe(
+      secret.data!.secret,
+    );
+    // A new token keeps the sizes the admin set.
+    const renewed = await patch({ proxmox: pve({ tokenSecret: 'NEW-SECRET' }) }).expect(200);
+    expect(renewed.body.summary.machineSizes).toEqual(sizes);
+    // Sizes belong to Proxmox credentials only.
+    await post('', osBody()).expect(201);
+    await req()
+      .patch(`${base}/openstack/infomaniak`)
+      .set(CSRF)
+      .set('Cookie', admin)
+      .send({ machineSizes: sizes })
+      .expect(400);
+
+    // Clusters reference a copy; the annotation on the ProxmoxCluster names the credential.
+    mc.clusters = [
+      {
+        metadata: {
+          name: 'pve-rke2',
+          namespace: 'default',
+          annotations: { 'capi-navigator.io/credential': 'homelab' },
+        },
+        spec: { credentialsRef: { name: 'pve-rke2-proxmox-credentials', namespace: 'default' } },
+      },
+    ];
+    const refused = await req()
+      .delete(`${base}/proxmox/homelab`)
+      .set(CSRF)
+      .set('Cookie', admin)
+      .expect(409);
+    expect(refused.body.hint).toContain('default/pve-rke2');
+    mc.clusters = [];
   });
 
   it('enforces roles: viewers read, operators look up, admins change', async () => {

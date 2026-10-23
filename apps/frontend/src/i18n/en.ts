@@ -791,12 +791,18 @@ export const en = {
   credentials: {
     title: 'Credentials',
     subtitle:
-      'OpenStack, AWS and Google Cloud credentials on the active management cluster. Stored once as Secret (plus a cluster-wide identity where the provider has one); clusters only reference them.',
-    add: { openstack: 'Add OpenStack', aws: 'Add AWS', gcp: 'Add Google Cloud' },
+      'OpenStack, AWS, Google Cloud and Proxmox VE credentials on the active management cluster. Stored once as Secret (plus a cluster-wide identity where the provider has one); clusters only reference them.',
+    add: {
+      openstack: 'Add OpenStack',
+      aws: 'Add AWS',
+      gcp: 'Add Google Cloud',
+      proxmox: 'Add Proxmox VE',
+    },
     addTitle: {
       openstack: 'Add OpenStack credentials',
       aws: 'Add AWS credentials',
       gcp: 'Add Google Cloud credentials',
+      proxmox: 'Add Proxmox VE credentials',
     },
     editTitle: 'Edit {name}',
     name: 'Name',
@@ -805,13 +811,14 @@ export const en = {
     displayName: 'Display name',
     displayNameHint: 'Optional label shown in the app. Default: the name.',
     provider: 'Provider',
-    providers: { openstack: 'OpenStack', aws: 'AWS', gcp: 'Google Cloud' },
+    providers: { openstack: 'OpenStack', aws: 'AWS', gcp: 'Google Cloud', proxmox: 'Proxmox VE' },
     target: 'Cloud',
     /** One line per row of the cloud column, from the credential summary. */
     summary: {
       openstack: '{authUrl}\nRegion: {region} · {authType}',
       aws: 'Region: {region}\nAccess key …{accessKeyIdSuffix}',
       gcp: 'Project: {projectId} · Region: {region}\n{serviceAccount}',
+      proxmox: '{url}\nToken {tokenId}',
     },
     allowedNamespaces: 'Allowed namespaces',
     allowedNamespacesHint: {
@@ -819,6 +826,8 @@ export const en = {
         'Namespaces whose clusters may use these credentials. Maps to spec.namespaceSelector of the OpenStackClusterIdentity. Default: default.',
       aws: 'Namespaces whose clusters may use these credentials. Maps to spec.allowedNamespaces.list of the AWSClusterStaticIdentity. Default: default.',
       gcp: 'Namespaces whose clusters may use these credentials. CAPG has no identity resource; CAPI Navigator keeps and enforces this list (annotation on the Secret that GCPCluster.spec.credentialsRef references). Default: default.',
+      proxmox:
+        'Namespaces whose clusters may use these credentials. CAPMOX has no identity resource; CAPI Navigator keeps and enforces this list and gives every cluster its own copy of the Secret (ProxmoxCluster.spec.credentialsRef). Default: default.',
     },
     replaceSecret: 'Replace the stored secret values',
     required: 'Required',
@@ -892,6 +901,30 @@ export const en = {
       region: 'Default region',
       regionHint:
         'Used for the test and as default for selection lists, e.g. europe-west6 (Zurich).',
+    },
+    proxmox: {
+      recommend:
+        'Use an API token of a user for Cluster API only (e.g. capmox{\'@\'}pve) with privilege separation off; the test names missing privileges. The token secret is stored in a Secret and never shown again.',
+      url: 'API URL',
+      urlHint:
+        'Address of the Proxmox VE API, e.g. https://pve.example.com:8006. Maps to the Secret key "url".',
+      tokenId: 'API token ID',
+      tokenIdHint:
+        'user{\'@\'}realm!tokenname, e.g. capmox{\'@\'}pve!capi (Datacenter → Permissions → API Tokens).',
+      tokenSecret: 'API token secret',
+      tokenSecretHint: 'Shown once when the token is created.',
+      caFile: 'CA certificate file (optional)',
+      ca: 'CA certificate (PEM, optional)',
+      caHint:
+        'For the self-signed certificate of the cluster: /etc/pve/pve-root-ca.pem on a node. Empty: the system trust store. CAPMOX trusts the CAs of all Proxmox credentials (update the provider after adding one).',
+    },
+    sizes: {
+      title: 'Machine sizes',
+      hint: 'Offered as machine sizes in the cluster wizard; Proxmox VE has no flavors. Not secret: can be changed without the token. Default: small, medium, large, xlarge.',
+      name: 'Name',
+      vcpus: 'vCPUs',
+      memory: 'Memory (GiB)',
+      add: 'Add size',
     },
   },
   orc: {

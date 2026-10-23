@@ -22,6 +22,7 @@ export interface ProviderObject {
     configSecret?: { name: string; namespace?: string };
     manager?: { featureGates?: Record<string, boolean> };
     fetchConfig?: { url?: string };
+    deployment?: { containers?: { name: string; env?: { name: string; value?: string }[] }[] };
   };
   status?: {
     installedVersion?: string;

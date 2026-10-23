@@ -17,6 +17,7 @@ import {
 } from '@kubernetes/client-node';
 import {
   catalogEntry,
+  shortHash,
   CredentialSummarySchema,
   CredentialTestResultSchema,
   MANAGED_BY_LABEL,
@@ -185,6 +186,16 @@ export class CredentialsService {
       const n = this.normalize(plugin, input);
       data = n.data;
       summary = n.summary;
+      // New token without sizes: keep the sizes the admin set (FP31-F-04).
+      if (!(input as { machineSizes?: unknown }).machineSizes && currentSummary.machineSizes) {
+        summary = { ...summary, machineSizes: currentSummary.machineSizes };
+      }
+    }
+    if (req.machineSizes) {
+      if (!plugin.lookupKinds.includes('machineSizes')) {
+        throw new BadRequestException(`${plugin.provider} credentials have no machine sizes`);
+      }
+      summary = { ...summary, machineSizes: req.machineSizes };
     }
     const objects = this.objects(plugin, name, namespace, displayName, allowed, data, summary);
     await this.kube(`Update credential ${name}`, () => serverSideApply(kc, objects));
@@ -398,6 +409,43 @@ export class CredentialsService {
     return [secret, identity];
   }
 
+  /** CA certificates of all stored credentials of a provider, for its controller (FP31-F-01). */
+  async caBundle(connection: string, catalogId: string): Promise<string | undefined> {
+    const plugin = [...this.plugins.values()].find((p) => p.catalogId === catalogId);
+    if (!plugin?.caDataKey) return undefined;
+    const kc = await this.clients.forConnection(connection);
+    return this.kube('Read the CA certificates of the credentials', () => this.bundle(kc, plugin));
+  }
+
+  private async bundle(kc: KubeConfig, plugin: CredentialPlugin): Promise<string | undefined> {
+    const secrets = await kc
+      .makeApiClient(CoreV1Api)
+      .listSecretForAllNamespaces({ labelSelector: `${LABEL_PROVIDER}=${plugin.provider}` });
+    const cas = secrets.items
+      .sort((a, b) =>
+        (a.metadata?.labels?.[LABEL_CREDENTIAL] ?? '').localeCompare(
+          b.metadata?.labels?.[LABEL_CREDENTIAL] ?? '',
+        ),
+      )
+      .map((s) => decode(s)[plugin.caDataKey!]?.trim())
+      .filter((ca): ca is string => !!ca);
+    const unique = [...new Set(cas)];
+    return unique.length ? `${unique.join('\n')}\n` : undefined;
+  }
+
+  /** Whether the installed provider runs with the current CA bundle (FP31-F-01). */
+  private async providerTrustsBundle(kc: KubeConfig, plugin: CredentialPlugin): Promise<boolean> {
+    const entry = catalogEntry(plugin.catalogId)!;
+    const installed = (await listProviders(kc)).find(
+      (p) => p.kind === entry.kind && p.metadata.name === entry.name,
+    );
+    const env = installed?.spec?.deployment?.containers
+      ?.find((c) => c.name === entry.tls?.container)
+      ?.env?.find((e) => e.name === 'CAPI_NAVIGATOR_CA_BUNDLE')?.value;
+    const bundle = await this.bundle(kc, plugin);
+    return !!bundle && env === shortHash(bundle);
+  }
+
   private async runTest(
     kc: KubeConfig,
     plugin: CredentialPlugin,
@@ -407,6 +455,20 @@ export class CredentialsService {
     summary: CredentialSummary,
   ): Promise<Credential> {
     const result = await plugin.test(data, summary);
+    if (plugin.caDataKey && data[plugin.caDataKey]) {
+      const trusted = await this.providerTrustsBundle(kc, plugin).catch(() => true);
+      if (!trusted) {
+        const entry = catalogEntry(plugin.catalogId)!;
+        result.checks.push({
+          id: 'provider-ca',
+          name: `${entry.displayName} trusts this CA`,
+          ok: false,
+          warning: true,
+          message:
+            'The provider still runs with an older CA bundle: update it on the Providers page (same version) to apply the CA certificates of all credentials.',
+        });
+      }
+    }
     await this.kube('Store the test result', () =>
       kc.makeApiClient(CoreV1Api).patchNamespacedSecret(
         {

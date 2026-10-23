@@ -59,6 +59,11 @@ export interface CredentialPlugin<TInput = unknown> {
       credential: { name: string; secret: { name: string; namespace: string } },
     ): boolean;
   };
+  /**
+   * Secret key of a CA certificate the provider's controller must trust (FP31-F-01); the CAs of
+   * all credentials of the provider form its CA bundle.
+   */
+  caDataKey?: string;
   /** Tests the credentials against the cloud (read-only). */
   test(data: Record<string, string>, summary: CredentialSummary): Promise<CredentialTestResult>;
   lookupKinds: readonly LookupKind[];

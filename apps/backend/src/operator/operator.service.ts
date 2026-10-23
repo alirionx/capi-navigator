@@ -37,6 +37,7 @@ import {
 } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
+import { CredentialsService } from '../credentials/credentials.service.js';
 import { serverSideApply } from '../kube/apply.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { fetchOrcManifest, OrcManifestError } from './orc-manifest.js';
@@ -60,7 +61,17 @@ const conflict = (message: string, hint: string) =>
 export class OperatorService {
   readonly releases = new ReleaseFetcher();
 
-  constructor(private readonly clients: ManagementClusterClients) {}
+  constructor(
+    private readonly clients: ManagementClusterClients,
+    private readonly credentials: CredentialsService,
+  ) {}
+
+  /** CA bundle from the stored credentials for providers that verify TLS (FP31-F-01). */
+  private async tlsOptions(connection: string, entry: ProviderCatalogEntry) {
+    if (!entry.tls) return {};
+    const caBundle = await this.credentials.caBundle(connection, entry.id);
+    return caBundle ? { caBundle } : {};
+  }
 
   async state(connection: string): Promise<OperatorState> {
     const kc = await this.clients.forConnection(connection);
@@ -87,7 +98,7 @@ export class OperatorService {
   async previewInstall(connection: string, input: ProviderInstallSpec): Promise<ManifestPreview> {
     const spec = withDefaultVariables(input);
     const { kc, entry, warnings } = await this.checkInstall(connection, spec);
-    const objects = buildProviderManifests(entry, spec);
+    const objects = buildProviderManifests(entry, spec, await this.tlsOptions(connection, entry));
     await this.dryRun(kc, objects, warnings);
     return preview(objects, warnings);
   }
@@ -95,7 +106,7 @@ export class OperatorService {
   async install(connection: string, input: ProviderInstallSpec): Promise<ManifestPreview> {
     const spec = withDefaultVariables(input);
     const { kc, entry, warnings } = await this.checkInstall(connection, spec);
-    const objects = buildProviderManifests(entry, spec);
+    const objects = buildProviderManifests(entry, spec, await this.tlsOptions(connection, entry));
     await this.kube(`Install ${entry.displayName}`, () =>
       serverSideApply(kc, objects as KubernetesObject[]),
     );
@@ -329,7 +340,11 @@ export class OperatorService {
       featureGates: update.featureGates,
       ...(current.spec?.fetchConfig?.url ? { fetchConfigUrl: current.spec.fetchConfig.url } : {}),
     };
-    let objects: ManifestObject[] = buildProviderManifests(entry, spec);
+    let objects: ManifestObject[] = buildProviderManifests(
+      entry,
+      spec,
+      await this.tlsOptions(connection, entry),
+    );
     if (update.variables === undefined && current.spec?.configSecret) {
       // Keep the stored variables: reference the existing Secret, do not touch it.
       const ref = current.spec.configSecret;
