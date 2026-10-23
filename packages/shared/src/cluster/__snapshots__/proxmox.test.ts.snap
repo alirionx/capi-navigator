@@ -719,6 +719,7 @@ spec:
       - --enable-worker
       - --no-taints
       - --enable-cloud-provider
+      - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
     preK0sCommands:
@@ -973,6 +974,7 @@ spec:
     args:
       - --enable-worker
       - --enable-cloud-provider
+      - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
     preK0sCommands:
@@ -1104,7 +1106,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: K0sWorkerConfigTemplate
 metadata:
-  name: pve-default-47cb36ab
+  name: pve-default-59cc80dc
   namespace: proxmox
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1115,6 +1117,7 @@ spec:
       version: v1.35.8+k0s.1
       args:
         - --enable-cloud-provider
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
         - --kubelet-root-dir=/var/lib/kubelet
       useSystemHostname: true
       preK0sCommands:
@@ -1153,7 +1156,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: K0sWorkerConfigTemplate
-          name: pve-default-47cb36ab
+          name: pve-default-59cc80dc
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate

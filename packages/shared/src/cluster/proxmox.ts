@@ -182,6 +182,12 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
 
   nodePreparation: [GUEST_AGENT],
 
+  // The source address towards the gateway, which is always on the node's network. The Proxmox
+  // CCM then sets it as InternalIP (network mode "default"); its guest agent mode also reports
+  // the VIP and CNI addresses, and its exclusions do not take effect in v0.16.1.
+  nodeAddressCommand: (infra) =>
+    `ip -4 -o route get ${infra.network.gateway} | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p'`,
+
   infraCluster(spec, infra, _ctx, labels) {
     return {
       apiVersion: PROXMOX_API_VERSION,

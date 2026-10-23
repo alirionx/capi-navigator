@@ -93,6 +93,13 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   /** Commands every node runs first, before the distribution is installed (as root). */
   nodePreparation?: string[];
   /**
+   * Shell command printing the node's IPv4 address, for infrastructures whose CCM takes the node
+   * address from the kubelet (`--node-ip`) instead of instance metadata (FP31-F-11). Kubelets
+   * with an external cloud provider report none of their own (k0s from Kubernetes 1.36, FP-31
+   * live test); distributions that do not set `--node-ip` themselves pass it on.
+   */
+  nodeAddressCommand?(infra: T): string;
+  /**
    * Limits of the API load balancer the distributions adapt to (ADR-0022). Unset: it forwards
    * the ports a distribution asks for (`FlavorNetwork`) and checks the API server by TCP.
    */
