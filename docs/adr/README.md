@@ -30,3 +30,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0024](0024-manifest-addons-through-caaph.md)               | Manifest add-ons through CAAPH with a generic chart of the project               | proposed |
 | [0025](0025-changes-apply-only-what-they-touch.md)          | Cluster changes apply only the objects they touch                                | accepted |
 | [0026](0026-openstack-volumes-across-zones.md)              | OpenStack volumes not bound to an availability zone (optional)                   | accepted |
+| [0027](0027-proxmox-ve-with-capmox.md)                      | Proxmox VE with CAPMOX, kube-vip and per-cluster address ranges                  | proposed |
