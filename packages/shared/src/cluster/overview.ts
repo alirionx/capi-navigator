@@ -1,4 +1,4 @@
-import type { ProviderKind } from '../catalog/providers.js';
+import { PROVIDER_CATALOG, type ProviderKind } from '../catalog/providers.js';
 import type { ClusterSummary, InfraSummary } from './api.js';
 import type { ClusterSpec, MachineGroup } from './spec.js';
 import { INFRA_PLUGINS } from './transform.js';
@@ -31,6 +31,16 @@ export function clustersUsing(
       return clusters.filter((c) => c.provider === provider.name);
     case 'AddonProvider':
       return clusters.filter((c) => ADDON_LABELS.some((l) => l in c.labels));
+    case 'IPAMProvider': {
+      // Used by the clusters of the infrastructure providers that depend on it.
+      const id = PROVIDER_CATALOG.find(
+        (p) => p.kind === 'IPAMProvider' && p.name === provider.name,
+      )?.id;
+      const infra = PROVIDER_CATALOG.filter(
+        (p) => p.kind === 'InfrastructureProvider' && !!id && p.dependsOn.includes(id),
+      ).map((p) => p.name);
+      return clusters.filter((c) => !!c.provider && infra.includes(c.provider));
+    }
     default:
       return [];
   }

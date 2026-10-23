@@ -57,6 +57,24 @@ export const VERSIONS: VersionsFile = {
       "verified": "2026-10-20",
       "note": "Still implements the v1beta1 contract (built against CAPI v1.13.2). CAPI v1.14 supports it; CAPI plans to drop v1beta1 contract support with v1.16 (tentatively April 2027), so CAPG must move to v1beta2 before core can go there."
     },
+    "proxmox": {
+      "version": "v0.9.1",
+      "source": {
+        "datasource": "github-releases",
+        "package": "ionos-cloud/cluster-api-provider-proxmox"
+      },
+      "verified": "2026-10-23",
+      "note": "API v1alpha2, contract v1beta2. Upstream lists CAPI v1.11/v1.12; verified live with CAPI v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false."
+    },
+    "ipam-in-cluster": {
+      "version": "v1.1.1",
+      "source": {
+        "datasource": "github-releases",
+        "package": "kubernetes-sigs/cluster-api-ipam-provider-in-cluster"
+      },
+      "verified": "2026-10-23",
+      "note": "Contract v1beta2 from v1.1. Holds released addresses for a grace period before reuse."
+    },
     "helm": {
       "version": "v0.6.4",
       "source": {
@@ -304,6 +322,16 @@ export const VERSIONS: VersionsFile = {
         "registry": "docker.io"
       },
       "verified": "2026-10-20"
+    },
+    "kube-vip": {
+      "version": "v1.3.1",
+      "source": {
+        "datasource": "docker",
+        "package": "kube-vip/kube-vip",
+        "registry": "ghcr.io"
+      },
+      "verified": "2026-10-23",
+      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 (in-cluster credentials) and k0s (node admin kubeconfig)."
     }
   },
   "testTools": {

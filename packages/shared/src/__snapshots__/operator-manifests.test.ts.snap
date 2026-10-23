@@ -1,5 +1,66 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`provider manifests (FP3-F-09, FP3-F-10) > Proxmox VE: TLS verification against a CA bundle from the credentials (FP31-F-01) 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-ca-bundle
+  namespace: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIB
+    -----END CERTIFICATE-----
+---
+apiVersion: operator.cluster.x-k8s.io/v1alpha2
+kind: InfrastructureProvider
+metadata:
+  name: proxmox
+  namespace: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+spec:
+  version: v0.9.1
+  deployment:
+    containers:
+      - name: manager
+        args:
+          --proxmox-root-cert-file: /var/lib/capi-navigator/ca/ca.crt
+        env:
+          - name: PROXMOX_INSECURE
+            value: "false"
+          - name: CAPI_NAVIGATOR_CA_BUNDLE
+            value: 7edce8fa
+  patches:
+    - target:
+        kind: Deployment
+        name: capmox-controller-manager
+      patch: |
+        - op: add
+          path: /spec/template/spec/volumes/-
+          value:
+            name: capi-navigator-ca
+            secret:
+              secretName: proxmox-ca-bundle
+        - op: add
+          path: /spec/template/spec/containers/0/volumeMounts/-
+          value:
+            name: capi-navigator-ca
+            mountPath: /var/lib/capi-navigator/ca
+            readOnly: true
+"
+`;
+
 exports[`provider manifests (FP3-F-09, FP3-F-10) > core provider: namespace + CoreProvider 1`] = `
 "apiVersion: v1
 kind: Namespace

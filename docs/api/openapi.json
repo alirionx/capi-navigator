@@ -10098,7 +10098,8 @@
           "BootstrapProvider",
           "ControlPlaneProvider",
           "InfrastructureProvider",
-          "AddonProvider"
+          "AddonProvider",
+          "IPAMProvider"
         ]
       },
       "ProviderUsage": {

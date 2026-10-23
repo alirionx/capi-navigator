@@ -1,5 +1,6 @@
 import { stringify } from 'yaml';
 import { OPERATOR_API_VERSION, type ProviderCatalogEntry } from './catalog/providers.js';
+import { shortHash } from './cluster/util.js';
 import type { ProviderInstallSpec } from './operator.js';
 
 /** Minimal Kubernetes object shape used by the pure manifest builders. */
@@ -34,6 +35,8 @@ function sorted<T>(record: Record<string, T>): Record<string, T> {
 export function buildProviderManifests(
   entry: ProviderCatalogEntry,
   spec: ProviderInstallSpec,
+  /** CA certificates (PEM) of the stored credentials, for providers with `tls` (FP31-F-01). */
+  opts: { caBundle?: string } = {},
 ): ManifestObject[] {
   const labels = { [MANAGED_BY_LABEL]: MANAGED_BY_VALUE };
   const objects: ManifestObject[] = [
@@ -56,6 +59,7 @@ export function buildProviderManifests(
     providerSpec.manager = { featureGates: sorted(spec.featureGates) };
   }
   if (spec.fetchConfigUrl) providerSpec.fetchConfig = { url: spec.fetchConfigUrl };
+  if (entry.tls) Object.assign(providerSpec, tlsSettings(entry, entry.tls, opts.caBundle, objects));
   objects.push({
     apiVersion: OPERATOR_API_VERSION,
     kind: entry.kind,
@@ -63,6 +67,64 @@ export function buildProviderManifests(
     spec: providerSpec,
   });
   return objects;
+}
+
+/**
+ * TLS verification of the infrastructure API (FP31-F-01): the provider's insecure default is
+ * switched off; with CAs, the bundle is mounted from a Secret and passed to the manager. Its hash
+ * is part of the environment, so a changed bundle restarts the manager.
+ */
+function tlsSettings(
+  entry: ProviderCatalogEntry,
+  tls: NonNullable<ProviderCatalogEntry['tls']>,
+  caBundle: string | undefined,
+  objects: ManifestObject[],
+): Record<string, unknown> {
+  const env = Object.entries(sorted(tls.env)).map(([name, value]) => ({ name, value }));
+  if (!caBundle?.trim()) {
+    return { deployment: { containers: [{ name: tls.container, env }] } };
+  }
+  const secretName = `${entry.name}-ca-bundle`;
+  objects.push({
+    apiVersion: 'v1',
+    kind: 'Secret',
+    metadata: {
+      name: secretName,
+      namespace: objects[0]!.metadata.name,
+      labels: { [MANAGED_BY_LABEL]: MANAGED_BY_VALUE },
+    },
+    type: 'Opaque',
+    stringData: { 'ca.crt': caBundle },
+  });
+  return {
+    deployment: {
+      containers: [
+        {
+          name: tls.container,
+          args: { [tls.certFileArg]: `${tls.mountPath}/ca.crt` },
+          env: [...env, { name: 'CAPI_NAVIGATOR_CA_BUNDLE', value: shortHash(caBundle) }],
+        },
+      ],
+    },
+    // The operator's container settings cannot add volumes; a JSON patch appends them.
+    patches: [
+      {
+        target: { kind: 'Deployment', name: tls.deployment },
+        patch: stringify([
+          {
+            op: 'add',
+            path: '/spec/template/spec/volumes/-',
+            value: { name: 'capi-navigator-ca', secret: { secretName } },
+          },
+          {
+            op: 'add',
+            path: `/spec/template/spec/containers/${tls.containerIndex}/volumeMounts/-`,
+            value: { name: 'capi-navigator-ca', mountPath: tls.mountPath, readOnly: true },
+          },
+        ]),
+      },
+    ],
+  };
 }
 
 /** Renders objects as multi-document YAML; `maskSecrets` hides Secret values (NF-01). */
