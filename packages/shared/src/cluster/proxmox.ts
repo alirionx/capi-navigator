@@ -1,7 +1,9 @@
 import { PROXMOX_CREDENTIAL_ANNOTATION } from '../credentials.js';
+import { PROXMOX_STORAGE_LABEL } from './addons.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { MachineGroup, ProxmoxInfra } from './spec.js';
+import { ipv4RangesOverlap } from './cidr.js';
 import { compact } from './util.js';
 
 /**
@@ -18,6 +20,12 @@ export const PROXMOX_DEFAULT_ROOT_GB = 40;
 
 /** The cluster's copy of the credentials Secret, owned and deleted by CAPMOX (FP31-F-09). */
 export const proxmoxCredentialsCopyName = (cluster: string) => `${cluster}-proxmox-credentials`;
+
+/**
+ * Secret on the management cluster with the manifest of kube-system/proxmox-cloud-config, which
+ * a ClusterResourceSet applies into the workload cluster for CCM and CSI (FP31-F-11).
+ */
+export const proxmoxCloudConfigName = (cluster: string) => `${cluster}-proxmox-cloud-config`;
 
 /** Template disks the wizard offers; cloud images are attached as one of these. */
 export const PROXMOX_BOOT_DISKS = ['scsi0', 'virtio0', 'sata0'] as const;
@@ -234,6 +242,30 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       : [];
   },
 
+  addressConflicts(spec, infra, others) {
+    const out: string[] = [];
+    for (const o of others) {
+      const meta = (o.metadata ?? {}) as { name?: string; namespace?: string };
+      if (meta.name === spec.name && meta.namespace === spec.namespace) continue;
+      const s = (o.spec ?? {}) as {
+        ipv4Config?: { addresses?: string[] };
+        controlPlaneEndpoint?: { host?: string };
+      };
+      const theirs = [
+        ...(s.ipv4Config?.addresses ?? []),
+        s.controlPlaneEndpoint?.host ?? '',
+      ].filter(Boolean);
+      const mine = [...infra.network.addresses, infra.apiEndpoint];
+      const clash = mine.filter((m) => theirs.some((t) => ipv4RangesOverlap(m, t)));
+      if (clash.length) {
+        out.push(
+          `${clash.join(', ')} overlap${clash.length === 1 ? 's' : ''} with the addresses of cluster ${meta.namespace}/${meta.name}; choose addresses no other cluster uses.`,
+        );
+      }
+    }
+    return out;
+  },
+
   // CAPMOX sets the machine's providerID to the VM's SMBIOS UUID, which cloud-init reports as
   // instance ID (verified live); the Proxmox CCM understands it with features.provider=capmox.
   nodeIdentity: () => ({
@@ -277,8 +309,28 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
     return {
       ...(spec.addons.cloudControllerManager ? { 'capi-navigator.io/ccm': 'proxmox' } : {}),
       ...(spec.addons.csiDriver ? { 'capi-navigator.io/csi': 'proxmox' } : {}),
+      // FP31-F-11: read by the CSI preset for the StorageClass of this cluster.
+      ...(spec.addons.csiDriver && spec.infrastructure.provider === 'proxmox'
+        ? { [PROXMOX_STORAGE_LABEL]: spec.infrastructure.storage }
+        : {}),
     };
   },
 
-  extraObjects: (): ManifestObject[] => [],
+  extraObjects(spec, _infra, labels): ManifestObject[] {
+    if (!spec.addons.cloudControllerManager && !spec.addons.csiDriver) return [];
+    // Delivers kube-system/proxmox-cloud-config; the backend builds the Secret with its content
+    // from the stored credential (as ADR-0004, hard rule 8).
+    return [
+      {
+        apiVersion: 'addons.cluster.x-k8s.io/v1beta2',
+        kind: 'ClusterResourceSet',
+        metadata: { name: proxmoxCloudConfigName(spec.name), namespace: spec.namespace, labels },
+        spec: {
+          clusterSelector: { matchLabels: { 'cluster.x-k8s.io/cluster-name': spec.name } },
+          resources: [{ kind: 'Secret', name: proxmoxCloudConfigName(spec.name) }],
+          strategy: 'Reconcile',
+        },
+      },
+    ];
+  },
 };

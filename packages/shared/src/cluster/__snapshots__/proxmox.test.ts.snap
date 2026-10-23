@@ -9,6 +9,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
   annotations:
@@ -288,6 +289,23 @@ spec:
                   operator: Exists
               serviceAccountName: kube-vip
       permissions: "0644"
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-aio-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-aio
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-aio
+  resources:
+    - kind: Secret
+      name: pve-aio-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;
 
@@ -300,6 +318,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
   annotations:
@@ -673,6 +692,23 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
         name: pve-default-4c1744b0
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve
+  resources:
+    - kind: Secret
+      name: pve-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;
 
@@ -685,6 +721,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
   annotations:
@@ -910,6 +947,23 @@ spec:
                     hostPath:
                       path: /var/lib/k0s/pki/admin.conf
         permissions: "0644"
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-aio-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-aio
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-aio
+  resources:
+    - kind: Secret
+      name: pve-aio-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;
 
@@ -922,6 +976,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
   annotations:
@@ -1235,6 +1290,23 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
         name: pve-default-4c1744b0
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve
+  resources:
+    - kind: Secret
+      name: pve-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;
 
@@ -1247,6 +1319,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/cni: calico
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
@@ -1545,6 +1618,23 @@ spec:
           - name: provider-id
             value: proxmox://{{ v1.instance_id }}
         taints: []
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-aio-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-aio
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-aio
+  resources:
+    - kind: Secret
+      name: pve-aio-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;
 
@@ -1557,6 +1647,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
     capi-navigator.io/cni: calico
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
@@ -2042,5 +2133,22 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
         name: pve-default-4c1744b0
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve
+  resources:
+    - kind: Secret
+      name: pve-proxmox-cloud-config
+  strategy: Reconcile
 "
 `;

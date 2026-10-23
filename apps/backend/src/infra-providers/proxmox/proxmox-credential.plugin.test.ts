@@ -1,5 +1,6 @@
-import { PROXMOX_REQUIRED_PRIVILEGES } from '@capi-navigator/shared';
+import { ClusterSpecSchema, PROXMOX_REQUIRED_PRIVILEGES } from '@capi-navigator/shared';
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 import type { HttpFn } from '../https-client.js';
 import { CredentialInputError } from '../credential-plugin.js';
 import { ProxmoxCredentialPlugin, templateWarning } from './proxmox-credential.plugin.js';
@@ -180,5 +181,74 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
 
   it('accepts templates without cloud-init drive and with the guest agent', () => {
     expect(templateWarning({ agent: 'enabled=1', virtio0: 'local-zfs:disk' })).toBeUndefined();
+  });
+
+  it('gives every cluster a copy of the token and the CCM/CSI config (FP31-F-09, F-11)', () => {
+    const plugin = new ProxmoxCredentialPlugin();
+    const { data } = plugin.normalize(input);
+    const spec = ClusterSpecSchema.parse({
+      name: 'pve',
+      namespace: 'lab',
+      kubernetes: { version: 'v1.35.9+rke2r1' },
+      topology: {
+        mode: 'all-in-one',
+        controlPlane: { replicas: 1, machineSize: 'medium' },
+        workerPools: [],
+      },
+      infrastructure: {
+        provider: 'proxmox',
+        credentialRef: 'homelab',
+        sourceNode: 'pve1',
+        image: '7112',
+        storage: 'local-zfs',
+        network: {
+          nodeCidr: '192.168.10.0/24',
+          gateway: '192.168.10.1',
+          addresses: ['192.168.10.71-192.168.10.88'],
+        },
+        apiEndpoint: '192.168.10.89',
+      },
+    });
+    const { objects, preview } = plugin.clusterSecrets(spec, { name: 'homelab', data });
+    expect(objects.map((o) => `${o.metadata?.namespace}/${o.metadata?.name}`)).toEqual([
+      'lab/pve-proxmox-credentials',
+      'lab/pve-proxmox-cloud-config',
+    ]);
+    expect((objects[0] as { stringData: Record<string, string> }).stringData).toEqual({
+      url: 'https://pve.example:8006',
+      token: 'capmox@pve!capi',
+      secret: 'f00d-secret',
+    });
+    const inner = parse(
+      Buffer.from(
+        (objects[1] as { data: Record<string, string> }).data['proxmox-cloud-config.yaml']!,
+        'base64',
+      ).toString(),
+    ) as { metadata: { namespace: string }; stringData: Record<string, string> };
+    expect(inner.metadata.namespace).toBe('kube-system');
+    expect(parse(inner.stringData['config.yaml']!)).toEqual({
+      features: { provider: 'capmox' },
+      clusters: [
+        {
+          url: 'https://pve.example:8006/api2/json',
+          insecure: false,
+          token_id: 'capmox@pve!capi',
+          token_secret: 'f00d-secret',
+          region: 'homelab',
+        },
+      ],
+    });
+    // The cluster's CA first, then the public roots (the bundle replaces the trust store).
+    expect(inner.stringData['ca.crt']!.startsWith(CA)).toBe(true);
+    expect(inner.stringData['ca.crt']!.split('BEGIN CERTIFICATE').length).toBeGreaterThan(50);
+    // Hard rule 8: the preview masks every value.
+    expect(JSON.stringify(preview)).not.toContain('f00d-secret');
+    expect(JSON.stringify(preview)).not.toContain('capmox@pve');
+    // Without CCM and CSI only the copy for CAPMOX.
+    const bare = ClusterSpecSchema.parse({
+      ...spec,
+      addons: { cloudControllerManager: false, csiDriver: false },
+    });
+    expect(plugin.clusterSecrets(bare, { name: 'homelab', data }).objects).toHaveLength(1);
   });
 });

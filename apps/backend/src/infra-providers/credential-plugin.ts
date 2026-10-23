@@ -1,4 +1,6 @@
+import type { KubernetesObject } from '@kubernetes/client-node';
 import type {
+  ClusterSpec,
   CredentialProvider,
   CredentialSummary,
   CredentialTestResult,
@@ -64,6 +66,14 @@ export interface CredentialPlugin<TInput = unknown> {
    * all credentials of the provider form its CA bundle.
    */
   caDataKey?: string;
+  /**
+   * Secrets a cluster gets from the stored credential, in its namespace (FP31-F-09, F-11): `objects`
+   * are applied, `preview` shows them with masked values.
+   */
+  clusterSecrets?(
+    spec: ClusterSpec,
+    credential: { name: string; data: Record<string, string> },
+  ): { objects: KubernetesObject[]; preview: KubernetesObject[] };
   /** Tests the credentials against the cloud (read-only). */
   test(data: Record<string, string>, summary: CredentialSummary): Promise<CredentialTestResult>;
   lookupKinds: readonly LookupKind[];

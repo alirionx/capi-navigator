@@ -1,5 +1,14 @@
+import { rootCertificates } from 'node:tls';
+import type { KubernetesObject } from '@kubernetes/client-node';
+import { stringify } from 'yaml';
 import {
   DEFAULT_PROXMOX_MACHINE_SIZES,
+  MANAGED_BY_LABEL,
+  MANAGED_BY_VALUE,
+  PROXMOX_CLOUD_CONFIG_SECRET,
+  proxmoxCloudConfigName,
+  proxmoxCredentialsCopyName,
+  type ClusterSpec,
   PROXMOX_CREDENTIAL_ANNOTATION,
   PROXMOX_REQUIRED_PRIVILEGES,
   ProxmoxCredentialInputSchema,
@@ -77,6 +86,80 @@ export class ProxmoxCredentialPlugin implements CredentialPlugin<unknown> {
         machineSizes: p.machineSizes ?? DEFAULT_PROXMOX_MACHINE_SIZES,
       },
     };
+  }
+
+  /**
+   * FP31-F-09: the cluster's own copy of the token, which CAPMOX takes ownership of and deletes
+   * with the cluster. FP31-F-11: the configuration of CCM and CSI, delivered into the workload
+   * cluster by the ClusterResourceSet of the plugin (as ADR-0004).
+   */
+  clusterSecrets(spec: ClusterSpec, credential: { name: string; data: Record<string, string> }) {
+    const d = credential.data;
+    const labels = {
+      [MANAGED_BY_LABEL]: MANAGED_BY_VALUE,
+      'cluster.x-k8s.io/cluster-name': spec.name,
+    };
+    const copy = {
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: { name: proxmoxCredentialsCopyName(spec.name), namespace: spec.namespace, labels },
+      type: 'Opaque',
+      stringData: {
+        url: d[PROXMOX_SECRET_KEYS.url] ?? '',
+        token: d[PROXMOX_SECRET_KEYS.token] ?? '',
+        secret: d[PROXMOX_SECRET_KEYS.secret] ?? '',
+      },
+    };
+    const masked = (o: { stringData?: object; data?: object }) => ({
+      ...o,
+      ...(o.stringData
+        ? { stringData: Object.fromEntries(Object.keys(o.stringData).map((k) => [k, '********'])) }
+        : {}),
+      ...(o.data
+        ? { data: Object.fromEntries(Object.keys(o.data).map((k) => [k, '********'])) }
+        : {}),
+    });
+    const objects: KubernetesObject[] = [copy];
+    const preview: KubernetesObject[] = [masked(copy) as KubernetesObject];
+    if (spec.addons.cloudControllerManager || spec.addons.csiDriver) {
+      const config = {
+        // CAPMOX's provider ID proxmox://<SystemUUID> (CCM and CSI docs).
+        features: { provider: 'capmox' },
+        clusters: [
+          {
+            url: `${d[PROXMOX_SECRET_KEYS.url]}/api2/json`,
+            insecure: false,
+            token_id: d[PROXMOX_SECRET_KEYS.token],
+            token_secret: d[PROXMOX_SECRET_KEYS.secret],
+            // Value of topology.kubernetes.io/region on the nodes.
+            region: credential.name,
+          },
+        ],
+      };
+      // Replaces the containers' trust store: the cluster's CA plus the public roots.
+      const ca = [d[PROXMOX_SECRET_KEYS.ca]?.trim(), ...rootCertificates]
+        .filter((c): c is string => !!c)
+        .join('\n');
+      const inner = {
+        apiVersion: 'v1',
+        kind: 'Secret',
+        metadata: { name: PROXMOX_CLOUD_CONFIG_SECRET, namespace: 'kube-system' },
+        type: 'Opaque',
+        stringData: { 'config.yaml': stringify(config), 'ca.crt': `${ca}\n` },
+      };
+      const resourceSet = {
+        apiVersion: 'v1',
+        kind: 'Secret',
+        metadata: { name: proxmoxCloudConfigName(spec.name), namespace: spec.namespace, labels },
+        type: 'addons.cluster.x-k8s.io/resource-set',
+        data: {
+          'proxmox-cloud-config.yaml': Buffer.from(stringify(inner), 'utf8').toString('base64'),
+        },
+      };
+      objects.push(resourceSet);
+      preview.push(masked(resourceSet) as KubernetesObject);
+    }
+    return { objects, preview };
   }
 
   /** FP31-F-03: version over verified TLS and the token's effective privileges. */

@@ -18,6 +18,7 @@ import {
 import {
   catalogEntry,
   shortHash,
+  type ClusterSpec,
   CredentialSummarySchema,
   CredentialTestResultSchema,
   MANAGED_BY_LABEL,
@@ -320,6 +321,15 @@ export class CredentialsService {
     const kc = await this.clients.forConnection(connection);
     const stored = await this.read(kc, plugin, name);
     return { credential: this.toCredential(plugin.provider, stored), data: decode(stored.secret) };
+  }
+
+  /** Secrets a cluster gets from its stored credential (FP31-F-09, F-11), if the plugin has any. */
+  clusterSecrets(
+    provider: string,
+    spec: ClusterSpec,
+    credential: { name: string; data: Record<string, string> },
+  ) {
+    return this.plugin(provider).clusterSecrets?.(spec, credential);
   }
 
   /** Adds a namespace to the credential's allowed namespaces (ADR-0002). */

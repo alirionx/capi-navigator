@@ -460,6 +460,8 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       .overrideProvider(CredentialsService)
       .useValue({
         resolve: async () => ({ credential, data: { 'clouds.yaml': CLOUDS } }),
+        // OpenStack credentials give clusters no extra Secrets (FP31-F-09 is Proxmox only).
+        clusterSecrets: () => undefined,
         allowNamespace,
       })
       .compile();
