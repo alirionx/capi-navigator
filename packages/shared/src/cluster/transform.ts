@@ -3,6 +3,7 @@ import { CNI_LABEL, REBOOT_DAEMON_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
 import { gcpPlugin } from './gcp.js';
 import { openstackPlugin } from './openstack.js';
+import { proxmoxPlugin } from './proxmox.js';
 import type {
   BootstrapFlavorPlugin,
   InfraTransformPlugin,
@@ -22,6 +23,7 @@ export const INFRA_PLUGINS: Record<Infrastructure['provider'], InfraTransformPlu
   openstack: openstackPlugin as InfraTransformPlugin,
   aws: awsPlugin as InfraTransformPlugin,
   gcp: gcpPlugin as InfraTransformPlugin,
+  proxmox: proxmoxPlugin as InfraTransformPlugin,
 };
 export const FLAVOR_PLUGINS: Partial<
   Record<ClusterSpec['kubernetes']['flavor'], BootstrapFlavorPlugin>
@@ -94,6 +96,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     spec.infrastructure,
     spec.topology.controlPlane,
     'control-plane',
+    ctx,
   );
   // A rebuild (FP7-F-11) changes the template name: control plane providers have no rolloutAfter.
   const cpRebuild =
@@ -109,7 +112,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   // Worker pools (FP5-F-12), none for all-in-one.
   if (spec.topology.mode === 'standard') {
     for (const pool of spec.topology.workerPools) {
-      const machineSpec = infra.machineTemplateSpec(spec, spec.infrastructure, pool, 'worker');
+      const machineSpec = infra.machineTemplateSpec(spec, spec.infrastructure, pool, 'worker', ctx);
       const bootstrapSpec = flavor.workerBootstrapSpec({ spec, infra, pool });
       const machineName = `${spec.name}-${pool.name}-${shortHash(machineSpec)}`;
       const bootstrapName = `${spec.name}-${pool.name}-${shortHash(bootstrapSpec)}`;

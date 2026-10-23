@@ -1,3 +1,4 @@
+import { kubeVipDaemonSet } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
@@ -21,6 +22,10 @@ export const K0S_CONTROL_PLANE_API = 'controlplane.cluster.x-k8s.io/v1beta2';
 export const K0S_BOOTSTRAP_API = 'bootstrap.cluster.x-k8s.io/v1beta2';
 
 const KUBELET_ROOT_DIR = '--kubelet-root-dir=/var/lib/kubelet';
+/** k0s applies the manifests below this directory through its manifest deployer (FP31-F-07). */
+export const K0S_KUBE_VIP_PATH = '/var/lib/k0s/manifests/kube-vip/kube-vip.yaml';
+/** The controller's admin kubeconfig, pointing to localhost. */
+const K0S_ADMIN_KUBECONFIG = '/var/lib/k0s/pki/admin.conf';
 /** Extra SSH keys (spec.sshPublicKeys) for the image's default user (uid 1000). */
 const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
@@ -60,14 +65,14 @@ function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, gro
 }
 
 /** k0s ClusterConfig; k0smotron fills in the API address from the Cluster's endpoint. */
-function clusterConfig(spec: ClusterSpec) {
+function clusterConfig(spec: ClusterSpec, vip?: string) {
   return {
     apiVersion: 'k0s.k0sproject.io/v1beta1',
     kind: 'ClusterConfig',
     metadata: { name: 'k0s' },
     spec: {
       // Unauthenticated /healthz for the load balancer health checks (k0smotron docs).
-      api: { extraArgs: { 'anonymous-auth': 'true' } },
+      api: compact({ extraArgs: { 'anonymous-auth': 'true' }, sans: vip ? [vip] : undefined }),
       network: {
         provider: 'calico',
         calico: { mode: 'vxlan' },
@@ -156,6 +161,8 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
 
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;
+    const vip = infra.apiVip?.(spec.infrastructure);
+    const custom = customizationFields(spec, infra, cp) as { files?: unknown[] };
     return {
       apiVersion: K0S_CONTROL_PLANE_API,
       kind: 'K0sControlPlane',
@@ -186,7 +193,7 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           },
         },
         k0sConfigSpec: compact({
-          k0s: clusterConfig(spec),
+          k0s: clusterConfig(spec, vip),
           args: [
             '--enable-worker',
             ...(spec.topology.mode === 'all-in-one' ? ['--no-taints'] : []),
@@ -202,7 +209,24 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
             KUBELET_ROOT_DIR,
           ],
           useSystemHostname: true,
-          ...customizationFields(spec, infra, cp),
+          ...custom,
+          // FP31-F-07: k0s advertises the VIP for the kubernetes Service, so kube-vip uses the
+          // controller's admin kubeconfig (localhost) instead of in-cluster credentials (spike).
+          ...(vip
+            ? {
+                files: [
+                  ...(custom.files ?? []),
+                  {
+                    path: K0S_KUBE_VIP_PATH,
+                    content: kubeVipDaemonSet(vip, {
+                      kind: 'host-kubeconfig',
+                      path: K0S_ADMIN_KUBECONFIG,
+                    }),
+                    permissions: '0644',
+                  },
+                ],
+              }
+            : {}),
         }),
       },
     };

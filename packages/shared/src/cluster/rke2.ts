@@ -1,3 +1,4 @@
+import { kubeVipDaemonSet } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
@@ -10,6 +11,9 @@ import { compact } from './util.js';
  */
 export const RKE2_CONTROL_PLANE_API = 'controlplane.cluster.x-k8s.io/v1beta2';
 export const RKE2_BOOTSTRAP_API = 'bootstrap.cluster.x-k8s.io/v1beta2';
+
+/** RKE2 deploys the manifests in this directory once the server's API runs (FP31-F-07). */
+export const RKE2_KUBE_VIP_PATH = '/var/lib/rancher/rke2/server/manifests/kube-vip.yaml';
 
 /**
  * Node preparation for stock images: RKE2 on RHEL 10 and derivatives (Rocky) needs
@@ -126,6 +130,8 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;
     const external = spec.addons.cloudControllerManager;
+    const vip = infra.apiVip?.(spec.infrastructure);
+    const custom = customizationFields(spec, infra, cp) as { files?: unknown[] };
     return {
       apiVersion: RKE2_CONTROL_PLANE_API,
       kind: 'RKE2ControlPlane',
@@ -147,9 +153,25 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
           kubeAPIServer: infra.apiLoadBalancer?.anonymousHealthCheck
             ? { extraArgs: ['anonymous-auth=true'] }
             : undefined,
+          // FP31-F-07: the API certificate is valid for the virtual IP.
+          tlsSan: vip ? [vip] : undefined,
         }),
         agentConfig: agentConfig(spec, infra, { worker: false }),
-        ...customizationFields(spec, infra, cp),
+        ...custom,
+        // FP31-F-07: kube-vip with in-cluster credentials; RKE2 advertises the node's address
+        // for the kubernetes Service, so it reaches the API before the VIP exists (spike).
+        ...(vip
+          ? {
+              files: [
+                ...(custom.files ?? []),
+                {
+                  path: RKE2_KUBE_VIP_PATH,
+                  content: kubeVipDaemonSet(vip, { kind: 'in-cluster' }),
+                  permissions: '0644',
+                },
+              ],
+            }
+          : {}),
       }),
     };
   },

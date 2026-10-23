@@ -1,3 +1,8 @@
+import {
+  KUBEADM_KUBE_VIP_INIT_COMMAND,
+  KUBEADM_KUBE_VIP_MANIFEST,
+  kubeVipStaticPod,
+} from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
@@ -173,6 +178,11 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
 
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;
+    const vip = infra.apiVip?.(spec.infrastructure);
+    const fields = bootstrapFields(spec, infra, cp, spec.kubernetes.version) as {
+      files?: unknown[];
+      preKubeadmCommands?: string[];
+    };
     const nodeRegistration = {
       name: infra.nodeIdentity(spec.infrastructure).nodeName,
       kubeletExtraArgs: kubeletArgs(spec, infra),
@@ -191,7 +201,26 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
         // Surge one new node before removing an old one (etcd quorum stays intact).
         rollout: { strategy: { type: 'RollingUpdate', rollingUpdate: { maxSurge: 1 } } },
         kubeadmConfigSpec: {
-          ...bootstrapFields(spec, infra, cp, spec.kubernetes.version),
+          ...fields,
+          // FP31-F-07: kube-vip as static pod, so the VIP exists during kubeadm init; the first
+          // node uses super-admin.conf until the API server grants admin.conf its rights.
+          ...(vip
+            ? {
+                files: [
+                  ...(fields.files ?? []),
+                  {
+                    path: KUBEADM_KUBE_VIP_MANIFEST,
+                    content: kubeVipStaticPod(vip, '/etc/kubernetes/admin.conf'),
+                    permissions: '0644',
+                    owner: 'root:root',
+                  },
+                ],
+                preKubeadmCommands: [
+                  ...(fields.preKubeadmCommands ?? []),
+                  KUBEADM_KUBE_VIP_INIT_COMMAND,
+                ],
+              }
+            : {}),
           // Separate copies: a shared object would become a YAML anchor in the preview.
           initConfiguration: { nodeRegistration: structuredClone(nodeRegistration) },
           joinConfiguration: { nodeRegistration: structuredClone(nodeRegistration) },

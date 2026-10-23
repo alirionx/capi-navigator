@@ -836,12 +836,17 @@ export class ClustersService {
     }
 
     const cloudName = resolved?.credential.summary.cloudName;
+    const machineSizes = resolved?.credential.summary.machineSizes;
     const transformContext = {
       credential: {
         ...(cloudName ? { cloudName } : {}),
         ...(resolved ? { secret: resolved.credential.secret } : {}),
+        // FP31-F-04: sizes of providers without flavors.
+        ...(machineSizes ? { machineSizes } : {}),
       },
     };
+    const infraPlugin = INFRA_PLUGINS[infra.provider];
+    if (resolved) blockers.push(...(infraPlugin.validate?.(spec, infra, transformContext) ?? []));
     const generated = transform(spec, transformContext);
     const objects = generated as KubernetesObject[];
     const touched = baseline
