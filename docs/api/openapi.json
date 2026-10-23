@@ -9091,6 +9091,9 @@
           },
           {
             "$ref": "#/components/schemas/GcpInfra"
+          },
+          {
+            "$ref": "#/components/schemas/ProxmoxInfra"
           }
         ]
       },
@@ -10155,6 +10158,134 @@
         },
         "required": [
           "names"
+        ],
+        "additionalProperties": false
+      },
+      "ProxmoxInfra": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "const": "proxmox"
+          },
+          "credentialRef": {
+            "$ref": "#/components/schemas/CredentialName"
+          },
+          "sourceNode": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "allowedNodes": {
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+            }
+          },
+          "image": {
+            "type": "string",
+            "pattern": "^\\d{3,9}$"
+          },
+          "storage": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "bootDisk": {
+            "default": "scsi0",
+            "type": "string",
+            "pattern": "^(scsi|virtio|sata|ide)\\d{1,2}$"
+          },
+          "bridge": {
+            "default": "vmbr0",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "network": {
+            "type": "object",
+            "properties": {
+              "nodeCidr": {
+                "type": "string"
+              },
+              "gateway": {
+                "type": "string",
+                "format": "ipv4",
+                "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+              },
+              "addresses": {
+                "minItems": 1,
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dnsNameservers": {
+                "default": [
+                  "1.1.1.1",
+                  "8.8.8.8"
+                ],
+                "minItems": 1,
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4",
+                  "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+                }
+              }
+            },
+            "required": [
+              "nodeCidr",
+              "gateway",
+              "addresses",
+              "dnsNameservers"
+            ],
+            "additionalProperties": false
+          },
+          "apiEndpoint": {
+            "type": "string",
+            "format": "ipv4",
+            "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+          },
+          "vmIdRange": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 999999999
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 999999999
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "memoryAdjustment": {
+            "default": 100,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "provider",
+          "credentialRef",
+          "sourceNode",
+          "image",
+          "storage",
+          "bootDisk",
+          "bridge",
+          "network",
+          "apiEndpoint",
+          "memoryAdjustment"
         ],
         "additionalProperties": false
       },
@@ -12064,6 +12195,127 @@
           "url",
           "tokenId",
           "tokenSecret"
+        ]
+      },
+      "ProxmoxInfraInput": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "const": "proxmox"
+          },
+          "credentialRef": {
+            "$ref": "#/components/schemas/CredentialName"
+          },
+          "sourceNode": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "allowedNodes": {
+            "maxItems": 32,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+            }
+          },
+          "image": {
+            "type": "string",
+            "pattern": "^\\d{3,9}$"
+          },
+          "storage": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "bootDisk": {
+            "default": "scsi0",
+            "type": "string",
+            "pattern": "^(scsi|virtio|sata|ide)\\d{1,2}$"
+          },
+          "bridge": {
+            "default": "vmbr0",
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$"
+          },
+          "network": {
+            "type": "object",
+            "properties": {
+              "nodeCidr": {
+                "type": "string"
+              },
+              "gateway": {
+                "type": "string",
+                "format": "ipv4",
+                "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+              },
+              "addresses": {
+                "minItems": 1,
+                "maxItems": 16,
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "dnsNameservers": {
+                "default": [
+                  "1.1.1.1",
+                  "8.8.8.8"
+                ],
+                "minItems": 1,
+                "maxItems": 5,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "ipv4",
+                  "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+                }
+              }
+            },
+            "required": [
+              "nodeCidr",
+              "gateway",
+              "addresses"
+            ]
+          },
+          "apiEndpoint": {
+            "type": "string",
+            "format": "ipv4",
+            "pattern": "^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$"
+          },
+          "vmIdRange": {
+            "type": "object",
+            "properties": {
+              "start": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 999999999
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 999999999
+              }
+            },
+            "required": [
+              "start",
+              "end"
+            ]
+          },
+          "memoryAdjustment": {
+            "default": 100,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000
+          }
+        },
+        "required": [
+          "provider",
+          "credentialRef",
+          "sourceNode",
+          "image",
+          "storage",
+          "network",
+          "apiEndpoint"
         ]
       },
       "ProxmoxMachineSizeInput": {

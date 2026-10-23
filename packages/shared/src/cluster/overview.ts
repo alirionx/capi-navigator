@@ -64,7 +64,8 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
       name,
       role,
       replicas,
-      ...(d.size ? { size: d.size } : {}),
+      // Providers without flavors know the size's resources only with the credential.
+      ...((d.size ?? g.machineSize) ? { size: d.size ?? g.machineSize } : {}),
       ...(d.image ? { image: { id: d.image } } : {}),
       ...(d.rootVolumeGB ? { rootVolumeGB: d.rootVolumeGB } : {}),
       ...(d.rootVolumeType ? { rootVolumeType: d.rootVolumeType } : {}),

@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { AwsRegionSchema, CredentialNameSchema, GcpRegionSchema } from '../credentials.js';
-import { cidrsOverlap, parseIpv4Cidr } from './cidr.js';
+import {
+  cidrsOverlap,
+  ipv4RangeInCidr,
+  ipv4RangesOverlap,
+  parseIpv4Cidr,
+  parseIpv4Range,
+} from './cidr.js';
 
 /**
  * The cluster spec (section 5 of the requirements): the simplified, typed input model that pure
@@ -232,10 +238,71 @@ export const GcpInfraSchema = z.object({
 });
 export type GcpInfra = z.infer<typeof GcpInfraSchema>;
 
+/** A Proxmox VE template, by VMID (FP31-F-05). */
+export const PROXMOX_TEMPLATE_PATTERN = /^\d{3,9}$/;
+const PROXMOX_TEMPLATE_MESSAGE = 'A template VMID like 7112';
+const ProxmoxNameSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9][-A-Za-z0-9._]{0,62}$/, 'A Proxmox VE name like pve1 or local-zfs');
+
+export const ProxmoxInfraSchema = z.object({
+  provider: z.literal('proxmox'),
+  /** Stored API token; every cluster gets its own copy of the Secret (FP31-F-09). */
+  credentialRef: CredentialNameSchema,
+  /** Node the template lives on; VMs are cloned there (CAPMOX sourceNode). */
+  sourceNode: ProxmoxNameSchema,
+  /** Nodes VMs may be placed on (CAPMOX allowedNodes); default: the source node. */
+  allowedNodes: z.array(ProxmoxNameSchema).max(32).optional(),
+  /** VM template, cloned for every machine (CAPMOX templateID). */
+  image: z.string().regex(PROXMOX_TEMPLATE_PATTERN, PROXMOX_TEMPLATE_MESSAGE),
+  /** Storage of the cloned disks (full clone). */
+  storage: ProxmoxNameSchema,
+  /** Disk of the template with the root file system; grown to the root disk size. */
+  bootDisk: z
+    .string()
+    .regex(/^(scsi|virtio|sata|ide)\d{1,2}$/, 'A disk like scsi0 or virtio0')
+    .default('scsi0'),
+  bridge: ProxmoxNameSchema.default('vmbr0'),
+  network: z.object({
+    /** Network of the bridge, e.g. 192.168.10.0/24; its prefix goes to the nodes. */
+    nodeCidr: CidrSchema,
+    gateway: z.ipv4('An IPv4 address'),
+    /** Node addresses of this cluster: addresses, ranges (a-b) or networks; no DHCP. */
+    addresses: z
+      .array(
+        z
+          .string()
+          .trim()
+          .refine(
+            (v) => !!parseIpv4Range(v),
+            'An address, a range like 10.0.0.5-10.0.0.9 or a network',
+          ),
+      )
+      .min(1, 'At least one address range')
+      .max(16),
+    dnsNameservers: z.array(z.ipv4()).min(1).max(5).default(['1.1.1.1', '8.8.8.8']),
+  }),
+  /** Virtual IP of the API server, held by kube-vip (FP31-F-07). */
+  apiEndpoint: z.ipv4('An IPv4 address'),
+  /** VM IDs of the cluster's machines (CAPMOX vmIDRange); default: the next free ones. */
+  vmIdRange: z
+    .object({ start: z.int().min(100).max(999_999_999), end: z.int().min(100).max(999_999_999) })
+    .refine((r) => r.end >= r.start, 'The end must not be below the start')
+    .optional(),
+  /**
+   * Memory CAPMOX may place on a node, in percent of its memory, counting the configured memory
+   * of all VMs, stopped ones included (schedulerHints.memoryAdjustment; 0: no check).
+   */
+  memoryAdjustment: z.int().min(0).max(1000).default(100),
+});
+export type ProxmoxInfra = z.infer<typeof ProxmoxInfraSchema>;
+
 export const InfrastructureSchema = z.discriminatedUnion('provider', [
   OpenStackInfraSchema,
   AwsInfraSchema,
   GcpInfraSchema,
+  ProxmoxInfraSchema,
 ]);
 export type Infrastructure = z.infer<typeof InfrastructureSchema>;
 
@@ -415,9 +482,33 @@ export const ClusterSpecSchema = z
           ? [z.uuid().safeParse(g.image).success, 'An image ID (UUID)']
           : infra.provider === 'aws'
             ? [/^ami-[0-9a-f]{8,17}$/.test(g.image), 'An AMI ID like ami-0123456789abcdef0']
-            : [GCP_IMAGE_PATTERN.test(g.image), GCP_IMAGE_MESSAGE];
+            : infra.provider === 'proxmox'
+              ? [PROXMOX_TEMPLATE_PATTERN.test(g.image), PROXMOX_TEMPLATE_MESSAGE]
+              : [GCP_IMAGE_PATTERN.test(g.image), GCP_IMAGE_MESSAGE];
       if (!ok) issue(groupPath(i, 'image'), message);
     });
+
+    // FP31-F-08: addresses of a Proxmox VE cluster inside its network; the VIP outside the nodes.
+    if (infra.provider === 'proxmox') {
+      const net = infra.network;
+      const path = ['infrastructure', 'network'];
+      if (!ipv4RangeInCidr(net.gateway, net.nodeCidr)) {
+        issue([...path, 'gateway'], `Outside the network ${net.nodeCidr}`);
+      }
+      net.addresses.forEach((a, i) => {
+        if (!ipv4RangeInCidr(a, net.nodeCidr)) {
+          issue([...path, 'addresses', i], `Outside the network ${net.nodeCidr}`);
+        }
+      });
+      if (!ipv4RangeInCidr(infra.apiEndpoint, net.nodeCidr)) {
+        issue(['infrastructure', 'apiEndpoint'], `Must be in the network ${net.nodeCidr}`);
+      } else if (net.addresses.some((a) => ipv4RangesOverlap(a, infra.apiEndpoint))) {
+        issue(['infrastructure', 'apiEndpoint'], 'Must not be one of the node addresses');
+      }
+      if (net.addresses.some((a) => ipv4RangesOverlap(a, net.gateway))) {
+        issue([...path, 'addresses'], 'Must not contain the gateway');
+      }
+    }
 
     if (infra.provider === 'gcp' && infra.zone && !infra.zone.startsWith(`${infra.region}-`)) {
       issue(['infrastructure', 'zone'], `A zone of region ${infra.region}`);
@@ -425,7 +516,7 @@ export const ClusterSpecSchema = z
 
     // FP5-F-20: bastion host (OpenStack and AWS; CAPG has none).
     const bastion = 'bastion' in infra ? infra.bastion : undefined;
-    if (bastion?.enabled && infra.provider !== 'gcp') {
+    if (bastion?.enabled && (infra.provider === 'openstack' || infra.provider === 'aws')) {
       const path = ['infrastructure', 'bastion'];
       if (!infra.sshKeyName) {
         issue(['infrastructure', 'sshKeyName'], 'The bastion needs an SSH key pair of the cloud');

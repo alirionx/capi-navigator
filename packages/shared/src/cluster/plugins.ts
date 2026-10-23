@@ -1,3 +1,4 @@
+import type { ProxmoxMachineSize } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraForm } from './infra-form.js';
 import type { ClusterSpec, Infrastructure, MachineGroup } from './spec.js';
@@ -9,6 +10,8 @@ export interface TransformContext {
     cloudName?: string;
     /** The credential's Secret, for providers that reference it directly (CAPG credentialsRef). */
     secret?: { name: string; namespace: string };
+    /** Machine sizes kept with the credential, for providers without flavors (FP31-F-04). */
+    machineSizes?: ProxmoxMachineSize[];
   };
 }
 
@@ -66,7 +69,15 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
     infra: T,
     group: MachineGroup,
     role: 'control-plane' | 'worker',
+    ctx?: TransformContext,
   ): Record<string, unknown>;
+  /**
+   * Virtual IP of the API server when the infrastructure has no load balancer (FP31-F-07): the
+   * distribution runs kube-vip on its control plane nodes to hold it.
+   */
+  apiVip?(infra: T): string;
+  /** Problems the spec alone cannot show, e.g. a size the credential does not know (blockers). */
+  validate?(spec: ClusterSpec, infra: T, ctx: TransformContext): string[];
   /** Failure domain for worker MachineDeployments, if any. */
   failureDomain?(infra: T): string | undefined;
   /**

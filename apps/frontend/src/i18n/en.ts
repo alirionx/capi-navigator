@@ -672,7 +672,12 @@ export const en = {
     nodeLabels: 'Node labels',
     nodeLabelsHint: 'key=value on the Kubernetes nodes of this pool. Default: none.',
     addPool: 'Add worker pool',
-    machineSize: { openstack: 'Flavor', aws: 'Instance type', gcp: 'Machine type' },
+    machineSize: {
+      openstack: 'Flavor',
+      aws: 'Instance type',
+      gcp: 'Machine type',
+      proxmox: 'Machine size',
+    },
     machineSizeHint: 'Maps to {target} {field}.',
     rootVolume: 'Root disk',
     rootVolumeHint:
@@ -691,6 +696,9 @@ export const en = {
       'Size of the boot persistent disk. Default: {def} GB. Maps to {target} rootDeviceSize.',
     rootVolumeTypeGcp:
       'Persistent disk type; pd-balanced is SSD-backed at a moderate price. Default: pd-standard. Maps to rootDeviceType.',
+    rootVolumeHintProxmox:
+      'Size of the boot disk after cloning; the template disk is grown to it. Default: {def} GB. Maps to {target} disks.bootVolume.sizeGb.',
+    rootVolumeTypeProxmox: 'Proxmox VE uses the storage chosen for the cluster.',
     rootDiskLocked: 'Taken from the control plane (same root disk for all groups).',
     sameRootDisk: 'Same root disk for all groups',
     sameRootDiskHint:
@@ -742,6 +750,41 @@ export const en = {
       'The control plane machines run as this account; the cloud controller manager and the CSI driver use it through the metadata server, so no key reaches the cluster. Default: the account of the credentials. Empty: the default compute account. Maps to GCPMachineTemplate serviceAccounts.',
     gcpLbInfo:
       'Google Cloud always uses a global TCP proxy load balancer for the API server on port 6443; it only forwards the API port, so k0s runs without Konnectivity and RKE2 and k0s allow anonymous health checks (ADR-0022). CAPG has no bastion host; reach nodes with SSH through Identity-Aware Proxy.',
+    pveSourceNode: 'Proxmox VE node',
+    pveSourceNodeHint:
+      'Node that holds the template; VMs are cloned there. Maps to ProxmoxMachineTemplate sourceNode.',
+    pveTemplate: 'Template',
+    pveTemplateHint:
+      'VM template of a stock cloud image without a Proxmox cloud-init drive and with the QEMU guest agent enabled (a warning names problems). Maps to ProxmoxMachineTemplate templateID.',
+    pveBootDisk: 'Boot disk',
+    pveBootDiskHint:
+      'Disk of the template with the root file system, grown to the root disk size. Default: scsi0. Maps to disks.bootVolume.disk.',
+    pveStorage: 'Storage',
+    pveStorageHint:
+      'Storage of the cloned disks (full clone). Maps to ProxmoxMachineTemplate storage.',
+    pveBridge: 'Bridge',
+    pveBridgeHint:
+      'Network bridge of the VMs. Default: vmbr0. Maps to network.networkDevices.bridge.',
+    pveMemoryAdjustment: 'Memory scheduling (%)',
+    pveMemoryAdjustmentHint:
+      'How much memory CAPMOX may place on a node, in percent of its memory; it counts the configured memory of all VMs, stopped ones included. 0 turns the check off. Default: 100. Maps to ProxmoxCluster schedulerHints.memoryAdjustment.',
+    pveNodeCidr: 'Network',
+    pveNodeCidrHint:
+      'Network of the bridge in CIDR notation, e.g. 192.168.10.0/24; its prefix goes to the nodes. Maps to ProxmoxCluster ipv4Config.prefix.',
+    pveGateway: 'Gateway',
+    pveGatewayHint: 'Default gateway of the network. Maps to ProxmoxCluster ipv4Config.gateway.',
+    pveDnsHint: 'Comma-separated. Default: 1.1.1.1, 8.8.8.8. Maps to ProxmoxCluster dnsServers.',
+    pveAddresses: 'Node addresses',
+    pveAddressesHint:
+      'Free addresses for the nodes of this cluster, outside any DHCP range: single addresses, ranges like 192.168.10.71-192.168.10.88 or networks, comma-separated. Must not overlap with other clusters. Maps to ProxmoxCluster ipv4Config.addresses (in-cluster IPAM).',
+    pveApiEndpoint: 'API virtual IP',
+    pveApiEndpointHint:
+      'Free address in the network, outside the node addresses, held by kube-vip on the control plane nodes. Maps to ProxmoxCluster controlPlaneEndpoint.host.',
+    pveAllowedNodes: 'Allowed nodes (optional)',
+    pveAllowedNodesHint:
+      'Proxmox VE nodes VMs may be placed on, comma-separated. Default: the node above. Maps to ProxmoxCluster allowedNodes.',
+    pveVipInfo:
+      'Proxmox VE has no load balancer: the API server is reached through a virtual IP that kube-vip holds on the control plane nodes (ARP, ADR-0027). Services of type LoadBalancer need MetalLB or similar (e.g. as add-on).',
     awsLbInfo:
       "AWS always uses a network load balancer for the API server. Node user data is not stored in Secrets Manager because stock images lack the AWS CLI (ADR-0003). IMDSv2 is enforced with hop limit 2, so pods on the nodes can read the node's user data (including the join token) and instance profile credentials.",
     ccm: 'Cloud controller manager',
