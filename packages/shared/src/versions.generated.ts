@@ -351,7 +351,7 @@ export const VERSIONS: VersionsFile = {
         "registry": "ghcr.io"
       },
       "verified": "2026-10-23",
-      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 and k0s, always with the node's admin kubeconfig (localhost), never in-cluster credentials."
+      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 and k0s, always with the node's admin kubeconfig (localhost), never in-cluster credentials: a workaround for the missing API server health check in ARP mode (ADR-0027). On updates, check whether kube-vip issue 1787 (control plane health check for ARP) has been released."
     }
   },
   "testTools": {

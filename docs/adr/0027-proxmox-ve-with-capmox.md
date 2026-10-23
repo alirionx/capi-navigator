@@ -21,12 +21,24 @@ found what the app has to add.
   container for all distributions (version pinned in `versions.yaml`); the infrastructure plugin
   declares that the distribution provides the endpoint, and each flavor plugin delivers it its way:
   RKE2 as DaemonSet through the RKE2 manifests, k0s as DaemonSet through its manifest deployer,
-  kubeadm as static pod with the `super-admin.conf` workaround during `kubeadm init`. kube-vip always
-  uses the node's admin kubeconfig through localhost, never in-cluster credentials: a leader must
-  lose its lease when its own API server stops. With in-cluster credentials (first used for RKE2)
-  the old leader kept renewing through the `kubernetes` Service during a rollout and held the VIP
-  for a dead API server; on k0s, which advertises the VIP for that Service, they cannot reach the
-  API at all. The interface is detected by kube-vip.
+  kubeadm as static pod with the `super-admin.conf` workaround during `kubeadm init`. The interface is
+  detected by kube-vip.
+- **kube-vip uses the node's admin kubeconfig, as a workaround.** In ARP mode kube-vip is plain
+  leader-election failover: another node takes over the VIP only when the leader can no longer
+  renew its lease. kube-vip does not check whether the API server on the leader is healthy
+  (kube-vip issue [#800](https://github.com/kube-vip/kube-vip/issues/800)); the health check of
+  [#1498](https://github.com/kube-vip/kube-vip/pull/1498) covers only BGP and routing table mode,
+  the ARP equivalent is an open request
+  ([#1787](https://github.com/kube-vip/kube-vip/issues/1787), an RKE2 cluster like ours). With
+  in-cluster credentials, as the kube-vip docs show for DaemonSets and as first used for RKE2, the
+  old leader kept renewing through the `kubernetes` Service during a rollout and held the VIP for
+  a dead API server (live test); on k0s, which advertises the VIP for that Service, they cannot
+  reach the API at all. kube-vip therefore reads the node's admin kubeconfig (mounted to
+  `/etc/kubernetes/admin.conf`, `kubernetes` resolved to 127.0.0.1, as in kube-vip's static pod
+  manifests) and renews the lease only through the local API server: when it stops, the lease
+  expires and the VIP moves. This relies on how leader election works, not on a documented
+  kube-vip feature; once kube-vip offers a health check in ARP mode, the in-cluster DaemonSet with
+  that check is the cleaner choice (see the kube-vip note in `versions.yaml`).
 - **Node addresses from the kubelet**: the Proxmox CCM runs in its default network mode and takes
   the address the kubelet reports with `--node-ip`. The infrastructure plugin provides a shell
   command for it (`nodeAddressCommand`: the source address towards the gateway); distributions
@@ -64,3 +76,9 @@ found what the app has to add.
 - One CA bundle for all Proxmox endpoints is a CAPMOX limitation; it is fine as long as the CAs are
   trusted together.
 - Services of type `LoadBalancer` stay pending unless users add MetalLB or similar (add-ons).
+- kube-vip holds admin credentials of the node (the mounted admin kubeconfig) instead of a narrow
+  ClusterRole. It runs only on control plane nodes, in the host network with `NET_ADMIN`, where
+  the file exists anyway; the same applies to kube-vip's own static pod manifests.
+- A failover of the VIP takes 13–25 s (lease expiry plus ARP announcement, measured in the live
+  test) and the API traffic goes to one node; a load balancer with health checks in front of the
+  control plane nodes (e.g. HAProxy with keepalived) remains possible outside the app.
