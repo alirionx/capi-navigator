@@ -356,6 +356,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-23 | OpenAPI description and Swagger UI (optional) | FP-19 |
 | FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
 | FP-30 | Manifest add-ons through CAAPH (optional) | FP-8 |
+| FP-31 | Proxmox VE as infrastructure provider (optional) | FP-5, FP-8 |
 
 ### FP-0: Project scaffold
 
@@ -938,6 +939,48 @@ Order of work: credentials first (so real credentials can be stored early), then
 - [x] With the chart source of a connection pointed to a mirror, releases are installed from the mirror; a missing chart version is reported in the app. (Verified live on 2026-10-22 with an HTTP repository as mirror, see the chart README.)
 - [x] The chart is published with a release and installable with `helm install` from ghcr.io. (Since v0.9.0.)
 
+### FP-31: Proxmox VE as infrastructure provider (optional)
+
+**Goal:** workload clusters on Proxmox VE with the Cluster API provider [CAPMOX](https://github.com/ionos-cloud/cluster-api-provider-proxmox) (IONOS, Apache-2.0), for on-premises and homelab environments, managed like those on the clouds. Proxmox has no load balancer, no flavors and no address management of its own; the app adds them in a way that stays upstream: kube-vip for the API endpoint, sizes kept per credential, node addresses from the in-cluster IPAM provider (ADR-0027).
+
+Order of work: provider catalog and credentials, then the transformation with kube-vip for RKE2 (priority) and k0s, then CCM and CSI, live tests, kubeadm last (experimental).
+
+Spike findings (2026-10-23, RKE2 and k0s all-in-one on Proxmox VE 9.2, CAPI v1.14.3), which these requirements build on:
+
+- CAPMOX v0.9.1 (API `v1alpha2`, contract v1beta2) and the in-cluster IPAM provider v1.1.1 run with the app's CAPI version, installed through the CAPI Operator. CAPMOX skips TLS verification by default; one root CA for the manager (`--proxmox-root-cert-file`, `PROXMOX_INSECURE=false`, volume added by a JSON patch).
+- CAPMOX creates the `InClusterIPPool` from `ProxmoxCluster.spec.ipv4Config` itself; `vmIDRange` keeps its VMs in a range of their own; the bootstrap data comes as a NoCloud ISO.
+- Templates must not have a Proxmox cloud-init drive (cloud-init read it instead of CAPMOX's ISO: no static IP, no bootstrap).
+- CAPMOX's scheduler counts the configured memory of all VMs of a node, stopped ones included (`schedulerHints.memoryAdjustment`, 0 disables the check); a failed placement is terminal for that machine.
+- CAPMOX makes the credentials Secret owned by the `ProxmoxCluster`; deleting the only cluster that references it deletes the Secret.
+- kube-vip v1.3.1 in ARP mode as DaemonSet held the VIP and detected the interface itself. On RKE2 it uses in-cluster credentials (`RKE2ControlPlane.spec.manifestsConfigMapReference`); k0s advertises the VIP for the `kubernetes` Service, so there it must use the node's admin kubeconfig (`/var/lib/k0s/pki/admin.conf`), otherwise it can never reach the API.
+- `providerID` `proxmox://<SystemUUID>` (cloud-init `instance_id`) matches the machine; k0smotron sets it itself. qemu-guest-agent installed on first boot is enough.
+- Not yet verified live: CCM and CSI (the [Proxmox CCM](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) supports CAPMOX's provider ID with `features.provider: capmox`; the [Proxmox CSI plugin](https://github.com/sergelogvinov/proxmox-csi-plugin) needs the region and zone labels the CCM sets; volumes on local storage stay on their Proxmox node, shared storage such as Ceph or NFS can move), kubeadm (static pod with the `super-admin.conf` workaround), several nodes.
+
+Requirements:
+
+- **FP31-F-01** MUST add CAPMOX and the in-cluster IPAM provider to the provider catalog (`versions.yaml`, verified versions) and install them through the CAPI Operator with TLS verification against the CAs of the stored Proxmox credentials; the operator part learns the `IPAMProvider` kind.
+- **FP31-F-02** MUST offer a credential type "Proxmox VE": API URL, API token ID and secret, optional CA certificate (PEM), stored as a Secret; never in API responses, logs or audit events.
+- **FP31-F-03** MUST test a Proxmox credential: version, reachability with TLS verification, and the token's effective privileges against those CAPMOX, the CCM and the CSI driver need (`/access/permissions`), naming missing ones.
+- **FP31-F-04** MUST keep machine sizes per Proxmox credential (name, vCPUs, memory), editable by admins, with four defaults (2 vCPU/4 GiB, 4/8, 8/16, 8/32); the wizard offers them as machine sizes.
+- **FP31-F-05** MUST provide lookups for the wizard: nodes, templates (with a warning when a template has a cloud-init drive or no QEMU guest agent enabled), bridges and storages with content type.
+- **FP31-F-06** MUST generate `ProxmoxCluster` and `ProxmoxMachineTemplate` (field names verified against the pinned CAPMOX release): template, source and allowed nodes, storage, boot disk size, bridge, VM ID range, memory scheduling (`memoryAdjustment`, default 100 %), node IP range per cluster with prefix, gateway and DNS servers, and the control plane endpoint.
+- **FP31-F-07** MUST provide the API endpoint as a virtual IP held by kube-vip (ARP, control plane only), rendered by one pure function and delivered per distribution: RKE2 through its manifests, k0s through its manifest deployer with the node's admin kubeconfig, kubeadm as static pod. The infrastructure plugin declares that the distribution provides the endpoint (no `apiLoadBalancer`); no distribution-specific code in generic modules.
+- **FP31-F-08** MUST refuse in the preview a VIP inside the node range or outside its subnet, and a node range or VIP that overlaps those of another Proxmox cluster of the management cluster.
+- **FP31-F-09** MUST give every cluster its own copy of the credentials Secret (CAPMOX owns and deletes it with the cluster); the stored credential is never referenced directly.
+- **FP31-F-10** MUST set the provider ID and install qemu-guest-agent on first boot through the plugin hooks (`nodeIdentity`, `nodePreparation`), so stock cloud images without a cloud-init drive work as templates.
+- **FP31-F-11** MUST roll out the Proxmox CCM (`features.provider: capmox`) and the Proxmox CSI plugin as presets, with their Proxmox credentials delivered into the workload cluster as a Secret by ClusterResourceSet (as ADR-0004), never in Helm values; the CSI StorageClass uses the storage chosen in the wizard.
+- **FP31-F-12** MUST support RKE2 and k0s in both topologies; kubeadm (experimental) SHOULD follow with the static pod variant.
+- **FP31-F-13** MUST document the Proxmox setup (token and privileges, template without cloud-init drive, guest agent, IP range and VIP, memory scheduling, CA) and list Proxmox VE in the README, the architecture overview and the provider tables.
+
+**Acceptance criteria**
+
+- [ ] An admin installs CAPMOX and the IPAM provider, stores a Proxmox credential with CA and the test shows version and privileges; the token appears in no API response, log or audit event.
+- [ ] The wizard offers nodes, templates (with the cloud-init drive warning), bridges, storages and the sizes of the credential.
+- [ ] A cluster with RKE2 and one with k0s come up on Proxmox VE with CCM and CSI: the API answers on the VIP, nodes carry region and zone labels, and a PVC is bound.
+- [ ] Overlapping node ranges or VIPs are refused in the preview.
+- [ ] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
+- [ ] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -1019,21 +1062,6 @@ These requirements apply to all feature packs and are checked in every pack.
   - Preloaded images need `imagePullPolicy: IfNotPresent` and must not be removed by the kubelet's image garbage collection (to check per distribution).
   - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
   - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
-- **FP-31: Proxmox VE as infrastructure provider** (optional; not started). Provider [CAPMOX](https://github.com/ionos-cloud/cluster-api-provider-proxmox) (IONOS, Apache-2.0; checked 2026-10-23: v0.9.1 of 2026-09-08, API `v1alpha2` with the CAPI v1beta2 contract, clusterctl name `proxmox`). Findings so far:
-  - Compatibility: the provider lists CAPI v1.11 and v1.12; the app runs v1.14. First step is a spike that creates and deletes a cluster with the app's CAPI version.
-  - No cloud load balancer: the API endpoint is a virtual IP held by kube-vip in ARP mode on the control plane nodes (API only, services off), mandatory and in the subnet of the control plane machines, outside the IPAM pool (wizard field per cluster). One pure function renders the kube-vip configuration for all distributions: a DaemonSet for RKE2 (`manifestsConfigMapReference` or `/var/lib/rancher/rke2/server/manifests`) and k0s (`/var/lib/k0s/manifests/…`; our k0s controllers run with `--enable-worker`), applied by their manifest deployers once the first API server runs; a static pod for kubeadm (`/etc/kubernetes/manifests`), which needs the VIP during `kubeadm init` (the known `super-admin.conf` workaround, to verify). The API access differs per distribution (see the k0s spike below); the interface is detected automatically. Services of type `LoadBalancer` are left to the users (e.g. MetalLB through Helm or manifest add-ons); a preset may follow at the end.
-  - Addresses: node IPs come from the in-cluster IPAM provider (IP ranges, gateway, prefix, DNS); the app has to install an `IPAMProvider` through the CAPI Operator and the wizard asks for the IP pool and the virtual IP.
-  - Images: a Proxmox VM template (template ID, source node); an Ubuntu cloud image with cloud-init and qemu-guest-agent fits the app's stock image approach.
-  - Optional CCM and CSI: [proxmox-cloud-controller-manager](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) and [proxmox-csi-plugin](https://github.com/sergelogvinov/proxmox-csi-plugin) (one maintainer each, active); volumes are bound to a Proxmox node or storage unless the storage is shared (e.g. Ceph).
-  - Credentials: Proxmox API token (URL, token ID, secret) in a Secret; lookups for nodes, templates, bridges and storage. The backend and the management cluster need network access to the Proxmox API.
-  - No floating IPs, bastion host or security groups; the nodes share a bridge network.
-  - Spike 2026-10-23, RKE2 (passed): CAPMOX v0.9.1 and the in-cluster IPAM provider v1.1.1 run with CAPI v1.14.3, installed through the CAPI Operator (`InfrastructureProvider` `proxmox`, `IPAMProvider` `in-cluster`). TLS against the Proxmox CA works with `--proxmox-root-cert-file` and `PROXMOX_INSECURE=false` (a JSON patch for the volume; the default skips verification; one CA for all Proxmox endpoints). RKE2 v1.35.9 all-in-one on Ubuntu 26.04 came up in about 90 s after the clone; kube-vip v1.3.1 as DaemonSet through `RKE2ControlPlane.spec.manifestsConfigMapReference` held the VIP and detected the interface itself (no wizard field needed); `provider-id=proxmox://{{ v1.instance_id }}` matches the machine; qemu-guest-agent installed on first boot is enough (no custom template). Deleting the cluster removed VM, cloud-init ISO and VIP in about 15 s; the IP is released after the IPAM provider's reuse grace period. Findings for the plugin:
-    - Templates must not have a Proxmox cloud-init drive: CAPMOX attaches its own NoCloud ISO, and cloud-init read the template's drive instead (no static IP, no bootstrap). The template lookup should warn about it.
-    - CAPMOX's scheduler counts the configured memory of all VMs on a node, stopped ones included, against the host memory (`schedulerHints.memoryAdjustment`, default 100 %; 0 disables the check). A failed placement is terminal for that machine (CAPI recreates it once the machine is deleted). The wizard needs a setting for it.
-    - CAPMOX creates the `InClusterIPPool` from `ProxmoxCluster.spec.ipv4Config` itself; `vmIDRange` keeps the VMs in a range of their own.
-    - CAPMOX makes the credentials Secret owned by the `ProxmoxCluster`: deleting the only cluster that references it deletes the Secret. The app must give every cluster its own copy (as for the OpenStack cloud config) and never reference the stored credential directly.
-  - Spike 2026-10-23, k0s (passed after one change): k0s v1.35.8 through k0smotron v2.3.0, all-in-one on Ubuntu 26.04, ready about 2.5 minutes after applying, VIP, providerID (set by k0smotron) and deletion as with RKE2. k0s advertises the external address (the VIP, set by k0smotron from the control plane endpoint) for the `kubernetes` Service, so kube-vip with in-cluster credentials can only reach the API through the VIP it is meant to provide and never starts. Fix: kube-vip uses the node's admin kubeconfig (`/var/lib/k0s/pki/admin.conf`, `localhost:6443`) as a hostPath, the variant kube-vip generates without `--inCluster`; kube-proxy, Calico and Konnectivity then follow. So the kube-vip function renders the same container for all distributions, with the API access per distribution: in-cluster (RKE2), the k0s admin kubeconfig (k0s), static pod with `super-admin.conf` during init (kubeadm).
-  - Order: RKE2 first (priority 1), then k0s, kubeadm last (experimental in the app, although it is the path documented upstream; RKE2 with CAPMOX is not documented there and is the first thing the spike checks).
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
 ### Decisions
