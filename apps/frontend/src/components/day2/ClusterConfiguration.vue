@@ -87,12 +87,17 @@ async function loadLists(): Promise<void> {
       (x) => x.provider === s.infrastructure.provider && x.name === s.infrastructure.credentialRef,
     );
     if (!c) return;
-    const region = 'region' in s.infrastructure ? s.infrastructure.region : undefined;
-    const machine = INFRA_PLUGINS[s.infrastructure.provider].form.machine;
+    const form = INFRA_PLUGINS[s.infrastructure.provider].form;
+    // The region of the lookups is the plugin's region field (Proxmox VE: the source node).
+    const infra = s.infrastructure as Record<string, unknown>;
+    const regionValue = infra[form.regionField ?? 'region'];
+    const region = typeof regionValue === 'string' ? regionValue : undefined;
+    const machine = form.machine;
     const types = machine.rootVolume.types;
+    const imageLookup = form.fields.find((f) => f.path === 'image')?.lookup ?? 'images';
     const [sz, im, vt] = await Promise.all([
       credentials.lookup(c, machine.sizeLookup, region),
-      credentials.lookup(c, 'images', region),
+      credentials.lookup(c, imageLookup, region),
       'lookup' in types
         ? credentials.lookup(c, types.lookup, region).catch(() => ({ options: [] }))
         : Promise.resolve({ options: types.options.map((v) => ({ value: v, label: v })) }),

@@ -255,7 +255,10 @@ watch(
 );
 
 const sizes = computed(() => lists[form.value.machine.sizeLookup] ?? []);
-const images = computed(() => lists.images ?? []);
+/** Images for per-group overrides: the list of the plugin's image field (e.g. Proxmox templates). */
+const images = computed(
+  () => lists[form.value.fields.find((f) => f.path === 'image')?.lookup ?? 'images'] ?? [],
+);
 /** FP5-F-20: a failed credential check that breaks the bastion (OpenStack: Neutron paging). */
 const pagingWarning = computed(() => {
   const id = form.value.bastion?.blockingCheck;

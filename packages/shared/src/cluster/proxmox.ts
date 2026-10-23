@@ -64,6 +64,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveSourceNodeHint',
         resets: ['storage', 'bridge'],
         cols: 4,
+        testId: 'pve-source-node',
       },
       {
         path: 'image',
@@ -84,6 +85,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveBootDiskHint',
         default: 'scsi0',
         cols: 3,
+        testId: 'pve-boot-disk',
       },
       {
         path: 'storage',
@@ -92,6 +94,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         label: 'wizard.pveStorage',
         hint: 'wizard.pveStorageHint',
         cols: 4,
+        testId: 'pve-storage',
       },
       {
         path: 'bridge',
@@ -101,6 +104,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveBridgeHint',
         default: 'vmbr0',
         cols: 4,
+        testId: 'pve-bridge',
       },
       {
         path: 'memoryAdjustment',
@@ -116,6 +120,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         label: 'wizard.pveNodeCidr',
         hint: 'wizard.pveNodeCidrHint',
         cols: 4,
+        testId: 'pve-node-cidr',
       },
       {
         path: 'network.gateway',
@@ -123,6 +128,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         label: 'wizard.pveGateway',
         hint: 'wizard.pveGatewayHint',
         cols: 4,
+        testId: 'pve-gateway',
       },
       {
         path: 'network.dnsNameservers',

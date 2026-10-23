@@ -45,6 +45,11 @@ watch(
 );
 
 const target = computed(() => form.value.target);
+/** Providers without disk types (Proxmox VE: the cluster's storage) show no type field. */
+const hasTypes = computed(() => {
+  const types = root.value.types;
+  return 'lookup' in types || types.options.length > 0;
+});
 const rootHint = computed(() => {
   if (props.rootDiskLocked) return t('wizard.rootDiskLocked');
   if (root.value.defaultGB)
@@ -115,6 +120,7 @@ const rootRules = [
       "
     />
     <v-select
+      v-if="hasTypes"
       v-model="group.rootVolumeType"
       :items="volumeTypes"
       item-title="label"
