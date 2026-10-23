@@ -54,4 +54,3 @@ export const httpsRequest: HttpFn = (url, init) =>
     if (init.body) req.write(init.body);
     req.end();
   });
-
