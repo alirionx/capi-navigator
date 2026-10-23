@@ -30,6 +30,14 @@ describe('provider usage (FP6-F-08)', () => {
     expect(names('InfrastructureProvider' as never, 'aws')).toEqual(['aws', 'old']);
     expect(names('AddonProvider' as never, 'helm')).toEqual(['os']);
   });
+
+  it('counts the clusters of dependent infrastructure providers for the IPAM provider (FP31-F-01)', () => {
+    const withPve = [...clusters, c('pve', 'proxmox', 'rke2')];
+    expect(
+      clustersUsing({ kind: 'IPAMProvider', name: 'in-cluster' }, withPve).map((x) => x.name),
+    ).toEqual(['pve']);
+    expect(clustersUsing({ kind: 'IPAMProvider', name: 'other' }, withPve)).toEqual([]);
+  });
 });
 
 describe('infrastructure summary (FP6-F-02)', () => {

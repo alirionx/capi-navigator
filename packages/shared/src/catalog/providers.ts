@@ -8,6 +8,7 @@ export const PROVIDER_KINDS = [
   'ControlPlaneProvider',
   'InfrastructureProvider',
   'AddonProvider',
+  'IPAMProvider',
 ] as const;
 export const ProviderKindSchema = z.enum(PROVIDER_KINDS);
 export type ProviderKind = z.infer<typeof ProviderKindSchema>;
@@ -22,6 +23,7 @@ export const PROVIDER_PLURALS: Record<ProviderKind, string> = {
   ControlPlaneProvider: 'controlplaneproviders',
   InfrastructureProvider: 'infrastructureproviders',
   AddonProvider: 'addonproviders',
+  IPAMProvider: 'ipamproviders',
 };
 
 export interface ProviderCatalogEntry {
@@ -54,6 +56,20 @@ export interface ProviderCatalogEntry {
   defaultVariables?: Record<string, string>;
   /** Explanation shown next to the configuration variables. */
   variablesHint?: string;
+  /**
+   * The provider calls an infrastructure API whose certificate the app checks against the CAs of
+   * the stored credentials (FP31-F-01): `env` is always set on the manager container; with CAs,
+   * the bundle is mounted from a Secret and passed with `certFileArg`.
+   */
+  tls?: {
+    deployment: string;
+    /** Container name and its index in the components' Deployment (for the JSON patch). */
+    container: string;
+    containerIndex: number;
+    env: Record<string, string>;
+    certFileArg: string;
+    mountPath: string;
+  };
 }
 
 /**
@@ -216,6 +232,45 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     defaultVariables: { GCP_B64ENCODED_CREDENTIALS: '' },
     variablesHint:
       'GCP_B64ENCODED_CREDENTIALS can stay empty: clusters use the Google Cloud credentials stored in CAPI Navigator (credentialsRef).',
+  },
+  {
+    id: 'ipam-in-cluster',
+    kind: 'IPAMProvider',
+    name: 'in-cluster',
+    displayName: 'In-cluster IPAM',
+    description:
+      'Hands out node addresses from IP ranges, for providers without DHCP (Proxmox VE).',
+    recommendedVersion: VERSIONS.providers['ipam-in-cluster'].version,
+    defaultNamespace: 'capi-ipam-in-cluster-system',
+    repository: 'kubernetes-sigs/cluster-api-ipam-provider-in-cluster',
+    docsUrl: 'https://github.com/kubernetes-sigs/cluster-api-ipam-provider-in-cluster',
+    dependsOn: ['core'],
+    contract: 'v1beta2',
+  },
+  {
+    id: 'proxmox',
+    kind: 'InfrastructureProvider',
+    name: 'proxmox',
+    displayName: 'Proxmox VE (CAPMOX)',
+    description:
+      'Clones virtual machines from templates on Proxmox VE; addresses from in-cluster IPAM.',
+    recommendedVersion: VERSIONS.providers['proxmox'].version,
+    defaultNamespace: 'capmox-system',
+    repository: 'ionos-cloud/cluster-api-provider-proxmox',
+    docsUrl: 'https://github.com/ionos-cloud/cluster-api-provider-proxmox/tree/main/docs',
+    dependsOn: ['core', 'ipam-in-cluster'],
+    contract: 'v1beta2',
+    variablesHint:
+      'PROXMOX_URL, PROXMOX_TOKEN and PROXMOX_SECRET can stay empty: clusters use the Proxmox credentials stored in CAPI Navigator (credentialsRef).',
+    // CAPMOX skips TLS verification unless told otherwise (ADR-0027).
+    tls: {
+      deployment: 'capmox-controller-manager',
+      container: 'manager',
+      containerIndex: 0,
+      env: { PROXMOX_INSECURE: 'false' },
+      certFileArg: '--proxmox-root-cert-file',
+      mountPath: '/var/lib/capi-navigator/ca',
+    },
   },
 ];
 

@@ -512,6 +512,7 @@ export const en = {
       ControlPlaneProvider: 'Control plane',
       InfrastructureProvider: 'Infrastructure',
       AddonProvider: 'Add-on',
+      IPAMProvider: 'IPAM',
     },
     phase: {
       Installing: 'Installing',

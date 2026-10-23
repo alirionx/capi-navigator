@@ -55,6 +55,8 @@ export const VersionsFileSchema = z.strictObject({
     openstack: EntrySchema,
     aws: EntrySchema,
     gcp: EntrySchema,
+    proxmox: EntrySchema,
+    'ipam-in-cluster': EntrySchema,
     helm: EntrySchema,
   }),
   prerequisites: z.strictObject({
@@ -86,7 +88,7 @@ export const VersionsFileSchema = z.strictObject({
     'gcp-ccm': ManifestEntrySchema,
     'gcp-csi': ManifestEntrySchema,
   }),
-  images: z.strictObject({ 'node-shell': EntrySchema }),
+  images: z.strictObject({ 'node-shell': EntrySchema, 'kube-vip': EntrySchema }),
   /** Tools of the local test setup, not part of the app (e.g. Dex for FP-14). */
   testTools: z.strictObject({ dex: EntrySchema, socat: EntrySchema, gitleaks: EntrySchema }),
 });

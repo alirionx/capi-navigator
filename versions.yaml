@@ -72,6 +72,25 @@ providers:
       Still implements the v1beta1 contract (built against CAPI v1.13.2). CAPI v1.14 supports it;
       CAPI plans to drop v1beta1 contract support with v1.16 (tentatively April 2027), so CAPG
       must move to v1beta2 before core can go there.
+  proxmox:
+    # Cluster API provider for Proxmox VE (CAPMOX, FP-31, ADR-0027).
+    version: v0.9.1
+    source:
+      datasource: github-releases
+      package: ionos-cloud/cluster-api-provider-proxmox
+    verified: 2026-10-23
+    note: >-
+      API v1alpha2, contract v1beta2. Upstream lists CAPI v1.11/v1.12; verified live with CAPI
+      v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false.
+  ipam-in-cluster:
+    # In-cluster IPAM provider; CAPMOX takes node addresses from it (FP-31).
+    version: v1.1.1
+    source:
+      datasource: github-releases
+      package: kubernetes-sigs/cluster-api-ipam-provider-in-cluster
+    verified: 2026-10-23
+    note: >-
+      Contract v1beta2 from v1.1. Holds released addresses for a grace period before reuse.
   helm:
     # Cluster API Add-on Provider for Helm (CAAPH, FP-8).
     version: v0.6.4
@@ -259,6 +278,17 @@ images:
       package: alpine
       registry: docker.io
     verified: 2026-10-20
+  kube-vip:
+    # Virtual IP for the API server on Proxmox VE (ARP mode, control plane only; FP31-F-07).
+    version: v1.3.1
+    source:
+      datasource: docker
+      package: kube-vip/kube-vip
+      registry: ghcr.io
+    verified: 2026-10-23
+    note: >-
+      Detects the interface itself when vip_interface is unset. Verified live with RKE2
+      (in-cluster credentials) and k0s (node admin kubeconfig).
 
 # ---- Local test setup (not shipped with the app) -------------------------------------------------
 testTools:

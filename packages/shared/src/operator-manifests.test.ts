@@ -29,6 +29,45 @@ describe('provider manifests (FP3-F-09, FP3-F-10)', () => {
     expect(renderManifests(objects)).toMatchSnapshot();
   });
 
+  it('Proxmox VE: TLS verification against a CA bundle from the credentials (FP31-F-01)', () => {
+    const input = spec({ catalogId: 'proxmox', version: 'v0.9.1', namespace: 'capmox-system' });
+    const ca = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n';
+    expect(
+      renderManifests(buildProviderManifests(catalogEntry('proxmox')!, input, { caBundle: ca })),
+    ).toMatchSnapshot();
+    // Without CAs only the insecure default is switched off (system trust store).
+    const plain = buildProviderManifests(catalogEntry('proxmox')!, input);
+    expect(plain.map((o) => o.kind)).toEqual(['Namespace', 'InfrastructureProvider']);
+    expect(plain[1]!.spec).toEqual({
+      version: 'v0.9.1',
+      deployment: {
+        containers: [{ name: 'manager', env: [{ name: 'PROXMOX_INSECURE', value: 'false' }] }],
+      },
+    });
+    // A changed bundle changes the manager's environment, so the pod restarts with it.
+    const env = (caBundle: string) =>
+      JSON.stringify(
+        (
+          buildProviderManifests(catalogEntry('proxmox')!, input, { caBundle })[2]!.spec as {
+            deployment: unknown;
+          }
+        ).deployment,
+      );
+    expect(env(ca)).not.toEqual(env(ca + ca));
+  });
+
+  it('IPAM provider (FP31-F-01)', () => {
+    const objects = buildProviderManifests(
+      catalogEntry('ipam-in-cluster')!,
+      spec({
+        catalogId: 'ipam-in-cluster',
+        version: 'v1.1.1',
+        namespace: 'capi-ipam-in-cluster-system',
+      }),
+    );
+    expect(objects[1]).toMatchObject({ kind: 'IPAMProvider', metadata: { name: 'in-cluster' } });
+  });
+
   it('masks secret values for the preview', () => {
     const objects = buildProviderManifests(
       catalogEntry('helm')!,
