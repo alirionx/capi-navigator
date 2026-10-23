@@ -1,6 +1,6 @@
 # ADR-0027: Proxmox VE with CAPMOX, kube-vip and per-cluster address ranges
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-23
 - Pack: FP-31
 - Refines: [ADR-0004](0004-node-provider-id-and-openstack-cloud-config.md) (credentials into the workload cluster), [ADR-0022](0022-gcp-api-load-balancer.md) (API load balancer per plugin), [ADR-0021](0021-plugin-described-provider-forms.md) (plugin forms)
