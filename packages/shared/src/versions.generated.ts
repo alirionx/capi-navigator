@@ -351,7 +351,7 @@ export const VERSIONS: VersionsFile = {
         "registry": "ghcr.io"
       },
       "verified": "2026-10-23",
-      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 (in-cluster credentials) and k0s (node admin kubeconfig)."
+      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 and k0s, always with the node's admin kubeconfig (localhost), never in-cluster credentials."
     }
   },
   "testTools": {

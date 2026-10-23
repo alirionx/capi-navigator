@@ -6,26 +6,16 @@ import { VERSIONS } from '../versions.generated.js';
  * (FP31-F-07, ADR-0027): the control plane nodes elect a leader that answers ARP for the virtual
  * IP; services are left to others (e.g. MetalLB). One container for every distribution; the
  * environment is what `kube-vip manifest daemonset --arp --controlplane --leaderElection` of the
- * pinned version renders, verified live with RKE2 and k0s on Proxmox VE (FP-31 spike). The
+ * pinned version renders, verified live with RKE2 and k0s on Proxmox VE (FP-31). The
  * interface is detected by kube-vip (no vip_interface).
  */
 export const KUBE_VIP_IMAGE = `${VERSIONS.images['kube-vip'].source.registry}/${VERSIONS.images['kube-vip'].source.package}:${VERSIONS.images['kube-vip'].version}`;
-
-/** How kube-vip reaches the API server before the virtual IP exists. */
-export type KubeVipAccess =
-  /** Service account (RKE2: the `kubernetes` Service points to the node's own address). */
-  | { kind: 'in-cluster' }
-  /**
-   * The node's admin kubeconfig through localhost (k0s advertises the VIP for the `kubernetes`
-   * Service, so in-cluster access would need the VIP it is meant to provide).
-   */
-  | { kind: 'host-kubeconfig'; path: string };
 
 const NAME = 'kube-vip';
 const NAMESPACE = 'kube-system';
 const LABELS = { 'app.kubernetes.io/name': 'kube-vip-ds' };
 
-function container(vip: string, kubeconfig?: string) {
+function container(vip: string) {
   const env = [
     { name: 'vip_arp', value: 'true' },
     { name: 'port', value: '6443' },
@@ -53,70 +43,28 @@ function container(vip: string, kubeconfig?: string) {
     securityContext: {
       capabilities: { add: ['NET_ADMIN', 'NET_RAW'], drop: ['ALL'] },
     },
-    ...(kubeconfig
-      ? { volumeMounts: [{ name: 'kubeconfig', mountPath: '/etc/kubernetes/admin.conf' }] }
-      : {}),
+    volumeMounts: [{ name: 'kubeconfig', mountPath: '/etc/kubernetes/admin.conf' }],
   };
 }
 
+/**
+ * kube-vip reaches the API server through the node's own admin kubeconfig and localhost (it talks
+ * to "kubernetes:6443"), never through the `kubernetes` Service: a leader whose local API server
+ * stops (e.g. etcd member removed during a rollout) must lose the lease so the VIP moves. With
+ * in-cluster credentials it kept renewing through the Service and held the VIP for a dead API
+ * server (FP-31 live test, RKE2 upgrade); k0s also advertises the VIP for the Service.
+ */
 const hostKubeconfig = (path: string) => ({
-  // kube-vip reads /etc/kubernetes/admin.conf; "kubernetes" is the API server's own name.
   hostAliases: [{ ip: '127.0.0.1', hostnames: ['kubernetes'] }],
   volumes: [{ name: 'kubeconfig', hostPath: { path } }],
 });
 
-/** RBAC of the in-cluster variant (kube-vip.io/manifests/rbac.yaml). */
-function rbac(): Record<string, unknown>[] {
-  return [
-    { apiVersion: 'v1', kind: 'ServiceAccount', metadata: { name: NAME, namespace: NAMESPACE } },
-    {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRole',
-      metadata: { name: 'system:kube-vip-role' },
-      rules: [
-        { apiGroups: [''], resources: ['services/status'], verbs: ['update'] },
-        {
-          apiGroups: [''],
-          resources: ['services', 'endpoints'],
-          verbs: ['list', 'get', 'watch', 'update'],
-        },
-        {
-          apiGroups: [''],
-          resources: ['nodes'],
-          verbs: ['list', 'get', 'watch', 'update', 'patch'],
-        },
-        {
-          apiGroups: ['coordination.k8s.io'],
-          resources: ['leases'],
-          verbs: ['list', 'get', 'watch', 'update', 'create'],
-        },
-        {
-          apiGroups: ['discovery.k8s.io'],
-          resources: ['endpointslices'],
-          verbs: ['list', 'get', 'watch', 'update'],
-        },
-        { apiGroups: [''], resources: ['pods'], verbs: ['list'] },
-      ],
-    },
-    {
-      apiVersion: 'rbac.authorization.k8s.io/v1',
-      kind: 'ClusterRoleBinding',
-      metadata: { name: 'system:kube-vip-binding' },
-      roleRef: {
-        apiGroup: 'rbac.authorization.k8s.io',
-        kind: 'ClusterRole',
-        name: 'system:kube-vip-role',
-      },
-      subjects: [{ kind: 'ServiceAccount', name: NAME, namespace: NAMESPACE }],
-    },
-  ];
-}
-
 /**
  * Pure: kube-vip as DaemonSet on the control plane nodes, for distributions that deploy
- * manifests from a directory once their first API server runs (RKE2, k0s).
+ * manifests from a directory once their first API server runs (RKE2, k0s); `kubeconfig` is the
+ * node's admin kubeconfig.
  */
-export function kubeVipDaemonSet(vip: string, access: KubeVipAccess): string {
+export function kubeVipDaemonSet(vip: string, kubeconfig: string): string {
   const daemonSet = {
     apiVersion: 'apps/v1',
     kind: 'DaemonSet',
@@ -140,21 +88,18 @@ export function kubeVipDaemonSet(vip: string, access: KubeVipAccess): string {
               },
             },
           },
-          containers: [container(vip, access.kind === 'host-kubeconfig' ? access.path : undefined)],
+          containers: [container(vip)],
           hostNetwork: true,
           tolerations: [
             { effect: 'NoSchedule', operator: 'Exists' },
             { effect: 'NoExecute', operator: 'Exists' },
           ],
-          ...(access.kind === 'in-cluster'
-            ? { serviceAccountName: NAME }
-            : hostKubeconfig(access.path)),
+          ...hostKubeconfig(kubeconfig),
         },
       },
     },
   };
-  const docs = access.kind === 'in-cluster' ? [...rbac(), daemonSet] : [daemonSet];
-  return docs.map((d) => stringify(d, { lineWidth: 0 })).join('---\n');
+  return stringify(daemonSet, { lineWidth: 0 });
 }
 
 /** Pure: kube-vip as static pod (kubeadm), with the node's admin kubeconfig. */
@@ -165,7 +110,7 @@ export function kubeVipStaticPod(vip: string, kubeconfig: string): string {
       kind: 'Pod',
       metadata: { name: NAME, namespace: NAMESPACE },
       spec: {
-        containers: [container(vip, kubeconfig)],
+        containers: [container(vip)],
         hostNetwork: true,
         ...hostKubeconfig(kubeconfig),
       },

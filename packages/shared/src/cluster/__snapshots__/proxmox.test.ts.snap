@@ -134,82 +134,6 @@ spec:
   files:
     - path: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
       content: |
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: kube-vip
-          namespace: kube-system
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: system:kube-vip-role
-        rules:
-          - apiGroups:
-              - ""
-            resources:
-              - services/status
-            verbs:
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - services
-              - endpoints
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - nodes
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-              - patch
-          - apiGroups:
-              - coordination.k8s.io
-            resources:
-              - leases
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-              - create
-          - apiGroups:
-              - discovery.k8s.io
-            resources:
-              - endpointslices
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - pods
-            verbs:
-              - list
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: system:kube-vip-binding
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: system:kube-vip-role
-        subjects:
-          - kind: ServiceAccount
-            name: kube-vip
-            namespace: kube-system
-        ---
         apiVersion: apps/v1
         kind: DaemonSet
         metadata:
@@ -281,13 +205,23 @@ spec:
                         - NET_RAW
                       drop:
                         - ALL
+                  volumeMounts:
+                    - name: kubeconfig
+                      mountPath: /etc/kubernetes/admin.conf
               hostNetwork: true
               tolerations:
                 - effect: NoSchedule
                   operator: Exists
                 - effect: NoExecute
                   operator: Exists
-              serviceAccountName: kube-vip
+              hostAliases:
+                - ip: 127.0.0.1
+                  hostnames:
+                    - kubernetes
+              volumes:
+                - name: kubeconfig
+                  hostPath:
+                    path: /etc/rancher/rke2/rke2.yaml
       permissions: "0644"
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
@@ -445,82 +379,6 @@ spec:
   files:
     - path: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
       content: |
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: kube-vip
-          namespace: kube-system
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRole
-        metadata:
-          name: system:kube-vip-role
-        rules:
-          - apiGroups:
-              - ""
-            resources:
-              - services/status
-            verbs:
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - services
-              - endpoints
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - nodes
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-              - patch
-          - apiGroups:
-              - coordination.k8s.io
-            resources:
-              - leases
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-              - create
-          - apiGroups:
-              - discovery.k8s.io
-            resources:
-              - endpointslices
-            verbs:
-              - list
-              - get
-              - watch
-              - update
-          - apiGroups:
-              - ""
-            resources:
-              - pods
-            verbs:
-              - list
-        ---
-        apiVersion: rbac.authorization.k8s.io/v1
-        kind: ClusterRoleBinding
-        metadata:
-          name: system:kube-vip-binding
-        roleRef:
-          apiGroup: rbac.authorization.k8s.io
-          kind: ClusterRole
-          name: system:kube-vip-role
-        subjects:
-          - kind: ServiceAccount
-            name: kube-vip
-            namespace: kube-system
-        ---
         apiVersion: apps/v1
         kind: DaemonSet
         metadata:
@@ -592,13 +450,23 @@ spec:
                         - NET_RAW
                       drop:
                         - ALL
+                  volumeMounts:
+                    - name: kubeconfig
+                      mountPath: /etc/kubernetes/admin.conf
               hostNetwork: true
               tolerations:
                 - effect: NoSchedule
                   operator: Exists
                 - effect: NoExecute
                   operator: Exists
-              serviceAccountName: kube-vip
+              hostAliases:
+                - ip: 127.0.0.1
+                  hostnames:
+                    - kubernetes
+              volumes:
+                - name: kubeconfig
+                  hostPath:
+                    path: /etc/rancher/rke2/rke2.yaml
       permissions: "0644"
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
