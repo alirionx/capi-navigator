@@ -357,6 +357,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
 | FP-30 | Manifest add-ons through CAAPH (optional) | FP-8 |
 | FP-31 | Proxmox VE as infrastructure provider (optional) | FP-5, FP-8 |
+| UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
 
@@ -980,6 +981,19 @@ Requirements:
 - [ ] Overlapping node ranges or VIPs are refused in the preview.
 - [ ] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
 - [ ] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
+
+### UX: UI and UX improvements (recurring)
+
+**Goal:** a place to collect improvements of the web interface as they come up, without interrupting the current feature pack. The list is reviewed before every release that raises the minor or major version (in `0.x`: every minor release): items are done, postponed or dropped, and done items are ticked with the release they shipped in. Items keep their ID; new ones are appended.
+
+- **UX-01** Credentials page: the "Add …" buttons (one per provider) wrap badly next to the page title once there are four providers. One "Add credential" button with a menu of the providers, as for "New add-on" (FP-30).
+- **UX-02** Overview of a management cluster on the home page: next to the providers, one row per workload cluster with its infrastructure (provider, name, state), its control plane nodes and its worker nodes (per pool) as small boxes with their state, so the shape of every cluster is visible at a glance; a click leads to the cluster or machine.
+
+**Review log**
+
+| Release | Done | Postponed |
+| --- | --- | --- |
+| – | – | – |
 
 ## 7. Non-functional requirements
 
