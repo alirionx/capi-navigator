@@ -166,4 +166,24 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     expect(kadm).toContain('/etc/kubernetes/manifests/kube-vip.yaml');
     expect(kadm).toContain('super-admin.conf');
   });
+
+  it('refuses node addresses and VIPs another cluster uses (FP31-F-08)', () => {
+    const spec = ClusterSpecSchema.parse(pve());
+    const other = (name: string, addresses: string[], host: string) => ({
+      metadata: { name, namespace: 'proxmox' },
+      spec: { ipv4Config: { addresses }, controlPlaneEndpoint: { host, port: 6443 } },
+    });
+    const conflicts = (others: Record<string, unknown>[]) =>
+      proxmoxPlugin.addressConflicts!(spec, spec.infrastructure as never, others);
+    // The cluster itself and clusters elsewhere in the network are fine.
+    expect(
+      conflicts([
+        other('pve', ['192.168.10.71-192.168.10.88'], '192.168.10.89'),
+        other('lab2', ['192.168.10.90-192.168.10.99'], '192.168.10.100'),
+      ]),
+    ).toEqual([]);
+    expect(conflicts([other('lab3', ['192.168.10.85-192.168.10.95'], '192.168.10.89')])).toEqual([
+      '192.168.10.71-192.168.10.88, 192.168.10.89 overlap with the addresses of cluster proxmox/lab3; choose addresses no other cluster uses.',
+    ]);
+  });
 });

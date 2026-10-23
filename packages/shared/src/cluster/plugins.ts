@@ -76,6 +76,11 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * distribution runs kube-vip on its control plane nodes to hold it.
    */
   apiVip?(infra: T): string;
+  /**
+   * Address clashes with the other infrastructure clusters of the management cluster (blockers),
+   * for providers where the user hands out addresses (FP31-F-08).
+   */
+  addressConflicts?(spec: ClusterSpec, infra: T, others: Record<string, unknown>[]): string[];
   /** Problems the spec alone cannot show, e.g. a size the credential does not know (blockers). */
   validate?(spec: ClusterSpec, infra: T, ctx: TransformContext): string[];
   /** Failure domain for worker MachineDeployments, if any. */

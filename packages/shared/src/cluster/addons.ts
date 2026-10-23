@@ -21,7 +21,7 @@ export const VOLUME_TOPOLOGY_LABEL = 'capi-navigator.io/volume-topology';
 export interface AddonPreset {
   id: string;
   /** Cloud of the preset; `any` for cloud-independent presets (kured). */
-  provider: 'openstack' | 'aws' | 'any';
+  provider: 'openstack' | 'aws' | 'proxmox' | 'any';
   kind: 'ccm' | 'csi' | 'reboot' | 'cni';
   displayName: string;
   repoURL: string;
@@ -37,6 +37,31 @@ export interface AddonPreset {
 /** Value of the control plane node label per distribution (CAAPH template, FP10-F-06). */
 const CP_LABEL_VALUE = `'{{ if eq .ControlPlane.kind "KubeadmControlPlane" }}{{ else }}true{{ end }}'`;
 const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: ${CP_LABEL_VALUE}\n`;
+
+/** Cluster label with the storage the Proxmox CSI preset uses for its StorageClass (FP31-F-11). */
+export const PROXMOX_STORAGE_LABEL = 'capi-navigator.io/proxmox-storage';
+/** Secret in kube-system of the workload cluster with config.yaml and ca.crt for CCM and CSI. */
+export const PROXMOX_CLOUD_CONFIG_SECRET = 'proxmox-cloud-config';
+
+/** An OCI chart pinned as image (datasource docker): repository URL and chart name. */
+function ociChart(entry: { source: { package: string; registry?: string } }) {
+  const parts = entry.source.package.split('/');
+  return {
+    repoURL: `oci://${entry.source.registry}/${parts.slice(0, -1).join('/')}`,
+    chartName: parts[parts.length - 1]!,
+  };
+}
+
+/**
+ * Proxmox CA bundle for CCM and CSI: the Secret's ca.crt (the cluster's CA plus public roots)
+ * replaces the container's trust store, as the charts document.
+ */
+const PROXMOX_CA_VOLUME = [
+  'extraVolumes:\n',
+  `  - name: proxmox-ca\n    secret:\n      secretName: ${PROXMOX_CLOUD_CONFIG_SECRET}\n      items:\n        - key: ca.crt\n          path: ca.crt\n`,
+  'extraVolumeMounts:\n',
+  '  - name: proxmox-ca\n    mountPath: /etc/ssl/certs/ca-certificates.crt\n    subPath: ca.crt\n    readOnly: true\n',
+].join('');
 
 export const ADDON_PRESETS: AddonPreset[] = [
   {
@@ -116,6 +141,45 @@ export const ADDON_PRESETS: AddonPreset[] = [
       '  tolerations:\n    - key: node-role.kubernetes.io/control-plane\n      operator: Exists\n      effect: NoSchedule\n',
       'storageClasses:\n  - name: ebs-gp3\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
+    ].join(''),
+  },
+  {
+    id: 'proxmox-ccm',
+    provider: 'proxmox',
+    kind: 'ccm',
+    displayName: 'Proxmox VE Cloud Controller Manager',
+    ...ociChart(VERSIONS.addonPresets['proxmox-ccm']),
+    version: VERSIONS.addonPresets['proxmox-ccm'].version,
+    releaseNamespace: 'kube-system',
+    valuesTemplate: [
+      `existingConfigSecret: ${PROXMOX_CLOUD_CONFIG_SECRET}\nexistingConfigSecretKey: config.yaml\n`,
+      // As DaemonSet on the control plane nodes with host networking: the CCM removes the
+      // "uninitialized" taint before the pod network runs (as for AWS).
+      'useDaemonSet: true\n',
+      CP_SELECTOR,
+      'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
+      '  - key: node.cloudprovider.kubernetes.io/uninitialized\n    operator: Exists\n    effect: NoSchedule\n',
+      PROXMOX_CA_VOLUME,
+    ].join(''),
+  },
+  {
+    id: 'proxmox-csi',
+    provider: 'proxmox',
+    kind: 'csi',
+    displayName: 'Proxmox VE CSI plugin',
+    ...ociChart(VERSIONS.addonPresets['proxmox-csi']),
+    version: VERSIONS.addonPresets['proxmox-csi'].version,
+    releaseNamespace: 'kube-system',
+    valuesTemplate: [
+      `existingConfigSecret: ${PROXMOX_CLOUD_CONFIG_SECRET}\nexistingConfigSecretKey: config.yaml\n`,
+      // One StorageClass on the storage chosen for the cluster (label on the Cluster).
+      'storageClass:\n  - name: proxmox\n',
+      `    storage: '{{ index .Cluster.metadata.labels "${PROXMOX_STORAGE_LABEL}" }}'\n`,
+      '    fstype: ext4\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
+      // Controller also on control plane nodes (all-in-one), the node plugin on every node.
+      'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
+      'node:\n  tolerations:\n    - operator: Exists\n',
+      PROXMOX_CA_VOLUME,
     ].join(''),
   },
   {

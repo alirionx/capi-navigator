@@ -847,6 +847,20 @@ export class ClustersService {
     };
     const infraPlugin = INFRA_PLUGINS[infra.provider];
     if (resolved) blockers.push(...(infraPlugin.validate?.(spec, infra, transformContext) ?? []));
+    // FP31-F-08: addresses the user hands out must not clash with other clusters.
+    if (infraPlugin.addressConflicts) {
+      const [group, version] = infraPlugin.apiVersion.split('/') as [string, string];
+      const others = await kc
+        .makeApiClient(CustomObjectsApi)
+        .listClusterCustomObject({
+          group,
+          version,
+          plural: infraPlugin.resources.infraClusterPlural,
+        })
+        .then((r) => (r as { items: Record<string, unknown>[] }).items)
+        .catch(() => []);
+      blockers.push(...infraPlugin.addressConflicts(spec, infra, others));
+    }
     const generated = transform(spec, transformContext);
     const objects = generated as KubernetesObject[];
     const touched = baseline
@@ -914,6 +928,16 @@ export class ClustersService {
         ...secret,
         data: { 'cloud-config.yaml': '********' },
       } as KubernetesObject);
+    }
+
+    // Secrets from the stored credential, e.g. the Proxmox copy and CCM/CSI config (FP31-F-09).
+    if (resolved) {
+      const secrets = this.credentials.clusterSecrets(infra.provider, spec, {
+        name: infra.credentialRef,
+        data: resolved.data,
+      });
+      extra.push(...(secrets?.objects ?? []));
+      extraPreview.push(...(secrets?.preview ?? []));
     }
 
     // CCM/CSI presets, created on first use in the namespace (FP5-F-09, FP5-F-17). Presets that

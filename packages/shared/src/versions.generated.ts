@@ -248,6 +248,26 @@ export const VERSIONS: VersionsFile = {
       },
       "verified": "2026-10-17"
     },
+    "proxmox-ccm": {
+      "version": "0.2.32",
+      "source": {
+        "datasource": "docker",
+        "package": "sergelogvinov/charts/proxmox-cloud-controller-manager",
+        "registry": "ghcr.io"
+      },
+      "verified": "2026-10-23",
+      "note": "App v0.16.1 (2026-09-28). features.provider=capmox for CAPMOX's provider ID; one maintainer."
+    },
+    "proxmox-csi": {
+      "version": "0.5.12",
+      "source": {
+        "datasource": "docker",
+        "package": "sergelogvinov/charts/proxmox-csi-plugin",
+        "registry": "ghcr.io"
+      },
+      "verified": "2026-10-23",
+      "note": "App v0.20.0 (2026-08-05); chart 0.5.13 (v0.21.0, 2026-10-17) was less than two weeks old. Needs the region and zone labels the CCM sets; volumes on local storage stay on their node."
+    },
     "kured": {
       "version": "6.1.0",
       "source": {

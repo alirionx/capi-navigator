@@ -6,6 +6,8 @@ export * from './openstack.js';
 export * from './aws.js';
 export * from './gcp.js';
 export * from './gcp-addons.js';
+export * from './proxmox.js';
+export * from './kube-vip.js';
 export * from './manifest-addons.js';
 export * from './rke2.js';
 export * from './k0s.js';

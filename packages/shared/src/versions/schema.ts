@@ -79,6 +79,8 @@ export const VersionsFileSchema = z.strictObject({
     'openstack-csi': EntrySchema,
     'aws-ccm': EntrySchema,
     'aws-csi': EntrySchema,
+    'proxmox-ccm': EntrySchema,
+    'proxmox-csi': EntrySchema,
     kured: EntrySchema,
   }),
   kubeadmRuntime: z.strictObject({ containerd: EntrySchema, runc: EntrySchema }),
