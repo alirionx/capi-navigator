@@ -169,6 +169,20 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     expect(kadm).toContain('super-admin.conf');
   });
 
+  it('k0s kubelets report the node address for the CCM (FP31-F-11, live test)', () => {
+    const nodeIp =
+      "--kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')";
+    const [cp] = find(k0s(pve()), 'K0sControlPlane');
+    expect((cp!.spec as { k0sConfigSpec: { args: string[] } }).k0sConfigSpec.args).toContain(
+      nodeIp,
+    );
+    const [worker] = find(k0s(pve()), 'K0sWorkerConfigTemplate');
+    expect(JSON.stringify(worker!.spec)).toContain(JSON.stringify(nodeIp).slice(1, -1));
+    // Without the CCM the kubelet keeps its own address handling.
+    const noCcm = k0s(pve({ addons: { cloudControllerManager: false, csiDriver: false } }));
+    expect(JSON.stringify(objects(noCcm))).not.toContain('--node-ip');
+  });
+
   it('refuses node addresses and VIPs another cluster uses (FP31-F-08)', () => {
     const spec = ClusterSpecSchema.parse(pve());
     const other = (name: string, addresses: string[], host: string) => ({

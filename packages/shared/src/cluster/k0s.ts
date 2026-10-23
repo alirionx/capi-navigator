@@ -26,6 +26,20 @@ const KUBELET_ROOT_DIR = '--kubelet-root-dir=/var/lib/kubelet';
 export const K0S_KUBE_VIP_PATH = '/var/lib/k0s/manifests/kube-vip/kube-vip.yaml';
 /** The controller's admin kubeconfig, pointing to localhost. */
 const K0S_ADMIN_KUBECONFIG = '/var/lib/k0s/pki/admin.conf';
+
+/**
+ * FP9-F-04: kubelet with an external cloud provider when the CCM is rolled out; FP31-F-11: with
+ * the node's address where the CCM takes it from the kubelet (k0s does not set --node-ip). The
+ * bootstrap provider runs the install command through the shell, which expands $(…).
+ */
+function cloudProviderArgs(spec: ClusterSpec, infra: InfraTransformPlugin): string[] {
+  if (!spec.addons.cloudControllerManager) return [];
+  const address = infra.nodeAddressCommand?.(spec.infrastructure as never);
+  return [
+    '--enable-cloud-provider',
+    ...(address ? [`--kubelet-extra-args=--node-ip=$(${address})`] : []),
+  ];
+}
 /** Extra SSH keys (spec.sshPublicKeys) for the image's default user (uid 1000). */
 const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
@@ -204,8 +218,7 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
             ...(infra.apiLoadBalancer?.apiPortOnly
               ? ['--disable-components=konnectivity-server']
               : []),
-            // FP9-F-04: kubelet with an external cloud provider when the CCM is rolled out.
-            ...(spec.addons.cloudControllerManager ? ['--enable-cloud-provider'] : []),
+            ...cloudProviderArgs(spec, infra),
             KUBELET_ROOT_DIR,
           ],
           useSystemHostname: true,
@@ -233,7 +246,7 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
       // FP7-F-08: workers follow the control plane only after it was upgraded.
       version: spec.kubernetes.workerVersion ?? spec.kubernetes.version,
       args: [
-        ...(spec.addons.cloudControllerManager ? ['--enable-cloud-provider'] : []),
+        ...cloudProviderArgs(spec, infra),
         KUBELET_ROOT_DIR,
         ...(pool.nodeLabels && Object.keys(pool.nodeLabels).length
           ? [`--labels=${sortedLabels(pool.nodeLabels)}`]

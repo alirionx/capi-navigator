@@ -27,6 +27,11 @@ found what the app has to add.
   the old leader kept renewing through the `kubernetes` Service during a rollout and held the VIP
   for a dead API server; on k0s, which advertises the VIP for that Service, they cannot reach the
   API at all. The interface is detected by kube-vip.
+- **Node addresses from the kubelet**: the Proxmox CCM runs in its default network mode and takes
+  the address the kubelet reports with `--node-ip`. The infrastructure plugin provides a shell
+  command for it (`nodeAddressCommand`: the source address towards the gateway); distributions
+  that do not set `--node-ip` themselves (k0s; kubeadm) pass it on. The guest agent mode would
+  also report the VIP and CNI addresses, and its exclusions do not take effect in CCM v0.16.1.
 - **Addresses: a range per cluster** (node range, prefix, gateway, DNS, VIP) in the wizard,
   written to `ProxmoxCluster.spec.ipv4Config`; CAPMOX creates the `InClusterIPPool`. The backend
   refuses ranges and VIPs that overlap other Proxmox clusters of the management cluster and VIPs
