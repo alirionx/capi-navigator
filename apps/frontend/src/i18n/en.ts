@@ -904,13 +904,13 @@ export const en = {
     },
     proxmox: {
       recommend:
-        'Use an API token of a user for Cluster API only (e.g. capmox{\'@\'}pve) with privilege separation off; the test names missing privileges. The token secret is stored in a Secret and never shown again.',
+        "Use an API token of a user for Cluster API only (e.g. capmox{'@'}pve) with privilege separation off; the test names missing privileges. The token secret is stored in a Secret and never shown again.",
       url: 'API URL',
       urlHint:
         'Address of the Proxmox VE API, e.g. https://pve.example.com:8006. Maps to the Secret key "url".',
       tokenId: 'API token ID',
       tokenIdHint:
-        'user{\'@\'}realm!tokenname, e.g. capmox{\'@\'}pve!capi (Datacenter → Permissions → API Tokens).',
+        "user{'@'}realm!tokenname, e.g. capmox{'@'}pve!capi (Datacenter → Permissions → API Tokens).",
       tokenSecret: 'API token secret',
       tokenSecretHint: 'Shown once when the token is created.',
       caFile: 'CA certificate file (optional)',
