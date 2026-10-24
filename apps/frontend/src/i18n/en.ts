@@ -767,7 +767,7 @@ export const en = {
       'Network bridge of the VMs. Default: vmbr0. Maps to network.networkDevices.bridge.',
     pveMemoryAdjustment: 'Memory scheduling (%)',
     pveMemoryAdjustmentHint:
-      'How much memory CAPMOX may place on a node, in percent of its memory; it counts the configured memory of all VMs, stopped ones included. 0 turns the check off. Default: 100. Maps to ProxmoxCluster schedulerHints.memoryAdjustment.',
+      'How much memory CAPMOX may place on a node, in percent of its memory; it counts the configured memory of all VMs, stopped ones included. 0 turns the check off; CAPMOX does not retry a machine it refused, so delete it to replace it. Default: 0. Maps to ProxmoxCluster schedulerHints.memoryAdjustment.',
     pveNodeCidr: 'Network',
     pveNodeCidrHint:
       'Network of the bridge in CIDR notation, e.g. 192.168.10.0/24; its prefix goes to the nodes. Maps to ProxmoxCluster ipv4Config.prefix.',

@@ -80,7 +80,7 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
         gateway: '192.168.10.1',
       },
       allowedNodes: ['homeserver'],
-      schedulerHints: { memoryAdjustment: 100 },
+      schedulerHints: { memoryAdjustment: 0 },
       credentialsRef: { name: 'pve-proxmox-credentials', namespace: 'proxmox' },
     });
     const templates = find(pve(), 'ProxmoxMachineTemplate').map(

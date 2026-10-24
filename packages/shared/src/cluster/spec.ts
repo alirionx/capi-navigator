@@ -292,9 +292,11 @@ export const ProxmoxInfraSchema = z.object({
     .optional(),
   /**
    * Memory CAPMOX may place on a node, in percent of its memory, counting the configured memory
-   * of all VMs, stopped ones included (schedulerHints.memoryAdjustment; 0: no check).
+   * of all VMs, stopped ones included (schedulerHints.memoryAdjustment; 0: no check). Off by
+   * default: stopped VMs made the check refuse VMs on hosts with plenty of free memory, and
+   * CAPMOX does not retry a refused machine (FP-31 live test).
    */
-  memoryAdjustment: z.int().min(0).max(1000).default(100),
+  memoryAdjustment: z.int().min(0).max(1000).default(0),
 });
 export type ProxmoxInfra = z.infer<typeof ProxmoxInfraSchema>;
 
