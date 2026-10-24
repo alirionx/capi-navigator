@@ -94,6 +94,7 @@ describe('ClusterConfiguration: infrastructure settings (FP-33)', () => {
           memoryAdjustment: 0,
           'network.dnsNameservers': ['1.1.1.1', '8.8.8.8'],
           'network.addresses': ['192.168.10.71-192.168.10.75', '192.168.10.76'],
+          'network.loadBalancerAddresses': null,
           allowedNodes: null,
         },
       },

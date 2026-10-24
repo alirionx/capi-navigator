@@ -83,3 +83,20 @@ export function ipv4RangesCover(ranges: string[], covered: string): boolean {
   }
   return false;
 }
+
+/** An IPv4 address from its number. */
+export function formatIpv4(n: number): string {
+  return [24, 16, 8, 0].map((shift) => Math.floor(n / 2 ** shift) % 256).join('.');
+}
+
+/**
+ * Ranges as kube-vip-cloud-provider reads them (FP32-F-04): always "start-end", comma separated;
+ * it has no form for a single address or a network.
+ */
+export function ipv4StartEndRanges(ranges: string[]): string {
+  return ranges
+    .map(parseIpv4Range)
+    .filter((r): r is { start: number; end: number } => !!r)
+    .map((r) => `${formatIpv4(r.start)}-${formatIpv4(r.end)}`)
+    .join(',');
+}

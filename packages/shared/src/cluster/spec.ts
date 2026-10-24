@@ -282,6 +282,22 @@ export const ProxmoxInfraSchema = z.object({
       .min(1, 'At least one address range')
       .max(16),
     dnsNameservers: z.array(z.ipv4()).min(1).max(5).default(['1.1.1.1', '8.8.8.8']),
+    /**
+     * Addresses for Services of type LoadBalancer, announced by kube-vip (FP32-F-01); like the
+     * node addresses. Unset: no LoadBalancer Services.
+     */
+    loadBalancerAddresses: z
+      .array(
+        z
+          .string()
+          .trim()
+          .refine(
+            (v) => !!parseIpv4Range(v),
+            'An address, a range like 10.0.0.5-10.0.0.9 or a network',
+          ),
+      )
+      .max(16)
+      .optional(),
   }),
   /** Virtual IP of the API server, held by kube-vip (FP31-F-07). */
   apiEndpoint: z.ipv4('An IPv4 address'),
@@ -510,6 +526,17 @@ export const ClusterSpecSchema = z
       if (net.addresses.some((a) => ipv4RangesOverlap(a, net.gateway))) {
         issue([...path, 'addresses'], 'Must not contain the gateway');
       }
+      // FP32-F-02: LoadBalancer addresses in the same network, apart from nodes, gateway and VIP.
+      (net.loadBalancerAddresses ?? []).forEach((a, i) => {
+        const at = [...path, 'loadBalancerAddresses', i];
+        if (!ipv4RangeInCidr(a, net.nodeCidr)) {
+          issue(at, `Outside the network ${net.nodeCidr}`);
+        } else if (net.addresses.some((n) => ipv4RangesOverlap(n, a))) {
+          issue(at, 'Must not overlap the node addresses');
+        } else if (ipv4RangesOverlap(a, net.gateway) || ipv4RangesOverlap(a, infra.apiEndpoint)) {
+          issue(at, 'Must not contain the gateway or the API virtual IP');
+        }
+      });
     }
 
     if (infra.provider === 'gcp' && infra.zone && !infra.zone.startsWith(`${infra.region}-`)) {

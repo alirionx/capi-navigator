@@ -1,9 +1,9 @@
 import { PROXMOX_CREDENTIAL_ANNOTATION } from '../credentials.js';
-import { PROXMOX_STORAGE_LABEL } from './addons.js';
+import { PROXMOX_LB_ADDRESSES_ANNOTATION, PROXMOX_STORAGE_LABEL } from './addons.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { MachineGroup, ProxmoxInfra } from './spec.js';
-import { ipv4RangesCover, ipv4RangesOverlap } from './cidr.js';
+import { ipv4RangesCover, ipv4RangesOverlap, ipv4StartEndRanges } from './cidr.js';
 import { compact } from './util.js';
 
 /**
@@ -163,6 +163,28 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         },
       },
       {
+        path: 'network.loadBalancerAddresses',
+        kind: 'list',
+        label: 'wizard.pveLoadBalancerAddresses',
+        hint: 'wizard.pveLoadBalancerAddressesHint',
+        clearable: true,
+        cols: 8,
+        testId: 'pve-lb-addresses',
+        // FP32-F-05: the presets follow the range (Helm upgrade); Services keep addresses they
+        // already have, so ranges can be added, or all removed to switch the feature off.
+        day2: {
+          note: 'day2.infraNoteLoadBalancer',
+          check: (before, after) => {
+            const kept = (after ?? []) as string[];
+            if (!kept.length) return undefined;
+            const lost = ((before ?? []) as string[]).filter((r) => !ipv4RangesCover(kept, r));
+            return lost.length
+              ? `LoadBalancer addresses can only be added, or all removed: ${lost.join(', ')} must stay in the list (Services may use them).`
+              : undefined;
+          },
+        },
+      },
+      {
         path: 'apiEndpoint',
         kind: 'text',
         label: 'wizard.pveApiEndpoint',
@@ -213,8 +235,18 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         name: spec.name,
         namespace: spec.namespace,
         labels,
-        // Clusters reference a copy of the Secret; this names the stored credential (FP31-F-09).
-        annotations: { [PROXMOX_CREDENTIAL_ANNOTATION]: infra.credentialRef },
+        annotations: {
+          // Clusters reference a copy of the Secret; this names the stored credential (FP31-F-09).
+          [PROXMOX_CREDENTIAL_ANNOTATION]: infra.credentialRef,
+          // FP32-F-04: read by the kube-vip-cloud-provider preset and other clusters' checks.
+          ...(infra.network.loadBalancerAddresses?.length
+            ? {
+                [PROXMOX_LB_ADDRESSES_ANNOTATION]: ipv4StartEndRanges(
+                  infra.network.loadBalancerAddresses,
+                ),
+              }
+            : {}),
+        },
       },
       spec: {
         controlPlaneEndpoint: { host: infra.apiEndpoint, port: 6443 },
@@ -280,11 +312,19 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         ipv4Config?: { addresses?: string[] };
         controlPlaneEndpoint?: { host?: string };
       };
+      const annotations = ((o.metadata ?? {}) as { annotations?: Record<string, string> })
+        .annotations;
       const theirs = [
         ...(s.ipv4Config?.addresses ?? []),
         s.controlPlaneEndpoint?.host ?? '',
+        // FP32-F-02: their LoadBalancer addresses.
+        ...(annotations?.[PROXMOX_LB_ADDRESSES_ANNOTATION]?.split(',') ?? []),
       ].filter(Boolean);
-      const mine = [...infra.network.addresses, infra.apiEndpoint];
+      const mine = [
+        ...infra.network.addresses,
+        infra.apiEndpoint,
+        ...(infra.network.loadBalancerAddresses ?? []),
+      ];
       const clash = mine.filter((m) => theirs.some((t) => ipv4RangesOverlap(m, t)));
       if (clash.length) {
         out.push(
@@ -332,6 +372,14 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
     { label: 'Node network', value: infra.network.nodeCidr },
     { label: 'Node addresses', value: infra.network.addresses.join(', ') },
     { label: 'API server', value: `${infra.apiEndpoint} (kube-vip)` },
+    ...(infra.network.loadBalancerAddresses?.length
+      ? [
+          {
+            label: 'LoadBalancer addresses',
+            value: infra.network.loadBalancerAddresses.join(', '),
+          },
+        ]
+      : []),
   ],
 
   addonLabels(spec) {
@@ -341,6 +389,11 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       // FP31-F-11: read by the CSI preset for the StorageClass of this cluster.
       ...(spec.addons.csiDriver && spec.infrastructure.provider === 'proxmox'
         ? { [PROXMOX_STORAGE_LABEL]: spec.infrastructure.storage }
+        : {}),
+      // FP32-F-03: selects the kube-vip presets for LoadBalancer Services.
+      ...(spec.infrastructure.provider === 'proxmox' &&
+      spec.infrastructure.network.loadBalancerAddresses?.length
+        ? { 'capi-navigator.io/loadbalancer': 'proxmox' }
         : {}),
     };
   },

@@ -292,6 +292,8 @@ export const en = {
       '{label}: applies to new nodes; rebuild the nodes to give existing ones the new value.',
     infraNoteAddresses:
       '{label}: addresses can only be added; ones that machines may use cannot be removed.',
+    infraNoteLoadBalancer:
+      '{label}: ranges can be added, or all removed to switch LoadBalancer Services off (they then lose their addresses); some of them cannot be removed, Services may use them.',
     infraNoteDhcp:
       '{label}: the network is updated at once; nodes get the new value with their next DHCP lease, new nodes immediately.',
     title: {
@@ -800,6 +802,9 @@ export const en = {
     pveApiEndpoint: 'API virtual IP',
     pveApiEndpointHint:
       'Free address in the network, outside the node addresses, held by kube-vip on the control plane nodes. Maps to ProxmoxCluster controlPlaneEndpoint.host.',
+    pveLoadBalancerAddresses: 'LoadBalancer addresses (optional)',
+    pveLoadBalancerAddressesHint:
+      'Free addresses in the network for Services of type LoadBalancer, outside the node addresses and the API virtual IP: single addresses, ranges or networks, comma-separated. Default: none (no LoadBalancer Services). kube-vip announces each address from one node; kube-vip-cloud-provider hands them out. Maps to the ConfigMap range-global of the kube-vip-cloud-provider preset.',
     pveAllowedNodes: 'Allowed nodes (optional)',
     pveAllowedNodesHint:
       'Proxmox VE nodes VMs may be placed on, comma-separated. Default: the node above. Maps to ProxmoxCluster allowedNodes.',

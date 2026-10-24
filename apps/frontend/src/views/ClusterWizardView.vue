@@ -428,7 +428,10 @@ const steps = computed(() => [
 const presets = computed(() => [
   ...ADDON_PRESETS.filter(
     (p) =>
-      p.provider === draft.provider ||
+      (p.provider === draft.provider &&
+        // FP32-F-03: the kube-vip presets only with LoadBalancer addresses.
+        (p.kind !== 'loadbalancer' ||
+          !!String(infraValues.value?.['network.loadBalancerAddresses'] ?? '').trim())) ||
       (p.id === 'kured' && draft.addons.reboot) ||
       (p.kind === 'cni' && !!flavorPlugin.value?.needsCni && draft.cni),
   ),

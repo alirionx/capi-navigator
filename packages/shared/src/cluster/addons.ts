@@ -22,7 +22,7 @@ export interface AddonPreset {
   id: string;
   /** Cloud of the preset; `any` for cloud-independent presets (kured). */
   provider: 'openstack' | 'aws' | 'proxmox' | 'any';
-  kind: 'ccm' | 'csi' | 'reboot' | 'cni';
+  kind: 'ccm' | 'csi' | 'reboot' | 'cni' | 'loadbalancer';
   displayName: string;
   repoURL: string;
   chartName: string;
@@ -42,6 +42,17 @@ const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: ${C
 export const PROXMOX_STORAGE_LABEL = 'capi-navigator.io/proxmox-storage';
 /** Secret in kube-system of the workload cluster with config.yaml and ca.crt for CCM and CSI. */
 export const PROXMOX_CLOUD_CONFIG_SECRET = 'proxmox-cloud-config';
+
+/**
+ * Annotation on the ProxmoxCluster with its LoadBalancer addresses as "start-end" ranges; read by
+ * the kube-vip-cloud-provider preset and by the overlap check of other clusters (FP32-F-04).
+ */
+export const PROXMOX_LB_ADDRESSES_ANNOTATION = 'capi-navigator.io/loadbalancer-addresses';
+
+/** A container image pinned in versions.yaml as Helm values. */
+function imageValues(entry: { version: string; source: { package: string; registry?: string } }) {
+  return `image:\n  repository: ${entry.source.registry}/${entry.source.package}\n  tag: ${entry.version}\n`;
+}
 
 /** An OCI chart pinned as image (datasource docker): repository URL and chart name. */
 function ociChart(entry: { source: { package: string; registry?: string } }) {
@@ -180,6 +191,47 @@ export const ADDON_PRESETS: AddonPreset[] = [
       'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
       'node:\n  tolerations:\n    - operator: Exists\n',
       PROXMOX_CA_VOLUME,
+    ].join(''),
+  },
+  {
+    // FP32-F-03 (ADR-0028): kube-vip for Services only, next to the instance that holds the API
+    // endpoint (FP31-F-07): same image, metrics on another port, on every node so workers hold
+    // addresses too. Values verified against chart 0.11.1; the chart defaults for the control
+    // plane load balancer and the interface are dropped (null), as in the FP-32 spike.
+    id: 'proxmox-kube-vip',
+    provider: 'proxmox',
+    kind: 'loadbalancer',
+    displayName: 'kube-vip for LoadBalancer Services',
+    repoURL: VERSIONS.addonPresets['proxmox-kube-vip'].source.registry!,
+    chartName: VERSIONS.addonPresets['proxmox-kube-vip'].source.package,
+    version: VERSIONS.addonPresets['proxmox-kube-vip'].version,
+    releaseNamespace: 'kube-system',
+    valuesTemplate: [
+      'nameOverride: kube-vip-svc\n',
+      imageValues(VERSIONS.images['kube-vip']),
+      'env:\n  vip_interface: null\n  lb_enable: "false"\n  lb_port: null\n  vip_subnet: null\n',
+      '  cp_enable: "false"\n  svc_enable: "true"\n  svc_election: "true"\n  vip_arp: "true"\n',
+      '  vip_leaseduration: "15"\n  vip_renewdeadline: "10"\n  vip_retryperiod: "2"\n',
+      '  prometheus_server: ":2113"\n',
+      'envValueFrom:\n  vip_nodename:\n    fieldRef:\n      fieldPath: spec.nodeName\n',
+      'tolerations:\n  - operator: Exists\n    effect: NoSchedule\n  - operator: Exists\n    effect: NoExecute\n',
+    ].join(''),
+  },
+  {
+    // FP32-F-03/F-04: hands out the cluster's LoadBalancer addresses, read from the annotation on
+    // its ProxmoxCluster, so one preset serves every cluster of the namespace. It reads the
+    // ConfigMap on every Service sync: a changed range needs no restart. Chart 0.2.10.
+    id: 'proxmox-kube-vip-cloud-provider',
+    provider: 'proxmox',
+    kind: 'loadbalancer',
+    displayName: 'kube-vip cloud provider (LoadBalancer addresses)',
+    repoURL: VERSIONS.addonPresets['proxmox-kube-vip-cloud-provider'].source.registry!,
+    chartName: VERSIONS.addonPresets['proxmox-kube-vip-cloud-provider'].source.package,
+    version: VERSIONS.addonPresets['proxmox-kube-vip-cloud-provider'].version,
+    releaseNamespace: 'kube-system',
+    valuesTemplate: [
+      imageValues(VERSIONS.images['kube-vip-cloud-provider']),
+      `cm:\n  data:\n    range-global: '{{ index .InfraCluster.metadata.annotations "${PROXMOX_LB_ADDRESSES_ANNOTATION}" }}'\n`,
     ].join(''),
   },
   {

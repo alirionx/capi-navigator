@@ -66,6 +66,7 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
       'memoryAdjustment',
       'network.dnsNameservers',
       'network.addresses',
+      'network.loadBalancerAddresses',
       'allowedNodes',
     ]);
     expect(paths('openstack')).toEqual(['network.dnsNameservers']);
@@ -134,12 +135,14 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
       memoryAdjustment: 0,
       'network.dnsNameservers': '1.1.1.1, 8.8.8.8',
       'network.addresses': '192.168.10.71-192.168.10.80',
+      'network.loadBalancerAddresses': '',
       allowedNodes: 'homeserver',
     });
     expect(day2Request(form, { ...values, allowedNodes: '' })).toEqual({
       memoryAdjustment: 0,
       'network.dnsNameservers': ['1.1.1.1', '8.8.8.8'],
       'network.addresses': ['192.168.10.71-192.168.10.80'],
+      'network.loadBalancerAddresses': null,
       allowedNodes: null,
     });
   });

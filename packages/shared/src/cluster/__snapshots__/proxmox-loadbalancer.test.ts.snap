@@ -1,0 +1,1231 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`LoadBalancer Services on Proxmox VE: snapshots (FP-32) > RKE2 standard 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: pve-lb-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: pve-lb
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+spec:
+  controlPlaneEndpoint:
+    host: 192.168.10.89
+    port: 6443
+  ipv4Config:
+    addresses:
+      - 192.168.10.71-192.168.10.88
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: pve-lb-proxmox-credentials
+    namespace: proxmox
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-cp-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: pve-lb-control-plane
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 1
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-cp-84f80995
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+    tlsSan:
+      - 192.168.10.89
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=proxmox://{{ v1.instance_id }}
+  preRKE2Commands:
+    - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+  files:
+    - path: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: kube-vip-ds
+          namespace: kube-system
+          labels:
+            app.kubernetes.io/name: kube-vip-ds
+        spec:
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: kube-vip-ds
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: kube-vip-ds
+            spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.kubernetes.io/control-plane
+                            operator: Exists
+              containers:
+                - name: kube-vip
+                  image: ghcr.io/kube-vip/kube-vip:v1.3.1
+                  imagePullPolicy: IfNotPresent
+                  args:
+                    - manager
+                  env:
+                    - name: vip_arp
+                      value: "true"
+                    - name: port
+                      value: "6443"
+                    - name: vip_nodename
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: spec.nodeName
+                    - name: vip_subnet
+                      value: "32"
+                    - name: dns_mode
+                      value: first
+                    - name: dhcp_mode
+                      value: ipv4
+                    - name: cp_enable
+                      value: "true"
+                    - name: cp_namespace
+                      value: kube-system
+                    - name: svc_enable
+                      value: "false"
+                    - name: vip_leaderelection
+                      value: "true"
+                    - name: vip_leasename
+                      value: plndr-cp-lock
+                    - name: vip_leaseduration
+                      value: "15"
+                    - name: vip_renewdeadline
+                      value: "10"
+                    - name: vip_retryperiod
+                      value: "2"
+                    - name: address
+                      value: 192.168.10.89
+                    - name: prometheus_server
+                      value: :2112
+                  securityContext:
+                    capabilities:
+                      add:
+                        - NET_ADMIN
+                        - NET_RAW
+                      drop:
+                        - ALL
+                  volumeMounts:
+                    - name: kubeconfig
+                      mountPath: /etc/kubernetes/admin.conf
+              hostNetwork: true
+              tolerations:
+                - effect: NoSchedule
+                  operator: Exists
+                - effect: NoExecute
+                  operator: Exists
+              hostAliases:
+                - ip: 127.0.0.1
+                  hostnames:
+                    - kubernetes
+              volumes:
+                - name: kubeconfig
+                  hostPath:
+                    path: /etc/rancher/rke2/rke2.yaml
+      permissions: "0644"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-default-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: pve-lb-default-f7c76fbf
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=proxmox://{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: pve-lb-default
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterName: pve-lb
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: pve-lb
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: pve-lb
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: pve-lb-default-f7c76fbf
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-default-84f80995
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: pve-lb-skip-tigera-operator
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: pve-lb
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-lb-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+  resources:
+    - kind: Secret
+      name: pve-lb-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`LoadBalancer Services on Proxmox VE: snapshots (FP-32) > k0s standard 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0sControlPlane
+    name: pve-lb-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: pve-lb
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+spec:
+  controlPlaneEndpoint:
+    host: 192.168.10.89
+    port: 6443
+  ipv4Config:
+    addresses:
+      - 192.168.10.71-192.168.10.88
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: pve-lb-proxmox-credentials
+    namespace: proxmox
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-cp-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0sControlPlane
+metadata:
+  name: pve-lb-control-plane
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  version: v1.35.8+k0s.1
+  replicas: 1
+  updateStrategy: InPlace
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+      kind: ProxmoxMachineTemplate
+      name: pve-lb-cp-84f80995
+      namespace: proxmox
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-cp-84f80995
+  k0sConfigSpec:
+    k0s:
+      apiVersion: k0s.k0sproject.io/v1beta1
+      kind: ClusterConfig
+      metadata:
+        name: k0s
+      spec:
+        api:
+          extraArgs:
+            anonymous-auth: "true"
+          sans:
+            - 192.168.10.89
+        network:
+          provider: calico
+          calico:
+            mode: vxlan
+          podCIDR: 10.42.0.0/16
+          serviceCIDR: 10.43.0.0/16
+        telemetry:
+          enabled: false
+    args:
+      - --enable-worker
+      - --enable-cloud-provider
+      - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+      - --kubelet-root-dir=/var/lib/kubelet
+    useSystemHostname: true
+    preK0sCommands:
+      - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+    files:
+      - path: /var/lib/k0s/manifests/kube-vip/kube-vip.yaml
+        content: |
+          apiVersion: apps/v1
+          kind: DaemonSet
+          metadata:
+            name: kube-vip-ds
+            namespace: kube-system
+            labels:
+              app.kubernetes.io/name: kube-vip-ds
+          spec:
+            selector:
+              matchLabels:
+                app.kubernetes.io/name: kube-vip-ds
+            template:
+              metadata:
+                labels:
+                  app.kubernetes.io/name: kube-vip-ds
+              spec:
+                affinity:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: node-role.kubernetes.io/control-plane
+                              operator: Exists
+                containers:
+                  - name: kube-vip
+                    image: ghcr.io/kube-vip/kube-vip:v1.3.1
+                    imagePullPolicy: IfNotPresent
+                    args:
+                      - manager
+                    env:
+                      - name: vip_arp
+                        value: "true"
+                      - name: port
+                        value: "6443"
+                      - name: vip_nodename
+                        valueFrom:
+                          fieldRef:
+                            fieldPath: spec.nodeName
+                      - name: vip_subnet
+                        value: "32"
+                      - name: dns_mode
+                        value: first
+                      - name: dhcp_mode
+                        value: ipv4
+                      - name: cp_enable
+                        value: "true"
+                      - name: cp_namespace
+                        value: kube-system
+                      - name: svc_enable
+                        value: "false"
+                      - name: vip_leaderelection
+                        value: "true"
+                      - name: vip_leasename
+                        value: plndr-cp-lock
+                      - name: vip_leaseduration
+                        value: "15"
+                      - name: vip_renewdeadline
+                        value: "10"
+                      - name: vip_retryperiod
+                        value: "2"
+                      - name: address
+                        value: 192.168.10.89
+                      - name: prometheus_server
+                        value: :2112
+                    securityContext:
+                      capabilities:
+                        add:
+                          - NET_ADMIN
+                          - NET_RAW
+                        drop:
+                          - ALL
+                    volumeMounts:
+                      - name: kubeconfig
+                        mountPath: /etc/kubernetes/admin.conf
+                hostNetwork: true
+                tolerations:
+                  - effect: NoSchedule
+                    operator: Exists
+                  - effect: NoExecute
+                    operator: Exists
+                hostAliases:
+                  - ip: 127.0.0.1
+                    hostnames:
+                      - kubernetes
+                volumes:
+                  - name: kubeconfig
+                    hostPath:
+                      path: /var/lib/k0s/pki/admin.conf
+        permissions: "0644"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-default-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: pve-lb-default-59cc80dc
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      version: v1.35.8+k0s.1
+      args:
+        - --enable-cloud-provider
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+      preK0sCommands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: pve-lb-default
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterName: pve-lb
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: pve-lb
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: pve-lb
+      version: v1.35.8+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: pve-lb-default-59cc80dc
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-default-84f80995
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-lb-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+  resources:
+    - kind: Secret
+      name: pve-lb-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`LoadBalancer Services on Proxmox VE: snapshots (FP-32) > kubeadm standard 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/cni: calico
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: KubeadmControlPlane
+    name: pve-lb-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: pve-lb
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: pve-lb
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+spec:
+  controlPlaneEndpoint:
+    host: 192.168.10.89
+    port: 6443
+  ipv4Config:
+    addresses:
+      - 192.168.10.71-192.168.10.88
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: pve-lb-proxmox-credentials
+    namespace: proxmox
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-cp-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: pve-lb-control-plane
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  version: v1.35.9
+  replicas: 1
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-cp-84f80995
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+  kubeadmConfigSpec:
+    format: cloud-config
+    files:
+      - path: /usr/local/bin/capi-navigator-install-kubernetes.sh
+        content: |
+          #!/bin/bash
+          # Generated by CAPI Navigator (FP10-F-02): Kubernetes v1.35.9 with kubeadm on a stock image.
+          set -euo pipefail
+          K8S_VERSION="1.35.9"
+          PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
+          DOWNLOADS="https://github.com"
+          CONTAINERD_VERSION="2.4.2"
+          RUNC_VERSION="1.5.2"
+          case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
+
+          # Kernel modules, sysctl and swap as kubeadm expects them.
+          printf 'overlay\\nbr_netfilter\\n' > /etc/modules-load.d/kubernetes.conf
+          modprobe overlay
+          modprobe br_netfilter
+          printf 'net.bridge.bridge-nf-call-iptables = 1\\nnet.bridge.bridge-nf-call-ip6tables = 1\\nnet.ipv4.ip_forward = 1\\n' > /etc/sysctl.d/99-kubernetes.conf
+          sysctl --system >/dev/null
+          swapoff -a
+          sed -i '/[[:space:]]swap[[:space:]]/ s/^[^#]/#&/' /etc/fstab
+
+          # containerd and runc: official release binaries with checksums (independent of the distribution).
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          ctr="containerd-\${CONTAINERD_VERSION}-linux-\${ARCH}.tar.gz"
+          curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}"
+          curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}.sha256sum"
+          sha256sum -c "\${ctr}.sha256sum"
+          tar -C /usr/local -xzf "\${ctr}"
+          curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.\${ARCH}"
+          curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.sha256sum"
+          grep " runc.\${ARCH}\\$" runc.sha256sum | sha256sum -c
+          install -m 0755 "runc.\${ARCH}" /usr/local/sbin/runc
+          cd /
+          rm -rf "$tmp"
+          cat > /etc/systemd/system/containerd.service <<'UNIT'
+          [Unit]
+          Description=containerd container runtime
+          After=network.target local-fs.target dbus.service
+
+          [Service]
+          ExecStartPre=-/sbin/modprobe overlay
+          ExecStart=/usr/local/bin/containerd
+          Type=notify
+          Delegate=yes
+          KillMode=process
+          Restart=always
+          RestartSec=5
+          LimitNPROC=infinity
+          LimitCORE=infinity
+          TasksMax=infinity
+          OOMScoreAdjust=-999
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          mkdir -p /etc/containerd
+          /usr/local/bin/containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+          systemctl daemon-reload
+          systemctl enable --now containerd
+
+          # kubelet, kubeadm and kubectl of exactly this version from pkgs.k8s.io, held against updates.
+          if command -v apt-get >/dev/null; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -q
+            apt-get install -y -q ca-certificates curl gnupg conntrack socat
+            mkdir -p /etc/apt/keyrings
+            curl -fsSL "\${PKGS}/deb/Release.key" | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] \${PKGS}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+            apt-get update -q
+            # Read the whole list (no early exit): an early exit would break the pipe under pipefail.
+            pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 && !found { print $3; found = 1 }')
+            [ -n "$pkg" ] || { echo "kubeadm \${K8S_VERSION} not found in \${PKGS}" >&2; exit 1; }
+            apt-get install -y -q "kubelet=\${pkg}" "kubeadm=\${pkg}" "kubectl=\${pkg}"
+            apt-mark hold kubelet kubeadm kubectl
+          elif command -v dnf >/dev/null; then
+            setenforce 0 || true
+            sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config || true
+            cat > /etc/yum.repos.d/kubernetes.repo <<REPO
+          [kubernetes]
+          name=Kubernetes
+          baseurl=\${PKGS}/rpm/
+          enabled=1
+          gpgcheck=1
+          gpgkey=\${PKGS}/rpm/repodata/repomd.xml.key
+          exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+          REPO
+            dnf install -y conntrack-tools socat
+            dnf install -y --disableexcludes=kubernetes "kubelet-\${K8S_VERSION}" "kubeadm-\${K8S_VERSION}" "kubectl-\${K8S_VERSION}"
+          else
+            echo "Unsupported distribution: apt-get or dnf is required" >&2
+            exit 1
+          fi
+          systemctl enable kubelet
+        permissions: "0755"
+        owner: root:root
+      - path: /etc/kubernetes/manifests/kube-vip.yaml
+        content: |
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kube-vip
+            namespace: kube-system
+          spec:
+            containers:
+              - name: kube-vip
+                image: ghcr.io/kube-vip/kube-vip:v1.3.1
+                imagePullPolicy: IfNotPresent
+                args:
+                  - manager
+                env:
+                  - name: vip_arp
+                    value: "true"
+                  - name: port
+                    value: "6443"
+                  - name: vip_nodename
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: spec.nodeName
+                  - name: vip_subnet
+                    value: "32"
+                  - name: dns_mode
+                    value: first
+                  - name: dhcp_mode
+                    value: ipv4
+                  - name: cp_enable
+                    value: "true"
+                  - name: cp_namespace
+                    value: kube-system
+                  - name: svc_enable
+                    value: "false"
+                  - name: vip_leaderelection
+                    value: "true"
+                  - name: vip_leasename
+                    value: plndr-cp-lock
+                  - name: vip_leaseduration
+                    value: "15"
+                  - name: vip_renewdeadline
+                    value: "10"
+                  - name: vip_retryperiod
+                    value: "2"
+                  - name: address
+                    value: 192.168.10.89
+                  - name: prometheus_server
+                    value: :2112
+                securityContext:
+                  capabilities:
+                    add:
+                      - NET_ADMIN
+                      - NET_RAW
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: kubeconfig
+                    mountPath: /etc/kubernetes/admin.conf
+            hostNetwork: true
+            hostAliases:
+              - ip: 127.0.0.1
+                hostnames:
+                  - kubernetes
+            volumes:
+              - name: kubeconfig
+                hostPath:
+                  path: /etc/kubernetes/admin.conf
+        permissions: "0644"
+        owner: root:root
+    preKubeadmCommands:
+      - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+      - /usr/local/bin/capi-navigator-install-kubernetes.sh
+      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
+    postKubeadmCommands:
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
+    initConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: proxmox://{{ v1.instance_id }}
+    joinConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: proxmox://{{ v1.instance_id }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: pve-lb-default-84f80995
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: pve-lb-default-b974c171
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  template:
+    spec:
+      format: cloud-config
+      files:
+        - path: /usr/local/bin/capi-navigator-install-kubernetes.sh
+          content: |
+            #!/bin/bash
+            # Generated by CAPI Navigator (FP10-F-02): Kubernetes v1.35.9 with kubeadm on a stock image.
+            set -euo pipefail
+            K8S_VERSION="1.35.9"
+            PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
+            DOWNLOADS="https://github.com"
+            CONTAINERD_VERSION="2.4.2"
+            RUNC_VERSION="1.5.2"
+            case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
+
+            # Kernel modules, sysctl and swap as kubeadm expects them.
+            printf 'overlay\\nbr_netfilter\\n' > /etc/modules-load.d/kubernetes.conf
+            modprobe overlay
+            modprobe br_netfilter
+            printf 'net.bridge.bridge-nf-call-iptables = 1\\nnet.bridge.bridge-nf-call-ip6tables = 1\\nnet.ipv4.ip_forward = 1\\n' > /etc/sysctl.d/99-kubernetes.conf
+            sysctl --system >/dev/null
+            swapoff -a
+            sed -i '/[[:space:]]swap[[:space:]]/ s/^[^#]/#&/' /etc/fstab
+
+            # containerd and runc: official release binaries with checksums (independent of the distribution).
+            tmp=$(mktemp -d)
+            cd "$tmp"
+            ctr="containerd-\${CONTAINERD_VERSION}-linux-\${ARCH}.tar.gz"
+            curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}"
+            curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}.sha256sum"
+            sha256sum -c "\${ctr}.sha256sum"
+            tar -C /usr/local -xzf "\${ctr}"
+            curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.\${ARCH}"
+            curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.sha256sum"
+            grep " runc.\${ARCH}\\$" runc.sha256sum | sha256sum -c
+            install -m 0755 "runc.\${ARCH}" /usr/local/sbin/runc
+            cd /
+            rm -rf "$tmp"
+            cat > /etc/systemd/system/containerd.service <<'UNIT'
+            [Unit]
+            Description=containerd container runtime
+            After=network.target local-fs.target dbus.service
+
+            [Service]
+            ExecStartPre=-/sbin/modprobe overlay
+            ExecStart=/usr/local/bin/containerd
+            Type=notify
+            Delegate=yes
+            KillMode=process
+            Restart=always
+            RestartSec=5
+            LimitNPROC=infinity
+            LimitCORE=infinity
+            TasksMax=infinity
+            OOMScoreAdjust=-999
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+            mkdir -p /etc/containerd
+            /usr/local/bin/containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+            systemctl daemon-reload
+            systemctl enable --now containerd
+
+            # kubelet, kubeadm and kubectl of exactly this version from pkgs.k8s.io, held against updates.
+            if command -v apt-get >/dev/null; then
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -q
+              apt-get install -y -q ca-certificates curl gnupg conntrack socat
+              mkdir -p /etc/apt/keyrings
+              curl -fsSL "\${PKGS}/deb/Release.key" | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+              echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] \${PKGS}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+              apt-get update -q
+              # Read the whole list (no early exit): an early exit would break the pipe under pipefail.
+              pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 && !found { print $3; found = 1 }')
+              [ -n "$pkg" ] || { echo "kubeadm \${K8S_VERSION} not found in \${PKGS}" >&2; exit 1; }
+              apt-get install -y -q "kubelet=\${pkg}" "kubeadm=\${pkg}" "kubectl=\${pkg}"
+              apt-mark hold kubelet kubeadm kubectl
+            elif command -v dnf >/dev/null; then
+              setenforce 0 || true
+              sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config || true
+              cat > /etc/yum.repos.d/kubernetes.repo <<REPO
+            [kubernetes]
+            name=Kubernetes
+            baseurl=\${PKGS}/rpm/
+            enabled=1
+            gpgcheck=1
+            gpgkey=\${PKGS}/rpm/repodata/repomd.xml.key
+            exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+            REPO
+              dnf install -y conntrack-tools socat
+              dnf install -y --disableexcludes=kubernetes "kubelet-\${K8S_VERSION}" "kubeadm-\${K8S_VERSION}" "kubectl-\${K8S_VERSION}"
+            else
+              echo "Unsupported distribution: apt-get or dnf is required" >&2
+              exit 1
+            fi
+            systemctl enable kubelet
+          permissions: "0755"
+          owner: root:root
+      preKubeadmCommands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+        - /usr/local/bin/capi-navigator-install-kubernetes.sh
+        - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+      joinConfiguration:
+        nodeRegistration:
+          name: "{{ v1.local_hostname }}"
+          kubeletExtraArgs:
+            - name: cloud-provider
+              value: external
+            - name: provider-id
+              value: proxmox://{{ v1.instance_id }}
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: pve-lb-default
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterName: pve-lb
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: pve-lb
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: pve-lb
+      version: v1.35.9
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: KubeadmConfigTemplate
+          name: pve-lb-default-b974c171
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: pve-lb-default-84f80995
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: pve-lb-proxmox-cloud-config
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-lb
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: pve-lb
+  resources:
+    - kind: Secret
+      name: pve-lb-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
