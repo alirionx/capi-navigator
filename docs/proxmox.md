@@ -130,6 +130,13 @@ RKE2 and k0s deploy it from their manifest directories, kubeadm as a static pod.
   included, and refuses VMs beyond `memoryAdjustment` percent of the node's memory. CAPMOX does
   not retry a refused machine. Lower the value (0 turns the check off, the default for new
   clusters) and delete the machine; CAPI creates a replacement.
+- **Machines stay in Provisioning although the nodes are Ready, workers keep the taint
+  `node.cluster.x-k8s.io/uninitialized`**: the template has the QEMU guest agent disabled.
+  CAPMOX waits for the agent to report that cloud-init has finished
+  (`VirtualMachineProvisioned: WaitingForCloudInit`) and only then sets the provider ID. The
+  wizard warns and the preview refuses such templates. For running VMs: `qm set <vmid> --agent
+enabled=1`, then shut the VM down and start it again (a reboot inside the guest does not add
+  the agent's device); fix the template the same way.
 - **A VM boots without address or never joins**: the template still has a Proxmox cloud-init
   drive; remove it and replace the machine.
 - **A node stays in the list for a short while after it was replaced**: during the VIP move CAPI
