@@ -27,6 +27,7 @@ test('OpenStack credentials: upload clouds.yaml, preview, test, selection list, 
   );
   await page.goto('/credentials');
 
+  await page.getByTestId('add-credential').click();
   await page.getByTestId('add-openstack').click();
   await page.getByLabel('Name', { exact: true }).fill(name);
   await page.locator('input[type=file]').first().setInputFiles(cloudsYaml!);

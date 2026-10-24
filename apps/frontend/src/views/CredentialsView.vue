@@ -130,19 +130,30 @@ async function loadLookup(c: Credential): Promise<void> {
         <p class="text-body-2 text-medium-emphasis mt-1">{{ t('credentials.subtitle') }}</p>
       </div>
       <v-spacer />
-      <template v-if="isAdmin && connections.active">
-        <v-btn
-          v-for="p in CREDENTIAL_PROVIDERS"
-          :key="p"
-          variant="tonal"
-          color="primary"
-          prepend-icon="mdi-plus"
-          :data-testid="`add-${p}`"
-          @click="dialog = { kind: 'edit', provider: p, credential: null }"
-        >
-          {{ t(`credentials.add.${p}`) }}
-        </v-btn>
-      </template>
+      <!-- UX-01: one button with a menu of the providers, as for new add-ons. -->
+      <v-menu v-if="isAdmin && connections.active">
+        <template #activator="{ props: p }">
+          <v-btn
+            v-bind="p"
+            color="primary"
+            prepend-icon="mdi-plus"
+            append-icon="mdi-menu-down"
+            data-testid="add-credential"
+            >{{ t('credentials.addCredential') }}</v-btn
+          >
+        </template>
+        <v-list density="compact" max-width="420">
+          <v-list-item
+            v-for="p in CREDENTIAL_PROVIDERS"
+            :key="p"
+            :title="t(`credentials.add.${p}`)"
+            :subtitle="t(`credentials.addHint.${p}`)"
+            lines="two"
+            :data-testid="`add-${p}`"
+            @click="dialog = { kind: 'edit', provider: p, credential: null }"
+          />
+        </v-list>
+      </v-menu>
     </div>
 
     <v-alert v-if="!connections.active" type="info" variant="tonal">{{
@@ -195,49 +206,52 @@ async function loadLookup(c: Credential): Promise<void> {
             <span v-else class="text-caption">–</span>
           </template>
           <template #[`item.actions`]="{ item }">
-            <YamlButton
-              :target="{
-                apiVersion: item.identity.apiVersion,
-                kind: item.identity.kind,
-                name: item.identity.name,
-              }"
-            />
-            <YamlButton
-              :target="{
-                apiVersion: 'v1',
-                kind: 'Secret',
-                namespace: item.secret.namespace,
-                name: item.secret.name,
-              }"
-            />
-            <div v-if="isAdmin" class="text-no-wrap d-inline-flex">
-              <v-btn
-                icon="mdi-connection"
-                variant="text"
-                size="small"
-                :title="t('credentials.test')"
-                :aria-label="t('credentials.test')"
-                :loading="testing === key(item)"
-                data-testid="test-credential"
-                @click="test(item)"
+            <!-- One row of icons: they wrapped into two rows next to the wide columns. -->
+            <div class="text-no-wrap d-inline-flex align-center">
+              <YamlButton
+                :target="{
+                  apiVersion: item.identity.apiVersion,
+                  kind: item.identity.kind,
+                  name: item.identity.name,
+                }"
               />
-              <v-btn
-                icon="mdi-pencil"
-                variant="text"
-                size="small"
-                :title="t('credentials.edit')"
-                :aria-label="t('credentials.edit')"
-                @click="dialog = { kind: 'edit', provider: item.provider, credential: item }"
+              <YamlButton
+                :target="{
+                  apiVersion: 'v1',
+                  kind: 'Secret',
+                  namespace: item.secret.namespace,
+                  name: item.secret.name,
+                }"
               />
-              <v-btn
-                icon="mdi-delete"
-                variant="text"
-                size="small"
-                color="error"
-                :title="t('common.delete')"
-                :aria-label="t('common.delete')"
-                @click="dialog = { kind: 'delete', credential: item }"
-              />
+              <div v-if="isAdmin" class="text-no-wrap d-inline-flex">
+                <v-btn
+                  icon="mdi-connection"
+                  variant="text"
+                  size="small"
+                  :title="t('credentials.test')"
+                  :aria-label="t('credentials.test')"
+                  :loading="testing === key(item)"
+                  data-testid="test-credential"
+                  @click="test(item)"
+                />
+                <v-btn
+                  icon="mdi-pencil"
+                  variant="text"
+                  size="small"
+                  :title="t('credentials.edit')"
+                  :aria-label="t('credentials.edit')"
+                  @click="dialog = { kind: 'edit', provider: item.provider, credential: item }"
+                />
+                <v-btn
+                  icon="mdi-delete"
+                  variant="text"
+                  size="small"
+                  color="error"
+                  :title="t('common.delete')"
+                  :aria-label="t('common.delete')"
+                  @click="dialog = { kind: 'delete', credential: item }"
+                />
+              </div>
             </div>
           </template>
           <template #expanded-row="{ columns, item }">
