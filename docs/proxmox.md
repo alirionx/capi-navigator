@@ -51,7 +51,8 @@ in Proxmox VE, what the app creates per cluster, and the limits compared with th
 
 4. **Addresses**: reserve a range in the bridge's network outside any DHCP range, per cluster:
    one address per node plus one more during rollouts, and one more address for the API (the
-   virtual IP). Clusters must not share addresses; the app refuses overlaps.
+   virtual IP). Optionally a second range for Services of type `LoadBalancer`. Clusters must not
+   share addresses; the app refuses overlaps.
 
 ## In the app
 
@@ -67,22 +68,24 @@ in Proxmox VE, what the app creates per cluster, and the limits compared with th
    new machine templates.
 3. **Create cluster**: choose Proxmox VE and fill in the infrastructure step:
 
-   | Field                | Meaning                                                                                                   |
-   | -------------------- | --------------------------------------------------------------------------------------------------------- |
-   | Node, template       | Proxmox node that holds the template; VMs are full clones of it                                           |
-   | Boot disk, storage   | Disk of the template with the root file system (grown to the wizard's size) and the storage of the clones |
-   | Bridge               | Network bridge of the VMs (default `vmbr0`)                                                               |
-   | Network, gateway     | The bridge's network in CIDR notation and its gateway                                                     |
-   | Node addresses       | The cluster's range, e.g. `192.168.10.71-192.168.10.80`                                                   |
-   | API virtual IP       | A free address in the network, outside the node range                                                     |
-   | Memory scheduling    | CAPMOX's memory check (see below), default 0 = off                                                        |
-   | Allowed nodes, VM ID | Optional: further Proxmox nodes for the VMs, and a VM ID range of their own                               |
+   | Field                  | Meaning                                                                                                   |
+   | ---------------------- | --------------------------------------------------------------------------------------------------------- |
+   | Node, template         | Proxmox node that holds the template; VMs are full clones of it                                           |
+   | Boot disk, storage     | Disk of the template with the root file system (grown to the wizard's size) and the storage of the clones |
+   | Bridge                 | Network bridge of the VMs (default `vmbr0`)                                                               |
+   | Network, gateway       | The bridge's network in CIDR notation and its gateway                                                     |
+   | Node addresses         | The cluster's range, e.g. `192.168.10.71-192.168.10.80`                                                   |
+   | API virtual IP         | A free address in the network, outside the node range                                                     |
+   | LoadBalancer addresses | Optional: addresses for Services of type `LoadBalancer` (see below)                                       |
+   | Memory scheduling      | CAPMOX's memory check (see below), default 0 = off                                                        |
+   | Allowed nodes, VM ID   | Optional: further Proxmox nodes for the VMs, and a VM ID range of their own                               |
 
 4. **Later changes**: the cluster's **Configuration** tab shows the infrastructure settings that
    may change after creation (FP-33): memory scheduling and allowed nodes (apply when the next VM
    is placed), DNS servers (new nodes; rebuild to give existing ones the new servers) and node
    addresses (CAPMOX updates the cluster's `InClusterIPPool`). Addresses can only be added: the
-   IPAM provider refuses to drop addresses in use, and CAPMOX would retry that forever. Network,
+   IPAM provider refuses to drop addresses in use, and CAPMOX would retry that forever.
+   LoadBalancer addresses can be added, or all removed to switch the feature off (FP-32). Network,
    gateway, virtual IP, node, storage and bridge stay as created.
 
 ## What the app creates
@@ -95,6 +98,7 @@ Everything is standard CAPMOX and stays manageable without the app:
 | `ProxmoxMachineTemplate` | Full clone of the template with the size from the credential, boot disk size, bridge and storage                                                                 |
 | Credentials Secret       | A copy of the token per cluster: CAPMOX takes ownership and deletes it with the cluster, the stored credential is never referenced directly                      |
 | kube-vip                 | Holds the virtual IP on the control plane nodes (see below)                                                                                                      |
+| LoadBalancer Services    | Only with LoadBalancer addresses: kube-vip for Services and kube-vip-cloud-provider as Helm add-ons; the range as annotation on the `ProxmoxCluster`             |
 | Cloud controller manager | [Proxmox CCM](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) as Helm add-on: node initialization, region (credential) and zone (node) labels |
 | CSI plugin               | [Proxmox CSI plugin](https://github.com/sergelogvinov/proxmox-csi-plugin) with the default StorageClass `proxmox` on the cluster's storage                       |
 
@@ -106,7 +110,7 @@ ClusterResourceSet; they never appear in Helm values. The kubelet reports the no
 
 kube-vip runs on every control plane node in ARP mode; the leader answers for the virtual IP.
 RKE2 and k0s deploy it from their manifest directories, kubeadm as a static pod. Services of type
-`LoadBalancer` are left to others.
+`LoadBalancer` have an instance of their own (see below).
 
 - **Failover**: when the leader's API server stops, the VIP moves to another control plane node.
   It takes 13 to 25 seconds (lease expiry plus ARP announcement); clients reconnect.
@@ -122,10 +126,24 @@ RKE2 and k0s deploy it from their manifest directories, kubeadm as a static pod.
 
 ## Services of type LoadBalancer and volumes
 
-- **LoadBalancer Services** stay pending: Proxmox has no load balancer. Add MetalLB as a Helm
-  add-on (chart `metallb` from `https://metallb.github.io/metallb`) with an `IPAddressPool` of its
-  own, outside the node range and the VIP. A variant with kube-vip, so that one component and one
-  place in the wizard serve all addresses, is planned.
+- **LoadBalancer Services** (FP-32, ADR-0028): give the cluster **LoadBalancer addresses** in the
+  wizard, or later in the Configuration tab. The app then rolls out two Helm add-ons from the
+  [kube-vip charts](https://github.com/kube-vip/helm-charts):
+  [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) hands out the
+  addresses in order, and a second kube-vip on every node (services only, metrics on port 2113)
+  announces each address by ARP from one node. Without LoadBalancer addresses such Services stay
+  pending, as Proxmox has no load balancer.
+  - **One node per address**: all traffic of a Service goes through the node that holds its
+    address (no load distribution, as with MetalLB in L2 mode); kube-proxy forwards it to the pods.
+  - **Failover**: when that node fails, another one takes the address after about 15 seconds; the
+    Service answered again after about 30 seconds in the tests. kube-vip announces an address only
+    while the Service has ready endpoints, so run more than one replica, on different nodes: pods
+    of a failed node are rescheduled only after about 5 minutes.
+  - **Range used up**: a further Service stays pending with the event "no addresses available";
+    add a range in the Configuration tab, it applies without a restart.
+  - **Switching off**: removing all ranges uninstalls both add-ons; Services of type `LoadBalancer`
+    lose their addresses (their status still shows them, nothing clears it; delete them or change
+    their type). Removing only some ranges is refused, Services may use them.
 - **Volumes** of the CSI plugin live on the cluster's storage. On local storage (e.g. `local-zfs`)
   a volume stays on its Proxmox node, which is the zone of the node labels; with several Proxmox
   nodes, shared storage (Ceph, NFS) lets pods move between them.

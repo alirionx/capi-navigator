@@ -1002,6 +1002,7 @@ Verified for the delivery (2026-10-24):
 - kube-vip-cloud-provider reads its ConfigMap on every sync of a Service, so a changed range applies without a restart; ranges are always `start-end` (a single address is written as `a-a`).
 - CAAPH v0.6.4 reconciles a `HelmChartProxy` on every change of a selected `Cluster` and renders its `valuesTemplate` again, so a changed range becomes a Helm upgrade; a cluster that is no longer selected gets its release uninstalled.
 - Delivery by ClusterResourceSet was rejected for the same reasons as in ADR-0024: it never removes objects from a workload cluster and has no status, so a range could never be removed (ADR-0028).
+- Live test (2026-10-24, RKE2 with one control plane node and one worker on Proxmox VE 9.2, range of two addresses): both presets came up with the cluster and the range arrived in the cloud provider's ConfigMap; two Services got the two addresses and answered, a third stayed pending with "no addresses available". Adding a second range previewed as an update of the `Cluster` and the `ProxmoxCluster` only, CAAPH upgraded the cloud provider release, the third Service got an address after about two minutes (the service controller's retry backoff), no machine was replaced, and a reapply found no drift. Removing part of the ranges, a range overlapping the node addresses and a new cluster overlapping the range were refused. Removing all ranges uninstalled both releases; the Services keep their address in their status (nothing clears it), it stopped answering within a minute (ARP caches). Adding the range again reinstalled both and the Services answered on their old addresses at once. Deletion left no VM, ISO or IPAM object.
 
 Requirements:
 
@@ -1014,11 +1015,11 @@ Requirements:
 
 **Acceptance criteria**
 
-- [ ] An RKE2 cluster on Proxmox VE with a LoadBalancer range: a Service of type `LoadBalancer` gets the first address of the range and answers on it.
-- [ ] A range added on the running cluster is used by the next Service once the first range is used up; no machine is replaced.
-- [ ] Overlapping ranges (own node addresses, VIP, another cluster) are refused in the preview; removing part of the ranges is refused.
-- [ ] Removing the range uninstalls both presets from the workload cluster.
-- [ ] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE with a range; clusters without a range are unchanged.
+- [x] An RKE2 cluster on Proxmox VE with a LoadBalancer range: a Service of type `LoadBalancer` gets the first address of the range and answers on it.
+- [x] A range added on the running cluster is used by the next Service once the first range is used up; no machine is replaced.
+- [x] Overlapping ranges (own node addresses, VIP, another cluster) are refused in the preview; removing part of the ranges is refused.
+- [x] Removing the range uninstalls both presets from the workload cluster.
+- [x] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE with a range; clusters without a range are unchanged.
 
 ### FP-33: Day-2 changes of infrastructure settings (optional)
 
