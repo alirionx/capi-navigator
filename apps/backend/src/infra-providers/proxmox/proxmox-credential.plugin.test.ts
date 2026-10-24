@@ -183,6 +183,19 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
     expect(uses(cluster, { ...cred, name: 'other' })).toBe(false);
   });
 
+  it('warns about a boot order without a disk (FP31-F-05)', () => {
+    expect(
+      templateWarning({ agent: '1', boot: 'order=net0', scsi0: 'local-zfs:base-7111-disk-0' }),
+    ).toBe(
+      'Template has no disk in its boot order (net0); add the boot disk (qm set <id> --boot order=scsi0)',
+    );
+    expect(
+      templateWarning({ agent: '1', boot: 'order=virtio0;net0', virtio0: 'local-zfs:disk' }),
+    ).toBeUndefined();
+    // Legacy or missing boot settings boot from the disks by default.
+    expect(templateWarning({ agent: '1', boot: 'cdn', scsi0: 'local-zfs:disk' })).toBeUndefined();
+  });
+
   it('accepts templates without cloud-init drive and with the guest agent', () => {
     expect(templateWarning({ agent: 'enabled=1', virtio0: 'local-zfs:disk' })).toBeUndefined();
   });

@@ -387,6 +387,28 @@ export function templateWarning(config: Record<string, string | number>): string
   if (!/^(1|enabled=1)/.test(agent)) {
     problems.push('has the QEMU guest agent disabled (qm set <id> --agent enabled=1)');
   }
+  // Clones keep the template's boot order (CAPMOX only adds its ISO); without a disk in it the
+  // VM tries the network and the ISO and never boots (live test FP-33, 2026-10-24).
+  const order = /^order=([^,]*)/.exec(String(config.boot ?? ''))?.[1];
+  if (order !== undefined) {
+    const disks = order
+      .split(';')
+      .filter(
+        (d) =>
+          /^(ide|sata|scsi|virtio)\d+$/.test(d) &&
+          !/media=cdrom|cloudinit/.test(String(config[d] ?? '')) &&
+          config[d] !== undefined,
+      );
+    if (!disks.length) {
+      const disk = Object.keys(config).find(
+        (k) =>
+          /^(scsi|virtio|sata)\d+$/.test(k) && !/media=cdrom|cloudinit/.test(String(config[k])),
+      );
+      problems.push(
+        `has no disk in its boot order (${order || 'empty'}); add the boot disk (qm set <id> --boot order=${disk ?? 'scsi0'})`,
+      );
+    }
+  }
   return problems.length ? `Template ${problems.join('; ')}` : undefined;
 }
 
