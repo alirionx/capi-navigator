@@ -13,7 +13,7 @@ import {
   INFRA_PLUGINS,
   isReservedLabel,
 } from '@capi-navigator/shared';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
 import BastionEditor, { type BastionDraft } from '../components/BastionEditor.vue';
@@ -38,7 +38,8 @@ const props = defineProps<{ namespace: string; name: string }>();
 const { t } = useI18n();
 const connections = useConnectionsStore();
 const store = useClustersStore();
-const tab = ref('overview');
+// UX-02: the overview on the home page links to a tab (?tab=machines).
+const tab = ref(String(useRoute().query.tab ?? 'overview'));
 const auth = useAuthStore();
 const router = useRouter();
 const showKubeconfig = ref(false);

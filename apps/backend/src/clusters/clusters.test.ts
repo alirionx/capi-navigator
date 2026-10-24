@@ -28,7 +28,7 @@ import { StoreModule } from '../store/store.module.js';
 import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { ClustersModule } from './clusters.module.js';
-import { onlyManagedByApp, presetUpToDate } from './clusters.service.js';
+import { namespaceWatchPaths, onlyManagedByApp, presetUpToDate } from './clusters.service.js';
 import { toEvents, toStatus, toSummary, type K8sObj } from './status.js';
 
 const OS_SPEC = {
@@ -173,6 +173,48 @@ describe('status mapping (US-07)', () => {
       managed: true,
     });
     expect(toSummary({ metadata: { name: 'x' } }).managed).toBe(false);
+  });
+
+  it('watches infrastructure kinds with the version of their provider (FP-31)', () => {
+    const paths = namespaceWatchPaths('lab');
+    expect(paths).toContain(
+      '/apis/infrastructure.cluster.x-k8s.io/v1alpha2/namespaces/lab/proxmoxmachines',
+    );
+    expect(paths).toContain(
+      '/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/lab/openstackmachines',
+    );
+  });
+
+  it('lists the machines in brief, control plane first (UX-02)', () => {
+    const machine = (
+      name: string,
+      labels: Record<string, string>,
+      phase: string,
+      ready: boolean,
+    ) => ({
+      metadata: { name, labels },
+      status: { phase, conditions: [{ type: 'Ready', status: ready ? 'True' : 'False' }] },
+    });
+    const summary = toSummary(
+      cluster,
+      cp,
+      [md],
+      [
+        machine('demo-default-b', { 'capi-navigator.io/pool': 'default' }, 'Provisioning', false),
+        machine('demo-cp-a', { 'cluster.x-k8s.io/control-plane': '' }, 'Running', true),
+      ],
+    );
+    expect(summary.machines).toEqual([
+      { name: 'demo-cp-a', role: 'control-plane', phase: 'Running', ready: true },
+      {
+        name: 'demo-default-b',
+        role: 'worker',
+        pool: 'default',
+        phase: 'Provisioning',
+        ready: false,
+      },
+    ]);
+    expect(toSummary(cluster, cp, [md]).machines).toBeUndefined();
   });
 
   it('lists machines with role, pool and node', () => {

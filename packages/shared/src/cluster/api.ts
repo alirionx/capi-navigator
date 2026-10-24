@@ -53,6 +53,19 @@ export const ClusterSummarySchema = z.object({
   managed: z.boolean(),
   /** Deletion in progress through the app (FP6-F-06). */
   deletion: DeletionStatusSchema.optional(),
+  /** The cluster's machines in brief, for the shape of every cluster on the home page (UX-02). */
+  machines: z
+    .array(
+      z.object({
+        name: z.string(),
+        role: z.enum(['control-plane', 'worker']),
+        pool: z.string().optional(),
+        phase: z.string(),
+        /** Machine condition Ready (node healthy). */
+        ready: z.boolean(),
+      }),
+    )
+    .optional(),
 });
 export type ClusterSummary = z.infer<typeof ClusterSummarySchema>;
 export const ClusterListSchema = z.array(ClusterSummarySchema);

@@ -121,6 +121,17 @@ export const en = {
     providers: 'Providers',
     clusters: 'Workload clusters',
   },
+  shapes: {
+    title: 'Workload clusters at a glance',
+    subtitle: 'Infrastructure, control plane nodes and worker nodes per pool of every cluster.',
+    controlPlane: 'Control plane',
+    workers: 'Workers',
+    none: 'No workload clusters yet.',
+    ready: 'Node ready',
+    pending: 'Starting or not ready',
+    deleting: 'Being deleted',
+    failed: 'Failed',
+  },
   images: {
     notFound: 'Unknown image (deleted or not visible)',
     copyId: 'Copy image ID',

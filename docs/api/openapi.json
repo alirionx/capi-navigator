@@ -7768,6 +7768,40 @@
           },
           "deletion": {
             "$ref": "#/components/schemas/DeletionStatus"
+          },
+          "machines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "control-plane",
+                    "worker"
+                  ]
+                },
+                "pool": {
+                  "type": "string"
+                },
+                "phase": {
+                  "type": "string"
+                },
+                "ready": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "role",
+                "phase",
+                "ready"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
