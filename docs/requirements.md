@@ -957,7 +957,7 @@ Spike findings (2026-10-23, RKE2 and k0s all-in-one on Proxmox VE 9.2, CAPI v1.1
 - `providerID` `proxmox://<SystemUUID>` (cloud-init `instance_id`) matches the machine; k0smotron sets it itself. qemu-guest-agent installed on first boot is enough.
 - Scaling down an RKE2 worker pool never finished draining: the Calico operator RKE2 ships (`tigera-operator`) tolerates every taint, the cordon taint included, so each evicted replica was scheduled back onto the node being drained. This applies to RKE2 on every provider; the RKE2 flavor therefore adds a `MachineDrainRule` per cluster that skips this pod (it moves once the machine is gone, Calico itself runs as a DaemonSet); it is removed with the cluster.
 - The Proxmox CCM takes node addresses from the kubelet (`--node-ip`, annotation `alpha.kubernetes.io/provided-node-ip`, network mode `default`). RKE2 sets `--node-ip` itself; k0s does not, and from Kubernetes 1.36 its kubelets with an external cloud provider reported no address at all (konnectivity agents fail with "host IP unknown"). The infrastructure plugin therefore provides a shell command for the node address (source address towards the gateway) that k0s passes as `--node-ip`. The CCM's guest agent mode (`qemu`) is no alternative: it also reports the VIP and CNI addresses, and its exclusions did not take effect in v0.16.1 (live test step 7).
-- Not yet verified live: CCM and CSI (the [Proxmox CCM](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) supports CAPMOX's provider ID with `features.provider: capmox`; the [Proxmox CSI plugin](https://github.com/sergelogvinov/proxmox-csi-plugin) needs the region and zone labels the CCM sets; volumes on local storage stay on their Proxmox node, shared storage such as Ceph or NFS can move), kubeadm (static pod with the `super-admin.conf` workaround), several nodes.
+- Live tests (2026-10-23/24, steps 7 and 8): RKE2 all-in-one, k0s standard and kubeadm all-in-one and 1+1 with the [Proxmox CCM](https://github.com/sergelogvinov/proxmox-cloud-controller-manager) (`features.provider: capmox`) and the [Proxmox CSI plugin](https://github.com/sergelogvinov/proxmox-csi-plugin): region and zone labels set, PVCs bound and their data kept across node replacements, upgrade, rebuild with VIP failover in 13–25 s, scale up and down, deletion without VMs, disks, ISOs or IP addresses left. A user-built RKE2 cluster with three control plane nodes and two workers came up after the memory check was turned off. Volumes on local storage stay on their Proxmox node; shared storage such as Ceph or NFS can move. kubeadm's first node uses `super-admin.conf` for kube-vip during `kubeadm init` only and switches back to `admin.conf` afterwards.
 
 Requirements:
 
@@ -977,12 +977,12 @@ Requirements:
 
 **Acceptance criteria**
 
-- [ ] An admin installs CAPMOX and the IPAM provider, stores a Proxmox credential with CA and the test shows version and privileges; the token appears in no API response, log or audit event.
-- [ ] The wizard offers nodes, templates (with the cloud-init drive warning), bridges, storages and the sizes of the credential.
-- [ ] A cluster with RKE2 and one with k0s come up on Proxmox VE with CCM and CSI: the API answers on the VIP, nodes carry region and zone labels, and a PVC is bound.
-- [ ] Overlapping node ranges or VIPs are refused in the preview.
-- [ ] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
-- [ ] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
+- [x] An admin installs CAPMOX and the IPAM provider, stores a Proxmox credential with CA and the test shows version and privileges; the token appears in no API response, log or audit event.
+- [x] The wizard offers nodes, templates (with the cloud-init drive warning), bridges, storages and the sizes of the credential.
+- [x] A cluster with RKE2 and one with k0s come up on Proxmox VE with CCM and CSI: the API answers on the VIP, nodes carry region and zone labels, and a PVC is bound.
+- [x] Overlapping node ranges or VIPs are refused in the preview.
+- [x] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
+- [x] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
 
 ### UX: UI and UX improvements (recurring)
 
@@ -1078,6 +1078,9 @@ These requirements apply to all feature packs and are checked in every pack.
   - Preloaded images need `imagePullPolicy: IfNotPresent` and must not be removed by the kubelet's image garbage collection (to check per distribution).
   - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
   - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
+- **FP-32: Services of type LoadBalancer on Proxmox VE with kube-vip** (outlook, after FP-31). Proxmox has no load balancer, so `LoadBalancer` Services stay pending; MetalLB as add-on works but adds a second ARP component and a third address range per cluster. Instead: an optional range "LoadBalancer addresses" in the wizard next to the node range and the VIP, checked by the same overlap rules (FP31-F-08); kube-vip with `svc_enable` announces the Services, [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) hands out the addresses from that range. To clarify: workers would need their own kube-vip instance with in-cluster credentials (the admin kubeconfig exists only on control plane nodes), otherwise all Service traffic runs through the control plane; per address the traffic goes through one node (no load distribution, as with MetalLB in L2 mode).
+- **Day-2 changes of infrastructure settings** (follow-up to FP-31): settings of the infrastructure cluster such as Proxmox's `memoryAdjustment` cannot be changed after creation; changing them outside the app shows as drift and a reapply sets the stored value again. A day-2 change for the plugin's infrastructure fields that may change (declared per field by the plugin) closes this gap.
+- **BGP mode for the Proxmox API endpoint** (outlook): kube-vip in BGP mode with a peer router (ASN, peer address, password in the wizard) gives load distribution and the control plane health check of kube-vip ([PR 1498](https://github.com/kube-vip/kube-vip/pull/1498)); it needs a BGP-capable router, so ARP stays the default.
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
 ### Decisions

@@ -10,7 +10,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 
 ## Source of truth
 
-- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22, FP-23, FP-25, FP-26, FP-30 and FP-31, outlook FP-11 to FP-21, FP-24 and FP-27 to FP-29, non-functional requirements, decisions). Always follow it.
+- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22, FP-23, FP-25, FP-26, FP-30 and FP-31, outlook FP-11 to FP-21, FP-24, FP-27 to FP-29 and FP-32, non-functional requirements, decisions). Always follow it.
 - **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
@@ -49,7 +49,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-17 | Node shell via privileged pod (pulled forward) | done |
 | FP-18 | Read-only cluster dashboard (pulled forward) | done |
 | FP-30 | Manifest add-ons through CAAPH (optional) | done |
-| FP-31 | Proxmox VE as infrastructure provider (optional) | in progress |
+| FP-31 | Proxmox VE as infrastructure provider (optional) | done |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
