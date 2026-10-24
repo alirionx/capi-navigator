@@ -146,6 +146,10 @@ enabled=1`, then shut the VM down and start it again (a reboot inside the guest 
   the agent's device); fix the template the same way.
 - **A VM boots without address or never joins**: the template still has a Proxmox cloud-init
   drive; remove it and replace the machine.
+- **A VM runs but never answers, `WaitingForCloudInit` without end**: the template's boot order
+  contains no disk (e.g. `order=net0`); clones keep it, so the VM never boots its system. The
+  wizard warns and the preview refuses such templates. Fix the template
+  (`qm set <id> --boot order=virtio0`, with its boot disk) and delete the machine.
 - **A node stays in the list for a short while after it was replaced**: during the VIP move CAPI
   cannot always delete the Node object; the CCM removes it once the VM is gone.
 

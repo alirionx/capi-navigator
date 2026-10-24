@@ -1159,6 +1159,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       http().post(path).set(CSRF).set('Cookie', operatorCookie).send({ change });
     const dns = { type: 'infrastructure', values: { 'network.dnsNameservers': ['9.9.9.9'] } };
 
+    await http().post(url).set(CSRF).set('Cookie', viewerCookie).send({ change: dns }).expect(403);
     const preview = await post(`${url}/preview`, dns).expect(200);
     expect(
       preview.body.diffs.map((d: { kind: string; change: string }) => `${d.kind}:${d.change}`),

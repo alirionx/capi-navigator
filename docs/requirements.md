@@ -994,6 +994,7 @@ Verified (2026-10-24) against the pinned releases:
 - CAPMOX v0.9.1: the `ProxmoxCluster` update webhook only validates the control plane endpoint; CAPMOX reads `schedulerHints` and `allowedNodes` when it places a VM, writes `dnsServers` into the network configuration of new VMs, and updates its `InClusterIPPool` from `ipv4Config`. The in-cluster IPAM provider v1.1.1 refuses a pool update that drops addresses in use; CAPMOX would retry it forever.
 - CAPO v0.15.0: of the fields the app sets, only `managedSubnets[].dnsNameservers` may change; CAPO then updates the Neutron subnet.
 - CAPA and CAPG: none of the fields the app sets is useful to change; their forms declare none.
+- Live test (2026-10-24, RKE2 all-in-one on Proxmox VE 9.2): memory scheduling 0 → 150 and a node address added in one change; the preview showed only the `Cluster` and the `ProxmoxCluster`, no rollout; CAPMOX extended the `InClusterIPPool` to three addresses, the machine stayed, a reapply found no drift; removing an address and changing the VIP were refused. Deletion left no VM, ISO or IPAM object (the address claim is released after CAPMOX's 60 s reuse grace period).
 
 Requirements:
 
@@ -1006,11 +1007,11 @@ Requirements:
 
 **Acceptance criteria**
 
-- [ ] Changing Proxmox memory scheduling on a running cluster updates only the `ProxmoxCluster` (and the stored spec); no machine is replaced.
-- [ ] Added node addresses appear in the cluster's `InClusterIPPool`; removing an address is refused in the preview.
-- [ ] A field the plugin does not declare is refused by the API.
-- [ ] The OpenStack DNS change previews as an update of the `OpenStackCluster` only (tested without a live cloud).
-- [ ] A viewer gets no form (the configuration tab is for operators, as in FP-7) and the API refuses the change.
+- [x] Changing Proxmox memory scheduling on a running cluster updates only the `ProxmoxCluster` (and the stored spec); no machine is replaced.
+- [x] Added node addresses appear in the cluster's `InClusterIPPool`; removing an address is refused in the preview.
+- [x] A field the plugin does not declare is refused by the API.
+- [x] The OpenStack DNS change previews as an update of the `OpenStackCluster` only (tested without a live cloud).
+- [x] A viewer gets no form (the configuration tab is for operators, as in FP-7) and the API refuses the change.
 
 ### UX: UI and UX improvements (recurring)
 

@@ -390,7 +390,10 @@ const infraPlugin = computed(() =>
 );
 const infraForm = computed(() => {
   const form = infraPlugin.value?.form;
-  return form ? { ...form, fields: day2Fields(form), notes: [] } : undefined;
+  // One field per row: the dialog is narrower than the wizard.
+  return form
+    ? { ...form, fields: day2Fields(form).map((f) => ({ ...f, cols: 12 })), notes: [] }
+    : undefined;
 });
 const storedInfra = computed<InfraValues>(() =>
   infraForm.value
@@ -775,15 +778,11 @@ const infraNotes = computed(() =>
           />
         </div>
         <template v-else-if="mode === 'infrastructure'">
-          <v-alert
-            v-for="n in infraNotes"
-            :key="n"
-            type="info"
-            variant="tonal"
-            density="compact"
-            class="mb-2"
-            >{{ n }}</v-alert
-          >
+          <v-alert type="info" variant="tonal" density="compact" class="mb-2">
+            <ul class="pl-4">
+              <li v-for="n in infraNotes" :key="n">{{ n }}</li>
+            </ul>
+          </v-alert>
           <InfraFields v-model="form.infra" :form="infraForm!" :lists="{}" class="mt-2" />
         </template>
         <template v-else-if="mode === 'upgrade'">
