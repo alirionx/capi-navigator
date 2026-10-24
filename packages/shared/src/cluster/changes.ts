@@ -9,6 +9,8 @@ import {
   type Bastion,
   type ClusterSpec,
 } from './spec.js';
+import { day2Fields, getPath, setPath } from './infra-form.js';
+import { INFRA_PLUGINS } from './transform.js';
 import { stableStringify } from './util.js';
 
 /**
@@ -229,6 +231,20 @@ export const SpecChangeSchema = z.discriminatedUnion('type', [
     settings: RolloutSettingsSchema,
   }),
   z.object({ type: z.literal('upgrade'), version: z.string().min(1) }),
+  /** FP-33: settings of the infrastructure cluster by field path; null removes a value. */
+  z.object({
+    type: z.literal('infrastructure'),
+    values: z.record(
+      z.string().min(1).max(64),
+      z.union([
+        z.string().max(1024),
+        z.number(),
+        z.boolean(),
+        z.array(z.string()).max(64),
+        z.null(),
+      ]),
+    ),
+  }),
   /** FP7-F-19: no change; regenerate and compare, apply to take changes made outside back. */
   z.object({ type: z.literal('reapply') }),
 ]);
@@ -268,6 +284,33 @@ function updateGroup(spec: ClusterSpec, group: string, fn: (g: Group) => Group):
   };
 }
 
+/**
+ * FP33-F-01/F-02: changes only fields the infrastructure plugin declares as changeable, each
+ * passing the plugin's check against the stored value.
+ */
+export function setInfrastructure(
+  spec: ClusterSpec,
+  values: Record<string, string | number | boolean | string[] | null>,
+): ClusterSpec {
+  const fields = day2Fields(INFRA_PLUGINS[spec.infrastructure.provider].form);
+  const infra = structuredClone(spec.infrastructure) as Record<string, unknown>;
+  for (const [path, value] of Object.entries(values)) {
+    const field = fields.find((f) => f.path === path);
+    if (!field) throw new SpecChangeError(`"${path}" cannot be changed after creation`);
+    const problem = field.day2?.check?.(getPath(infra, path), value ?? undefined);
+    if (problem) throw new SpecChangeError(problem);
+    if (value === null) {
+      const keys = path.split('.');
+      const parent = (keys.length > 1 ? getPath(infra, keys.slice(0, -1).join('.')) : infra) as
+        Record<string, unknown> | undefined;
+      if (parent) delete parent[keys.at(-1)!];
+    } else {
+      setPath(infra, path, value);
+    }
+  }
+  return ClusterSpecSchema.parse({ ...spec, infrastructure: infra });
+}
+
 /** Applies one day-2 change to the stored spec; returns a new, validated spec. */
 export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date): ClusterSpec {
   let next: ClusterSpec;
@@ -280,6 +323,8 @@ export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date
       return setLabels(spec, change.labels);
     case 'bastion':
       return setBastion(spec, change.bastion);
+    case 'infrastructure':
+      return setInfrastructure(spec, change.values);
     case 'scaleControlPlane':
       // FP26-F-02: all-in-one clusters scale like standard ones.
       next = updateGroup(spec, CONTROL_PLANE_GROUP, (g) => ({ ...g, replicas: change.replicas }));

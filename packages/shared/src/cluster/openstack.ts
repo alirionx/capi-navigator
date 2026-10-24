@@ -68,6 +68,9 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         hint: 'wizard.dnsHint',
         default: '1.1.1.1, 8.8.8.8',
         cols: 4,
+        // FP-33: CAPO v0.15 allows it on managedSubnets and updates the Neutron subnet; nodes get
+        // it with their next DHCP lease.
+        day2: { note: 'day2.infraNoteDhcp' },
       },
       {
         path: 'apiServerLoadBalancer',

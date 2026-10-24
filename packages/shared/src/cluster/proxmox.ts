@@ -3,7 +3,7 @@ import { PROXMOX_STORAGE_LABEL } from './addons.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { MachineGroup, ProxmoxInfra } from './spec.js';
-import { ipv4RangesOverlap } from './cidr.js';
+import { ipv4RangesCover, ipv4RangesOverlap } from './cidr.js';
 import { compact } from './util.js';
 
 /**
@@ -113,6 +113,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveMemoryAdjustmentHint',
         default: 0,
         cols: 4,
+        // FP-33: CAPMOX reads schedulerHints when it places a new VM.
+        day2: { note: 'day2.infraNoteNewVms' },
       },
       {
         path: 'network.nodeCidr',
@@ -137,6 +139,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveDnsHint',
         default: '1.1.1.1, 8.8.8.8',
         cols: 4,
+        // Written into the network configuration of new VMs only.
+        day2: { note: 'day2.infraNoteRebuild' },
       },
       {
         path: 'network.addresses',
@@ -145,6 +149,18 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveAddressesHint',
         cols: 8,
         testId: 'pve-addresses',
+        // CAPMOX updates its InClusterIPPool; the IPAM webhook refuses to drop addresses in use,
+        // which CAPMOX would retry forever, so addresses can only be added.
+        day2: {
+          note: 'day2.infraNoteAddresses',
+          check: (before, after) => {
+            const kept = (after ?? []) as string[];
+            const lost = ((before ?? []) as string[]).filter((r) => !ipv4RangesCover(kept, r));
+            return lost.length
+              ? `Node addresses can only be added: ${lost.join(', ')} must stay in the list (machines may use them).`
+              : undefined;
+          },
+        },
       },
       {
         path: 'apiEndpoint',
@@ -161,6 +177,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveAllowedNodesHint',
         clearable: true,
         cols: 12,
+        day2: { note: 'day2.infraNoteNewVms' },
       },
     ],
     notes: ['wizard.pveVipInfo'],

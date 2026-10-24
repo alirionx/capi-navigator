@@ -3,12 +3,16 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   CONTROL_PLANE_GROUP,
+  day2Fields,
+  day2Request,
+  day2Values,
   distributionCatalog,
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
   upgradeProblem,
   type ClusterSpec,
   type ClusterStatus,
+  type InfraValues,
   type LookupOption,
   type SpecChangeInput,
 } from '@capi-navigator/shared';
@@ -17,6 +21,7 @@ import { useCredentialsStore } from '../../stores/credentials.js';
 import ChangeDialog from '../ChangeDialog.vue';
 import ErrorAlert from '../ErrorAlert.vue';
 import CustomizationEditor from '../wizard/CustomizationEditor.vue';
+import InfraFields from '../wizard/InfraFields.vue';
 import MachineGroupEditor from '../wizard/MachineGroupEditor.vue';
 import { newerImage } from './newer-image.js';
 
@@ -153,7 +158,8 @@ type Mode =
   | 'customization'
   | 'rebuild'
   | 'rollout'
-  | 'upgrade';
+  | 'upgrade'
+  | 'infrastructure';
 const open = ref(false);
 const mode = ref<Mode>('scale');
 const target = ref('');
@@ -173,6 +179,7 @@ interface Day2Form {
   maxSurge: number;
   maxUnavailable: number;
   version: string;
+  infra: InfraValues;
 }
 const emptyForm = (): Day2Form => ({
   replicas: 0,
@@ -184,6 +191,7 @@ const emptyForm = (): Day2Form => ({
   maxSurge: 1,
   maxUnavailable: 0,
   version: '',
+  infra: {},
 });
 const form = ref<Day2Form>(emptyForm());
 
@@ -240,6 +248,9 @@ function start(m: Mode, groupId = '', g?: Group): void {
     }
     case 'upgrade':
       form.value = { ...emptyForm(), version: upgradeTargets.value[0]?.value ?? '' };
+      break;
+    case 'infrastructure':
+      form.value = { ...emptyForm(), infra: { ...storedInfra.value } };
       break;
   }
   if (m === 'machine' || m === 'addPool') void loadLists();
@@ -304,6 +315,8 @@ const change = computed<SpecChangeInput | null>(() => {
       };
     case 'upgrade':
       return f.version ? { type: 'upgrade', version: f.version } : null;
+    case 'infrastructure':
+      return { type: 'infrastructure', values: day2Request(infraForm.value!, f.infra) };
   }
   return null;
 });
@@ -326,6 +339,11 @@ const valid = computed(() => {
       return f.confirm === target.value;
     case 'rollout':
       return Number(f.maxSurge) + Number(f.maxUnavailable) > 0;
+    case 'infrastructure':
+      return (
+        JSON.stringify(day2Request(infraForm.value!, f.infra)) !==
+        JSON.stringify(day2Request(infraForm.value!, storedInfra.value))
+      );
     default:
       return true;
   }
@@ -365,6 +383,25 @@ const custSummary = (g: Group) => {
 const shortImage = (id?: string) =>
   id ? (id.length > 20 ? `${id.slice(0, 8)}…${id.slice(-4)}` : id) : t('day2.clusterImage');
 const provider = computed(() => spec.value?.infrastructure.provider);
+
+// ---- infrastructure settings (FP-33): the fields the plugin declares as changeable ----
+const infraPlugin = computed(() =>
+  spec.value ? INFRA_PLUGINS[spec.value.infrastructure.provider] : undefined,
+);
+const infraForm = computed(() => {
+  const form = infraPlugin.value?.form;
+  return form ? { ...form, fields: day2Fields(form), notes: [] } : undefined;
+});
+const storedInfra = computed<InfraValues>(() =>
+  infraForm.value
+    ? day2Values(infraForm.value, spec.value!.infrastructure as Record<string, unknown>)
+    : {},
+);
+const infraNotes = computed(() =>
+  (infraForm.value?.fields ?? [])
+    .filter((f) => f.day2?.note)
+    .map((f) => t(f.day2!.note!, { label: t(f.label) })),
+);
 </script>
 
 <template>
@@ -400,6 +437,34 @@ const provider = computed(() => spec.value?.infrastructure.provider);
               worker: spec.kubernetes.workerVersion,
             })
           }}</v-alert>
+        </v-card-text>
+      </v-card>
+
+      <!-- Infrastructure settings (FP-33) -->
+      <v-card v-if="infraForm?.fields.length" border class="mb-4" data-testid="day2-infra">
+        <v-card-item
+          :title="t('day2.infrastructure')"
+          :subtitle="t('day2.infraSubtitle', { kind: infraPlugin!.infraClusterKind })"
+        >
+          <template #append>
+            <v-btn
+              variant="tonal"
+              prepend-icon="mdi-tune"
+              data-testid="day2-infra-change"
+              @click="start('infrastructure')"
+              >{{ t('day2.infraChange') }}</v-btn
+            >
+          </template>
+        </v-card-item>
+        <v-card-text>
+          <v-table density="compact">
+            <tbody>
+              <tr v-for="f in infraForm.fields" :key="f.path">
+                <td class="text-medium-emphasis" style="width: 14rem">{{ t(f.label) }}</td>
+                <td>{{ storedInfra[f.path] === '' ? '–' : storedInfra[f.path] }}</td>
+              </tr>
+            </tbody>
+          </v-table>
         </v-card-text>
       </v-card>
 
@@ -709,6 +774,18 @@ const provider = computed(() => spec.value?.infrastructure.provider);
             persistent-hint
           />
         </div>
+        <template v-else-if="mode === 'infrastructure'">
+          <v-alert
+            v-for="n in infraNotes"
+            :key="n"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-2"
+            >{{ n }}</v-alert
+          >
+          <InfraFields v-model="form.infra" :form="infraForm!" :lists="{}" class="mt-2" />
+        </template>
         <template v-else-if="mode === 'upgrade'">
           <v-select
             v-model="form.version"

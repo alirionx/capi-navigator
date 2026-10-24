@@ -70,6 +70,11 @@ Couplings to keep in mind (the tests check most of them):
 - **npm**: `pnpm up -r --latest <package>`; for several non-major updates `pnpm up -r`.
 - **CRD fields**: for a new provider or CAPI version, compare the CRDs and API versions the app
   generates with the release ("Verify, don't guess" in [CLAUDE.md](../CLAUDE.md)).
+- **Changeable infrastructure fields** (FP-33): for an infrastructure provider update, check that
+  its update webhook still accepts every form field marked `day2` in the plugin and that the
+  controller acts on it; check also the rules the webhook does not enforce (the plugin's `check`,
+  e.g. Proxmox node addresses). The preview's dry run catches a newly immutable field as an error,
+  but not a change the controller ignores.
 
 ## 4. Verify
 
@@ -106,6 +111,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 - [ ] Release notes and upgrade guides read for minor and major updates
 - [ ] `versions.yaml` changed and `pnpm versions:generate` run (or `pnpm up` for npm)
 - [ ] Couplings checked; `verifiedWithProvider` and `verified` updated
+- [ ] Infrastructure provider updated: fields marked `day2` still changeable (FP-33)
 - [ ] lint, typecheck, tests, coverage green; snapshot diffs reviewed
 - [ ] kind and live test for medium and high risk updates
 - [ ] Report regenerated and committed

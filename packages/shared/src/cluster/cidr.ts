@@ -66,3 +66,20 @@ export function ipv4RangesOverlap(a: string, b: string): boolean {
   const y = parseIpv4Range(b);
   return !!x && !!y && x.start <= y.end && y.start <= x.end;
 }
+
+/** Whether every address of `covered` lies in one of `ranges` (all as parsed above). */
+export function ipv4RangesCover(ranges: string[], covered: string): boolean {
+  const target = parseIpv4Range(covered);
+  if (!target) return false;
+  const sorted = ranges
+    .map(parseIpv4Range)
+    .filter((r): r is { start: number; end: number } => !!r)
+    .sort((a, b) => a.start - b.start);
+  let next = target.start;
+  for (const r of sorted) {
+    if (r.start > next) break;
+    next = Math.max(next, r.end + 1);
+    if (next > target.end) return true;
+  }
+  return false;
+}

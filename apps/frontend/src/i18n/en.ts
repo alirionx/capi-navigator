@@ -286,6 +286,16 @@ export const en = {
     upgradeHint: 'Only upgrades, at most one minor version. Current: {current}.',
     upgradeOrder:
       'The control plane is upgraded first, node by node; the worker pools follow automatically once it runs the new version. The preview runs the pre-checks.',
+    infrastructure: 'Infrastructure settings',
+    infraSubtitle: 'Settings of {kind} that may change after creation; no node is replaced.',
+    infraChange: 'Change',
+    infraNoteNewVms: '{label}: applies when the next VM is placed.',
+    infraNoteRebuild:
+      '{label}: applies to new nodes; rebuild the nodes to give existing ones the new value.',
+    infraNoteAddresses:
+      '{label}: addresses can only be added; ones that machines may use cannot be removed.',
+    infraNoteDhcp:
+      '{label}: the network is updated at once; nodes get the new value with their next DHCP lease, new nodes immediately.',
     title: {
       reapply: 'Reapply from spec',
       cpScale: 'Scale the control plane',
@@ -297,6 +307,7 @@ export const en = {
       rebuild: 'Rebuild nodes of {group}',
       rollout: 'Rollout settings of {group}',
       upgrade: 'Upgrade Kubernetes',
+      infrastructure: 'Infrastructure settings',
     },
   },
   kubeconfig: {

@@ -1143,4 +1143,43 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.storedSpec = undefined;
     k8s.existingCluster = false;
   });
+
+  it('changes infrastructure settings the plugin declares, without replacing machines (FP-33)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      addons: { cloudControllerManager: false, csiDriver: false },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, o);
+    }
+    const url = '/api/connections/home/clusters/team-a/demo/changes';
+    const post = (path: string, change: unknown) =>
+      http().post(path).set(CSRF).set('Cookie', operatorCookie).send({ change });
+    const dns = { type: 'infrastructure', values: { 'network.dnsNameservers': ['9.9.9.9'] } };
+
+    const preview = await post(`${url}/preview`, dns).expect(200);
+    expect(
+      preview.body.diffs.map((d: { kind: string; change: string }) => `${d.kind}:${d.change}`),
+    ).toEqual(['Cluster:update', 'OpenStackCluster:update']);
+    expect(preview.body.diffs[1].after).toMatch(/- 9\.9\.9\.9/);
+    expect(preview.body.rollouts).toEqual([]);
+    // Fields the plugin does not declare are refused.
+    await post(`${url}/preview`, {
+      type: 'infrastructure',
+      values: { 'network.nodeCidr': '10.7.0.0/24' },
+    }).expect(400);
+
+    k8s.applied = [];
+    await post(url, dns).expect(200);
+    expect(k8s.applied.filter((a) => !a.dryRun)).toEqual([
+      { kinds: ['Cluster', 'OpenStackCluster'], dryRun: false },
+    ]);
+    expect(fake.auditEvents.map((e) => e.spec.action)).toContain('cluster.change.infrastructure');
+
+    k8s.live.clear();
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
+  });
 });

@@ -231,8 +231,9 @@ subscriber of that channel. Watches stop when nobody listens
 
 ### Day-2 changes, drift and template rotation
 
-Every change (machine size, image, scaling, pools, node customization, upgrade, bastion) works
-the same way:
+Every change (machine size, image, scaling, pools, node customization, upgrade, bastion, and the
+infrastructure settings an infrastructure plugin declares as changeable, FP-33) works the same
+way:
 
 1. The form produces a change; the backend applies it to the **stored spec**, not to YAML.
 2. `transform(newSpec)` generates the new objects and the backend diffs them against the live

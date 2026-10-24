@@ -78,6 +78,13 @@ in Proxmox VE, what the app creates per cluster, and the limits compared with th
    | Memory scheduling    | CAPMOX's memory check (see below), default 0 = off                                                        |
    | Allowed nodes, VM ID | Optional: further Proxmox nodes for the VMs, and a VM ID range of their own                               |
 
+4. **Later changes**: the cluster's **Configuration** tab shows the infrastructure settings that
+   may change after creation (FP-33): memory scheduling and allowed nodes (apply when the next VM
+   is placed), DNS servers (new nodes; rebuild to give existing ones the new servers) and node
+   addresses (CAPMOX updates the cluster's `InClusterIPPool`). Addresses can only be added: the
+   IPAM provider refuses to drop addresses in use, and CAPMOX would retry that forever. Network,
+   gateway, virtual IP, node, storage and bridge stay as created.
+
 ## What the app creates
 
 Everything is standard CAPMOX and stays manageable without the app:

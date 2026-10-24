@@ -35,6 +35,13 @@ export interface InfraField {
   /** Fields emptied when this one changes; the selection lists are reloaded (e.g. region). */
   resets?: string[];
   testId?: string;
+  /**
+   * FP-33: may change after creation. Set only when the provider accepts the change on its
+   * infrastructure cluster (webhook verified for the pinned release) and acts on it. `note` (i18n
+   * key) says what the change does; `check` refuses values the provider's webhook would accept
+   * but could not apply (returns the reason).
+   */
+  day2?: { note?: string; check?: (before: unknown, after: unknown) => string | undefined };
 }
 
 export interface InfraForm {
@@ -107,16 +114,7 @@ export function infraFromValues(
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { provider, credentialRef };
   for (const f of form.fields) {
-    const raw = values[f.path];
-    let value: unknown;
-    if (f.kind === 'switch') value = !!raw;
-    else if (f.kind === 'number') value = raw === '' || raw == null ? undefined : Number(raw);
-    else if (f.kind === 'list')
-      value = String(raw ?? '')
-        .split(/[\s,]+/)
-        .filter(Boolean);
-    else if (typeof raw === 'string') value = f.clearable ? raw.trim() || undefined : raw.trim();
-    else value = raw ?? undefined;
+    const value = fieldValue(f, values[f.path]);
     if (value === undefined) continue;
     setPath(out, f.path, value);
   }
@@ -132,11 +130,60 @@ export function infraFromValues(
   return out;
 }
 
-function setPath(target: Record<string, unknown>, path: string, value: unknown): void {
+/** The spec value of a form input; undefined for empty optional values. */
+function fieldValue(f: InfraField, raw: InfraValues[string]): unknown {
+  if (f.kind === 'switch') return !!raw;
+  if (f.kind === 'number') return raw === '' || raw == null ? undefined : Number(raw);
+  if (f.kind === 'list') {
+    const list = String(raw ?? '')
+      .split(/[\s,]+/)
+      .filter(Boolean);
+    return f.clearable && !list.length ? undefined : list;
+  }
+  if (typeof raw === 'string') return f.clearable ? raw.trim() || undefined : raw.trim();
+  return raw ?? undefined;
+}
+
+/** Value at a dotted path, e.g. "network.addresses". */
+export function getPath(source: Record<string, unknown>, path: string): unknown {
+  return path
+    .split('.')
+    .reduce<unknown>((node, k) => (node as Record<string, unknown> | undefined)?.[k], source);
+}
+
+export function setPath(target: Record<string, unknown>, path: string, value: unknown): void {
   const keys = path.split('.');
   let node = target;
   for (const k of keys.slice(0, -1)) node = (node[k] ??= {}) as Record<string, unknown>;
   node[keys.at(-1)!] = value;
+}
+
+// ---- FP-33: day-2 changes of infrastructure settings ----
+
+/** Fields of the infrastructure cluster that may change after creation. */
+export const day2Fields = (form: InfraForm): InfraField[] => form.fields.filter((f) => f.day2);
+
+/** Form values of the changeable fields from a stored spec's `infrastructure`. */
+export function day2Values(form: InfraForm, infra: Record<string, unknown>): InfraValues {
+  return Object.fromEntries(
+    day2Fields(form).map((f) => {
+      const v = getPath(infra, f.path);
+      return [f.path, Array.isArray(v) ? v.join(', ') : ((v as InfraValues[string]) ?? '')];
+    }),
+  );
+}
+
+/** Values of an `infrastructure` change request; null removes an emptied optional value. */
+export function day2Request(
+  form: InfraForm,
+  values: InfraValues,
+): Record<string, string | number | boolean | string[] | null> {
+  return Object.fromEntries(
+    day2Fields(form).map((f) => [
+      f.path,
+      (fieldValue(f, values[f.path]) as string | number | boolean | string[] | undefined) ?? null,
+    ]),
+  );
 }
 
 /** Bastion part of a day-2 request (FP5-F-20). */
