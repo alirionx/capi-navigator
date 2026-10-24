@@ -123,6 +123,32 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
     configPlural: 'rke2configs',
   },
 
+  // The Calico operator RKE2 ships tolerates every taint, the cordon taint included: each evicted
+  // replica was scheduled back onto the node being drained (the emptiest one), and the drain of a
+  // worker never finished (FP-31 live test, scale-down). CAPI skips it instead; it moves when the
+  // machine is gone, and Calico itself runs as a DaemonSet.
+  extraObjects: (spec, labels) => [
+    {
+      apiVersion: 'cluster.x-k8s.io/v1beta2',
+      kind: 'MachineDrainRule',
+      metadata: { name: `${spec.name}-skip-tigera-operator`, namespace: spec.namespace, labels },
+      spec: {
+        drain: { behavior: 'Skip' },
+        machines: [
+          { clusterSelector: { matchLabels: { 'cluster.x-k8s.io/cluster-name': spec.name } } },
+        ],
+        pods: [
+          {
+            selector: { matchLabels: { 'k8s-app': 'tigera-operator' } },
+            namespaceSelector: {
+              matchLabels: { 'kubernetes.io/metadata.name': 'tigera-operator' },
+            },
+          },
+        ],
+      },
+    },
+  ],
+
   controlPlaneRef: (spec) => ({
     apiGroup: 'controlplane.cluster.x-k8s.io',
     kind: 'RKE2ControlPlane',

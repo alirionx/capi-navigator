@@ -28,6 +28,7 @@ import {
 
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2', plural: 'clusters' };
 const CRS = { group: 'addons.cluster.x-k8s.io', version: 'v1beta2', plural: 'clusterresourcesets' };
+const DRAIN_RULES = { group: 'cluster.x-k8s.io', version: 'v1beta2', plural: 'machinedrainrules' };
 /** Separate field manager, so the deletion annotation is not attributed to the applied spec. */
 const DELETION_MANAGER = 'capi-navigator-deletion';
 const REACH_TIMEOUT_MS = 10_000;
@@ -204,7 +205,10 @@ export class ClusterDeletionService {
     }
   }
 
-  /** The Cluster (CAPI cascades) and the app's helper objects (cloud config, ClusterResourceSet). */
+  /**
+   * The Cluster (CAPI cascades) and the app's helper objects (cloud config, ClusterResourceSet,
+   * MachineDrainRule).
+   */
   private async deleteObjects(kc: KubeConfig, namespace: string, name: string): Promise<void> {
     const custom = kc.makeApiClient(CustomObjectsApi);
     try {
@@ -216,6 +220,8 @@ export class ClusterDeletionService {
       try {
         if (h.kind === 'Secret') {
           await kc.makeApiClient(CoreV1Api).deleteNamespacedSecret({ namespace, name: h.name });
+        } else if (h.kind === 'MachineDrainRule') {
+          await custom.deleteNamespacedCustomObject({ ...DRAIN_RULES, namespace, name: h.name });
         } else {
           await custom.deleteNamespacedCustomObject({ ...CRS, namespace, name: h.name });
         }
@@ -231,7 +237,9 @@ export class ClusterDeletionService {
     name: string,
   ): Promise<{ kind: string; name: string }[]> {
     const labelSelector = `${MANAGED_BY_LABEL}=${MANAGED_BY_VALUE},${CLUSTER_NAME_LABEL}=${name}`;
-    const [secrets, sets] = await Promise.all([
+    const names = (r: unknown) =>
+      (r as { items: { metadata: { name: string } }[] }).items.map((o) => o.metadata.name);
+    const [secrets, sets, drainRules] = await Promise.all([
       kc
         .makeApiClient(CoreV1Api)
         .listNamespacedSecret({ namespace, labelSelector })
@@ -240,13 +248,17 @@ export class ClusterDeletionService {
       kc
         .makeApiClient(CustomObjectsApi)
         .listNamespacedCustomObject({ ...CRS, namespace, labelSelector })
-        .then((r) =>
-          (r as { items: { metadata: { name: string } }[] }).items.map((o) => o.metadata.name),
-        )
+        .then(names)
+        .catch(() => [] as string[]),
+      kc
+        .makeApiClient(CustomObjectsApi)
+        .listNamespacedCustomObject({ ...DRAIN_RULES, namespace, labelSelector })
+        .then(names)
         .catch(() => [] as string[]),
     ]);
     return [
       ...sets.map((n) => ({ kind: 'ClusterResourceSet', name: n })),
+      ...drainRules.map((n) => ({ kind: 'MachineDrainRule', name: n })),
       ...secrets.map((n) => ({ kind: 'Secret', name: n })),
     ];
   }

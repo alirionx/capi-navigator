@@ -195,6 +195,11 @@ export interface BootstrapFlavorPlugin {
     pool: ClusterSpec['topology']['workerPools'][number];
   }): Record<string, unknown>;
   bootstrapTemplate: { apiVersion: string; apiGroup: string; kind: string };
+  /**
+   * Further management cluster objects of the cluster, e.g. drain rules for components the
+   * distribution ships (removed with the cluster by label).
+   */
+  extraObjects?(spec: ClusterSpec, labels: Record<string, string>): ManifestObject[];
   /** Control plane resource for reading and watching (FP-6). */
   controlPlaneResource: { group: string; version: string; kind: string; plural: string };
   /** Bootstrap templates and per-machine configs, for the resources tab (FP7-F-01). */

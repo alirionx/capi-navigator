@@ -1,3 +1,4 @@
+import { CoreV1Api } from '@kubernetes/client-node';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ClusterDeletionService, DELETION_TIMING } from './cluster-deletion.service.js';
@@ -187,5 +188,38 @@ describe('cluster deletion (FP6-F-06)', () => {
       skipDrain: true,
     });
     expect(events).toEqual(['phase:deleting', 'skip-drain', 'deleted']);
+  });
+
+  it('removes the Cluster and its helper objects, drain rules included', async () => {
+    const deleted: string[] = [];
+    const listed: Record<string, string[]> = {
+      clusterresourcesets: ['demo-proxmox-cloud-config'],
+      machinedrainrules: ['demo-skip-tigera-operator'],
+    };
+    const custom = {
+      listNamespacedCustomObject: async ({ plural }: { plural: string }) => ({
+        items: (listed[plural] ?? []).map((name) => ({ metadata: { name } })),
+      }),
+      deleteNamespacedCustomObject: async ({ plural, name }: { plural: string; name: string }) => {
+        deleted.push(`${plural}/${name}`);
+      },
+    };
+    const core = {
+      listNamespacedSecret: async () => ({ items: [{ metadata: { name: 'demo-cloud-config' } }] }),
+      deleteNamespacedSecret: async ({ name }: { name: string }) => {
+        deleted.push(`secrets/${name}`);
+      },
+    };
+    const kc = { makeApiClient: (api: unknown) => (api === CoreV1Api ? core : custom) };
+    const svc = new ClusterDeletionService({} as never, {} as never);
+    await (
+      svc as unknown as { deleteObjects(kc: unknown, ns: string, n: string): Promise<void> }
+    ).deleteObjects(kc, 'team-a', 'demo');
+    expect(deleted).toEqual([
+      'clusters/demo',
+      'clusterresourcesets/demo-proxmox-cloud-config',
+      'machinedrainrules/demo-skip-tigera-operator',
+      'secrets/demo-cloud-config',
+    ]);
   });
 });

@@ -224,6 +224,29 @@ spec:
                     path: /etc/rancher/rke2/rke2.yaml
       permissions: "0644"
 ---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: pve-aio-skip-tigera-operator
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve-aio
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: pve-aio
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet
 metadata:
@@ -560,6 +583,29 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
         name: pve-default-4c1744b0
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: pve-skip-tigera-operator
+  namespace: proxmox
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: pve
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: pve
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet

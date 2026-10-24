@@ -541,6 +541,29 @@ spec:
     - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
   gzipUserData: false
 ---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: aio-rke2-skip-tigera-operator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: aio-rke2
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: aio-rke2
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet
 metadata:
