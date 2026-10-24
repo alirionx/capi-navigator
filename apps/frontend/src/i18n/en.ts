@@ -117,16 +117,14 @@ export const en = {
   },
   overview: {
     title: 'Management cluster {name}',
-    subtitle: 'Installed providers and the workload clusters that use them.',
+    subtitle: 'Installed providers, the workload clusters that use them and their nodes.',
     providers: 'Providers',
     clusters: 'Workload clusters',
+    nodes: 'Nodes: control plane and worker pools',
   },
   shapes: {
-    title: 'Workload clusters at a glance',
-    subtitle: 'Infrastructure, control plane nodes and worker nodes per pool of every cluster.',
     controlPlane: 'Control plane',
     workers: 'Workers',
-    none: 'No workload clusters yet.',
     ready: 'Node ready',
     pending: 'Starting or not ready',
     deleting: 'Being deleted',

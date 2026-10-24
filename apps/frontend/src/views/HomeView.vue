@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ClusterShapes from '../components/ClusterShapes.vue';
 import ProviderGraph from '../components/ProviderGraph.vue';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
@@ -106,14 +105,6 @@ onBeforeUnmount(() => {
       <v-card-text>
         <v-progress-linear v-if="!operator.state" indeterminate />
         <ProviderGraph v-else :providers="operator.state.providers" :clusters="clusters.clusters" />
-      </v-card-text>
-    </v-card>
-
-    <!-- UX-02: the shape of every workload cluster. -->
-    <v-card v-if="connections.active" border class="mt-6">
-      <v-card-item :title="t('shapes.title')" :subtitle="t('shapes.subtitle')" />
-      <v-card-text>
-        <ClusterShapes :clusters="clusters.clusters" />
       </v-card-text>
     </v-card>
   </v-container>

@@ -8,10 +8,12 @@ import {
   type ClusterSummary,
   type InstalledProvider,
 } from '@capi-navigator/shared';
+import MachineBoxes from './MachineBoxes.vue';
 
 /**
  * Which providers are installed and which clusters use them (FP6-F-08, US-10): providers on the
- * left, clusters on the right, connected per usage. Hovering a node highlights its connections.
+ * left, clusters in the middle, connected per usage, and next to each cluster its nodes (UX-02).
+ * Hovering a node highlights its connections.
  */
 const props = defineProps<{ providers: InstalledProvider[]; clusters: ClusterSummary[] }>();
 const { t } = useI18n();
@@ -20,6 +22,8 @@ const NODE_W = 260;
 const NODE_H = 52;
 const GAP = 10;
 const COL_GAP = 160;
+const SHAPE_GAP = 40;
+const SHAPE_W = 420;
 
 const providers = computed(() =>
   [...props.providers].sort(
@@ -32,7 +36,9 @@ const key = (c: ClusterSummary) => `${c.namespace}/${c.name}`;
 
 const rows = computed(() => Math.max(providers.value.length, props.clusters.length, 1));
 const height = computed(() => rows.value * (NODE_H + GAP) - GAP);
-const width = NODE_W * 2 + COL_GAP;
+const clusterX = NODE_W + COL_GAP;
+const shapeX = clusterX + NODE_W + SHAPE_GAP;
+const width = computed(() => (props.clusters.length ? shapeX + SHAPE_W : clusterX + NODE_W));
 /** Vertical offset that centers the shorter column. */
 const offset = (count: number) => ((rows.value - count) * (NODE_H + GAP)) / 2;
 const providerY = (i: number) => offset(providers.value.length) + i * (NODE_H + GAP);
@@ -57,6 +63,14 @@ const edges = computed(() =>
   ),
 );
 
+/** Short links from each cluster to its nodes. */
+const shapeLinks = computed(() =>
+  props.clusters.map((c, j) => {
+    const y = clusterY(j) + NODE_H / 2;
+    return { id: key(c), d: `M${clusterX + NODE_W},${y} H${shapeX - 8}` };
+  }),
+);
+
 const hover = ref<string | null>(null);
 const active = (e: { provider: string; cluster: string }) =>
   hover.value === e.provider || hover.value === e.cluster;
@@ -70,8 +84,9 @@ const kindLabel = (k: string) => k.replace('Provider', '');
 <template>
   <div class="graph-scroll" data-testid="provider-graph">
     <div class="d-flex text-caption text-medium-emphasis mb-2" :style="{ width: `${width}px` }">
-      <span :style="{ width: `${NODE_W + COL_GAP}px` }">{{ t('overview.providers') }}</span>
-      <span>{{ t('overview.clusters') }}</span>
+      <span :style="{ width: `${clusterX}px` }">{{ t('overview.providers') }}</span>
+      <span :style="{ width: `${NODE_W + SHAPE_GAP}px` }">{{ t('overview.clusters') }}</span>
+      <span v-if="clusters.length">{{ t('overview.nodes') }}</span>
     </div>
     <div class="graph" :style="{ width: `${width}px`, height: `${height}px` }">
       <svg :width="width" :height="height" class="edges" aria-hidden="true">
@@ -81,6 +96,13 @@ const kindLabel = (k: string) => k.replace('Provider', '');
           :d="e.d"
           class="edge"
           :class="{ 'edge--active': active(e), 'edge--dim': hover && !active(e) }"
+        />
+        <path
+          v-for="l in shapeLinks"
+          :key="`shape-${l.id}`"
+          :d="l.d"
+          class="edge"
+          :class="{ 'edge--active': hover === l.id, 'edge--dim': hover && hover !== l.id }"
         />
       </svg>
       <div
@@ -114,7 +136,7 @@ const kindLabel = (k: string) => k.replace('Provider', '');
         class="node"
         :class="`node--${clusterTone(c)}`"
         :style="{
-          left: `${NODE_W + COL_GAP}px`,
+          left: `${clusterX}px`,
           top: `${clusterY(j)}px`,
           width: `${NODE_W}px`,
           height: `${NODE_H}px`,
@@ -134,13 +156,33 @@ const kindLabel = (k: string) => k.replace('Provider', '');
           >
         </span>
       </router-link>
+      <MachineBoxes
+        v-for="(c, j) in clusters"
+        :key="`shape-${key(c)}`"
+        :cluster="c"
+        class="shape"
+        :style="{
+          left: `${shapeX}px`,
+          top: `${clusterY(j)}px`,
+          width: `${SHAPE_W}px`,
+          height: `${NODE_H}px`,
+        }"
+        @mouseenter="hover = key(c)"
+        @mouseleave="hover = null"
+      />
       <div
         v-if="clusters.length === 0"
         class="empty text-medium-emphasis text-body-2"
-        :style="{ left: `${NODE_W + COL_GAP}px`, width: `${NODE_W}px` }"
+        :style="{ left: `${clusterX}px`, width: `${NODE_W}px` }"
       >
         {{ t('clusters.empty') }}
       </div>
+    </div>
+    <div v-if="clusters.length" class="legend text-caption text-medium-emphasis">
+      <span><span class="box box--ready" />{{ t('shapes.ready') }}</span>
+      <span><span class="box box--pending" />{{ t('shapes.pending') }}</span>
+      <span><span class="box box--deleting" />{{ t('shapes.deleting') }}</span>
+      <span><span class="box box--failed" />{{ t('shapes.failed') }}</span>
     </div>
   </div>
 </template>
@@ -250,5 +292,37 @@ const kindLabel = (k: string) => k.replace('Provider', '');
   position: absolute;
   top: 0;
   padding: 16px 12px;
+}
+.shape {
+  position: absolute;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding-top: 16px;
+}
+.legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend .box {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.box--ready {
+  background: rgb(var(--v-theme-success));
+}
+.box--pending {
+  background: rgb(var(--v-theme-warning));
+}
+.box--deleting {
+  background: rgba(var(--v-theme-on-surface), 0.3);
+}
+.box--failed {
+  background: rgb(var(--v-theme-error));
 }
 </style>
