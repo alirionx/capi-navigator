@@ -200,6 +200,8 @@ const machineHeaders = computed(() => [
   { title: t('clusters.image'), key: 'image' },
   { title: t('clusters.rootDisk'), key: 'rootVolumeGB' },
   { title: t('clusters.node'), key: 'nodeName' },
+  // UX-03: internal address only; nodes get no public addresses (FP-28).
+  { title: t('clusters.internalIP'), key: 'internalIP' },
   { title: 'providerID', key: 'providerID' },
   { title: t('clusters.age'), key: 'createdAt' },
   { title: '', key: 'shell', sortable: false },
@@ -583,6 +585,11 @@ const machineHeaders = computed(() => [
                 item.rootVolumeGB ? `${item.rootVolumeGB} GB` : '–'
               }}</template>
               <template #[`item.nodeName`]="{ item }">{{ item.nodeName ?? '–' }}</template>
+              <template #[`item.internalIP`]="{ item }">
+                <span class="font-monospace text-caption" data-testid="machine-internal-ip">{{
+                  item.internalIP ?? '–'
+                }}</span>
+              </template>
               <template #[`item.shell`]="{ item }">
                 <YamlButton
                   :target="{
