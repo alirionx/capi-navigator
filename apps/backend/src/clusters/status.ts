@@ -58,7 +58,12 @@ const isTrue = (obj: K8sObj | undefined, type: string) =>
 const num = (v: unknown) => (typeof v === 'number' ? v : 0);
 
 /** Cluster list entry (FP-5 status view; FP6-F-01 builds on it). */
-export function toSummary(cluster: K8sObj, cp?: K8sObj, mds: K8sObj[] = []): ClusterSummary {
+export function toSummary(
+  cluster: K8sObj,
+  cp?: K8sObj,
+  mds: K8sObj[] = [],
+  machines?: K8sObj[],
+): ClusterSummary {
   const spec = cluster.spec ?? {};
   const infraKind = (spec.infrastructureRef as { kind?: string } | undefined)?.kind ?? '';
   const cpKind = (spec.controlPlaneRef as { kind?: string } | undefined)?.kind;
@@ -103,8 +108,30 @@ export function toSummary(cluster: K8sObj, cp?: K8sObj, mds: K8sObj[] = []): Clu
       : {}),
     managed: !!stored,
     ...deletionOf(cluster),
+    ...(machines ? { machines: machines.map(briefMachine).sort(byRoleAndName) } : {}),
   };
 }
+
+/** UX-02: role, pool and state of a machine for the overview of all clusters. */
+function briefMachine(m: K8sObj): NonNullable<ClusterSummary['machines']>[number] {
+  const labels = m.metadata.labels ?? {};
+  const role = CP_LABEL in labels ? 'control-plane' : 'worker';
+  return {
+    name: m.metadata.name,
+    role,
+    ...(role === 'worker' && labels['capi-navigator.io/pool']
+      ? { pool: labels['capi-navigator.io/pool'] }
+      : {}),
+    phase: String(m.status?.phase ?? 'Pending'),
+    ready: isTrue(m, 'Ready'),
+  };
+}
+
+const byRoleAndName = (
+  a: { role: string; name: string },
+  b: { role: string; name: string },
+): number =>
+  a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'control-plane' ? -1 : 1;
 
 /** Deletion progress from the annotation the app sets (FP6-F-06). */
 function deletionOf(cluster: K8sObj): { deletion?: DeletionStatus } {
@@ -225,7 +252,7 @@ export function toStatus(args: {
   ];
   const initialization = infra?.status?.initialization as { provisioned?: boolean } | undefined;
   return {
-    summary: toSummary(cluster, cp, mds),
+    summary: toSummary(cluster, cp, mds, machines),
     conditions: conditions(cluster),
     ...(infra
       ? {

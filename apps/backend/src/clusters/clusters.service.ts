@@ -87,7 +87,15 @@ import {
 } from './status.js';
 
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
-const INFRA_GROUP = { group: 'infrastructure.cluster.x-k8s.io', version: 'v1beta2' };
+/**
+ * Group and version of a provider's infrastructure kinds, from its plugin: CAPMOX serves
+ * v1alpha2 while the others serve v1beta2 (a fixed version hid Proxmox machines and the
+ * ProxmoxCluster from the status view, FP-31).
+ */
+const infraGroup = (p: { apiVersion: string }) => {
+  const [group, version] = p.apiVersion.split('/') as [string, string];
+  return { group, version };
+};
 
 /** Control plane resources of all distributions (hard rule 10: from the plugins). */
 export const CONTROL_PLANE_RESOURCES = Object.values(FLAVOR_PLUGINS).flatMap((p) =>
@@ -103,7 +111,7 @@ const KINDS: Record<string, { group: string; version: string; plural: string }> 
     ]),
     ...Object.values(INFRA_PLUGINS).map((p) => [
       p.infraClusterKind,
-      { ...INFRA_GROUP, plural: p.resources.infraClusterPlural },
+      { ...infraGroup(p), plural: p.resources.infraClusterPlural },
     ]),
   ]);
 
@@ -117,8 +125,8 @@ export function namespaceWatchPaths(ns: string): string[] {
       (r) => `/apis/${r.group}/${r.version}/namespaces/${ns}/${r.plural}`,
     ),
     ...Object.values(INFRA_PLUGINS).flatMap((p) => [
-      `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/${p.resources.infraClusterPlural}`,
-      `/apis/infrastructure.cluster.x-k8s.io/v1beta2/namespaces/${ns}/${p.resources.machinePlural}`,
+      `/apis/${p.apiVersion}/namespaces/${ns}/${p.resources.infraClusterPlural}`,
+      `/apis/${p.apiVersion}/namespaces/${ns}/${p.resources.machinePlural}`,
     ]),
     `/api/v1/namespaces/${ns}/events`,
   ];
@@ -129,6 +137,8 @@ export function listWatchPaths(): string[] {
   return [
     '/apis/cluster.x-k8s.io/v1beta2/clusters',
     '/apis/cluster.x-k8s.io/v1beta2/machinedeployments',
+    // UX-02: the state of every machine for the overview on the home page.
+    '/apis/cluster.x-k8s.io/v1beta2/machines',
     ...CONTROL_PLANE_RESOURCES.map((r) => `/apis/${r.group}/${r.version}/${r.plural}`),
   ];
 }
@@ -232,7 +242,10 @@ export class ClustersService {
       const api = kc.makeApiClient(CustomObjectsApi);
       const clusters = await listAll(api, 'clusters');
       if (clusters.length === 0) return [];
-      const mds = await listAll(api, 'machinedeployments');
+      const [mds, machines] = await Promise.all([
+        listAll(api, 'machinedeployments'),
+        listAll(api, 'machines'),
+      ]);
       const cps = (
         await Promise.all(
           CONTROL_PLANE_RESOURCES.map(async (r) =>
@@ -253,7 +266,12 @@ export class ClustersService {
               md.metadata.namespace === ns &&
               md.metadata.labels?.[CLUSTER_NAME_LABEL] === c.metadata.name,
           );
-          return toSummary(c, cp, pools);
+          const own = machines.filter(
+            (m) =>
+              m.metadata.namespace === ns &&
+              m.metadata.labels?.[CLUSTER_NAME_LABEL] === c.metadata.name,
+          );
+          return toSummary(c, cp, pools, own);
         })
         .sort((a, b) => a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name));
     });
@@ -304,7 +322,7 @@ export class ClustersService {
         infraPlugin
           ? api
               .listNamespacedCustomObject({
-                ...INFRA_GROUP,
+                ...infraGroup(infraPlugin),
                 namespace,
                 plural: infraPlugin.resources.machinePlural,
                 labelSelector: selector,
