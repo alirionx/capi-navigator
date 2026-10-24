@@ -71,8 +71,10 @@ found what the app has to add.
   Proxmox for now; OpenStack, AWS and GCP keep their load balancers.
 - Volumes of the CSI plugin on local storage stay on their Proxmox node (zone); with several
   Proxmox nodes, shared storage is needed for pods to move.
-- CAPMOX's memory scheduling counts configured memory of all VMs; the wizard exposes
-  `memoryAdjustment` (default 100 %), since homelabs often overcommit.
+- CAPMOX's memory scheduling counts configured memory of all VMs, stopped ones included, and a
+  refused machine is not retried. The wizard exposes `memoryAdjustment` with 0 (check off) as
+  default: with 100 % the check refused VMs on a host with 20 GiB free memory (live test), and
+  homelabs often overcommit. A refused machine must be deleted to be replaced.
 - One CA bundle for all Proxmox endpoints is a CAPMOX limitation; it is fine as long as the CAs are
   trusted together.
 - Services of type `LoadBalancer` stay pending unless users add MetalLB or similar (add-ons).

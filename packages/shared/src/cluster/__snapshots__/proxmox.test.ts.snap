@@ -13,7 +13,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     pods:
@@ -56,7 +56,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-aio-proxmox-credentials
     namespace: proxmox
@@ -256,7 +256,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -299,7 +299,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-proxmox-credentials
     namespace: proxmox
@@ -593,7 +593,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     pods:
@@ -636,7 +636,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-aio-proxmox-credentials
     namespace: proxmox
@@ -849,7 +849,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -892,7 +892,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-proxmox-credentials
     namespace: proxmox
@@ -1195,7 +1195,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-aio
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve-aio","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"all-in-one","workerPools":[]}}'
 spec:
   clusterNetwork:
     pods:
@@ -1238,7 +1238,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-aio-proxmox-credentials
     namespace: proxmox
@@ -1523,7 +1523,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":100,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":3},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":2,"rootVolumeSizeGB":80}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -1566,7 +1566,7 @@ spec:
   allowedNodes:
     - homeserver
   schedulerHints:
-    memoryAdjustment: 100
+    memoryAdjustment: 0
   credentialsRef:
     name: pve-proxmox-credentials
     namespace: proxmox

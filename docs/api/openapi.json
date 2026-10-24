@@ -10269,7 +10269,7 @@
             "additionalProperties": false
           },
           "memoryAdjustment": {
-            "default": 100,
+            "default": 0,
             "type": "integer",
             "minimum": 0,
             "maximum": 1000
@@ -12302,7 +12302,7 @@
             ]
           },
           "memoryAdjustment": {
-            "default": 100,
+            "default": 0,
             "type": "integer",
             "minimum": 0,
             "maximum": 1000

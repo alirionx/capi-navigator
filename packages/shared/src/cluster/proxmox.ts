@@ -111,7 +111,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         kind: 'number',
         label: 'wizard.pveMemoryAdjustment',
         hint: 'wizard.pveMemoryAdjustmentHint',
-        default: 100,
+        default: 0,
         cols: 4,
       },
       {
