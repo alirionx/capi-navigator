@@ -4,7 +4,7 @@
 
 A lean web UI for [Cluster API](https://cluster-api.sigs.k8s.io/) (CAPI). Connect a management
 cluster, install the CAPI providers, store cloud credentials and create, operate and delete
-Kubernetes clusters on OpenStack, AWS and Google Cloud with RKE2, k0s or kubeadm, from forms with a preview of
+Kubernetes clusters on OpenStack, AWS, Google Cloud and Proxmox VE with RKE2, k0s or kubeadm, from forms with a preview of
 every change instead of hand-written YAML.
 
 ![CAPI Navigator: installed providers and the workload clusters that use them](docs/images/ui-tour/01-home.png)
@@ -37,6 +37,7 @@ resources, Secrets and ConfigMaps.
 | OpenStack (CAPO + ORC) | Tested on Infomaniak Public Cloud and Kolla-Ansible | Cloud controller manager and Cinder CSI as presets; bastion host; custom CA for the identity API                                                                                      |
 | AWS (CAPA)             | Tested                                              | AWS cloud controller manager and EBS CSI as presets; dedicated VPC per cluster                                                                                                        |
 | Google Cloud (CAPG)    | Tested                                              | GCP cloud controller manager and persistent disk CSI by ClusterResourceSet; dedicated VPC with Cloud NAT per cluster; no bastion host ([setup](docs/gcp.md))                          |
+| Proxmox VE (CAPMOX)    | Tested on Proxmox VE 9.2                            | API virtual IP held by kube-vip; node address range per cluster; machine sizes per credential; Proxmox CCM and CSI as presets ([setup](docs/proxmox.md))                              |
 | RKE2                   | Default distribution                                | All day-2 operations                                                                                                                                                                  |
 | k0s (k0smotron)        | Supported                                           | Control plane upgrades run in place; control plane image changes are blocked until k0smotron replaces controllers safely ([ADR-0013](docs/adr/0013-k0s-control-plane-replacement.md)) |
 | kubeadm                | Experimental                                        | Installed at first boot on stock Ubuntu, Debian or Rocky/Alma images; Calico via ClusterResourceSet ([ADR-0014](docs/adr/0014-kubeadm-on-stock-images.md))                            |
@@ -50,7 +51,7 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Providers**: install, upgrade and remove CAPI providers through the CAPI Operator, with the
   generated YAML shown before applying, and ORC for OpenStack. Shows which clusters use a provider.
 - **Credentials**: OpenStack `clouds.yaml` (application credential or password, custom CA), AWS
-  access keys and Google Cloud service account keys, tested against the cloud (services, IAM prerequisites, paging quirks) and used for
+  access keys, Google Cloud service account keys and Proxmox VE API tokens (with CA and machine sizes), tested against the cloud (services, IAM prerequisites, paging quirks) and used for
   the selection lists of the wizard. Secrets are never sent to the browser.
 - **Cluster wizard**: topology (standard, or all-in-one with 1, 3 or 5 nodes), machine sizes, images, root disks, worker
   pools with labels, add-ons, node customization (files, pre/post commands), bastion host, network
@@ -282,9 +283,11 @@ service:
    cluster with the access manifest from `deploy/management-cluster/` and its service account
    token).
 2. **Providers**: install ORC (for OpenStack) and the providers from the catalog: core, the
-   bootstrap and control plane providers of your distribution, CAPO, CAPA and/or CAPG, and CAAPH.
+   bootstrap and control plane providers of your distribution, CAPO, CAPA, CAPG and/or CAPMOX (with
+   the in-cluster IPAM provider), and CAAPH.
 3. **Credentials**: upload the `clouds.yaml` of an OpenStack application credential, enter an AWS
-   access key or upload a Google Cloud service account key ([setup](docs/gcp.md)); run the test.
+   access key, upload a Google Cloud service account key ([setup](docs/gcp.md)) or enter a Proxmox
+   VE API token ([setup](docs/proxmox.md)); run the test.
 4. **Clusters → Create cluster**: walk through the wizard, check the preview and create. The
    resource tree and the events show the progress; the cluster is ready after a few minutes.
 5. **Day-2**: the tabs of a cluster offer configuration changes (always with preview), the
