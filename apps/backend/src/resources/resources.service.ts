@@ -13,6 +13,7 @@ import {
   type V1APIResource,
 } from '@kubernetes/client-node';
 import {
+  groupVersion,
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
   isViewable,
@@ -189,20 +190,17 @@ export class ResourcesService implements OnApplicationShutdown {
       ),
       ...Object.values(INFRA_PLUGINS).flatMap((p) => [
         {
-          group: 'infrastructure.cluster.x-k8s.io',
-          version: 'v1beta2',
+          ...groupVersion(p.apiVersion),
           plural: p.resources.infraClusterPlural,
           kind: p.infraClusterKind,
         },
         {
-          group: 'infrastructure.cluster.x-k8s.io',
-          version: 'v1beta2',
+          ...groupVersion(p.apiVersion),
           plural: p.resources.machineTemplatePlural,
           kind: p.machineTemplateKind,
         },
         {
-          group: 'infrastructure.cluster.x-k8s.io',
-          version: 'v1beta2',
+          ...groupVersion(p.apiVersion),
           plural: p.resources.machinePlural,
           kind: p.resources.machineKind,
         },

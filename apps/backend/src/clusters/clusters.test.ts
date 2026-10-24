@@ -465,6 +465,8 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
   let state: OperatorState;
   let credential: Credential;
   const allowNamespace = vi.fn();
+  /** Image problems the credential plugin reports (FP31-F-05), set per test. */
+  let imageProblems: Record<string, string> = {};
 
   async function activate(username: string, pw: string): Promise<string> {
     const cookieOf = (res: request.Response) =>
@@ -504,6 +506,8 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
         resolve: async () => ({ credential, data: { 'clouds.yaml': CLOUDS } }),
         // OpenStack credentials give clusters no extra Secrets (FP31-F-09 is Proxmox only).
         clusterSecrets: () => undefined,
+        imageProblems: async (_p: string, _d: unknown, ids: string[]) =>
+          Object.fromEntries(Object.entries(imageProblems).filter(([id]) => ids.includes(id))),
         allowNamespace,
       })
       .compile();
@@ -578,6 +582,18 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     expect(res.body.yaml).toMatch(/cloud-config.yaml: ["']\*{8}["']/);
     expect(res.body.yaml).not.toContain('s3cr');
     expect(k8s.applied).toEqual([{ kinds: expect.any(Array), dryRun: true }]);
+  });
+
+  it('blocks images whose machines would never become ready (FP31-F-05)', async () => {
+    const image = (OS_SPEC.infrastructure as { image: string }).image;
+    imageProblems = {
+      [image]: 'Template has the QEMU guest agent disabled (qm set <id> --agent enabled=1)',
+    };
+    const res = await preview().expect(200);
+    expect(res.body.blockers).toEqual([
+      `Template ${image} has the QEMU guest agent disabled (qm set ${image} --agent enabled=1): its machines would never become ready.`,
+    ]);
+    imageProblems = {};
   });
 
   it('blocks when providers, ORC or the credential test are missing', async () => {

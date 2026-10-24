@@ -323,6 +323,18 @@ export class CredentialsService {
     return { credential: this.toCredential(plugin.provider, stored), data: decode(stored.secret) };
   }
 
+  /** Problems of images that keep machines from becoming ready (FP31-F-05), by image ID. */
+  imageProblems(
+    provider: string,
+    data: Record<string, string>,
+    ids: string[],
+  ): Promise<Record<string, string>> {
+    const plugin = this.plugin(provider);
+    return plugin.imageProblems && ids.length
+      ? plugin.imageProblems(data, ids)
+      : Promise.resolve({});
+  }
+
   /** Secrets a cluster gets from its stored credential (FP31-F-09, F-11), if the plugin has any. */
   clusterSecrets(
     provider: string,

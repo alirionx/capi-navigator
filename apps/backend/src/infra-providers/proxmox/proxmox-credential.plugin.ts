@@ -240,6 +240,25 @@ export class ProxmoxCredentialPlugin implements CredentialPlugin<unknown> {
   }
 
   /**
+   * FP31-F-05: CAPMOX asks the guest agent whether cloud-init has finished and only then reports
+   * the machine; without the agent, or with a Proxmox cloud-init drive, its machines never become
+   * ready (live test: a template with the agent disabled).
+   */
+  async imageProblems(data: Record<string, string>, ids: string[]) {
+    const vms = await this.get<Resource[]>(data, '/cluster/resources?type=vm');
+    const out: Record<string, string> = {};
+    for (const vm of vms.filter((v) => v.template === 1 && ids.includes(String(v.vmid)))) {
+      const config = await this.get<Record<string, string | number>>(
+        data,
+        `/nodes/${encodeURIComponent(vm.node)}/qemu/${vm.vmid}/config`,
+      );
+      const warning = templateWarning(config);
+      if (warning) out[String(vm.vmid)] = warning;
+    }
+    return out;
+  }
+
+  /**
    * FP31-F-05: selection lists. `region` is the source node for bridges and storages; without it
    * the first online node is used.
    */

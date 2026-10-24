@@ -12,6 +12,7 @@ import {
   type KubernetesObject,
 } from '@kubernetes/client-node';
 import {
+  groupVersion,
   buildAddonPreset,
   catalogEntry,
   compareVersions,
@@ -87,15 +88,6 @@ import {
 } from './status.js';
 
 const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
-/**
- * Group and version of a provider's infrastructure kinds, from its plugin: CAPMOX serves
- * v1alpha2 while the others serve v1beta2 (a fixed version hid Proxmox machines and the
- * ProxmoxCluster from the status view, FP-31).
- */
-const infraGroup = (p: { apiVersion: string }) => {
-  const [group, version] = p.apiVersion.split('/') as [string, string];
-  return { group, version };
-};
 
 /** Control plane resources of all distributions (hard rule 10: from the plugins). */
 export const CONTROL_PLANE_RESOURCES = Object.values(FLAVOR_PLUGINS).flatMap((p) =>
@@ -111,7 +103,7 @@ const KINDS: Record<string, { group: string; version: string; plural: string }> 
     ]),
     ...Object.values(INFRA_PLUGINS).map((p) => [
       p.infraClusterKind,
-      { ...infraGroup(p), plural: p.resources.infraClusterPlural },
+      { ...groupVersion(p.apiVersion), plural: p.resources.infraClusterPlural },
     ]),
   ]);
 
@@ -322,7 +314,7 @@ export class ClustersService {
         infraPlugin
           ? api
               .listNamespacedCustomObject({
-                ...infraGroup(infraPlugin),
+                ...groupVersion(infraPlugin.apiVersion),
                 namespace,
                 plural: infraPlugin.resources.machinePlural,
                 labelSelector: selector,
@@ -865,6 +857,27 @@ export class ClustersService {
     };
     const infraPlugin = INFRA_PLUGINS[infra.provider];
     if (resolved) blockers.push(...(infraPlugin.validate?.(spec, infra, transformContext) ?? []));
+    // FP31-F-05: images whose machines would never become ready (best effort: the cloud may be
+    // unreachable for a moment, the provider reports such errors on the machines anyway).
+    if (resolved) {
+      const ids = [
+        ...new Set(
+          [
+            (infra as { image?: string }).image,
+            spec.topology.controlPlane.image,
+            ...spec.topology.workerPools.map((p) => p.image),
+          ].filter((i): i is string => !!i),
+        ),
+      ];
+      const problems = await this.credentials
+        .imageProblems(infra.provider, resolved.data, ids)
+        .catch(() => ({}) as Record<string, string>);
+      for (const [id, problem] of Object.entries(problems)) {
+        blockers.push(
+          `${problem.replace(/^Template /, `Template ${id} `).replaceAll('<id>', id)}: its machines would never become ready.`,
+        );
+      }
+    }
     // FP31-F-08: addresses the user hands out must not clash with other clusters.
     if (infraPlugin.addressConflicts) {
       const [group, version] = infraPlugin.apiVersion.split('/') as [string, string];

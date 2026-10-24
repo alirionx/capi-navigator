@@ -27,6 +27,11 @@ const { t } = useI18n();
 const form = computed(() => INFRA_PLUGINS[props.provider].form.machine);
 const root = computed(() => form.value.rootVolume);
 const selected = computed(() => props.sizes.find((s) => s.value === group.value.machineSize));
+/** Warning of the overriding image from the cloud (e.g. a Proxmox template, FP31-F-05). */
+const imageWarning = computed(() => {
+  const w = props.images.find((i) => i.value === group.value.image)?.details?.warning;
+  return typeof w === 'string' ? w : undefined;
+});
 /** Sizes without local disk (e.g. Infomaniak "-disk0" flavors) need a root volume. */
 const needsVolume = computed(
   () => !!root.value.neededWithoutLocalDisk && selected.value?.details?.diskGB === 0,
@@ -98,6 +103,9 @@ const rootRules = [
       style="min-width: 260px; flex: 1"
     />
   </div>
+  <v-alert v-if="imageWarning" type="warning" variant="tonal" density="compact" class="mt-2">{{
+    imageWarning
+  }}</v-alert>
   <div class="d-flex flex-wrap ga-3 mt-3">
     <v-text-field
       :model-value="group.rootVolumeSizeGB"

@@ -87,6 +87,11 @@ export interface CredentialPlugin<TInput = unknown> {
     ids: string[],
     opts: { region?: string },
   ): Promise<Record<string, string>>;
+  /**
+   * Problems of the given images that keep machines from ever becoming ready (e.g. a Proxmox
+   * template with the guest agent disabled), by image ID; the preview refuses them (read-only).
+   */
+  imageProblems?(data: Record<string, string>, ids: string[]): Promise<Record<string, string>>;
   /** Selection lists for the cluster wizard (read-only). */
   lookup(
     data: Record<string, string>,
