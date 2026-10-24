@@ -174,6 +174,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     }
   }
 
+  objects.push(...(flavor.extraObjects?.(spec, labels) ?? []));
   objects.push(...infra.extraObjects(spec, spec.infrastructure, labels));
   return objects;
 }

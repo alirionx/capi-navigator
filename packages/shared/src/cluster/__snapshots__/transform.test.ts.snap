@@ -2536,6 +2536,29 @@ spec:
   preRKE2Commands:
     - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
   gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-aws-aio-skip-tigera-operator
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws-aio
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo-aws-aio
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 "
 `;
 
@@ -2783,6 +2806,29 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: AWSMachineTemplate
         name: demo-aws-default-de34a5b2
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-aws-skip-tigera-operator
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo-aws
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 "
 `;
 
@@ -3023,6 +3069,29 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: AWSMachineTemplate
         name: demo-aws-default-de34a5b2
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-aws-skip-tigera-operator
+  namespace: default
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aws
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo-aws
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 "
 `;
 
@@ -3156,6 +3225,29 @@ spec:
   preRKE2Commands:
     - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
   gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-aio-skip-tigera-operator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo-aio
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo-aio
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet
@@ -3450,6 +3542,29 @@ spec:
         kind: OpenStackMachineTemplate
         name: demo-gpu-dc53c27b
 ---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-skip-tigera-operator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet
 metadata:
@@ -3734,6 +3849,29 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
         name: demo-gpu-dc53c27b
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-skip-tigera-operator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 "
 `;
 
@@ -4036,6 +4174,29 @@ spec:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
         name: demo-gpu-dc53c27b
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: demo-skip-tigera-operator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: demo
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: demo
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
 ---
 apiVersion: addons.cluster.x-k8s.io/v1beta2
 kind: ClusterResourceSet
