@@ -77,9 +77,19 @@ const to = computed(() => ({
 <style scoped>
 .groups {
   display: flex;
-  align-items: center;
-  gap: 24px;
+  align-items: stretch;
+  gap: 8px;
   height: 100%;
+}
+/* UX-04: each group is a card like the cluster nodes of the graph. */
+.group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: rgb(var(--v-theme-surface));
+  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .label {
   line-height: 1.2;
@@ -91,6 +101,7 @@ const to = computed(() => ({
   gap: 4px;
   margin-top: 4px;
   min-height: 16px;
+  min-width: 60px;
 }
 .box {
   display: inline-block;
