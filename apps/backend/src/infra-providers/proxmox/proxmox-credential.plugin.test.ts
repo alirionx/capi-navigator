@@ -169,6 +169,10 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
     expect(await plugin.imageNames(data, summary, ['7112', '999'])).toEqual({
       '7112': 'capi-ubuntu-26',
     });
+    // FP31-F-05: the preview refuses templates whose machines would never become ready.
+    expect(await plugin.imageProblems(data, ['7111', '7112'])).toEqual({
+      '7112': expect.stringMatching(/guest agent disabled/),
+    });
   });
 
   it('finds the clusters of a credential by the annotation on the copy (FP31-F-09)', () => {

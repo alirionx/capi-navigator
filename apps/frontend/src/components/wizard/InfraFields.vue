@@ -4,12 +4,23 @@ import type { InfraForm, InfraValues, LookupOption } from '@capi-navigator/share
 
 /** Infrastructure step of the wizard, rendered from the provider's form description (FP25-F-05). */
 const values = defineModel<InfraValues>({ required: true });
-defineProps<{
+const props = defineProps<{
   form: InfraForm;
   lists: Record<string, LookupOption[]>;
   loading?: boolean;
 }>();
 const { t } = useI18n();
+
+/**
+ * Warning of a list entry from the cloud (e.g. a Proxmox template with the guest agent disabled,
+ * FP31-F-05), shown in the dropdown and below the field once it is chosen.
+ */
+const warningOf = (o: LookupOption | string | number | undefined) =>
+  typeof o === 'object' && typeof o.details?.warning === 'string' ? o.details.warning : undefined;
+const chosenWarning = (f: InfraForm['fields'][number]) =>
+  f.lookup
+    ? warningOf((props.lists[f.lookup] ?? []).find((o) => o.value === values.value[f.path]))
+    : undefined;
 </script>
 
 <template>
@@ -36,7 +47,16 @@ const { t } = useI18n();
         :hint="t(f.hint)"
         persistent-hint
         :data-testid="f.testId"
-      />
+      >
+        <template #item="{ props: itemProps, item }">
+          <v-list-item
+            v-bind="itemProps"
+            :subtitle="warningOf(item.raw)"
+            :prepend-icon="warningOf(item.raw) ? 'mdi-alert' : undefined"
+            :base-color="warningOf(item.raw) ? 'warning' : undefined"
+          />
+        </template>
+      </v-autocomplete>
       <v-select
         v-else-if="f.kind === 'select'"
         v-model="values[f.path]"
@@ -60,6 +80,15 @@ const { t } = useI18n();
         persistent-hint
         :data-testid="f.testId"
       />
+      <v-alert
+        v-if="chosenWarning(f)"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mt-2"
+        data-testid="lookup-warning"
+        >{{ chosenWarning(f) }}</v-alert
+      >
     </v-col>
     <v-col v-for="n in form.notes ?? []" :key="n" cols="12">
       <v-alert type="info" variant="tonal" density="compact">{{ t(n) }}</v-alert>

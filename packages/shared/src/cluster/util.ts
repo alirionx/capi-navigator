@@ -39,3 +39,13 @@ export function compact<T>(value: T): T {
   }
   return value;
 }
+
+/**
+ * Group and version of an apiVersion such as `infrastructure.cluster.x-k8s.io/v1alpha2`.
+ * Infrastructure providers serve different versions (CAPMOX v1alpha2, the others v1beta2), so
+ * the backend takes them from the plugin instead of assuming one (FP-31).
+ */
+export function groupVersion(apiVersion: string): { group: string; version: string } {
+  const [group, version] = apiVersion.split('/') as [string, string];
+  return { group, version };
+}

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { CoordinationV1Api, CustomObjectsApi, type KubeConfig } from '@kubernetes/client-node';
 import {
+  groupVersion,
   CLUSTER_SPEC_ANNOTATION,
   ClusterSpecSchema,
   FLAVOR_PLUGINS,
@@ -223,8 +224,7 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
     const infra = INFRA_PLUGINS[spec.infrastructure.provider];
     const kinds = [
       {
-        group: 'infrastructure.cluster.x-k8s.io',
-        version: 'v1beta2',
+        ...groupVersion(infra.apiVersion),
         plural: infra.resources.machineTemplatePlural,
         kind: infra.machineTemplateKind,
       },
