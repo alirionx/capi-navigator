@@ -1055,14 +1055,15 @@ Requirements:
 
 - **UX-01** (done in 0.10.0) Credentials page: the "Add …" buttons (one per provider) wrap badly next to the page title once there are four providers. One "Add credential" button with a menu of the providers, as for "New add-on" (FP-30).
 - **UX-02** (done in 0.10.0) Overview of a management cluster on the home page: next to the providers, one row per workload cluster with its infrastructure (provider, name, state), its control plane nodes and its worker nodes (per pool) as small boxes with their state, so the shape of every cluster is visible at a glance; a click leads to the cluster or machine.
-- **UX-03** (done, next release) Machines tab: the internal address of every machine as a column, from `Machine.status.addresses` (the infrastructure provider fills them). The app gives nodes no public addresses on purpose (outbound through NAT, inbound through load balancers; per-node floating or elastic IPs were rejected, FP-28), so only internal addresses are shown.
-- **UX-04** (done, next release) Home page: the nodes of each workload cluster (UX-02) sit in the provider graph next to their cluster, linked to it, instead of in a card of their own below.
+- **UX-03** (done in 0.11.0) Machines tab: the internal address of every machine as a column, from `Machine.status.addresses` (the infrastructure provider fills them). The app gives nodes no public addresses on purpose (outbound through NAT, inbound through load balancers; per-node floating or elastic IPs were rejected, FP-28), so only internal addresses are shown.
+- **UX-04** (done in 0.11.0) Home page: the nodes of each workload cluster (UX-02) sit in the provider graph next to their cluster, linked to it, instead of in a card of their own below.
 
 **Review log**
 
 | Release | Done | Postponed |
 | --- | --- | --- |
 | 0.10.0 | UX-01, UX-02 | – |
+| 0.11.0 | UX-03, UX-04 | – |
 
 ## 7. Non-functional requirements
 
