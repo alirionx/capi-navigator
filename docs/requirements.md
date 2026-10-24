@@ -357,6 +357,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
 | FP-30 | Manifest add-ons through CAAPH (optional) | FP-8 |
 | FP-31 | Proxmox VE as infrastructure provider (optional) | FP-5, FP-8 |
+| FP-33 | Day-2 changes of infrastructure settings (optional) | FP-7, FP-31 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -984,6 +985,33 @@ Requirements:
 - [x] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
 - [x] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
 
+### FP-33: Day-2 changes of infrastructure settings (optional)
+
+**Goal:** settings of the infrastructure cluster that the provider lets change after creation can be changed in the app like every other day-2 change, so nobody has to patch them with `kubectl` (which shows as drift and is set back by the next reapply). Follow-up to FP-31, where Proxmox's memory scheduling had to be patched by hand.
+
+Verified (2026-10-24) against the pinned releases:
+
+- CAPMOX v0.9.1: the `ProxmoxCluster` update webhook only validates the control plane endpoint; CAPMOX reads `schedulerHints` and `allowedNodes` when it places a VM, writes `dnsServers` into the network configuration of new VMs, and updates its `InClusterIPPool` from `ipv4Config`. The in-cluster IPAM provider v1.1.1 refuses a pool update that drops addresses in use; CAPMOX would retry it forever.
+- CAPO v0.15.0: of the fields the app sets, only `managedSubnets[].dnsNameservers` may change; CAPO then updates the Neutron subnet.
+- CAPA and CAPG: none of the fields the app sets is useful to change; their forms declare none.
+
+Requirements:
+
+- **FP33-F-01** MUST let each infrastructure plugin declare per form field whether it may change after creation (`day2`), with a note on what the change does; only fields whose change the pinned provider release accepts and acts on are declared. Generic modules contain no provider checks.
+- **FP33-F-02** MUST refuse values the provider would accept but cannot apply, through a check the plugin gives with the field (Proxmox: node addresses can only be added).
+- **FP33-F-03** MUST apply the change through the day-2 flow of FP-7: stored spec first, preview with diff and drift, server-side apply of the touched objects, audit event, permission `clusters.change`; the validation and address checks of the wizard (FP31-F-08) apply as well.
+- **FP33-F-04** MUST show the declared fields with their current values in the cluster's configuration tab (operators, as in FP-7) and open a form with exactly these fields; providers without such fields show nothing.
+- **FP33-F-05** MUST declare memory scheduling, allowed nodes, DNS servers and node addresses for Proxmox VE, and the DNS servers for OpenStack.
+- **FP33-F-06** MUST name in the maintenance checklist that the declared fields are verified again with every update of an infrastructure provider.
+
+**Acceptance criteria**
+
+- [ ] Changing Proxmox memory scheduling on a running cluster updates only the `ProxmoxCluster` (and the stored spec); no machine is replaced.
+- [ ] Added node addresses appear in the cluster's `InClusterIPPool`; removing an address is refused in the preview.
+- [ ] A field the plugin does not declare is refused by the API.
+- [ ] The OpenStack DNS change previews as an update of the `OpenStackCluster` only (tested without a live cloud).
+- [ ] A viewer gets no form (the configuration tab is for operators, as in FP-7) and the API refuses the change.
+
 ### UX: UI and UX improvements (recurring)
 
 **Goal:** a place to collect improvements of the web interface as they come up, without interrupting the current feature pack. The list is reviewed before every release that raises the minor or major version (in `0.x`: every minor release): items are done, postponed or dropped, and done items are ticked with the release they shipped in. Items keep their ID; new ones are appended.
@@ -1079,7 +1107,6 @@ These requirements apply to all feature packs and are checked in every pack.
   - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
   - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
 - **FP-32: Services of type LoadBalancer on Proxmox VE with kube-vip** (outlook, after FP-31). Proxmox has no load balancer, so `LoadBalancer` Services stay pending; MetalLB as add-on works but adds a second ARP component and a third address range per cluster. Instead: an optional range "LoadBalancer addresses" in the wizard next to the node range and the VIP, checked by the same overlap rules (FP31-F-08); kube-vip with `svc_enable` announces the Services, [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) hands out the addresses from that range. To clarify: workers would need their own kube-vip instance with in-cluster credentials (the admin kubeconfig exists only on control plane nodes), otherwise all Service traffic runs through the control plane; per address the traffic goes through one node (no load distribution, as with MetalLB in L2 mode).
-- **Day-2 changes of infrastructure settings** (follow-up to FP-31): settings of the infrastructure cluster such as Proxmox's `memoryAdjustment` cannot be changed after creation; changing them outside the app shows as drift and a reapply sets the stored value again. A day-2 change for the plugin's infrastructure fields that may change (declared per field by the plugin) closes this gap.
 - **BGP mode for the Proxmox API endpoint** (outlook): kube-vip in BGP mode with a peer router (ASN, peer address, password in the wizard) gives load distribution and the control plane health check of kube-vip ([PR 1498](https://github.com/kube-vip/kube-vip/pull/1498)); it needs a BGP-capable router, so ARP stays the default.
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
