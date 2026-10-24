@@ -357,6 +357,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-26 | All-in-one clusters with three or five nodes (optional) | FP-7 |
 | FP-30 | Manifest add-ons through CAAPH (optional) | FP-8 |
 | FP-31 | Proxmox VE as infrastructure provider (optional) | FP-5, FP-8 |
+| FP-32 | Services of type LoadBalancer on Proxmox VE with kube-vip (optional) | FP-31, FP-33 |
 | FP-33 | Day-2 changes of infrastructure settings (optional) | FP-7, FP-31 |
 | UX | UI and UX improvements (recurring) | – |
 
@@ -985,6 +986,40 @@ Requirements:
 - [x] Scaling, upgrade, rebuild of a pool and deletion work; deletion leaves no VMs, ISOs or IP addresses behind, and the stored credential survives.
 - [x] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE in both topologies.
 
+### FP-32: Services of type LoadBalancer on Proxmox VE with kube-vip (optional)
+
+**Goal:** Services of type `LoadBalancer` get an address on Proxmox VE, which has no load balancer, so workloads are reachable as on the clouds. An optional range "LoadBalancer addresses" next to the node addresses and the VIP; [kube-vip](https://kube-vip.io) announces the Services by ARP and [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) hands out the addresses from that range. Per address the traffic goes through one node (no load distribution, as with MetalLB in L2 mode). MetalLB was not chosen: it would add a second ARP component next to the kube-vip of the API endpoint.
+
+Spike findings (2026-10-24, RKE2 with one control plane node and one worker on Proxmox VE 9.2):
+
+- A second kube-vip DaemonSet on all nodes for Services only (`cp_enable=false`, `svc_enable=true`, `svc_election=true`, in-cluster credentials with the RBAC of kube-vip's docs, metrics on another port than the control plane instance, both host network) runs next to the control plane instance without conflict; workers hold Service addresses themselves.
+- [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) v0.0.13 hands out addresses from the ConfigMap `kube-system/kubevip` (`range-global`) in order and sets `kube-vip.io/loadbalancerIPs`; when the range is used up, the Service stays pending with the event "no addresses available". The Proxmox CCM runs no service controller (`enabledControllers`: `cloud-node`, `cloud-node-lifecycle`), so the two do not compete.
+- Failover: after the holding worker was powered off, the control plane node took the lease after about 15 s and the Service answered steadily again after 29 s (one backend on each node). kube-vip withdraws an address while its Service has no ready endpoints, so a Service whose pods all ran on the failed node stays unreachable until they are rescheduled (pod eviction after about 5 minutes).
+
+Verified for the delivery (2026-10-24):
+
+- Both components have charts in the kube-vip Helm repository (`https://kube-vip.github.io/helm-charts`): `kube-vip` 0.11.1 (a DaemonSet driven by `env`, so the services-only setting of the spike is a values change; the image tag is set to the kube-vip version the API endpoint uses) and `kube-vip-cloud-provider` 0.2.10 (Deployment, RBAC identical to the upstream manifest of v0.0.13, the range in `cm.data`). Rendered with the planned values, both match the manifests of the spike.
+- kube-vip-cloud-provider reads its ConfigMap on every sync of a Service, so a changed range applies without a restart; ranges are always `start-end` (a single address is written as `a-a`).
+- CAAPH v0.6.4 reconciles a `HelmChartProxy` on every change of a selected `Cluster` and renders its `valuesTemplate` again, so a changed range becomes a Helm upgrade; a cluster that is no longer selected gets its release uninstalled.
+- Delivery by ClusterResourceSet was rejected for the same reasons as in ADR-0024: it never removes objects from a workload cluster and has no status, so a range could never be removed (ADR-0028).
+
+Requirements:
+
+- **FP32-F-01** MUST offer an optional field "LoadBalancer addresses" for Proxmox VE clusters (addresses, ranges `a-b` or networks, as the node addresses); without it nothing is rolled out.
+- **FP32-F-02** MUST refuse in the preview LoadBalancer addresses outside the node network, overlapping the node addresses, the gateway or the VIP, and overlapping the node addresses, VIP or LoadBalancer addresses of another Proxmox cluster of the management cluster (extends FP31-F-08).
+- **FP32-F-03** MUST roll out kube-vip for Services (all nodes, ARP, `svc_election`, in-cluster credentials, metrics on a port other than the API endpoint instance) and kube-vip-cloud-provider as CAAPH presets selected by a cluster label, with chart versions and images pinned in `versions.yaml`; the same for RKE2, k0s and kubeadm, without distribution-specific code.
+- **FP32-F-04** MUST pass the cluster's range to the cloud provider preset from the infrastructure cluster (annotation read by the `valuesTemplate`), so one preset per namespace serves all clusters.
+- **FP32-F-05** MUST declare the field as day-2 setting (FP-33): ranges can be added; removing some of them is refused (Services may hold those addresses); removing all of them switches the feature off, which uninstalls both presets, with a note that Services of type `LoadBalancer` lose their addresses.
+- **FP32-F-06** MUST show the range in the infrastructure facts of the cluster and document the feature (range, one node per address, failover times, pods on surviving nodes) in the Proxmox guide.
+
+**Acceptance criteria**
+
+- [ ] An RKE2 cluster on Proxmox VE with a LoadBalancer range: a Service of type `LoadBalancer` gets the first address of the range and answers on it.
+- [ ] A range added on the running cluster is used by the next Service once the first range is used up; no machine is replaced.
+- [ ] Overlapping ranges (own node addresses, VIP, another cluster) are refused in the preview; removing part of the ranges is refused.
+- [ ] Removing the range uninstalls both presets from the workload cluster.
+- [ ] Snapshot tests cover RKE2, k0s and kubeadm on Proxmox VE with a range; clusters without a range are unchanged.
+
 ### FP-33: Day-2 changes of infrastructure settings (optional)
 
 **Goal:** settings of the infrastructure cluster that the provider lets change after creation can be changed in the app like every other day-2 change, so nobody has to patch them with `kubectl` (which shows as drift and is set back by the next reapply). Follow-up to FP-31, where Proxmox's memory scheduling had to be patched by hand.
@@ -1109,11 +1144,6 @@ These requirements apply to all feature packs and are checked in every pack.
   - Preloaded images need `imagePullPolicy: IfNotPresent` and must not be removed by the kubelet's image garbage collection (to check per distribution).
   - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
   - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
-- **FP-32: Services of type LoadBalancer on Proxmox VE with kube-vip** (outlook, after FP-31). Proxmox has no load balancer, so `LoadBalancer` Services stay pending; MetalLB as add-on works but adds a second ARP component and a third address range per cluster. Instead: an optional range "LoadBalancer addresses" in the wizard next to the node range and the VIP, checked by the same overlap rules (FP31-F-08); kube-vip with `svc_enable` announces the Services, [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) hands out the addresses from that range. Per address the traffic goes through one node (no load distribution, as with MetalLB in L2 mode). Spike findings (2026-10-24, RKE2 with one control plane node and one worker on Proxmox VE 9.2):
-  - A second kube-vip DaemonSet on all nodes for Services only (`cp_enable=false`, `svc_enable=true`, `svc_election=true`, in-cluster credentials with the RBAC of kube-vip's docs, metrics on another port than the control plane instance, both host network) runs next to the control plane instance without conflict; workers hold Service addresses themselves.
-  - [kube-vip-cloud-provider](https://github.com/kube-vip/kube-vip-cloud-provider) v0.0.13 hands out addresses from the ConfigMap `kube-system/kubevip` (`range-global`) in order and sets `kube-vip.io/loadbalancerIPs`; when the range is used up, the Service stays pending with the event "no addresses available". The Proxmox CCM runs no service controller (`enabledControllers`: `cloud-node`, `cloud-node-lifecycle`), so the two do not compete.
-  - Failover: after the holding worker was powered off, the control plane node took the lease after about 15 s and the Service answered steadily again after 29 s (one backend on each node). kube-vip withdraws an address while its Service has no ready endpoints, so a Service whose pods all ran on the failed node stays unreachable until they are rescheduled (pod eviction after about 5 minutes).
-  - For the app: deliver the Services DaemonSet, the cloud provider and the ConfigMap per distribution like the control plane instance (FP31-F-07), the range as an optional wizard field checked by FP31-F-08 and changeable as a day-2 setting (FP-33, add only); pin both images in `versions.yaml`.
 - **BGP mode for the Proxmox API endpoint** (outlook): kube-vip in BGP mode with a peer router (ASN, peer address, password in the wizard) gives load distribution and the control plane health check of kube-vip ([PR 1498](https://github.com/kube-vip/kube-vip/pull/1498)); it needs a BGP-capable router, so ARP stays the default.
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 

@@ -81,6 +81,8 @@ export const VersionsFileSchema = z.strictObject({
     'aws-csi': EntrySchema,
     'proxmox-ccm': EntrySchema,
     'proxmox-csi': EntrySchema,
+    'proxmox-kube-vip': EntrySchema,
+    'proxmox-kube-vip-cloud-provider': EntrySchema,
     kured: EntrySchema,
   }),
   kubeadmRuntime: z.strictObject({ containerd: EntrySchema, runc: EntrySchema }),
@@ -90,7 +92,11 @@ export const VersionsFileSchema = z.strictObject({
     'gcp-ccm': ManifestEntrySchema,
     'gcp-csi': ManifestEntrySchema,
   }),
-  images: z.strictObject({ 'node-shell': EntrySchema, 'kube-vip': EntrySchema }),
+  images: z.strictObject({
+    'node-shell': EntrySchema,
+    'kube-vip': EntrySchema,
+    'kube-vip-cloud-provider': EntrySchema,
+  }),
   /** Tools of the local test setup, not part of the app (e.g. Dex for FP-14). */
   testTools: z.strictObject({ dex: EntrySchema, socat: EntrySchema, gitleaks: EntrySchema }),
 });

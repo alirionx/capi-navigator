@@ -268,6 +268,26 @@ export const VERSIONS: VersionsFile = {
       "verified": "2026-10-23",
       "note": "App v0.20.0 (2026-08-05); chart 0.5.13 (v0.21.0, 2026-10-17) was less than two weeks old. Needs the region and zone labels the CCM sets; volumes on local storage stay on their node."
     },
+    "proxmox-kube-vip": {
+      "version": "0.11.1",
+      "source": {
+        "datasource": "helm",
+        "package": "kube-vip",
+        "registry": "https://kube-vip.github.io/helm-charts"
+      },
+      "verified": "2026-10-24",
+      "note": "A DaemonSet driven by env; 0.11.2 (2026-10-20) only raises the default image tag, which the preset overrides. Rendered with the preset values it matches the FP-32 spike."
+    },
+    "proxmox-kube-vip-cloud-provider": {
+      "version": "0.2.10",
+      "source": {
+        "datasource": "helm",
+        "package": "kube-vip-cloud-provider",
+        "registry": "https://kube-vip.github.io/helm-charts"
+      },
+      "verified": "2026-10-24",
+      "note": "Chart default image is v0.0.12 on Docker Hub; the preset uses images.kube-vip-cloud-provider. RBAC identical to the upstream manifest of v0.0.13."
+    },
     "kured": {
       "version": "6.1.0",
       "source": {
@@ -351,7 +371,17 @@ export const VERSIONS: VersionsFile = {
         "registry": "ghcr.io"
       },
       "verified": "2026-10-23",
-      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 and k0s, always with the node's admin kubeconfig (localhost), never in-cluster credentials: a workaround for the missing API server health check in ARP mode (ADR-0027). On updates, check whether kube-vip issue 1787 (control plane health check for ARP) has been released."
+      "note": "Detects the interface itself when vip_interface is unset. Verified live with RKE2 and k0s, always with the node's admin kubeconfig (localhost), never in-cluster credentials: a workaround for the missing API server health check in ARP mode (ADR-0027). On updates, check whether kube-vip issue 1787 (control plane health check for ARP) has been released. Also the image of the Services preset (FP-32), so both instances move together."
+    },
+    "kube-vip-cloud-provider": {
+      "version": "v0.0.13",
+      "source": {
+        "datasource": "docker",
+        "package": "kube-vip/kube-vip-cloud-provider",
+        "registry": "ghcr.io"
+      },
+      "verified": "2026-10-24",
+      "note": "Reads its ConfigMap on every Service sync, so a changed range applies without a restart; ranges are always start-end. Verified live in the FP-32 spike."
     }
   },
   "testTools": {
