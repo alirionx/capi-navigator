@@ -835,11 +835,18 @@ export const en = {
     title: 'Credentials',
     subtitle:
       'OpenStack, AWS, Google Cloud and Proxmox VE credentials on the active management cluster. Stored once as Secret (plus a cluster-wide identity where the provider has one); clusters only reference them.',
+    addCredential: 'Add credential',
     add: {
-      openstack: 'Add OpenStack',
-      aws: 'Add AWS',
-      gcp: 'Add Google Cloud',
-      proxmox: 'Add Proxmox VE',
+      openstack: 'OpenStack',
+      aws: 'AWS',
+      gcp: 'Google Cloud',
+      proxmox: 'Proxmox VE',
+    },
+    addHint: {
+      openstack: 'clouds.yaml of an application credential or a user',
+      aws: 'Access key of an IAM user for CAPA',
+      gcp: 'JSON key of a service account',
+      proxmox: 'API token, CA certificate and machine sizes',
     },
     addTitle: {
       openstack: 'Add OpenStack credentials',
