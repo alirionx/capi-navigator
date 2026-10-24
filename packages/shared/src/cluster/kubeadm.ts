@@ -1,5 +1,6 @@
 import {
   KUBEADM_KUBE_VIP_INIT_COMMAND,
+  KUBEADM_KUBE_VIP_RESTORE_COMMAND,
   KUBEADM_KUBE_VIP_MANIFEST,
   kubeVipStaticPod,
 } from './kube-vip.js';
@@ -49,6 +50,21 @@ export function kubeadmInstallScript(spec: ClusterSpec, version: string): string
     CONTAINERD_VERSION: containerd,
     RUNC_VERSION: runc,
   });
+}
+
+/**
+ * FP31-F-11: the node's address for CCMs that take it from the kubelet (`--node-ip`). kubeadm's
+ * kubeletExtraArgs cannot run a command, so it goes into KUBELET_EXTRA_ARGS, which the systemd
+ * drop-in of the kubelet packages reads (deb: /etc/default/kubelet, rpm: /etc/sysconfig/kubelet).
+ */
+function nodeAddressCommands(spec: ClusterSpec, infra: InfraTransformPlugin): string[] {
+  const address = spec.addons.cloudControllerManager
+    ? infra.nodeAddressCommand?.(spec.infrastructure as never)
+    : undefined;
+  if (!address) return [];
+  return [
+    `f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(${address})" > "$f"`,
+  ];
 }
 
 /** Kubelet arguments (v1beta2: list of name/value). */
@@ -115,6 +131,7 @@ function bootstrapFields(
     preKubeadmCommands: [
       ...(infra.nodePreparation ?? []),
       INSTALL_SCRIPT_PATH,
+      ...nodeAddressCommands(spec, infra),
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,
     ],
@@ -182,6 +199,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
     const fields = bootstrapFields(spec, infra, cp, spec.kubernetes.version) as {
       files?: unknown[];
       preKubeadmCommands?: string[];
+      postKubeadmCommands?: string[];
     };
     const nodeRegistration = {
       name: infra.nodeIdentity(spec.infrastructure).nodeName,
@@ -203,7 +221,7 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
         kubeadmConfigSpec: {
           ...fields,
           // FP31-F-07: kube-vip as static pod, so the VIP exists during kubeadm init; the first
-          // node uses super-admin.conf until the API server grants admin.conf its rights.
+          // node uses super-admin.conf during init and switches back to admin.conf afterwards.
           ...(vip
             ? {
                 files: [
@@ -218,6 +236,10 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
                 preKubeadmCommands: [
                   ...(fields.preKubeadmCommands ?? []),
                   KUBEADM_KUBE_VIP_INIT_COMMAND,
+                ],
+                postKubeadmCommands: [
+                  KUBEADM_KUBE_VIP_RESTORE_COMMAND,
+                  ...(fields.postKubeadmCommands ?? []),
                 ],
               }
             : {}),
