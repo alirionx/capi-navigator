@@ -128,3 +128,10 @@ export const KUBEADM_KUBE_VIP_MANIFEST = '/etc/kubernetes/manifests/kube-vip.yam
  * CAPMOX's template). Joining nodes keep admin.conf.
  */
 export const KUBEADM_KUBE_VIP_INIT_COMMAND = `if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' ${KUBEADM_KUBE_VIP_MANIFEST}; fi`;
+
+/**
+ * After `kubeadm init` admin.conf has its rights; the first node switches back, since
+ * super-admin.conf bypasses RBAC and is meant for the bootstrap only (the kubelet restarts the
+ * static pod once).
+ */
+export const KUBEADM_KUBE_VIP_RESTORE_COMMAND = `if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' ${KUBEADM_KUBE_VIP_MANIFEST}; fi`;

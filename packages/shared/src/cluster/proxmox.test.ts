@@ -167,6 +167,10 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     const kadm = JSON.stringify(find(kubeadm(pve()), 'KubeadmControlPlane')[0]!.spec);
     expect(kadm).toContain('/etc/kubernetes/manifests/kube-vip.yaml');
     expect(kadm).toContain('super-admin.conf');
+    // Back to admin.conf after kubeadm init: super-admin.conf bypasses RBAC.
+    expect(kadm).toContain(
+      's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#',
+    );
   });
 
   it('k0s kubelets report the node address for the CCM (FP31-F-11, live test)', () => {
@@ -178,6 +182,11 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     );
     const [worker] = find(k0s(pve()), 'K0sWorkerConfigTemplate');
     expect(JSON.stringify(worker!.spec)).toContain(JSON.stringify(nodeIp).slice(1, -1));
+    // kubeadm: through KUBELET_EXTRA_ARGS, which the kubelet packages' drop-in reads.
+    const [kcp] = find(kubeadm(pve()), 'KubeadmControlPlane');
+    expect(JSON.stringify(kcp!.spec)).toContain(
+      'echo \\"KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1',
+    );
     // Without the CCM the kubelet keeps its own address handling.
     const noCcm = k0s(pve({ addons: { cloudControllerManager: false, csiDriver: false } }));
     expect(JSON.stringify(objects(noCcm))).not.toContain('--node-ip');

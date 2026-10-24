@@ -1468,8 +1468,10 @@ spec:
     preKubeadmCommands:
       - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
+      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
       - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
     postKubeadmCommands:
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
       - kubectl --kubeconfig /etc/kubernetes/admin.conf label node "{{ v1.local_hostname }}" node.kubernetes.io/exclude-from-external-load-balancers- || true
     initConfiguration:
       nodeRegistration:
@@ -1796,7 +1798,10 @@ spec:
     preKubeadmCommands:
       - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
+      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
       - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
+    postKubeadmCommands:
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
     initConfiguration:
       nodeRegistration:
         name: "{{ v1.local_hostname }}"
@@ -1848,7 +1853,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: pve-default-3ccbc98d
+  name: pve-default-b974c171
   namespace: proxmox
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1957,6 +1962,7 @@ spec:
       preKubeadmCommands:
         - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
         - /usr/local/bin/capi-navigator-install-kubernetes.sh
+        - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
       joinConfiguration:
         nodeRegistration:
           name: "{{ v1.local_hostname }}"
@@ -1999,7 +2005,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: pve-default-3ccbc98d
+          name: pve-default-b974c171
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
