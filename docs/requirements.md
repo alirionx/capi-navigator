@@ -1019,7 +1019,7 @@ Requirements:
 
 - **UX-01** (done in 0.10.0) Credentials page: the "Add …" buttons (one per provider) wrap badly next to the page title once there are four providers. One "Add credential" button with a menu of the providers, as for "New add-on" (FP-30).
 - **UX-02** (done in 0.10.0) Overview of a management cluster on the home page: next to the providers, one row per workload cluster with its infrastructure (provider, name, state), its control plane nodes and its worker nodes (per pool) as small boxes with their state, so the shape of every cluster is visible at a glance; a click leads to the cluster or machine.
-- **UX-03** Machines tab: the addresses of every machine as columns, internal and external, from `Machine.status.addresses` (the infrastructure provider fills them). Columns appear only when at least one machine has such an address: Proxmox VE nodes have only internal ones; on the clouds the app's nodes have no public addresses either (outbound through NAT, inbound through load balancers), so external ones appear only where a provider reports them.
+- **UX-03** Machines tab: the internal address of every machine as a column, from `Machine.status.addresses` (the infrastructure provider fills them). The app gives nodes no public addresses on purpose (outbound through NAT, inbound through load balancers; per-node floating or elastic IPs were rejected, FP-28), so only internal addresses are shown.
 
 **Review log**
 
