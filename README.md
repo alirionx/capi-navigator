@@ -199,6 +199,25 @@ helm install capi-navigator deploy/helm/capi-navigator \
   --set image.repository=capi-navigator --set image.tag=dev
 ```
 
+**Outbound proxy:** the app reaches GitHub (provider versions, the ORC manifest) and Helm
+repositories over the internet. Behind a proxy, set the standard variables with `extraEnv`; the
+image enables Node.js proxy support (`NODE_USE_ENV_PROXY=1`). The Kubernetes API is always reached
+directly. `NO_PROXY` takes host names, `.domain` suffixes, single IPs and IP ranges
+(`10.0.0.0-10.255.255.255`), no CIDRs. A proxy that inspects TLS also needs its CA certificate:
+
+```yaml
+# values-proxy.yaml; the ConfigMap proxy-ca (key ca.crt) in the release namespace holds the CA
+extraEnv:
+  - { name: HTTPS_PROXY, value: http://proxy.example.com:3128 }
+  - { name: HTTP_PROXY, value: http://proxy.example.com:3128 }
+  - { name: NO_PROXY, value: 'localhost,127.0.0.1,.svc,.cluster.local,.example.internal' }
+  - { name: NODE_EXTRA_CA_CERTS, value: /etc/capi-navigator/proxy-ca/ca.crt }
+extraVolumes:
+  - { name: proxy-ca, configMap: { name: proxy-ca } }
+extraVolumeMounts:
+  - { name: proxy-ca, mountPath: /etc/capi-navigator/proxy-ca, readOnly: true }
+```
+
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
 there on first start.
@@ -352,6 +371,8 @@ stored in the home cluster (the app has no database).
 | `LOG_LEVEL`, `LOG_JSON`                         | `log`, `true`           | Log level; JSON logs by default                                                                                                  |
 | `POD_NAME`                                      | host name               | Identity of the replica for leader election                                                                                      |
 | `KUBECONFIG`                                    | in-cluster              | Access to the home cluster in local development                                                                                  |
+| `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY`         | –                       | Outbound proxy for GitHub and Helm repositories (`NODE_USE_ENV_PROXY=1` in the image); see "Install into a cluster with Helm"    |
+| `NODE_EXTRA_CA_CERTS`                           | –                       | Additional CA certificates, e.g. of a proxy that inspects TLS                                                                    |
 
 ## Technology
 

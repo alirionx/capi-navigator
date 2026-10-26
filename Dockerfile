@@ -27,10 +27,13 @@ RUN pnpm --filter @capi-navigator/shared build \
 FROM node:24-bookworm-slim AS runtime
 # Set by the release workflow from the tag; local builds are development versions.
 ARG APP_VERSION=0.0.0-dev
+# NODE_USE_ENV_PROXY: outbound requests honour HTTPS_PROXY, HTTP_PROXY and NO_PROXY when they are
+# set (FP-29); without them nothing changes.
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \
     PORT=3000 \
-    STATIC_DIR=/app/public
+    STATIC_DIR=/app/public \
+    NODE_USE_ENV_PROXY=1
 WORKDIR /app
 COPY --from=build --chown=node:node /out /app
 # Numeric (the user "node"), so Kubernetes can verify runAsNonRoot of the chart.

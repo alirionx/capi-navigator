@@ -54,6 +54,30 @@ trustProxy: ''
 
 resources: {}
 
+# Additional environment variables, volumes and mounts of the app container.
+# Outbound proxy (FP-29): the image sets NODE_USE_ENV_PROXY=1, so the standard variables are
+# enough. The app reaches GitHub (provider versions, ORC manifest) and Helm repositories through
+# it; the Kubernetes API is always reached directly. NO_PROXY takes host names, ".domain" suffixes,
+# single IPs and IP ranges (a.b.c.d-e.f.g.h), no CIDRs. A proxy that inspects TLS needs its CA:
+# mount it and point NODE_EXTRA_CA_CERTS to it.
+extraEnv: []
+#  - name: HTTPS_PROXY
+#    value: http://proxy.example.com:3128
+#  - name: HTTP_PROXY
+#    value: http://proxy.example.com:3128
+#  - name: NO_PROXY
+#    value: localhost,127.0.0.1,.svc,.cluster.local,.example.internal,10.0.0.0-10.255.255.255
+#  - name: NODE_EXTRA_CA_CERTS
+#    value: /etc/capi-navigator/proxy-ca/ca.crt
+extraVolumes: []
+#  - name: proxy-ca
+#    configMap:
+#      name: proxy-ca
+extraVolumeMounts: []
+#  - name: proxy-ca
+#    mountPath: /etc/capi-navigator/proxy-ca
+#    readOnly: true
+
 auth:
   # FP1-F-03: absolute session lifetime in hours.
   sessionTtlHours: 8

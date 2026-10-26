@@ -122,9 +122,17 @@ const TLS_TRUST = new Set([
 ]);
 
 /** Understandable messages for the usual network and TLS errors (NF-06). */
-export function describeError(url: URL, err: Error & { code?: string }): string {
+export function describeError(
+  url: URL,
+  err: Error & { code?: string },
+  env: NodeJS.ProcessEnv = process.env,
+): string {
   if (err.code && TLS_TRUST.has(err.code)) {
-    return `${url.host}: the server certificate is not trusted; add the CA certificate of the registry`;
+    // Behind a proxy that inspects TLS, the proxy's certificate is the untrusted one (FP-29).
+    const proxied = Boolean(env.HTTPS_PROXY || env.https_proxy);
+    return proxied
+      ? `${url.host}: the server certificate is not trusted; add the CA certificate of the registry, or of the outbound proxy if it inspects TLS (NODE_EXTRA_CA_CERTS)`
+      : `${url.host}: the server certificate is not trusted; add the CA certificate of the registry`;
   }
   if (err.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
     return `${url.host}: the server certificate is not valid for this host name`;

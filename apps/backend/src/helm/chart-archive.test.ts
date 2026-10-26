@@ -48,8 +48,19 @@ describe('fetch errors (NF-06)', () => {
         code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
       },
     );
-    expect(describeError(url, err)).toBe(
+    expect(describeError(url, err, {})).toBe(
       'registry.example:5443: the server certificate is not trusted; add the CA certificate of the registry',
+    );
+  });
+
+  it('names the CA of a TLS-inspecting outbound proxy when one is set (FP-29)', async () => {
+    const { describeError } = await import('./fetch.js');
+    const url = new URL('https://kube-vip.github.io/helm-charts/index.yaml');
+    const err = Object.assign(new Error('unable to verify'), {
+      code: 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+    });
+    expect(describeError(url, err, { HTTPS_PROXY: 'http://proxy.example:3128' })).toBe(
+      'kube-vip.github.io: the server certificate is not trusted; add the CA certificate of the registry, or of the outbound proxy if it inspects TLS (NODE_EXTRA_CA_CERTS)',
     );
   });
 });

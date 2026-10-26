@@ -57,6 +57,9 @@ spec:
             - name: TRUST_PROXY
               value: {{ . | quote }}
             {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           ports:
             - name: http
               containerPort: 3000
@@ -69,3 +72,9 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.extraVolumeMounts }}
+          volumeMounts: {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.extraVolumes }}
+      volumes: {{- toYaml . | nindent 8 }}
+      {{- end }}
