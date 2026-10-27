@@ -451,6 +451,18 @@ describe('k0s flavor (FP-9)', () => {
       renderManifests(objects.filter((o) => o.kind === 'K0sWorkerConfigTemplate')),
     ).toMatchSnapshot();
   });
+  it('gives files without a mode 0644, since k0smotron would write an empty one', () => {
+    const spec = k0s(openstack());
+    spec.topology.workerPools![0]!.customization = {
+      files: [{ path: '/etc/motd', content: 'hello\n' }],
+    };
+    const template = transform(ClusterSpecSchema.parse(spec), ctx).find(
+      (o) => o.kind === 'K0sWorkerConfigTemplate',
+    )!;
+    const files = (template.spec as { template: { spec: { files: object[] } } }).template.spec
+      .files;
+    expect(files).toEqual([{ path: '/etc/motd', content: 'hello\n', permissions: '0644' }]);
+  });
   it('rotates templates on upgrade and keeps workers until the control plane is done', () => {
     const base = ClusterSpecSchema.parse(k0s(openstack()));
     const upgraded = ClusterSpecSchema.parse({

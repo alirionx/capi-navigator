@@ -61,7 +61,9 @@ function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, gro
           contentFrom: f.contentFromSecret
             ? { secretRef: { name: f.contentFromSecret.name, key: f.contentFromSecret.key } }
             : undefined,
-          permissions: f.permissions,
+          // Without a mode k0smotron writes `permissions: ''`; cloud-init then ends "degraded",
+          // which CAPMOX reports as failed provisioning (FP-29 node spike).
+          permissions: f.permissions ?? '0644',
           owner: f.owner,
         }),
       ),
