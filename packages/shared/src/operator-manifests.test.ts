@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { catalogEntry } from './catalog/providers.js';
-import { buildProviderManifests, renderManifests } from './operator-manifests.js';
+import { OutboundProxySchema } from './connections.js';
+import {
+  OUTBOUND_PROXY_ANNOTATION,
+  buildProviderManifests,
+  effectiveNoProxy,
+  outboundProxyHash,
+  renderManifests,
+} from './operator-manifests.js';
 import { ProviderInstallRequestSchema } from './operator.js';
 
 const spec = (input: Record<string, unknown>) => ProviderInstallRequestSchema.parse(input);
@@ -108,5 +115,71 @@ describe('ProviderUpdateRequestSchema', () => {
     expect(
       ProviderUpdateRequestSchema.parse({ version: 'v1.0.0', variables: {} }).variables,
     ).toEqual({});
+  });
+});
+
+describe('outbound proxy for provider controllers (FP-29)', () => {
+  const PROXY_CA = '-----BEGIN CERTIFICATE-----\nMIIBproxy\n-----END CERTIFICATE-----\n';
+  const proxy = {
+    httpsProxy: 'http://proxy.example:3128',
+    noProxy: '10.0.0.0/8,.example.internal',
+  };
+
+  it('CAAPH: proxy variables, settings hash and annotation', () => {
+    const objects = buildProviderManifests(
+      catalogEntry('helm')!,
+      spec({ catalogId: 'helm', version: 'v0.6.4', namespace: 'caaph-system' }),
+      { outboundProxy: { settings: proxy, apiServerIp: '10.96.0.1' } },
+    );
+    expect(renderManifests(objects)).toMatchSnapshot();
+    expect(objects.map((o) => o.kind)).toEqual(['Namespace', 'AddonProvider']);
+  });
+
+  it('Proxmox VE: proxy CA next to the CA bundle of the credentials', () => {
+    const ca = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n';
+    const objects = buildProviderManifests(
+      catalogEntry('proxmox')!,
+      spec({ catalogId: 'proxmox', version: 'v0.9.1', namespace: 'capmox-system' }),
+      { caBundle: ca, outboundProxy: { settings: { ...proxy, caCert: PROXY_CA } } },
+    );
+    expect(renderManifests(objects)).toMatchSnapshot();
+  });
+
+  it('restarts the controller and marks the provider when the settings change', () => {
+    const build = (settings: typeof proxy) =>
+      buildProviderManifests(
+        catalogEntry('helm')!,
+        spec({ catalogId: 'helm', version: 'v0.6.4', namespace: 'caaph-system' }),
+        { outboundProxy: { settings } },
+      ).at(-1)!;
+    const a = build(proxy);
+    const b = build({ ...proxy, noProxy: '10.0.0.0/8' });
+    expect(a.metadata.annotations?.[OUTBOUND_PROXY_ANNOTATION]).toBe(outboundProxyHash(proxy));
+    expect(b.metadata.annotations?.[OUTBOUND_PROXY_ANNOTATION]).not.toBe(
+      a.metadata.annotations?.[OUTBOUND_PROXY_ANNOTATION],
+    );
+    const restartValue = (o: typeof a) =>
+      JSON.stringify(o.spec).match(/CAPI_NAVIGATOR_OUTBOUND_PROXY","value":"(\w+)"/)?.[1];
+    expect(restartValue(a)).toBe(outboundProxyHash(proxy));
+    expect(restartValue(b)).not.toBe(restartValue(a));
+  });
+
+  it('puts the in-cluster entries and the API server first, without duplicates', () => {
+    expect(effectiveNoProxy(' .svc, 192.168.10.0/24 ,,10.96.0.1', '10.96.0.1')).toBe(
+      'localhost,127.0.0.1,.svc,.cluster.local,10.96.0.1,192.168.10.0/24',
+    );
+    expect(effectiveNoProxy(undefined)).toBe('localhost,127.0.0.1,.svc,.cluster.local');
+  });
+
+  it('accepts proxies without credentials only', () => {
+    const ok = OutboundProxySchema.safeParse({ httpsProxy: 'http://proxy:3128' });
+    expect(ok.success).toBe(true);
+    const creds = OutboundProxySchema.safeParse({ httpsProxy: 'http://user:pw@proxy:3128' });
+    expect(creds.error?.issues[0]?.message).toBe(
+      'Proxies with a user name or password are not supported',
+    );
+    expect(
+      OutboundProxySchema.safeParse({ httpsProxy: 'http://p:3128', noProxy: 'a, b' }).success,
+    ).toBe(false);
   });
 });

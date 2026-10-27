@@ -75,6 +75,26 @@ spec:
                   minimum: 0
                 manifestChartRepository:
                   type: string
+                outboundProxy:
+                  type: object
+                  properties:
+                    httpsProxy:
+                      type: string
+                      maxLength: 2048
+                      format: uri
+                    httpProxy:
+                      type: string
+                      maxLength: 2048
+                      format: uri
+                    noProxy:
+                      type: string
+                      maxLength: 4096
+                      pattern: ^[^\\s]*$
+                    caCert:
+                      type: string
+                      maxLength: 262144
+                  required:
+                    - httpsProxy
               required:
                 - authType
             status:

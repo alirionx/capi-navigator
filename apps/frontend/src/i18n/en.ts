@@ -582,6 +582,41 @@ export const en = {
       'The CAPI Operator removes the provider components. Workload clusters that use the provider can no longer be managed.',
     removeInUse: '{n} workload cluster(s) still use this provider:',
     removeConfirm: 'Type "{name}" to confirm',
+    useProxy: 'Use the outbound proxy',
+    proxyOn: 'on',
+    proxyOff: 'off',
+    useProxyHint:
+      'Sets HTTPS_PROXY, HTTP_PROXY, NO_PROXY and the proxy CA on the controller (spec.deployment, spec.patches). On by default for controllers that need the internet (Helm repositories, public cloud APIs). Default: {default}.',
+    proxyRemoved:
+      'The outbound proxy of this management cluster was removed: this update switches it off for the provider.',
+    proxy: {
+      title: 'Outbound proxy',
+      subtitle:
+        'For provider controllers that need the internet, e.g. Helm add-ons (CAAPH) for chart repositories.',
+      none: 'Not set: provider controllers reach the internet directly.',
+      change: 'Change',
+      editTitle: 'Outbound proxy of the management cluster',
+      editInfo:
+        'Providers use these settings when they are installed or updated with "Use the outbound proxy". Proxies with a user name or password are not supported.',
+      httpsProxy: 'HTTPS proxy',
+      httpsProxyHint: 'URL of the proxy, e.g. http://proxy.example.com:3128. Required.',
+      httpProxy: 'HTTP proxy',
+      httpProxyHint: 'Default: the HTTPS proxy.',
+      noProxy: 'No proxy',
+      noProxyHint:
+        "Comma-separated hosts, .domain suffixes, IPs and CIDRs reached directly (Go syntax, no ranges). Add the networks of the workload clusters' API endpoints and internal clouds. The app adds localhost, .svc, .cluster.local and the API server's ClusterIP. Default: none.",
+      caCert: 'CA certificate',
+      caCertHint:
+        'Only for a proxy that inspects TLS (PEM). Mounted into the controller and added to its trust store (SSL_CERT_DIR). Default: none.',
+      caSet: 'set',
+      remove: 'Remove proxy',
+      outdatedHint:
+        'The settings changed since these providers were installed or updated: {names}. Update them (same version) to apply the new settings.',
+      current: 'Proxy',
+      outdated: 'Proxy outdated',
+      currentTitle: 'Uses the outbound proxy',
+      outdatedTitle: 'Uses outdated proxy settings; update the provider to apply the current ones',
+    },
   },
   clusters: {
     title: 'Clusters',

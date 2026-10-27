@@ -7885,6 +7885,9 @@
           "manifestChartRepository": {
             "type": "string"
           },
+          "outboundProxy": {
+            "$ref": "#/components/schemas/OutboundProxy"
+          },
           "createdAt": {
             "type": "string"
           },
@@ -9200,6 +9203,13 @@
           },
           "fetchConfigUrl": {
             "type": "string"
+          },
+          "outboundProxy": {
+            "type": "string",
+            "enum": [
+              "current",
+              "outdated"
+            ]
           }
         },
         "required": [
@@ -9970,6 +9980,34 @@
         "required": [
           "prerequisites",
           "providers"
+        ],
+        "additionalProperties": false
+      },
+      "OutboundProxy": {
+        "type": "object",
+        "properties": {
+          "httpsProxy": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "httpProxy": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "noProxy": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\s]*$"
+          },
+          "caCert": {
+            "type": "string",
+            "maxLength": 262144
+          }
+        },
+        "required": [
+          "httpsProxy"
         ],
         "additionalProperties": false
       },
@@ -12118,6 +12156,33 @@
           "version"
         ]
       },
+      "OutboundProxyInput": {
+        "type": "object",
+        "properties": {
+          "httpsProxy": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "httpProxy": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "noProxy": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\s]*$"
+          },
+          "caCert": {
+            "type": "string",
+            "maxLength": 262144
+          }
+        },
+        "required": [
+          "httpsProxy"
+        ]
+      },
       "PasswordInput": {
         "type": "string",
         "minLength": 8,
@@ -12165,6 +12230,9 @@
           "fetchConfigUrl": {
             "type": "string",
             "format": "uri"
+          },
+          "outboundProxy": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -12201,6 +12269,9 @@
             "additionalProperties": {
               "type": "boolean"
             }
+          },
+          "outboundProxy": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -12809,6 +12880,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/HelmRepositoryName"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outboundProxy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutboundProxyInput"
               },
               {
                 "type": "null"

@@ -13,6 +13,7 @@ import {
 } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import OrcDialog from '../components/OrcDialog.vue';
+import OutboundProxyPanel from '../components/OutboundProxyPanel.vue';
 import ProviderDialog from '../components/ProviderDialog.vue';
 import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
@@ -221,6 +222,9 @@ const displayName = (p: InstalledProvider) =>
           </v-col>
         </v-row>
 
+        <!-- Outbound proxy for provider controllers (FP-29) -->
+        <OutboundProxyPanel :providers="providers" />
+
         <!-- Installed providers (FP3-F-08) -->
         <h2 class="text-h6 mb-2">{{ t('providers.installed') }}</h2>
         <ErrorAlert v-if="actionError && !dialog" :error="actionError" class="mb-2" />
@@ -262,6 +266,18 @@ const displayName = (p: InstalledProvider) =>
                   class="mr-1"
                 />
                 {{ t(`providers.phase.${item.phase}`) }}
+              </v-chip>
+              <v-chip
+                v-if="item.outboundProxy"
+                size="small"
+                variant="tonal"
+                class="ml-1"
+                prepend-icon="mdi-web"
+                :color="item.outboundProxy === 'outdated' ? 'warning' : undefined"
+                :title="t(`providers.proxy.${item.outboundProxy}Title`)"
+                data-testid="provider-proxy"
+              >
+                {{ t(`providers.proxy.${item.outboundProxy}`) }}
               </v-chip>
             </template>
             <template #[`item.actions`]="{ item }">

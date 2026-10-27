@@ -105,6 +105,15 @@ export class ConnectionsService {
       }
       patch.manifestChartRepository = repo || null;
     }
+    if (req.outboundProxy !== undefined) {
+      // Merge patch: fields left out of the new settings must be removed explicitly (FP-29).
+      patch.outboundProxy = req.outboundProxy && {
+        httpProxy: null,
+        noProxy: null,
+        caCert: null,
+        ...req.outboundProxy,
+      };
+    }
     if (req.credentials) {
       const creds = this.resolve(name, req.credentials);
       await this.kube(`Store credentials of ${name}`, () => this.writeCredentials(name, creds));
@@ -237,6 +246,7 @@ function toConnection(c: ConnectionResource): Connection {
     ...(c.spec.manifestChartRepository
       ? { manifestChartRepository: c.spec.manifestChartRepository }
       : {}),
+    ...(c.spec.outboundProxy ? { outboundProxy: c.spec.outboundProxy } : {}),
     ...(c.metadata.creationTimestamp ? { createdAt: String(c.metadata.creationTimestamp) } : {}),
     status: c.status ?? { phase: 'Unknown' },
   };

@@ -1,5 +1,141 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`outbound proxy for provider controllers (FP-29) > CAAPH: proxy variables, settings hash and annotation 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: caaph-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+---
+apiVersion: operator.cluster.x-k8s.io/v1alpha2
+kind: AddonProvider
+metadata:
+  name: helm
+  namespace: caaph-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  annotations:
+    capi-navigator.io/outbound-proxy: d65371b8
+spec:
+  version: v0.6.4
+  deployment:
+    containers:
+      - name: manager
+        env:
+          - name: HTTPS_PROXY
+            value: http://proxy.example:3128
+          - name: HTTP_PROXY
+            value: http://proxy.example:3128
+          - name: NO_PROXY
+            value: localhost,127.0.0.1,.svc,.cluster.local,10.96.0.1,10.0.0.0/8,.example.internal
+          - name: CAPI_NAVIGATOR_OUTBOUND_PROXY
+            value: d65371b8
+"
+`;
+
+exports[`outbound proxy for provider controllers (FP-29) > Proxmox VE: proxy CA next to the CA bundle of the credentials 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-ca-bundle
+  namespace: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIB
+    -----END CERTIFICATE-----
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: capi-navigator-proxy-ca
+  namespace: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+type: Opaque
+stringData:
+  ca.crt: |
+    -----BEGIN CERTIFICATE-----
+    MIIBproxy
+    -----END CERTIFICATE-----
+---
+apiVersion: operator.cluster.x-k8s.io/v1alpha2
+kind: InfrastructureProvider
+metadata:
+  name: proxmox
+  namespace: capmox-system
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  annotations:
+    capi-navigator.io/outbound-proxy: c9f537fb
+spec:
+  version: v0.9.1
+  deployment:
+    containers:
+      - name: manager
+        args:
+          --proxmox-root-cert-file: /var/lib/capi-navigator/ca/ca.crt
+        env:
+          - name: PROXMOX_INSECURE
+            value: "false"
+          - name: CAPI_NAVIGATOR_CA_BUNDLE
+            value: 7edce8fa
+          - name: HTTPS_PROXY
+            value: http://proxy.example:3128
+          - name: HTTP_PROXY
+            value: http://proxy.example:3128
+          - name: NO_PROXY
+            value: localhost,127.0.0.1,.svc,.cluster.local,10.0.0.0/8,.example.internal
+          - name: SSL_CERT_DIR
+            value: /etc/capi-navigator/proxy-ca
+          - name: CAPI_NAVIGATOR_OUTBOUND_PROXY
+            value: c9f537fb
+  patches:
+    - target:
+        kind: Deployment
+        name: capmox-controller-manager
+      patch: |
+        - op: add
+          path: /spec/template/spec/volumes/-
+          value:
+            name: capi-navigator-ca
+            secret:
+              secretName: proxmox-ca-bundle
+        - op: add
+          path: /spec/template/spec/containers/0/volumeMounts/-
+          value:
+            name: capi-navigator-ca
+            mountPath: /var/lib/capi-navigator/ca
+            readOnly: true
+    - target:
+        kind: Deployment
+      patch: |
+        - op: add
+          path: /spec/template/spec/volumes/-
+          value:
+            name: capi-navigator-proxy-ca
+            secret:
+              secretName: capi-navigator-proxy-ca
+        - op: add
+          path: /spec/template/spec/containers/0/volumeMounts/-
+          value:
+            name: capi-navigator-proxy-ca
+            mountPath: /etc/capi-navigator/proxy-ca
+            readOnly: true
+"
+`;
+
 exports[`provider manifests (FP3-F-09, FP3-F-10) > Proxmox VE: TLS verification against a CA bundle from the credentials (FP31-F-01) 1`] = `
 "apiVersion: v1
 kind: Namespace

@@ -265,6 +265,30 @@ describe('connections API (FP-2)', () => {
     fake.helmRepositories.delete('mirror');
   });
 
+  it('sets, replaces and removes the outbound proxy (FP-29)', async () => {
+    const patch = (body: object) =>
+      http().patch('/api/connections/prod').set(CSRF).set('Cookie', admin).send(body);
+    const ca = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+    const bad = await patch({ outboundProxy: { httpsProxy: 'http://u:p@proxy:3128' } }).expect(400);
+    expect(JSON.stringify(bad.body)).toContain('user name or password');
+    const set = await patch({
+      outboundProxy: { httpsProxy: 'http://proxy:3128', noProxy: '10.0.0.0/8', caCert: ca },
+    }).expect(200);
+    expect(set.body.outboundProxy).toEqual({
+      httpsProxy: 'http://proxy:3128',
+      noProxy: '10.0.0.0/8',
+      caCert: ca,
+    });
+    // Fields left out are removed, not kept from before (merge patch).
+    const replaced = await patch({ outboundProxy: { httpsProxy: 'http://proxy2:3128' } }).expect(
+      200,
+    );
+    expect(replaced.body.outboundProxy).toEqual({ httpsProxy: 'http://proxy2:3128' });
+    const removed = await patch({ outboundProxy: null }).expect(200);
+    expect(removed.body.outboundProxy).toBeUndefined();
+    expect(testConnection).not.toHaveBeenCalled();
+  });
+
   it('replaces credentials, bumps the revision and re-tests', async () => {
     const before = fake.connections.get('prod')!.spec.credentialsRevision;
     const res = await http()

@@ -23,6 +23,9 @@ import {
   OPERATOR_VERSION,
   ORC,
   orcVersionForCapo,
+  OUTBOUND_PROXY_ANNOTATION,
+  outboundProxyHash,
+  PROXY_CA_SECRET,
   PROVIDER_KINDS,
   PROVIDER_PLURALS,
   renderManifests,
@@ -32,6 +35,7 @@ import {
   type ProviderCatalogEntry,
   type ProviderInstallSpec,
   type ProviderKind,
+  type ProviderProxyOptions,
   type ProviderUsage,
   type ReleaseList,
 } from '@capi-navigator/shared';
@@ -40,6 +44,7 @@ import { ManagementClusterClients } from '../connections/management-cluster-clie
 import { CredentialsService } from '../credentials/credentials.service.js';
 import { serverSideApply } from '../kube/apply.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
+import { StoreService } from '../store/store.service.js';
 import { fetchOrcManifest, OrcManifestError } from './orc-manifest.js';
 import { detectPrerequisites } from './prerequisites.js';
 import {
@@ -64,6 +69,7 @@ export class OperatorService {
   constructor(
     private readonly clients: ManagementClusterClients,
     private readonly credentials: CredentialsService,
+    private readonly store: StoreService,
   ) {}
 
   /** CA bundle from the stored credentials for providers that verify TLS (FP31-F-01). */
@@ -73,14 +79,57 @@ export class OperatorService {
     return caBundle ? { caBundle } : {};
   }
 
+  /** Outbound proxy settings of the connection (FP-29). */
+  private proxySettings(connection: string) {
+    return this.store.connectionCache.get(connection)?.spec.outboundProxy;
+  }
+
+  /**
+   * Outbound proxy for a provider (FP-29). The API server's ClusterIP goes into NO_PROXY: client-go
+   * honours the proxy variables for its own API calls too.
+   */
+  private async proxyOptions(
+    kc: KubeConfig,
+    connection: string,
+    use: boolean,
+    warnings: string[],
+  ): Promise<{ outboundProxy?: ProviderProxyOptions }> {
+    const settings = this.proxySettings(connection);
+    if (use && !settings) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'No outbound proxy is set for this management cluster',
+        hint: 'Set it on the Providers page (Outbound proxy) first, or switch the proxy off.',
+        fieldErrors: { outboundProxy: ['No outbound proxy is set'] },
+      });
+    }
+    if (!use || !settings) return {};
+    const apiServerIp = await kc
+      .makeApiClient(CoreV1Api)
+      .readNamespacedService({ name: 'kubernetes', namespace: 'default' })
+      .then((svc) => svc.spec?.clusterIP)
+      .catch(() => undefined);
+    if (!apiServerIp) {
+      warnings.push(
+        'The ClusterIP of the Service default/kubernetes could not be read: add it to "No proxy", otherwise the controller sends its own API calls to the proxy.',
+      );
+    }
+    return { outboundProxy: { settings, ...(apiServerIp ? { apiServerIp } : {}) } };
+  }
+
   async state(connection: string): Promise<OperatorState> {
     const kc = await this.clients.forConnection(connection);
+    const settings = this.proxySettings(connection);
+    const proxyHash = settings ? outboundProxyHash(settings) : undefined;
     return this.kube('Read the CAPI Operator state', async () => {
       const [prerequisites, providers] = await Promise.all([
         detectPrerequisites(kc),
         listProviders(kc),
       ]);
-      return { prerequisites, providers: providers.map(toInstalledProvider) };
+      return {
+        prerequisites,
+        providers: providers.map((p) => toInstalledProvider(p, proxyHash)),
+      };
     });
   }
 
@@ -98,7 +147,7 @@ export class OperatorService {
   async previewInstall(connection: string, input: ProviderInstallSpec): Promise<ManifestPreview> {
     const spec = withDefaultVariables(input);
     const { kc, entry, warnings } = await this.checkInstall(connection, spec);
-    const objects = buildProviderManifests(entry, spec, await this.tlsOptions(connection, entry));
+    const objects = await this.installObjects(kc, connection, entry, spec, warnings);
     await this.dryRun(kc, objects, warnings);
     return preview(objects, warnings);
   }
@@ -106,11 +155,26 @@ export class OperatorService {
   async install(connection: string, input: ProviderInstallSpec): Promise<ManifestPreview> {
     const spec = withDefaultVariables(input);
     const { kc, entry, warnings } = await this.checkInstall(connection, spec);
-    const objects = buildProviderManifests(entry, spec, await this.tlsOptions(connection, entry));
+    const objects = await this.installObjects(kc, connection, entry, spec, warnings);
     await this.kube(`Install ${entry.displayName}`, () =>
       serverSideApply(kc, objects as KubernetesObject[]),
     );
     return preview(objects, warnings);
+  }
+
+  private async installObjects(
+    kc: KubeConfig,
+    connection: string,
+    entry: ProviderCatalogEntry,
+    spec: ProviderInstallSpec,
+    warnings: string[],
+  ): Promise<ManifestObject[]> {
+    const use =
+      spec.outboundProxy ?? (!!entry.outboundProxyDefault && !!this.proxySettings(connection));
+    return buildProviderManifests(entry, spec, {
+      ...(await this.tlsOptions(connection, entry)),
+      ...(await this.proxyOptions(kc, connection, use, warnings)),
+    });
   }
 
   async previewUpdate(
@@ -132,6 +196,10 @@ export class OperatorService {
     await this.kube(`Update ${entry.displayName}`, () =>
       serverSideApply(kc, objects as KubernetesObject[]),
     );
+    // Server-side apply leaves objects alone that are no longer generated (FP-29).
+    if (!objects.some((o) => o.kind === 'Secret' && o.metadata.name === PROXY_CA_SECRET)) {
+      await deleteOwnSecret(kc, target.namespace, PROXY_CA_SECRET);
+    }
     return preview(objects, warnings);
   }
 
@@ -191,18 +259,10 @@ export class OperatorService {
         name: target.name,
       }),
     );
-    // Remove the configuration Secret only if the app created it.
+    // Remove the configuration Secret and the proxy CA only if the app created them.
     const ref = provider.spec?.configSecret;
-    if (ref) {
-      const core = kc.makeApiClient(CoreV1Api);
-      const ns = ref.namespace ?? target.namespace;
-      const secret = await core
-        .readNamespacedSecret({ name: ref.name, namespace: ns })
-        .catch(() => undefined);
-      if (secret?.metadata?.labels?.[MANAGED_BY_LABEL] === MANAGED_BY_VALUE) {
-        await core.deleteNamespacedSecret({ name: ref.name, namespace: ns }).catch(() => undefined);
-      }
-    }
+    if (ref) await deleteOwnSecret(kc, ref.namespace ?? target.namespace, ref.name);
+    await deleteOwnSecret(kc, target.namespace, PROXY_CA_SECRET);
   }
 
   // ---- ORC (FP3-F-04a) ----
@@ -340,11 +400,13 @@ export class OperatorService {
       featureGates: update.featureGates,
       ...(current.spec?.fetchConfig?.url ? { fetchConfigUrl: current.spec.fetchConfig.url } : {}),
     };
-    let objects: ManifestObject[] = buildProviderManifests(
-      entry,
-      spec,
-      await this.tlsOptions(connection, entry),
-    );
+    const warnings: string[] = [];
+    const useProxy =
+      update.outboundProxy ?? !!current.metadata.annotations?.[OUTBOUND_PROXY_ANNOTATION];
+    let objects: ManifestObject[] = buildProviderManifests(entry, spec, {
+      ...(await this.tlsOptions(connection, entry)),
+      ...(await this.proxyOptions(kc, connection, useProxy, warnings)),
+    });
     if (update.variables === undefined && current.spec?.configSecret) {
       // Keep the stored variables: reference the existing Secret, do not touch it.
       const ref = current.spec.configSecret;
@@ -352,7 +414,6 @@ export class OperatorService {
         o.kind === entry.kind ? { ...o, spec: { ...(o.spec as object), configSecret: ref } } : o,
       );
     }
-    const warnings: string[] = [];
     if (entry.requiresOrc) {
       const pre = (await this.state(connection)).prerequisites;
       const wanted = orcVersionForCapo(update.version);
@@ -426,6 +487,17 @@ export interface ProviderUpdate {
   version: string;
   variables?: Record<string, string>;
   featureGates: Record<string, boolean>;
+  /** FP-29; omitted: keep the current choice. */
+  outboundProxy?: boolean;
+}
+
+/** Deletes a Secret only if the app created it (label); missing Secrets are fine. */
+async function deleteOwnSecret(kc: KubeConfig, namespace: string, name: string): Promise<void> {
+  const core = kc.makeApiClient(CoreV1Api);
+  const secret = await core.readNamespacedSecret({ name, namespace }).catch(() => undefined);
+  if (secret?.metadata?.labels?.[MANAGED_BY_LABEL] === MANAGED_BY_VALUE) {
+    await core.deleteNamespacedSecret({ name, namespace }).catch(() => undefined);
+  }
 }
 
 export function isProviderKind(kind: string): kind is ProviderKind {

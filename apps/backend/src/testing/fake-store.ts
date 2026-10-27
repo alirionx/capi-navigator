@@ -269,15 +269,10 @@ export function createFakeStore() {
       patchSpec: async (name: string, spec: Record<string, unknown>) => {
         const current = connections.get(name);
         if (!current) throw err(404);
-        const merged: Record<string, unknown> = { ...current.spec };
-        for (const [k, v] of Object.entries(spec)) {
-          if (v === null) delete merged[k];
-          else merged[k] = v;
-        }
         const updated = {
           ...current,
           metadata: { ...current.metadata, resourceVersion: String(rv++) },
-          spec: merged as ManagementClusterSpec,
+          spec: mergePatch(current.spec, spec) as ManagementClusterSpec,
         };
         connections.set(name, updated);
         return structuredClone(updated);
@@ -376,4 +371,17 @@ export function createFakeStore() {
     groups,
     authSettings,
   };
+}
+
+/** JSON merge patch (RFC 7386), as the API server applies it: `null` removes, objects merge. */
+function mergePatch(target: unknown, patch: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> =
+    target && typeof target === 'object' && !Array.isArray(target) ? { ...target } : {};
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null) delete result[k];
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      result[k] = mergePatch(result[k], v as Record<string, unknown>);
+    } else result[k] = v;
+  }
+  return result;
 }

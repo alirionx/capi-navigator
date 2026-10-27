@@ -1,6 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import type { Prerequisites } from '@capi-navigator/shared';
+import { outboundProxyHash, type Prerequisites } from '@capi-navigator/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuditModule } from '../audit/audit.module.js';
@@ -80,6 +80,7 @@ const fakeKc = {
     deleteNamespacedSecret: async ({ name }: { name: string }) => {
       k8s.deleted.push(`secret:${name}`);
     },
+    readNamespacedService: async () => ({ spec: { clusterIP: '10.96.0.1' } }),
   }),
 };
 
@@ -108,6 +109,7 @@ const CORE = readyProvider('CoreProvider', 'cluster-api', 'capi-system', 'v1.14.
 
 describe('operator API (FP-3)', () => {
   let app: NestExpressApplication;
+  let fake: ReturnType<typeof createFakeStore>;
   let admin: string;
   let viewer: string;
   const CSRF = { 'x-capi-navigator': '1' };
@@ -132,7 +134,7 @@ describe('operator API (FP-3)', () => {
   }
 
   beforeAll(async () => {
-    const fake = createFakeStore();
+    fake = createFakeStore();
     const config = loadConfig({ INITIAL_ADMIN_PASSWORD: 'Admin-Pw-1', LOG_JSON: 'false' });
     const moduleRef = await Test.createTestingModule({
       imports: [ConfigModule, KubeModule, StoreModule, AuditModule, AuthModule, OperatorModule],
@@ -291,6 +293,106 @@ describe('operator API (FP-3)', () => {
       .set('Cookie', admin)
       .send({ version: 'v1.0.0' })
       .expect(400);
+  });
+
+  it('runs internet-facing controllers through the outbound proxy (FP-29)', async () => {
+    k8s.providers = [CORE];
+    const preview = (body: object) =>
+      post('/providers/preview', {
+        catalogId: 'helm',
+        version: 'v0.6.4',
+        namespace: 'caaph-system',
+        ...body,
+      });
+    // No proxy on the connection: the catalog default changes nothing; asking for it fails.
+    expect((await preview({}).expect(200)).body.yaml).not.toContain('HTTPS_PROXY');
+    const missing = await preview({ outboundProxy: true }).expect(400);
+    expect(missing.body.message).toBe('No outbound proxy is set for this management cluster');
+
+    const settings = { httpsProxy: 'http://proxy:3128', noProxy: '192.168.10.0/24' };
+    fake.connections.set('kind', {
+      apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+      kind: 'ManagementCluster',
+      metadata: { name: 'kind' },
+      spec: { authType: 'in-cluster', credentialsRevision: 0, outboundProxy: settings },
+    } as never);
+    const on = (await preview({}).expect(200)).body.yaml as string;
+    expect(on).toContain('value: http://proxy:3128');
+    // The API server's ClusterIP stays direct: client-go honours the proxy variables too.
+    expect(on).toContain(
+      'value: localhost,127.0.0.1,.svc,.cluster.local,10.96.0.1,192.168.10.0/24',
+    );
+    expect(on).toContain(`capi-navigator.io/outbound-proxy: ${outboundProxyHash(settings)}`);
+    expect((await preview({ outboundProxy: false }).expect(200)).body.yaml).not.toContain(
+      'HTTPS_PROXY',
+    );
+    // Off by default for controllers that need no internet.
+    const core = await post('/providers/preview', {
+      catalogId: 'kubeadm-bootstrap',
+      version: 'v1.14.3',
+      namespace: 'capi-kubeadm-bootstrap-system',
+    }).expect(200);
+    expect(core.body.yaml).not.toContain('HTTPS_PROXY');
+
+    // State: current or outdated settings; an update keeps the proxy unless switched off.
+    k8s.providers = [
+      CORE,
+      {
+        ...readyProvider('AddonProvider', 'helm', 'caaph-system', 'v0.6.4'),
+        metadata: {
+          name: 'helm',
+          namespace: 'caaph-system',
+          annotations: { 'capi-navigator.io/outbound-proxy': 'stale' },
+        },
+      },
+    ];
+    const state = await http().get(base).set('Cookie', viewer).expect(200);
+    const caaph = state.body.providers.find((p: { name: string }) => p.name === 'helm');
+    expect(caaph.outboundProxy).toBe('outdated');
+    k8s.providers[1]!.metadata.annotations = {
+      'capi-navigator.io/outbound-proxy': outboundProxyHash(settings),
+    };
+    const fresh = await http().get(base).set('Cookie', viewer).expect(200);
+    expect(
+      fresh.body.providers.find((p: { name: string }) => p.name === 'helm').outboundProxy,
+    ).toBe('current');
+    expect(
+      state.body.providers.find((p: { name: string }) => p.name === 'cluster-api'),
+    ).not.toHaveProperty('outboundProxy');
+    const update = (body: object) =>
+      http()
+        .put(`${base}/providers/AddonProvider/caaph-system/helm/preview`)
+        .set(CSRF)
+        .set('Cookie', admin)
+        .send({ version: 'v0.6.4', ...body });
+    expect((await update({}).expect(200)).body.yaml).toContain('HTTPS_PROXY');
+    expect((await update({ outboundProxy: false }).expect(200)).body.yaml).not.toContain(
+      'HTTPS_PROXY',
+    );
+    // Switched off: the app's proxy CA Secret goes, a foreign one with that name stays.
+    k8s.secrets['capi-navigator-proxy-ca'] = {
+      labels: { 'capi-navigator.io/managed-by': 'capi-navigator' },
+      keys: ['ca.crt'],
+    };
+    const apply = (body: object) =>
+      http()
+        .put(`${base}/providers/AddonProvider/caaph-system/helm`)
+        .set(CSRF)
+        .set('Cookie', admin)
+        .send({ version: 'v0.6.4', ...body });
+    fake.connections.get('kind')!.spec.outboundProxy = {
+      ...settings,
+      caCert: '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----',
+    };
+    await apply({ outboundProxy: true }).expect(200);
+    expect(k8s.deleted).not.toContain('secret:capi-navigator-proxy-ca');
+    await apply({ outboundProxy: false }).expect(200);
+    expect(k8s.deleted).toContain('secret:capi-navigator-proxy-ca');
+    k8s.deleted = [];
+    k8s.secrets['capi-navigator-proxy-ca'] = { keys: ['ca.crt'] };
+    await apply({ outboundProxy: false }).expect(200);
+    expect(k8s.deleted).toEqual([]);
+    fake.connections.delete('kind');
   });
 
   it('lists variable names but never values (NF-01)', async () => {

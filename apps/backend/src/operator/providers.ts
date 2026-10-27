@@ -3,6 +3,7 @@ import {
   catalogEntryFor,
   OPERATOR_GROUP,
   OPERATOR_VERSION,
+  OUTBOUND_PROXY_ANNOTATION,
   PROVIDER_KINDS,
   PROVIDER_PLURALS,
   type InstalledProvider,
@@ -16,7 +17,13 @@ import { isNotFound } from '../kube/errors.js';
 export interface ProviderObject {
   apiVersion?: string;
   kind: ProviderKind;
-  metadata: { name: string; namespace: string; deletionTimestamp?: string; generation?: number };
+  metadata: {
+    name: string;
+    namespace: string;
+    deletionTimestamp?: string;
+    generation?: number;
+    annotations?: Record<string, string>;
+  };
   spec?: {
     version?: string;
     configSecret?: { name: string; namespace?: string };
@@ -68,8 +75,13 @@ export function providerPhase(p: ProviderObject): InstalledProvider['phase'] {
   return 'Installing';
 }
 
-export function toInstalledProvider(p: ProviderObject): InstalledProvider {
+/**
+ * Maps a provider CR for the API; `proxyHash` is the hash of the connection's current outbound
+ * proxy settings, compared with the provider's annotation (FP-29).
+ */
+export function toInstalledProvider(p: ProviderObject, proxyHash?: string): InstalledProvider {
   const entry = catalogEntryFor(p.kind, p.metadata.name);
+  const usedProxy = p.metadata.annotations?.[OUTBOUND_PROXY_ANNOTATION];
   return {
     kind: p.kind,
     name: p.metadata.name,
@@ -88,6 +100,7 @@ export function toInstalledProvider(p: ProviderObject): InstalledProvider {
     ...(p.spec?.configSecret ? { configSecret: p.spec.configSecret } : {}),
     ...(p.spec?.manager?.featureGates ? { featureGates: p.spec.manager.featureGates } : {}),
     ...(p.spec?.fetchConfig?.url ? { fetchConfigUrl: p.spec.fetchConfig.url } : {}),
+    ...(usedProxy ? { outboundProxy: usedProxy === proxyHash ? 'current' : 'outdated' } : {}),
   };
 }
 

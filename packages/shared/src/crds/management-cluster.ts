@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { AuthTypeSchema, ManagementClusterStatusSchema } from '../connections.js';
+import {
+  AuthTypeSchema,
+  ManagementClusterStatusSchema,
+  OutboundProxySchema,
+} from '../connections.js';
 import type { CrdDefinition } from './types.js';
 
 /**
@@ -20,6 +24,8 @@ export const ManagementClusterSpecSchema = z.object({
    * (FP30-F-02); default: the chart published on ghcr.io.
    */
   manifestChartRepository: z.string().optional(),
+  /** Outbound proxy for provider controllers (FP-29); nothing secret in it. */
+  outboundProxy: OutboundProxySchema.optional(),
 });
 export type ManagementClusterSpec = z.infer<typeof ManagementClusterSpecSchema>;
 

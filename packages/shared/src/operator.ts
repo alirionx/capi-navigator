@@ -52,6 +52,11 @@ export const InstalledProviderSchema = z.object({
   variableNames: z.array(z.string()).optional(),
   featureGates: z.record(z.string(), z.boolean()).optional(),
   fetchConfigUrl: z.string().optional(),
+  /**
+   * The controller uses the outbound proxy of the management cluster (FP-29): `current` with its
+   * present settings, `outdated` when the settings changed since (an update applies them).
+   */
+  outboundProxy: z.enum(['current', 'outdated']).optional(),
 });
 export type InstalledProvider = z.infer<typeof InstalledProviderSchema>;
 
@@ -86,6 +91,8 @@ export const ProviderInstallRequestSchema = z.object({
   featureGates: z.record(z.string().regex(/^[A-Za-z0-9]+$/), z.boolean()).default({}),
   /** Optional spec.fetchConfig.url for providers outside the built-in list. */
   fetchConfigUrl: z.url({ protocol: /^https$/ }).optional(),
+  /** Use the outbound proxy of the management cluster (FP-29); default from the catalog. */
+  outboundProxy: z.boolean().optional(),
 });
 export type ProviderInstallRequest = z.input<typeof ProviderInstallRequestSchema>;
 export type ProviderInstallSpec = z.output<typeof ProviderInstallRequestSchema>;
@@ -96,6 +103,8 @@ export const ProviderUpdateRequestSchema = z.object({
   /** Full set of variables; omit to keep the stored ones (no default on purpose). */
   variables: VariablesSchema().optional(),
   featureGates: ProviderInstallRequestSchema.shape.featureGates,
+  /** Use the outbound proxy (FP-29); omit to keep the current choice. */
+  outboundProxy: z.boolean().optional(),
 });
 export type ProviderUpdateRequest = z.input<typeof ProviderUpdateRequestSchema>;
 

@@ -10,6 +10,7 @@ import {
 } from '@capi-navigator/shared';
 import { ApiError } from '../api/client.js';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
+import { useConnectionsStore } from '../stores/connections.js';
 import { useOperatorStore } from '../stores/operator.js';
 import ErrorAlert from './ErrorAlert.vue';
 import YamlViewer from './YamlViewer.vue';
@@ -50,6 +51,14 @@ const featureGates = ref<{ key: string; value: boolean }[]>(
   Object.entries(props.provider?.featureGates ?? {}).map(([key, value]) => ({ key, value })),
 );
 const fetchConfigUrl = ref('');
+// FP-29: outbound proxy of the management cluster; the catalog decides the default on install.
+const hasProxy = computed(() => !!useConnectionsStore().active?.outboundProxy);
+const proxyDefault = computed(() =>
+  props.provider ? !!props.provider.outboundProxy : !!entry.value?.outboundProxyDefault,
+);
+const useProxy = ref(hasProxy.value && proxyDefault.value);
+/** Uses a proxy that was removed from the connection: the update switches it off. */
+const proxyRemoved = computed(() => !hasProxy.value && !!props.provider?.outboundProxy);
 const valid = ref(false);
 const busy = ref(false);
 const error = ref<unknown>(null);
@@ -92,6 +101,7 @@ function installRequest() {
     variables: payloadVariables(),
     featureGates: payloadGates(),
     ...(fetchConfigUrl.value.trim() ? { fetchConfigUrl: fetchConfigUrl.value.trim() } : {}),
+    outboundProxy: hasProxy.value && useProxy.value,
   };
 }
 function updateRequest() {
@@ -99,6 +109,7 @@ function updateRequest() {
     version: version.value.trim(),
     featureGates: payloadGates(),
     ...(replaceVariables.value ? { variables: payloadVariables() } : {}),
+    outboundProxy: hasProxy.value && useProxy.value,
   };
 }
 
@@ -175,6 +186,30 @@ async function apply(): Promise<void> {
           class="mb-3"
           name="namespace"
         />
+
+        <v-switch
+          v-if="hasProxy"
+          v-model="useProxy"
+          :label="t('providers.useProxy')"
+          :hint="
+            t('providers.useProxyHint', {
+              default: proxyDefault ? t('providers.proxyOn') : t('providers.proxyOff'),
+            })
+          "
+          persistent-hint
+          color="primary"
+          class="mb-3"
+          data-testid="provider-use-proxy"
+        />
+        <v-alert
+          v-else-if="proxyRemoved"
+          type="info"
+          variant="tonal"
+          density="compact"
+          class="mb-3"
+        >
+          {{ t('providers.proxyRemoved') }}
+        </v-alert>
 
         <v-expansion-panels variant="accordion" class="mb-2">
           <v-expansion-panel>

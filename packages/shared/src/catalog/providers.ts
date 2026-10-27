@@ -57,6 +57,11 @@ export interface ProviderCatalogEntry {
   /** Explanation shown next to the configuration variables. */
   variablesHint?: string;
   /**
+   * The controller needs the internet (Helm repositories, public cloud APIs): the outbound proxy
+   * of the management cluster is on by default when one is set (FP-29).
+   */
+  outboundProxyDefault?: boolean;
+  /**
    * The provider calls an infrastructure API whose certificate the app checks against the CAs of
    * the stored credentials (FP31-F-01): `env` is always set on the manager container; with CAs,
    * the bundle is mounted from a Secret and passed with `certFileArg`.
@@ -168,6 +173,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     docsUrl: 'https://github.com/kubernetes-sigs/cluster-api-addon-provider-helm',
     dependsOn: ['core'],
     contract: 'v1beta2',
+    outboundProxyDefault: true,
   },
   {
     id: 'k0smotron-bootstrap',
@@ -207,6 +213,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     docsUrl: 'https://cluster-api-aws.sigs.k8s.io/',
     dependsOn: ['core'],
     contract: 'v1beta2',
+    outboundProxyDefault: true,
     // The CAPA components reference this variable; it must exist but may stay empty because
     // CAPI Navigator uses an AWSClusterStaticIdentity per credential (FP-4, multitenancy docs).
     defaultVariables: { AWS_B64ENCODED_CREDENTIALS: '' },
@@ -224,6 +231,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     repository: 'kubernetes-sigs/cluster-api-provider-gcp',
     docsUrl: 'https://cluster-api-gcp.sigs.k8s.io/',
     dependsOn: ['core'],
+    outboundProxyDefault: true,
     // CAPG v1.13 still implements the v1beta1 contract; CAPI v1.14 supports it (versions.yaml).
     contract: 'v1beta1',
     // The components put this variable into the controller's own credentials Secret; it may stay
