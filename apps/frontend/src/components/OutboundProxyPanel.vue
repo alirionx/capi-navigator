@@ -12,6 +12,7 @@ import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import ErrorAlert from './ErrorAlert.vue';
+import { providersWithoutProxy } from './outbound-proxy.js';
 
 /**
  * Outbound proxy of the active management cluster for provider controllers that need the
@@ -26,6 +27,7 @@ const isAdmin = computed(() => auth.can('connections.manage'));
 
 const proxy = computed(() => connections.active?.outboundProxy);
 const outdated = computed(() => props.providers.filter((p) => p.outboundProxy === 'outdated'));
+const withoutProxy = computed(() => (proxy.value ? providersWithoutProxy(props.providers) : []));
 const displayName = (p: InstalledProvider) =>
   (p.catalogId && catalogEntry(p.catalogId)?.displayName) || p.name;
 
@@ -116,6 +118,16 @@ function submit(): Promise<void> {
           </tr>
         </tbody>
       </v-table>
+      <v-alert
+        v-if="withoutProxy.length"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mt-3"
+        data-testid="outbound-proxy-unused"
+      >
+        {{ t('providers.proxy.unusedHint', { names: withoutProxy.map(displayName).join(', ') }) }}
+      </v-alert>
       <v-alert
         v-if="outdated.length"
         type="warning"

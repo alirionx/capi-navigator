@@ -13,6 +13,7 @@ import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useOperatorStore } from '../stores/operator.js';
 import ErrorAlert from './ErrorAlert.vue';
+import { proxySwitchDefault } from './outbound-proxy.js';
 import YamlViewer from './YamlViewer.vue';
 
 /**
@@ -54,7 +55,7 @@ const fetchConfigUrl = ref('');
 // FP-29: outbound proxy of the management cluster; the catalog decides the default on install.
 const hasProxy = computed(() => !!useConnectionsStore().active?.outboundProxy);
 const proxyDefault = computed(() =>
-  props.provider ? !!props.provider.outboundProxy : !!entry.value?.outboundProxyDefault,
+  props.provider ? proxySwitchDefault(props.provider) : !!entry.value?.outboundProxyDefault,
 );
 const useProxy = ref(hasProxy.value && proxyDefault.value);
 /** Uses a proxy that was removed from the connection: the update switches it off. */

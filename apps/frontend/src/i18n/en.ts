@@ -610,6 +610,8 @@ export const en = {
         'Only for a proxy that inspects TLS (PEM). Mounted into the controller and added to its trust store (SSL_CERT_DIR). Default: none.',
       caSet: 'set',
       remove: 'Remove proxy',
+      unusedHint:
+        'These providers need the internet but do not use the proxy yet: {names}. Update them (same version) with "Use the outbound proxy" to apply it.',
       outdatedHint:
         'The settings changed since these providers were installed or updated: {names}. Update them (same version) to apply the new settings.',
       current: 'Proxy',
