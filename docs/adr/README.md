@@ -32,3 +32,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0026](0026-openstack-volumes-across-zones.md)              | OpenStack volumes not bound to an availability zone (optional)                   | accepted |
 | [0027](0027-proxmox-ve-with-capmox.md)                      | Proxmox VE with CAPMOX, kube-vip and per-cluster address ranges                  | proposed |
 | [0028](0028-proxmox-loadbalancer-services-as-presets.md)    | LoadBalancer Services on Proxmox VE through kube-vip presets                     | accepted |
+| [0029](0029-outbound-proxy-for-app-and-providers.md)        | Outbound proxy for the app and the provider controllers                          | accepted |

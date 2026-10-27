@@ -218,6 +218,32 @@ extraVolumeMounts:
   - { name: proxy-ca, mountPath: /etc/capi-navigator/proxy-ca, readOnly: true }
 ```
 
+The provider controllers get their own proxy per management cluster: on the providers page under
+"Outbound proxy", with `NO_PROXY` in Go syntax (CIDRs, no ranges), and a switch per provider (on by
+default for CAAPH, CAPA and CAPG). The CAPI Operator downloads the provider components; configure
+it through its chart, and repeat the webhook certificate volume, since `volumes` and
+`volumeMounts.manager` replace the chart's defaults:
+
+```yaml
+# values of the cluster-api-operator chart; the ConfigMap proxy-ca in its namespace holds the CA
+env:
+  manager:
+    - { name: HTTPS_PROXY, value: http://proxy.example.com:3128 }
+    - { name: HTTP_PROXY, value: http://proxy.example.com:3128 }
+    - { name: NO_PROXY, value: '.svc,.cluster.local,10.0.0.0/8,192.168.0.0/16' }
+    - { name: SSL_CERT_FILE, value: /etc/proxy-ca/ca.crt }
+volumes:
+  - { name: cert, secret: { secretName: capi-operator-webhook-service-cert } }
+  - { name: proxy-ca, configMap: { name: proxy-ca } }
+volumeMounts:
+  manager:
+    - { name: cert, mountPath: /tmp/k8s-webhook-server/serving-certs, readOnly: true }
+    - { name: proxy-ca, mountPath: /etc/proxy-ca, readOnly: true }
+```
+
+The `NO_PROXY` of the operator must contain the service network (or the ClusterIP of
+`default/kubernetes`). See [ADR-0029](docs/adr/0029-outbound-proxy-for-app-and-providers.md).
+
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
 there on first start.

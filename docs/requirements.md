@@ -359,6 +359,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-31 | Proxmox VE as infrastructure provider (optional) | FP-5, FP-8 |
 | FP-32 | Services of type LoadBalancer on Proxmox VE with kube-vip (optional) | FP-31, FP-33 |
 | FP-33 | Day-2 changes of infrastructure settings (optional) | FP-7, FP-31 |
+| FP-29 | Air-gapped workload clusters; management side behind a proxy (optional) | FP-3, FP-8 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -1065,6 +1066,48 @@ Requirements:
 | 0.10.0 | UX-01, UX-02 | – |
 | 0.11.0 | UX-03, UX-04 | – |
 
+### FP-29: Air-gapped workload clusters (optional)
+
+**Goal:** workload clusters in networks without internet access. The app and the management cluster reach the internet through an HTTP(S) proxy (part A); the nodes of the workload clusters reach no internet at all and get everything from an internal OCI registry (part B). Running the registry and mirroring into it is not the app's task; the app names what has to be mirrored. Part A is delivered; part B is specified after the node spike.
+
+Agreed scope (2026-10-26; replaces the artifact bundles of the earlier outlook):
+
+- One internal OCI registry the nodes reach, at first without authentication. Images come through the registry mirror configuration of the container runtime, so image names stay unchanged and users' own workloads use the same registry.
+- The RKE2 and k0s binaries are OCI artifacts in the same registry (`oras push`); no second store such as an HTTP server or S3. kubeadm is left out at first (it installs from packages).
+- Helm charts need no mirror: CAAPH runs in the management cluster and reaches the repositories through the proxy.
+- Internal DNS and NTP servers exist; Proxmox VE templates contain `qemu-guest-agent`.
+
+Findings for part A (2026-10-26 and 2026-10-27, kind and a single-node k3s as home and management cluster, behind a proxy that inspects TLS):
+
+- The backend (Node.js 24) honours `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` only with `NODE_USE_ENV_PROXY=1`; a proxy that inspects TLS needs its CA in `NODE_EXTRA_CA_CERTS`. `NO_PROXY` takes host names, `.domain` suffixes, single IPs and IP ranges `a-b`, no CIDRs; the ranges work for `https.request` (Helm repositories, OCI registries, the OpenStack and Proxmox VE clients), not for `fetch` (GitHub releases, the ORC manifest, Google Cloud, the OpenID Connect provider), where only exact hosts and IPs match. The Kubernetes client uses its own agent and never goes through the proxy. The AWS SDK ignores the proxy variables (not tested further; AWS is no target of air-gapped setups).
+- The CAPI Operator chart (v0.30.0) takes the proxy through `env.manager` and the CA through `volumes` and `volumeMounts.manager`; both lists replace the chart's defaults, so the volume of the webhook certificate (Secret `capi-operator-webhook-service-cert`) must be repeated. With it, the operator fetched the components of all thirteen catalog providers through the proxy.
+- The provider controllers (Go) read the same variables; their `NO_PROXY` takes CIDRs, no ranges. client-go sends its own calls to the API server through the proxy unless the ClusterIP of `default/kubernetes` is in `NO_PROXY`. `SSL_CERT_DIR` adds a mounted CA to the system trust store (checked with the distroless image of CAAPH v0.6.4); `SSL_CERT_FILE` replaces the store.
+- The CAPI Operator merges `spec.deployment.containers[].env` into the environment of the provider's components and applies `spec.patches` with a target of kind `Deployment` without a name; every catalog provider has one Deployment with the manager as first container.
+- CAAPH installed a chart from an HTTP repository and one from an OCI registry (ghcr.io) through the proxy; without the CA both failed with an x509 error, with the CA in `SSL_CERT_DIR` and a host in `NO_PROXY` the direct download with a public certificate still worked.
+
+Findings for part B so far (2026-10-26):
+
+- Harbor needs the anonymous bearer token even for public projects (`401` with `WWW-Authenticate: Bearer realm=…/service/token`; the token is fetched without credentials). A binary pushed with `oras push` is a single layer whose digest is the sha256 of the file; nodes download that blob and check it with `sha256sum`, so the app pins the layer digest, not the manifest digest the registry UI shows. Downloads use `curl` where present, otherwise Python's `urllib` (cloud-init brings Python).
+- Harbor serves one proxy-cache project per upstream registry. k3s and RKE2 map them with `rewrite` in `registries.yaml` while image names stay unchanged; containerd's `hosts.toml` (k0s) has no `rewrite`, `override_path` is to be checked. k3s falls back to the upstream registry unless `disable-default-registry-endpoint` is set, which hides mirror errors as long as the internet is reachable; the same is to be checked for RKE2. Harbor stores proxied images asynchronously, they appear in the project minutes after a pull.
+- Open for the node spike: the mirror settings per distribution, installing RKE2 from local artifacts (`INSTALL_RKE2_ARTIFACT_PATH`, `airGapped` of the RKE2 provider), k0smotron's `preInstalledK0s` and `downloadURL`, NTP in the bootstrap providers, an image without `curl`, and a cluster on Proxmox VE with outbound traffic blocked.
+
+Requirements (part A):
+
+- **FP29-F-01** MUST honour `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY` in the backend (`NODE_USE_ENV_PROXY=1` in the image) and let the Helm chart add environment variables, volumes and mounts (`extraEnv`, `extraVolumes`, `extraVolumeMounts`), so the CA of a proxy goes in through `NODE_EXTRA_CA_CERTS`; the README documents it including the `NO_PROXY` syntax.
+- **FP29-F-02** MUST store an optional outbound proxy per management cluster connection: HTTPS proxy, HTTP proxy (default: the HTTPS proxy), `NO_PROXY` in Go syntax and the CA of a proxy that inspects TLS; proxy URLs with credentials are refused. Admins change it on the providers page.
+- **FP29-F-03** MUST pass the proxy to a provider controller on install and update through its provider CR (environment, the CA as Secret mounted by a patch, `SSL_CERT_DIR`), with a switch per provider whose default comes from the catalog (on for CAAPH, CAPA and CAPG); the app adds `localhost`, `127.0.0.1`, `.svc`, `.cluster.local` and the ClusterIP of `default/kubernetes` to `NO_PROXY`; the generated YAML is shown first.
+- **FP29-F-04** MUST show which providers use outdated proxy settings and apply the current ones with an update to the same version; switching the proxy off for a provider removes the environment, the patch and the app's CA Secret.
+- **FP29-F-05** SHOULD name the CA of the proxy in certificate errors of the backend when a proxy is set.
+
+Requirements for part B follow after the node spike.
+
+**Acceptance criteria**
+
+- [x] The app installed with Helm behind a proxy that inspects TLS lists provider versions from GitHub and tests Helm repositories (HTTP and OCI) through the proxy; without the proxy CA it reports an untrusted certificate.
+- [x] With a proxy on the connection, CAAPH installs a chart from an HTTP repository and from an OCI registry through the proxy; changed settings mark the provider as outdated; switching the proxy off removes it from the controller.
+- [x] Snapshot tests cover the provider manifests with a proxy, with a proxy CA and together with the CA bundle of Proxmox VE.
+- [ ] Part B: an RKE2 and a k0s cluster on Proxmox VE with outbound traffic blocked come up from the internal registry alone.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -1113,7 +1156,7 @@ These requirements apply to all feature packs and are checked in every pack.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
 - **FP-14: External identity provider**: specified above as an optional pack (OpenID Connect sign-in with group mapping).
 - **FP-15: Immutable OS images** such as openSUSE MicroOS. To check first: MicroOS is usually configured with Ignition or Combustion rather than cloud-init, so it may need its own bootstrap path.
-- **FP-16: Operation behind an HTTP(S) proxy** (optional, after FP-10), for OpenStack in an own data center. Agreed scope:
+- **FP-16: Operation behind an HTTP(S) proxy** (optional, after FP-10), for OpenStack in an own data center. The management side (stages b and c: the app through Helm values, the provider controllers through a proxy per connection, a custom CA) is delivered as part A of FP-29; workload clusters behind a proxy (stage a) remain open. Agreed scope:
   - The proxy is configured and enabled **per cluster**: per management cluster connection (CAPI Operator, providers, CAAPH, backend access) and per workload cluster (defaults from the management cluster connection, overridable or disabled per cluster). Hybrid setups are supported, e.g. management cluster in the intranet behind a proxy and workload clusters on a public cloud without one, or the other way round.
   - Workload clusters: `httpProxy`, `httpsProxy` and `noProxy` in the cluster spec. Each `BootstrapFlavorPlugin` writes its own proxy configuration (RKE2: `/etc/default/rke2-server|rke2-agent` plus exports for the install script; k0s and kubeadm analogous, including apt/dnf), each `InfraProviderPlugin` contributes its `NO_PROXY` entries. `NO_PROXY` is derived automatically (pod, service and node CIDRs, `.svc`, `.cluster.local`, `localhost`, API server endpoint, `169.254.169.254`, cloud API endpoints) and can be extended. CCM and CSI get the proxy through their Helm values.
   - The proxy intercepts TLS: a custom CA certificate (stored as a Secret) is distributed to the nodes (system trust store and container runtime), the backend (`NODE_EXTRA_CA_CERTS`), the CAPI Operator, the providers, CAAPH, CCM and CSI.
@@ -1137,15 +1180,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - A floating IP is 1:1 NAT: whatever the security groups allow becomes reachable through it. The extension must add no ingress rules, restrict the NodePort rule (today `0.0.0.0/0` for the CCM) to the node network, and check the API and SSH rules of CAPO.
   - CAPO attaches the address after the instance is active while cloud-init already runs, so the node preparation would wait for outbound connectivity before installing the distribution.
   - Per-node public IPs for inbound traffic (CAPA `publicIP`/`elasticIpPool`, CAPG `publicIP`) were considered and rejected: per-node exposure is a security risk, the addresses change with every machine replacement, and `LoadBalancer` Services through the CCM serve ingress on all providers.
-- **FP-29: Air-gapped workload clusters through artifact bundles** (outlook; preferred over FP-28). Assumption: the app and the management cluster reach the internet through a proxy (FP-16); the workload cluster nodes do not. Instead of mirroring everything into the network, the nodes load one bundle per cluster version from an internal HTTP server or an S3-compatible bucket (e.g. SeaweedFS) with anonymous read access. Findings so far (2026-10-21):
-  - Contents: the distribution's binaries (RKE2 or k0s; containerd where needed) and all container images a node needs as tarballs: Kubernetes system images, CNI, and per cloud the CCM and CSI images. Both distributions import image tarballs on start by themselves (RKE2 `agent/images/`, k0s `images/` airgap bundle); the RKE2 provider has `agentConfig.airGapped` and `airGappedChecksum`, k0smotron `downloadURL` and `preInstalledK0s`. kubeadm is left out at first (it installs from packages today).
-  - Modular: a base bundle per distribution and version, plus an add-on bundle per cloud (CCM, CSI), so bundles stay small.
-  - Integrity: nodes run what the bundle contains, as root, so every bundle is verified against a sha256 stored with the cluster; a mismatch stops the installation.
-  - Addressing: the app stores a base URL with a fixed layout (e.g. `<base>/<distribution>/<version>/…`) instead of one URL per cluster; the wizard and upgrades keep choosing versions, the app derives the URLs.
-  - Updates: the bundle reference is part of the machine templates, so a new bundle rotates the templates and replaces the nodes (hard rule 5); the operating system is updated through a new cloud image.
-  - Preloaded images need `imagePullPolicy: IfNotPresent` and must not be removed by the kubelet's image garbage collection (to check per distribution).
-  - Helm charts for CAAPH: a static Helm repository (`index.yaml` and chart archives) on the same server or bucket. Users point their own workloads and charts to an internal registry with pull secrets.
-  - Building: our CI builds the bundles from `versions.yaml` for each release and publishes them with checksums; the user copies them to the internal server and enters the base URL in the app. The app stays lean (no image sync, no write access); a separate tool for custom bundles may follow.
+- **FP-29: Air-gapped workload clusters**: specified in section 6. The artifact bundles of the first outlook (one bundle per cluster version on an internal HTTP server or bucket, built by our CI) were dropped on 2026-10-26 in favour of an internal OCI registry for images and binaries.
 - **BGP mode for the Proxmox API endpoint** (outlook): kube-vip in BGP mode with a peer router (ASN, peer address, password in the wizard) gives load distribution and the control plane health check of kube-vip ([PR 1498](https://github.com/kube-vip/kube-vip/pull/1498)); it needs a BGP-capable router, so ARP stays the default.
 - Possible later: kubeadm with prebuilt images, GitOps export of manifests, free-form YAML editing.
 
