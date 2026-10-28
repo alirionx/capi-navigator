@@ -159,8 +159,7 @@ export const VERSIONS: VersionsFile = {
       "versions": [
         {
           "version": "v1.37.1+k0s.0",
-          "verifiedWithProvider": "v2.3.0",
-          "untested": true
+          "verifiedWithProvider": "v2.3.0"
         },
         {
           "version": "v1.36.5+k0s.0",
