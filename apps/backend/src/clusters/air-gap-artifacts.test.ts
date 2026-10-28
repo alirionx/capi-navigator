@@ -91,11 +91,18 @@ describe('pinArtifacts (FP29-F-12, FP29-F-16)', () => {
     const res = await pinArtifacts(spec({ flavor: 'k0s', version: 'v1.35.8+k0s.1' }), source);
     expect(res.ready).toBe(false);
     expect(res.blockers).toEqual([
-      'Artifact registry.example.internal/library/k0s-amd64:v1.35.8-k0s.1 is missing in the internal registry; push it with the commands shown.',
+      'The k0s v1.35.8+k0s.1 binaries are not in the internal registry (registry.example.internal/library/k0s-amd64:v1.35.8-k0s.1); see "Missing in the internal registry" below.',
     ]);
     expect(res.missing[0]!.commands).toContain(
       'oras push registry.example.internal/library/k0s-amd64:v1.35.8-k0s.1 k0s',
     );
+  });
+
+  it('treats refused anonymous access like a missing artifact (Harbor: project missing or private)', async () => {
+    const source = { ociLayers: vi.fn().mockRejectedValue(new FetchError('refused', 401)) };
+    const res = await pinArtifacts(spec({ version: 'v1.35.9+rke2r1' }), source);
+    expect(res.missing).toHaveLength(1);
+    expect(res.blockers[0]).toContain('binaries are not in the internal registry');
   });
 
   it('takes the single layer of a one-file artifact pushed under another name', async () => {
@@ -114,10 +121,10 @@ describe('pinArtifacts (FP29-F-12, FP29-F-16)', () => {
     const partial = { ociLayers: vi.fn().mockResolvedValue(rke2Layers('a').slice(0, 2)) };
     expect(
       (await pinArtifacts(spec({ version: 'v1.35.9+rke2r1' }), partial)).blockers[0],
-    ).toContain('lacks install.sh');
+    ).toContain('lacks the file(s) install.sh');
     const down = { ociLayers: vi.fn().mockRejectedValue(new FetchError('connect ECONNREFUSED')) };
     expect((await pinArtifacts(spec({ version: 'v1.35.9+rke2r1' }), down)).blockers[0]).toContain(
-      'could not be read: connect ECONNREFUSED',
+      'cannot read the internal registry registry.example.internal: connect ECONNREFUSED',
     );
     const kubeadm = await pinArtifacts(spec({ flavor: 'kubeadm', version: 'v1.35.9' }), partial);
     expect(kubeadm.ready).toBe(false);

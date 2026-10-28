@@ -623,7 +623,15 @@ export const en = {
   missingArtifacts: {
     title: 'Missing in the internal registry',
     subtitle:
-      'Run these commands on a machine with internet access and oras, logged in to the registry with push rights (oras login), then open the preview again.',
+      'Nodes of air-gapped clusters download the Kubernetes binaries from the internal registry, and these are not there yet. Put them there once per version:',
+    login:
+      'On a machine with internet access and oras (oras.land), log in with a user that may push:',
+    push: 'Run these commands there: they download the files from the official release and push them.',
+    anonymous:
+      'Nodes pull without credentials: the repository must allow anonymous pulls (Harbor: a public project).',
+    again: 'Then check again.',
+    checkAgain: 'Check again',
+    yamlLater: 'The YAML of the cluster is shown once the binaries are in the registry.',
   },
   registry: {
     title: 'Internal registry',

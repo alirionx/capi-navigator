@@ -947,6 +947,7 @@ const canPreview = computed(() => issues.value.length === 0);
           <MissingArtifacts
             v-if="preview.missingArtifacts?.length"
             :artifacts="preview.missingArtifacts"
+            :retry="loadPreview"
             class="mb-2"
           />
           <v-checkbox
@@ -967,12 +968,18 @@ const canPreview = computed(() => issues.value.length === 0);
             class="mb-2"
             >{{ w }}</v-alert
           >
-          <p class="my-2">{{ t('wizard.previewText', { n: preview.objects.length }) }}</p>
-          <YamlViewer
-            :value="preview.yaml"
-            height="460px"
-            :filename="`${draft.name || 'cluster'}.yaml`"
-          />
+          <!-- FP29-F-12: without its binaries an air-gapped cluster has no manifests yet -->
+          <p v-if="!preview.objects.some((o) => o.kind === 'Cluster')" class="my-2">
+            {{ t('missingArtifacts.yamlLater') }}
+          </p>
+          <template v-else>
+            <p class="my-2">{{ t('wizard.previewText', { n: preview.objects.length }) }}</p>
+            <YamlViewer
+              :value="preview.yaml"
+              height="460px"
+              :filename="`${draft.name || 'cluster'}.yaml`"
+            />
+          </template>
         </template>
       </template>
 

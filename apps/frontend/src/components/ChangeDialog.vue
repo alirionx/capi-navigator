@@ -99,6 +99,7 @@ async function confirm(): Promise<void> {
           <MissingArtifacts
             v-if="result.missingArtifacts?.length"
             :artifacts="result.missingArtifacts"
+            :retry="showPreview"
             class="mb-2"
           />
           <v-alert

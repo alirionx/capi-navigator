@@ -66,14 +66,16 @@ export async function pinArtifacts(
     try {
       layers = await source.ociLayers(repo, repository, artifact.tag);
     } catch (err) {
-      if (err instanceof FetchError && err.status === 404) {
+      // Harbor and others answer 401/403 instead of 404 for a project that does not exist or is
+      // not public: either way the nodes could not pull it anonymously.
+      if (err instanceof FetchError && [401, 403, 404].includes(err.status ?? 0)) {
         missing.push({ reference, commands: artifactPushCommands(registry, artifact) });
         blockers.push(
-          `Artifact ${reference} is missing in the internal registry; push it with the commands shown.`,
+          `The ${flavor.displayName} ${version} binaries are not in the internal registry (${reference}); see "Missing in the internal registry" below.`,
         );
       } else {
         blockers.push(
-          `The internal registry ${registry.host} could not be read: ${err instanceof Error ? err.message : String(err)}. The app must reach it (add it to NO_PROXY if the app uses a proxy); a registry with a private CA needs its CA certificate in the connection's registry settings.`,
+          `The app cannot read the internal registry ${registry.host}: ${err instanceof Error ? err.message : String(err)}. Check that the app reaches it (behind a proxy: add the host to NO_PROXY) and, for a private CA, set the CA certificate in the registry settings (Credentials page).`,
         );
       }
       continue;
@@ -92,7 +94,7 @@ export async function pinArtifacts(
     if (absent.length > 0) {
       missing.push({ reference, commands: artifactPushCommands(registry, artifact) });
       blockers.push(
-        `Artifact ${reference} lacks ${absent.join(', ')}; push it again with the commands shown.`,
+        `${reference} lacks the file(s) ${absent.join(', ')}; push it again, see "Missing in the internal registry" below.`,
       );
       continue;
     }

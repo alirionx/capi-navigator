@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { MissingArtifact } from '@capi-navigator/shared';
 
 /**
- * FP29-F-12: artifacts the internal registry lacks, each with the commands that download it from
- * the upstream release and push it, to run on a machine with internet access and oras.
+ * FP29-F-12: Kubernetes binaries the internal registry lacks, as a short guide: log in with oras,
+ * run the commands (download from the upstream release, push), allow anonymous pulls, check again.
  */
-defineProps<{ artifacts: MissingArtifact[] }>();
+const props = defineProps<{ artifacts: MissingArtifact[]; retry?: () => void }>();
 const { t } = useI18n();
 const copied = ref<string | null>(null);
+const host = computed(() => props.artifacts[0]?.reference.split('/')[0] ?? '');
 
-async function copy(a: MissingArtifact): Promise<void> {
-  await navigator.clipboard?.writeText(a.commands);
-  copied.value = a.reference;
+async function copy(text: string): Promise<void> {
+  await navigator.clipboard?.writeText(text);
+  copied.value = text;
 }
 </script>
 
@@ -24,26 +25,56 @@ async function copy(a: MissingArtifact): Promise<void> {
       <v-card-subtitle class="text-wrap">{{ t('missingArtifacts.subtitle') }}</v-card-subtitle>
     </v-card-item>
     <v-card-text>
-      <div v-for="a in artifacts" :key="a.reference" class="mb-3">
-        <div class="d-flex align-center">
-          <span class="mono">{{ a.reference }}</span>
-          <v-spacer />
+      <ol class="steps">
+        <li>
+          {{ t('missingArtifacts.login') }}
+          <pre class="command">oras login {{ host }}</pre>
+        </li>
+        <li>
+          {{ t('missingArtifacts.push') }}
+          <div v-for="a in artifacts" :key="a.reference" class="mt-2">
+            <div class="d-flex align-center">
+              <span class="mono">{{ a.reference }}</span>
+              <v-spacer />
+              <v-btn
+                size="small"
+                variant="text"
+                :prepend-icon="copied === a.commands ? 'mdi-check' : 'mdi-content-copy'"
+                data-testid="copy-push-commands"
+                @click="copy(a.commands)"
+                >{{ t('common.copy') }}</v-btn
+              >
+            </div>
+            <pre class="command" data-testid="push-commands">{{ a.commands }}</pre>
+          </div>
+        </li>
+        <li>{{ t('missingArtifacts.anonymous') }}</li>
+        <li>
+          {{ t('missingArtifacts.again') }}
           <v-btn
+            v-if="retry"
             size="small"
-            variant="text"
-            :prepend-icon="copied === a.reference ? 'mdi-check' : 'mdi-content-copy'"
-            data-testid="copy-push-commands"
-            @click="copy(a)"
-            >{{ t('common.copy') }}</v-btn
+            variant="tonal"
+            color="primary"
+            prepend-icon="mdi-refresh"
+            class="ml-2"
+            data-testid="check-artifacts-again"
+            @click="retry()"
+            >{{ t('missingArtifacts.checkAgain') }}</v-btn
           >
-        </div>
-        <pre class="command" data-testid="push-commands">{{ a.commands }}</pre>
-      </div>
+        </li>
+      </ol>
     </v-card-text>
   </v-card>
 </template>
 
 <style scoped>
+.steps {
+  padding-left: 1.25rem;
+}
+.steps li {
+  margin-bottom: 0.75rem;
+}
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.85rem;
@@ -56,5 +87,6 @@ async function copy(a: MissingArtifact): Promise<void> {
   background: rgba(var(--v-theme-on-surface), 0.06);
   padding: 6px 8px;
   border-radius: 4px;
+  margin-top: 4px;
 }
 </style>
