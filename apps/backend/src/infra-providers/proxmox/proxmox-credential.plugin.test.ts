@@ -131,7 +131,7 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
         },
         '/nodes/pve1/qemu/7112/config': { ide2: 'local-zfs:vm-7112-cloudinit,media=cdrom' },
         '/nodes/pve1/network': [
-          { iface: 'vmbr0', type: 'bridge', cidr: '192.168.10.100/24' },
+          { iface: 'vmbr0', type: 'bridge', cidr: '10.20.0.100/24' },
           { iface: 'nic0', type: 'eth' },
         ],
         '/nodes/pve1/storage?enabled=1': [
@@ -219,11 +219,11 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
         image: '7112',
         storage: 'local-zfs',
         network: {
-          nodeCidr: '192.168.10.0/24',
-          gateway: '192.168.10.1',
-          addresses: ['192.168.10.71-192.168.10.88'],
+          nodeCidr: '10.20.0.0/24',
+          gateway: '10.20.0.1',
+          addresses: ['10.20.0.71-10.20.0.88'],
         },
-        apiEndpoint: '192.168.10.89',
+        apiEndpoint: '10.20.0.89',
       },
     });
     const { objects, preview } = plugin.clusterSecrets(spec, { name: 'homelab', data });

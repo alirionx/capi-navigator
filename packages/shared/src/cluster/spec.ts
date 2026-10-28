@@ -266,7 +266,7 @@ export const ProxmoxInfraSchema = z.object({
     .default('scsi0'),
   bridge: ProxmoxNameSchema.default('vmbr0'),
   network: z.object({
-    /** Network of the bridge, e.g. 192.168.10.0/24; its prefix goes to the nodes. */
+    /** Network of the bridge, e.g. 10.20.0.0/24; its prefix goes to the nodes. */
     nodeCidr: CidrSchema,
     gateway: z.ipv4('An IPv4 address'),
     /** Node addresses of this cluster: addresses, ranges (a-b) or networks; no DHCP. */

@@ -14,7 +14,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","loadBalancerAddresses":["10.20.0.120-10.20.0.127","10.20.0.140"],"nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -42,16 +42,16 @@ metadata:
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
     capi-navigator.io/credential: homelab
-    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+    capi-navigator.io/loadbalancer-addresses: 10.20.0.120-10.20.0.127,10.20.0.140-10.20.0.140
 spec:
   controlPlaneEndpoint:
-    host: 192.168.10.89
+    host: 10.20.0.89
     port: 6443
   ipv4Config:
     addresses:
-      - 192.168.10.71-192.168.10.88
+      - 10.20.0.71-10.20.0.88
     prefix: 24
-    gateway: 192.168.10.1
+    gateway: 10.20.0.1
   dnsServers:
     - 1.1.1.1
     - 8.8.8.8
@@ -123,7 +123,7 @@ spec:
       kubernetesComponents:
         - cloudController
     tlsSan:
-      - 192.168.10.89
+      - 10.20.0.89
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
     nodeTaints:
@@ -199,7 +199,7 @@ spec:
                     - name: vip_retryperiod
                       value: "2"
                     - name: address
-                      value: 192.168.10.89
+                      value: 10.20.0.89
                     - name: prometheus_server
                       value: :2112
                   securityContext:
@@ -376,7 +376,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","loadBalancerAddresses":["10.20.0.120-10.20.0.127","10.20.0.140"],"nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.8+k0s.1"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -404,16 +404,16 @@ metadata:
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
     capi-navigator.io/credential: homelab
-    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+    capi-navigator.io/loadbalancer-addresses: 10.20.0.120-10.20.0.127,10.20.0.140-10.20.0.140
 spec:
   controlPlaneEndpoint:
-    host: 192.168.10.89
+    host: 10.20.0.89
     port: 6443
   ipv4Config:
     addresses:
-      - 192.168.10.71-192.168.10.88
+      - 10.20.0.71-10.20.0.88
     prefix: 24
-    gateway: 192.168.10.1
+    gateway: 10.20.0.1
   dnsServers:
     - 1.1.1.1
     - 8.8.8.8
@@ -490,7 +490,7 @@ spec:
           extraArgs:
             anonymous-auth: "true"
           sans:
-            - 192.168.10.89
+            - 10.20.0.89
         network:
           provider: calico
           calico:
@@ -502,7 +502,7 @@ spec:
     args:
       - --enable-worker
       - --enable-cloud-provider
-      - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+      - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
     preK0sCommands:
@@ -571,7 +571,7 @@ spec:
                       - name: vip_retryperiod
                         value: "2"
                       - name: address
-                        value: 192.168.10.89
+                        value: 10.20.0.89
                       - name: prometheus_server
                         value: :2112
                     securityContext:
@@ -634,7 +634,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: K0sWorkerConfigTemplate
 metadata:
-  name: pve-lb-default-59cc80dc
+  name: pve-lb-default-a18791d7
   namespace: proxmox
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -645,7 +645,7 @@ spec:
       version: v1.35.8+k0s.1
       args:
         - --enable-cloud-provider
-        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
         - --kubelet-root-dir=/var/lib/kubelet
       useSystemHostname: true
       preK0sCommands:
@@ -684,7 +684,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: K0sWorkerConfigTemplate
-          name: pve-lb-default-59cc80dc
+          name: pve-lb-default-a18791d7
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate
@@ -724,7 +724,7 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["192.168.10.71-192.168.10.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.120-192.168.10.127","192.168.10.140"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","loadBalancerAddresses":["10.20.0.120-10.20.0.127","10.20.0.140"],"nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"name":"pve-lb","namespace":"proxmox","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"medium","name":"default","replicas":2}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -752,16 +752,16 @@ metadata:
     cluster.x-k8s.io/cluster-name: pve-lb
   annotations:
     capi-navigator.io/credential: homelab
-    capi-navigator.io/loadbalancer-addresses: 192.168.10.120-192.168.10.127,192.168.10.140-192.168.10.140
+    capi-navigator.io/loadbalancer-addresses: 10.20.0.120-10.20.0.127,10.20.0.140-10.20.0.140
 spec:
   controlPlaneEndpoint:
-    host: 192.168.10.89
+    host: 10.20.0.89
     port: 6443
   ipv4Config:
     addresses:
-      - 192.168.10.71-192.168.10.88
+      - 10.20.0.71-10.20.0.88
     prefix: 24
-    gateway: 192.168.10.1
+    gateway: 10.20.0.1
   dnsServers:
     - 1.1.1.1
     - 8.8.8.8
@@ -971,7 +971,7 @@ spec:
                   - name: vip_retryperiod
                     value: "2"
                   - name: address
-                    value: 192.168.10.89
+                    value: 10.20.0.89
                   - name: prometheus_server
                     value: :2112
                 securityContext:
@@ -998,7 +998,7 @@ spec:
     preKubeadmCommands:
       - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
       - /usr/local/bin/capi-navigator-install-kubernetes.sh
-      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
       - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
     postKubeadmCommands:
       - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
@@ -1053,7 +1053,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: pve-lb-default-b974c171
+  name: pve-lb-default-f1ed23b0
   namespace: proxmox
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1162,7 +1162,7 @@ spec:
       preKubeadmCommands:
         - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
         - /usr/local/bin/capi-navigator-install-kubernetes.sh
-        - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+        - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
       joinConfiguration:
         nodeRegistration:
           name: "{{ v1.local_hostname }}"
@@ -1205,7 +1205,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: pve-lb-default-b974c171
+          name: pve-lb-default-f1ed23b0
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: ProxmoxMachineTemplate

@@ -27,11 +27,11 @@ const pve: ClusterSpec = ClusterSpecSchema.parse({
     image: '7112',
     storage: 'local-zfs',
     network: {
-      nodeCidr: '192.168.10.0/24',
-      gateway: '192.168.10.1',
-      addresses: ['192.168.10.71-192.168.10.80'],
+      nodeCidr: '10.20.0.0/24',
+      gateway: '10.20.0.1',
+      addresses: ['10.20.0.71-10.20.0.80'],
     },
-    apiEndpoint: '192.168.10.89',
+    apiEndpoint: '10.20.0.89',
     allowedNodes: ['homeserver'],
   },
 });
@@ -82,13 +82,13 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
 
   it('adds node addresses and DNS servers without touching templates', () => {
     const next = change(pve, {
-      'network.addresses': ['192.168.10.71-192.168.10.80', '192.168.10.81-192.168.10.85'],
-      'network.dnsNameservers': ['192.168.10.1'],
+      'network.addresses': ['10.20.0.71-10.20.0.80', '10.20.0.81-10.20.0.85'],
+      'network.dnsNameservers': ['10.20.0.1'],
     });
     expect(next.infrastructure).toMatchObject({
       network: {
-        addresses: ['192.168.10.71-192.168.10.80', '192.168.10.81-192.168.10.85'],
-        dnsNameservers: ['192.168.10.1'],
+        addresses: ['10.20.0.71-10.20.0.80', '10.20.0.81-10.20.0.85'],
+        dnsNameservers: ['10.20.0.1'],
       },
     });
     expect(touched(pve, next)).toEqual(['Cluster/pve', 'ProxmoxCluster/pve']);
@@ -97,17 +97,17 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
   it('accepts a different notation of the same addresses but refuses to drop any (FP33-F-02)', () => {
     expect(() =>
       change(pve, {
-        'network.addresses': ['192.168.10.71-192.168.10.75', '192.168.10.76-192.168.10.84'],
+        'network.addresses': ['10.20.0.71-10.20.0.75', '10.20.0.76-10.20.0.84'],
       }),
     ).not.toThrow();
-    expect(() => change(pve, { 'network.addresses': ['192.168.10.71-192.168.10.79'] })).toThrow(
-      /can only be added: 192\.168\.10\.71-192\.168\.10\.80 must stay/,
+    expect(() => change(pve, { 'network.addresses': ['10.20.0.71-10.20.0.79'] })).toThrow(
+      /can only be added: 10\.20\.0\.71-10\.20\.0\.80 must stay/,
     );
   });
 
   it('still validates the whole spec (addresses inside the network, not the VIP)', () => {
     expect(() =>
-      change(pve, { 'network.addresses': ['192.168.10.71-192.168.10.80', '192.168.10.89'] }),
+      change(pve, { 'network.addresses': ['10.20.0.71-10.20.0.80', '10.20.0.89'] }),
     ).toThrow();
   });
 
@@ -117,8 +117,8 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
   });
 
   it('refuses fields the plugin does not declare', () => {
-    expect(() => change(pve, { apiEndpoint: '192.168.10.90' })).toThrow(SpecChangeError);
-    expect(() => change(pve, { 'network.gateway': '192.168.10.254' })).toThrow(
+    expect(() => change(pve, { apiEndpoint: '10.20.0.90' })).toThrow(SpecChangeError);
+    expect(() => change(pve, { 'network.gateway': '10.20.0.254' })).toThrow(
       '"network.gateway" cannot be changed after creation',
     );
   });
@@ -134,14 +134,14 @@ describe('day-2 changes of infrastructure settings (FP-33)', () => {
     expect(values).toEqual({
       memoryAdjustment: 0,
       'network.dnsNameservers': '1.1.1.1, 8.8.8.8',
-      'network.addresses': '192.168.10.71-192.168.10.80',
+      'network.addresses': '10.20.0.71-10.20.0.80',
       'network.loadBalancerAddresses': '',
       allowedNodes: 'homeserver',
     });
     expect(day2Request(form, { ...values, allowedNodes: '' })).toEqual({
       memoryAdjustment: 0,
       'network.dnsNameservers': ['1.1.1.1', '8.8.8.8'],
-      'network.addresses': ['192.168.10.71-192.168.10.80'],
+      'network.addresses': ['10.20.0.71-10.20.0.80'],
       'network.loadBalancerAddresses': null,
       allowedNodes: null,
     });

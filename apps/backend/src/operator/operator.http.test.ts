@@ -309,7 +309,7 @@ describe('operator API (FP-3)', () => {
     const missing = await preview({ outboundProxy: true }).expect(400);
     expect(missing.body.message).toBe('No outbound proxy is set for this management cluster');
 
-    const settings = { httpsProxy: 'http://proxy:3128', noProxy: '192.168.10.0/24' };
+    const settings = { httpsProxy: 'http://proxy:3128', noProxy: '10.20.0.0/24' };
     fake.connections.set('kind', {
       apiVersion: 'navigator.capi-navigator.io/v1alpha1',
       kind: 'ManagementCluster',
@@ -319,10 +319,11 @@ describe('operator API (FP-3)', () => {
     const on = (await preview({}).expect(200)).body.yaml as string;
     expect(on).toContain('value: http://proxy:3128');
     // The API server's ClusterIP stays direct: client-go honours the proxy variables too.
-    expect(on).toContain(
-      'value: localhost,127.0.0.1,.svc,.cluster.local,10.96.0.1,192.168.10.0/24',
+    expect(on).toContain('value: localhost,127.0.0.1,.svc,.cluster.local,10.96.0.1,10.20.0.0/24');
+    // A hash of digits only is quoted by YAML, so allow both forms.
+    expect(on).toMatch(
+      new RegExp(`capi-navigator.io/outbound-proxy: "?${outboundProxyHash(settings)}"?\n`),
     );
-    expect(on).toContain(`capi-navigator.io/outbound-proxy: ${outboundProxyHash(settings)}`);
     expect((await preview({ outboundProxy: false }).expect(200)).body.yaml).not.toContain(
       'HTTPS_PROXY',
     );

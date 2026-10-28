@@ -24,11 +24,11 @@ const pve = (over: Partial<ClusterSpecInput> = {}): ClusterSpecInput => ({
     storage: 'local-zfs',
     bootDisk: 'virtio0',
     network: {
-      nodeCidr: '192.168.10.0/24',
-      gateway: '192.168.10.1',
-      addresses: ['192.168.10.71-192.168.10.88'],
+      nodeCidr: '10.20.0.0/24',
+      gateway: '10.20.0.1',
+      addresses: ['10.20.0.71-10.20.0.88'],
     },
-    apiEndpoint: '192.168.10.89',
+    apiEndpoint: '10.20.0.89',
   },
   ...over,
 });
@@ -73,11 +73,11 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     const [cluster] = find(pve(), 'ProxmoxCluster');
     expect(cluster!.metadata.annotations).toEqual({ 'capi-navigator.io/credential': 'homelab' });
     expect(cluster!.spec).toMatchObject({
-      controlPlaneEndpoint: { host: '192.168.10.89', port: 6443 },
+      controlPlaneEndpoint: { host: '10.20.0.89', port: 6443 },
       ipv4Config: {
-        addresses: ['192.168.10.71-192.168.10.88'],
+        addresses: ['10.20.0.71-10.20.0.88'],
         prefix: 24,
-        gateway: '192.168.10.1',
+        gateway: '10.20.0.1',
       },
       allowedNodes: ['homeserver'],
       schedulerHints: { memoryAdjustment: 0 },
@@ -124,30 +124,30 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
         }),
       ).error?.issues.map((i) => `${i.path.join('.')}: ${i.message}`) ?? [];
     expect(issues({})).toEqual([]);
-    expect(issues({ apiEndpoint: '192.168.10.80' })).toEqual([
+    expect(issues({ apiEndpoint: '10.20.0.80' })).toEqual([
       'infrastructure.apiEndpoint: Must not be one of the node addresses',
     ]);
     expect(issues({ apiEndpoint: '10.0.0.5' })).toEqual([
-      'infrastructure.apiEndpoint: Must be in the network 192.168.10.0/24',
+      'infrastructure.apiEndpoint: Must be in the network 10.20.0.0/24',
     ]);
     expect(
       issues({
         network: {
-          nodeCidr: '192.168.10.0/24',
-          gateway: '192.168.11.1',
-          addresses: ['192.168.10.1-192.168.10.20', '10.1.1.1'],
+          nodeCidr: '10.20.0.0/24',
+          gateway: '10.20.1.1',
+          addresses: ['10.20.0.1-10.20.0.20', '10.1.1.1'],
         },
       }),
     ).toEqual([
-      'infrastructure.network.gateway: Outside the network 192.168.10.0/24',
-      'infrastructure.network.addresses.1: Outside the network 192.168.10.0/24',
+      'infrastructure.network.gateway: Outside the network 10.20.0.0/24',
+      'infrastructure.network.addresses.1: Outside the network 10.20.0.0/24',
     ]);
     expect(
       issues({
         network: {
-          nodeCidr: '192.168.10.0/24',
-          gateway: '192.168.10.1',
-          addresses: ['192.168.10.1-192.168.10.20'],
+          nodeCidr: '10.20.0.0/24',
+          gateway: '10.20.0.1',
+          addresses: ['10.20.0.1-10.20.0.20'],
         },
       }),
     ).toEqual(['infrastructure.network.addresses: Must not contain the gateway']);
@@ -159,7 +159,7 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     expect(rke2).toContain('/var/lib/rancher/rke2/server/manifests/kube-vip.yaml');
     expect(rke2).toContain('path: /etc/rancher/rke2/rke2.yaml');
     expect(rke2).not.toContain('serviceAccountName');
-    expect(rke2).toContain('"tlsSan":["192.168.10.89"]');
+    expect(rke2).toContain('"tlsSan":["10.20.0.89"]');
     const k = JSON.stringify(find(allInOne(k0s(pve())), 'K0sControlPlane')[0]!.spec);
     expect(k).toContain('/var/lib/k0s/manifests/kube-vip/kube-vip.yaml');
     expect(k).toContain('path: /var/lib/k0s/pki/admin.conf');
@@ -175,7 +175,7 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
 
   it('k0s kubelets report the node address for the CCM (FP31-F-11, live test)', () => {
     const nodeIp =
-      "--kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')";
+      "--kubelet-extra-args=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')";
     const [cp] = find(k0s(pve()), 'K0sControlPlane');
     expect((cp!.spec as { k0sConfigSpec: { args: string[] } }).k0sConfigSpec.args).toContain(
       nodeIp,
@@ -185,7 +185,7 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     // kubeadm: through KUBELET_EXTRA_ARGS, which the kubelet packages' drop-in reads.
     const [kcp] = find(kubeadm(pve()), 'KubeadmControlPlane');
     expect(JSON.stringify(kcp!.spec)).toContain(
-      'echo \\"KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 192.168.10.1',
+      'echo \\"KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 10.20.0.1',
     );
     // Without the CCM the kubelet keeps its own address handling.
     const noCcm = k0s(pve({ addons: { cloudControllerManager: false, csiDriver: false } }));
@@ -203,12 +203,12 @@ describe('Proxmox VE rules (FP31-F-06..10)', () => {
     // The cluster itself and clusters elsewhere in the network are fine.
     expect(
       conflicts([
-        other('pve', ['192.168.10.71-192.168.10.88'], '192.168.10.89'),
-        other('lab2', ['192.168.10.90-192.168.10.99'], '192.168.10.100'),
+        other('pve', ['10.20.0.71-10.20.0.88'], '10.20.0.89'),
+        other('lab2', ['10.20.0.90-10.20.0.99'], '10.20.0.100'),
       ]),
     ).toEqual([]);
-    expect(conflicts([other('lab3', ['192.168.10.85-192.168.10.95'], '192.168.10.89')])).toEqual([
-      '192.168.10.71-192.168.10.88, 192.168.10.89 overlap with the addresses of cluster proxmox/lab3; choose addresses no other cluster uses.',
+    expect(conflicts([other('lab3', ['10.20.0.85-10.20.0.95'], '10.20.0.89')])).toEqual([
+      '10.20.0.71-10.20.0.88, 10.20.0.89 overlap with the addresses of cluster proxmox/lab3; choose addresses no other cluster uses.',
     ]);
   });
 });

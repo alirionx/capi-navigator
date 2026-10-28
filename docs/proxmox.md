@@ -74,7 +74,7 @@ in Proxmox VE, what the app creates per cluster, and the limits compared with th
    | Boot disk, storage     | Disk of the template with the root file system (grown to the wizard's size) and the storage of the clones |
    | Bridge                 | Network bridge of the VMs (default `vmbr0`)                                                               |
    | Network, gateway       | The bridge's network in CIDR notation and its gateway                                                     |
-   | Node addresses         | The cluster's range, e.g. `192.168.10.71-192.168.10.80`                                                   |
+   | Node addresses         | The cluster's range, e.g. `10.20.0.71-10.20.0.80`                                                         |
    | API virtual IP         | A free address in the network, outside the node range                                                     |
    | LoadBalancer addresses | Optional: addresses for Services of type `LoadBalancer` (see below)                                       |
    | Memory scheduling      | CAPMOX's memory check (see below), default 0 = off                                                        |

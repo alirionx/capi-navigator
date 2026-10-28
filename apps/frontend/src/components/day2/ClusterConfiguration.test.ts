@@ -23,11 +23,11 @@ const spec = ClusterSpecSchema.parse({
     image: '7112',
     storage: 'local-zfs',
     network: {
-      nodeCidr: '192.168.10.0/24',
-      gateway: '192.168.10.1',
-      addresses: ['192.168.10.71-192.168.10.75'],
+      nodeCidr: '10.20.0.0/24',
+      gateway: '10.20.0.1',
+      addresses: ['10.20.0.71-10.20.0.75'],
     },
-    apiEndpoint: '192.168.10.89',
+    apiEndpoint: '10.20.0.89',
   },
 });
 const status = { machines: [], machineDeployments: [] } as unknown as ClusterStatus;
@@ -73,7 +73,7 @@ describe('ClusterConfiguration: infrastructure settings (FP-33)', () => {
     const card = w.get('[data-testid="day2-infra"]');
     expect(card.text()).toContain('ProxmoxCluster');
     expect(card.text()).toContain('Memory scheduling (%)');
-    expect(card.text()).toContain('192.168.10.71-192.168.10.75');
+    expect(card.text()).toContain('10.20.0.71-10.20.0.75');
     expect(card.text()).not.toContain('Gateway');
 
     await card.get('[data-testid="day2-infra-change"]').trigger('click');
@@ -81,7 +81,7 @@ describe('ClusterConfiguration: infrastructure settings (FP-33)', () => {
     const dialog = document.body;
     expect(dialog.textContent).toContain('addresses can only be added');
     const input = dialog.querySelector<HTMLInputElement>('[data-testid="pve-addresses"] input')!;
-    input.value = '192.168.10.71-192.168.10.75, 192.168.10.76';
+    input.value = '10.20.0.71-10.20.0.75, 10.20.0.76';
     input.dispatchEvent(new Event('input'));
     await flushPromises();
     dialog.querySelector<HTMLButtonElement>('[data-testid="change-preview"]')!.click();
@@ -93,7 +93,7 @@ describe('ClusterConfiguration: infrastructure settings (FP-33)', () => {
         values: {
           memoryAdjustment: 0,
           'network.dnsNameservers': ['1.1.1.1', '8.8.8.8'],
-          'network.addresses': ['192.168.10.71-192.168.10.75', '192.168.10.76'],
+          'network.addresses': ['10.20.0.71-10.20.0.75', '10.20.0.76'],
           'network.loadBalancerAddresses': null,
           allowedNodes: null,
         },

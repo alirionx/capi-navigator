@@ -180,7 +180,7 @@ function submit(): Promise<void> {
             persistent-hint
             rows="2"
             auto-grow
-            placeholder="192.168.10.0/24,.example.internal"
+            placeholder="10.20.0.0/24,.example.internal"
             class="mb-3 mono-input"
             data-testid="proxy-no-proxy"
           />
