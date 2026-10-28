@@ -2497,6 +2497,67 @@
         ]
       }
     },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/registry-contents": {
+      "get": {
+        "operationId": "Clusters_registryContents",
+        "tags": [
+          "Clusters"
+        ],
+        "summary": "Contents of the internal registry an air-gapped cluster needs",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegistryContents"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
     "/api/connections/{connection}/clusters/{namespace}/{name}/resources": {
       "get": {
         "operationId": "Resources_clusterResources",
@@ -7382,6 +7443,9 @@
             "items": {
               "$ref": "#/components/schemas/MissingArtifact"
             }
+          },
+          "registryContents": {
+            "$ref": "#/components/schemas/RegistryContents"
           }
         },
         "required": [
@@ -10537,6 +10601,55 @@
           "name",
           "vcpus",
           "memoryMiB"
+        ],
+        "additionalProperties": false
+      },
+      "RegistryContents": {
+        "type": "object",
+        "properties": {
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingArtifact"
+            }
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "usedBy": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "source",
+                "usedBy"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "imageCommands": {
+            "type": "string"
+          },
+          "unknown": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "artifacts",
+          "images",
+          "imageCommands",
+          "unknown"
         ],
         "additionalProperties": false
       },

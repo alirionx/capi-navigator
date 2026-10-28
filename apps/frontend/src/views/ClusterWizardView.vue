@@ -21,6 +21,7 @@ import {
 } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import MissingArtifacts from '../components/MissingArtifacts.vue';
+import RegistryContents from '../components/RegistryContents.vue';
 import { stepIssues, visibleIssues } from '../forms/wizard-issues.js';
 import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
@@ -972,6 +973,15 @@ const canPreview = computed(() => issues.value.length === 0);
             class="mb-2"
             >{{ w }}</v-alert
           >
+          <!-- FP29-F-17: what the internal registry must hold, to fill it before creating -->
+          <v-expansion-panels v-if="preview.registryContents" class="mb-3">
+            <v-expansion-panel data-testid="wizard-registry-contents">
+              <v-expansion-panel-title>{{ t('registryContents.title') }}</v-expansion-panel-title>
+              <v-expansion-panel-text>
+                <RegistryContents :contents="preview.registryContents" />
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
           <!-- FP29-F-12: without its binaries an air-gapped cluster has no manifests yet -->
           <p v-if="!preview.objects.some((o) => o.kind === 'Cluster')" class="my-2">
             {{ t('missingArtifacts.yamlLater') }}

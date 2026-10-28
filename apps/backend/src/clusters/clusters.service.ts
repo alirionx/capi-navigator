@@ -40,6 +40,8 @@ import {
   type ClusterPreview,
   type ClusterSpec,
   type MissingArtifact,
+  type RegistryContentsView,
+  registryContentsView,
   type ClusterStatus,
   type ClusterSummary,
   type ManifestObject,
@@ -146,6 +148,8 @@ interface Plan {
   blockers: string[];
   /** Artifacts the internal registry lacks (FP29-F-12). */
   missingArtifacts: MissingArtifact[];
+  /** Air-gapped clusters: what the internal registry must hold (FP29-F-17). */
+  registryContents?: RegistryContentsView;
   credentialNamespaceMissing: boolean;
   /** Older versions of the namespace's add-on resource sets, replaced by the new ones. */
   removed: KubernetesObject[];
@@ -190,6 +194,7 @@ export class ClustersService {
       blockers: plan.blockers,
       credentialNamespaceMissing: plan.credentialNamespaceMissing,
       ...(plan.missingArtifacts.length ? { missingArtifacts: plan.missingArtifacts } : {}),
+      ...(plan.registryContents ? { registryContents: plan.registryContents } : {}),
     };
   }
 
@@ -448,6 +453,18 @@ export class ClustersService {
   // ---- spec changes (FP6-F-05, FP6-F-07; hard rules 4 and 6) ----
 
   /** The stored spec of a cluster created by the app; external clusters are read-only. */
+  /** FP29-F-17: what the internal registry must hold for an air-gapped cluster. */
+  async registryContents(
+    connection: string,
+    namespace: string,
+    name: string,
+  ): Promise<RegistryContentsView> {
+    const spec = await this.storedSpec(connection, namespace, name);
+    const view = registryContentsView(spec, await this.store.addonPresetOverrides());
+    if (!view) throw new NotFoundException(`Cluster ${namespace}/${name} is not air-gapped`);
+    return view;
+  }
+
   async storedSpec(connection: string, namespace: string, name: string): Promise<ClusterSpec> {
     const kc = await this.clients.forConnection(connection);
     const cluster = await this.getCluster(kc, namespace, name);
@@ -990,6 +1007,7 @@ export class ClustersService {
     // presets changed by someone else are left alone and reported.
     const clusterObj = objects.find((o) => o.kind === 'Cluster') as ManifestObject | undefined;
     const overrides = await this.store.addonPresetOverrides();
+    const registryContents = registryContentsView(spec, overrides);
     for (const preset of presetsFor(clusterObj?.metadata.labels ?? {}, overrides)) {
       const hcp = buildAddonPreset(preset, spec.namespace) as unknown as KubernetesObject & {
         spec: unknown;
@@ -1135,6 +1153,7 @@ export class ClustersService {
       warnings,
       blockers,
       missingArtifacts: pinned.missing,
+      ...(registryContents ? { registryContents } : {}),
       credentialNamespaceMissing,
       removed,
       generated: new Set(generated.map(objectKey)),

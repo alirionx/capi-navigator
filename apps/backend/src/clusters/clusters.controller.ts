@@ -17,6 +17,8 @@ import {
   ClusterPreviewSchema,
   ClusterSpecSchema,
   ClusterStatusSchema,
+  RegistryContentsSchema,
+  type RegistryContentsView,
   ClusterSummarySchema,
   DeletePreviewSchema,
   DeletionStatusSchema,
@@ -176,6 +178,21 @@ export class ClustersController {
     @Param('name') name: string,
   ): Promise<ClusterStatus> {
     return this.clusters.status(connection, namespace, name);
+  }
+
+  /** FP29-F-17: images and binaries the internal registry must hold, with copy commands. */
+  @Requires('view')
+  @Api({
+    summary: 'Contents of the internal registry an air-gapped cluster needs',
+    response: RegistryContentsSchema,
+  })
+  @Get(':namespace/:name/registry-contents')
+  registryContents(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<RegistryContentsView> {
+    return this.clusters.registryContents(connection, namespace, name);
   }
 
   // ---- spec changes: preview first, then apply (hard rule 6) ----

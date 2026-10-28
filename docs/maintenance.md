@@ -87,6 +87,12 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
   `pnpm templates:generate` (node script templates), `pnpm openapi:generate`
   (`docs/api/openapi.json`) and `pnpm crds:generate` (CRDs, access manifests). No extra check is
   needed.
+- **Images of air-gapped clusters** (FP29-F-17): after a change of an RKE2 or k0s version or of a
+  preset chart, run `pnpm airgap:images` (needs the internet and `helm`; downloads each k0s binary
+  once into `~/.cache/capi-navigator/k0s`). It rewrites `air-gap-images.generated.ts` from the
+  release image lists, `k0s airgap list-images` and `helm template` of the presets; the tests name
+  every version and preset without a list. Review the diff: new images must be mirrored by users.
+  A release without assets is skipped with a warning; fix the catalog instead.
 - **Snapshot tests**: if generated manifests change, review the diff line by line. Update the
   snapshots (`pnpm --filter @capi-navigator/shared exec vitest run -u`) only when every change is
   intended.

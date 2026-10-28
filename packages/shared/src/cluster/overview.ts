@@ -51,6 +51,9 @@ export function clustersUsing(
  * size, image and root disk, computed with the same plugin functions as the transformation.
  * Image names are added by the backend.
  */
+/** Label of the fact that marks air-gapped clusters (FP-29). */
+export const AIR_GAPPED_FACT = 'Air-gapped, registry';
+
 export function infraSummary(spec: ClusterSpec): InfraSummary {
   const plugin = INFRA_PLUGINS[spec.infrastructure.provider];
   const group = (
@@ -81,9 +84,7 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
     facts: [
       ...plugin.infraFacts(infra),
       // FP-29: nodes without internet, images and binaries from the internal registry.
-      ...(spec.airGapped
-        ? [{ label: 'Air-gapped, registry', value: spec.airGapped.registry.host }]
-        : []),
+      ...(spec.airGapped ? [{ label: AIR_GAPPED_FACT, value: spec.airGapped.registry.host }] : []),
     ],
     groups: [
       group('control plane', 'control-plane', cp.replicas, cp),

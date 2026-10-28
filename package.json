@@ -29,6 +29,7 @@
     "templates:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/cluster/templates/generate-cli.js",
     "versions:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/versions/generate-cli.js",
     "openapi:generate": "pnpm --filter @capi-navigator/backend build && node apps/backend/dist/openapi/generate-cli.js",
+    "airgap:images": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/cluster/air-gap-images-cli.js && prettier --write packages/shared/src/cluster/air-gap-images.generated.ts",
     "crds:generate": "pnpm --filter @capi-navigator/shared build && node packages/shared/dist/crds/generate-cli.js"
   },
   "devDependencies": {

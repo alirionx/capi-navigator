@@ -6,8 +6,10 @@ import type {
   Infrastructure,
   LookupOption,
   MachineStatus,
+  RegistryContentsView,
 } from '@capi-navigator/shared';
 import {
+  AIR_GAPPED_FACT,
   bastionComplete,
   bastionRequest as bastionPart,
   INFRA_PLUGINS,
@@ -21,6 +23,8 @@ import { sshJumpCommand, sshUserFor } from '../composables/ssh.js';
 import { useCredentialsStore } from '../stores/credentials.js';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
+import RegistryContents from '../components/RegistryContents.vue';
+import ErrorAlert from '../components/ErrorAlert.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import ClusterAddons from '../components/addons/ClusterAddons.vue';
@@ -60,6 +64,23 @@ const canDelete = computed(
     (!s.value.summary.deletion || s.value.summary.deletion.phase === 'cleanup-timeout'),
 );
 const conn = () => connections.activeName!;
+
+// ---- FP29-F-17: what the internal registry must hold (air-gapped clusters) ----
+const airGapped = computed(
+  () => !!s.value?.infraSummary?.facts.some((f) => f.label === AIR_GAPPED_FACT),
+);
+const registryOpen = ref(false);
+const registryView = ref<RegistryContentsView | null>(null);
+const registryError = ref<unknown>(null);
+async function openRegistry(): Promise<void> {
+  registryOpen.value = true;
+  registryError.value = null;
+  try {
+    registryView.value = await store.registryContents(conn(), props.namespace, props.name);
+  } catch (err) {
+    registryError.value = err;
+  }
+}
 
 // ---- bastion (FP5-F-20) ----
 const credentials = useCredentialsStore();
@@ -256,6 +277,14 @@ const machineHeaders = computed(() => [
         data-testid="edit-labels"
         @click="openLabels"
         >{{ t('changes.labels') }}</v-btn
+      >
+      <v-btn
+        v-if="airGapped"
+        variant="tonal"
+        prepend-icon="mdi-package-variant-closed"
+        data-testid="show-registry-contents"
+        @click="openRegistry"
+        >{{ t('registryContents.show') }}</v-btn
       >
       <v-btn
         v-if="s?.kubeconfigAvailable && auth.can('clusters.kubeconfig', scope())"
@@ -818,6 +847,19 @@ const machineHeaders = computed(() => [
       :title="t('shell.title', { node: shellNode })"
       :path="`/api/connections/${encodeURIComponent(connections.activeName)}/clusters/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/nodes/${encodeURIComponent(shellNode)}/shell`"
     />
+    <v-dialog v-model="registryOpen" max-width="960" scrollable>
+      <v-card :title="t('registryContents.title')">
+        <v-card-text>
+          <ErrorAlert v-if="registryError" :error="registryError" />
+          <v-progress-linear v-else-if="!registryView" indeterminate />
+          <RegistryContents v-else :contents="registryView" />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="registryOpen = false">{{ t('common.close') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <KubeconfigDialog
       v-if="connections.activeName"
       v-model="showKubeconfig"

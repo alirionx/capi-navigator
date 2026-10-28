@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import {
   ClusterChangePreviewSchema,
   ClusterSpecSchema,
+  RegistryContentsSchema,
   ClusterListSchema,
   ClusterPreviewSchema,
   ClusterStatusSchema,
@@ -96,6 +97,9 @@ export const useClustersStore = defineStore('clusters', () => {
   /** FP-7: stored spec and generic day-2 changes with preview. */
   const getSpec = (c: string, ns: string, n: string) =>
     api('GET', `${clusterPath(c, ns, n)}/spec`, ClusterSpecSchema);
+  /** FP29-F-17: what the internal registry must hold for an air-gapped cluster. */
+  const registryContents = (c: string, ns: string, n: string) =>
+    api('GET', `${clusterPath(c, ns, n)}/registry-contents`, RegistryContentsSchema);
   const changePreview = (c: string, ns: string, n: string, change: SpecChangeInput) =>
     api('POST', `${clusterPath(c, ns, n)}/changes/preview`, ClusterChangePreviewSchema, { change });
   const applyChange = (
@@ -166,6 +170,7 @@ export const useClustersStore = defineStore('clusters', () => {
     bastionPreview,
     setBastion,
     getSpec,
+    registryContents,
     changePreview,
     applyChange,
     watch,

@@ -21,6 +21,28 @@ export const MissingArtifactSchema = z.object({
 });
 export type MissingArtifact = z.infer<typeof MissingArtifactSchema>;
 
+/**
+ * FP29-F-17: what the internal registry must hold for an air-gapped cluster, with the commands
+ * that fill it from the upstream sources.
+ */
+export const RegistryContentsSchema = z.object({
+  /** The distribution's binaries per version, with download and push commands. */
+  artifacts: z.array(MissingArtifactSchema),
+  images: z.array(
+    z.object({
+      source: z.string(),
+      /** Unset: the image's registry is not mirrored by the internal registry. */
+      target: z.string().optional(),
+      usedBy: z.string(),
+    }),
+  ),
+  /** `skopeo copy` per mirrored image. */
+  imageCommands: z.string(),
+  /** Parts whose images are not known, e.g. a preset on another chart version. */
+  unknown: z.array(z.string()),
+});
+export type RegistryContentsView = z.infer<typeof RegistryContentsSchema>;
+
 export const ClusterPreviewSchema = ManifestPreviewSchema.extend({
   /** Reasons that block the creation, e.g. missing providers (FP5-F-05, FP5-F-18). */
   blockers: z.array(z.string()),
@@ -28,6 +50,8 @@ export const ClusterPreviewSchema = ManifestPreviewSchema.extend({
   credentialNamespaceMissing: z.boolean(),
   /** Artifacts missing in the internal registry, each also a blocker (FP29-F-12). */
   missingArtifacts: z.array(MissingArtifactSchema).optional(),
+  /** Air-gapped clusters: what the internal registry must hold (FP29-F-17). */
+  registryContents: RegistryContentsSchema.optional(),
 });
 export type ClusterPreview = z.infer<typeof ClusterPreviewSchema>;
 

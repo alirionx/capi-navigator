@@ -1111,7 +1111,7 @@ Requirements (part B; RKE2 and k0s, kubeadm is left out):
 - **FP29-F-14** MUST configure the container runtime of every node to pull all images through the internal registry with unchanged names: RKE2 through `airGapped` (without `airGappedChecksum`) and `privateRegistriesConfig` with `rewrite`, k0s through `preInstalledK0s` and containerd `hosts.toml` files with `override_path`; the registry's CA certificate where set.
 - **FP29-F-15** MUST leave out node preparation that needs the internet for air-gapped clusters (on Proxmox VE the guest agent installation) and tell in the wizard what the image or template must contain (Proxmox VE: QEMU guest agent; RHEL 10: `kernel-modules-extra`).
 - **FP29-F-16** MUST treat a version upgrade of an air-gapped cluster like any other (FP-7): the artifacts of the new version are resolved and pinned, the templates rotate (hard rule 5).
-- **FP29-F-17** SHOULD show per cluster the images and artifacts the internal registry must hold (distribution images of the version, presets of the cluster) with copyable commands from the upstream sources (`skopeo copy` for images; download and `oras push` for artifacts), pinned in `versions.yaml`.
+- **FP29-F-17** SHOULD show per cluster the images and artifacts the internal registry must hold (distribution images of the version, presets of the cluster) with copyable commands from the upstream sources (`skopeo copy` for images; download and `oras push` for artifacts); the image lists are generated from the versions in `versions.yaml` (release lists, `k0s airgap list-images`, `helm template` of the presets), not looked up at runtime.
 - **FP29-F-18** SHOULD offer NTP servers for air-gapped clusters (RKE2 `agentConfig.ntp`; k0s through a `systemd-timesyncd` drop-in).
 
 

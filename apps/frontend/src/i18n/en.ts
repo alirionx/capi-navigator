@@ -633,6 +633,26 @@ export const en = {
     checkAgain: 'Check again',
     yamlLater: 'The YAML of the cluster is shown once the binaries are in the registry.',
   },
+  registryContents: {
+    show: 'Registry contents',
+    title: 'What the internal registry must hold',
+    intro:
+      'Everything the nodes of this cluster pull. A pull-through cache (e.g. Harbor proxy cache projects) fills itself; otherwise copy it with these commands, on a machine with internet access, skopeo and oras.',
+    login: 'Log in with a user that may push:',
+    binaries: 'The Kubernetes binaries, downloaded from the official release and pushed:',
+    images:
+      '{n} images, copied from their upstream registries to the paths of the mirrors (linux/amd64):',
+    showList: 'Show the images and what needs them',
+    hideList: 'Hide the list',
+    image: 'Image',
+    usedBy: 'Needed by',
+    workloads:
+      'Your own workloads and add-ons need their images there as well, under the same paths.',
+    unknown:
+      'The images of {names} are not known to this app version; take them from the chart or release.',
+    unmirrored:
+      'These images come from registries the internal registry does not mirror; add the registries in its settings (Credentials page), or the nodes cannot pull them:',
+  },
   registry: {
     title: 'Internal registry',
     subtitle:

@@ -133,6 +133,7 @@ pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
 pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP-20)
 pnpm templates:generate  # regenerate the node script templates (kubeadm install, artifact download)
+pnpm airgap:images       # image lists of air-gapped clusters from versions.yaml (FP29-F-17; internet + helm)
 pnpm versions:report     # newer versions of versions.yaml, Actions and Docker → docs/versions-report.md
 pnpm crds:install     # install the app's CRDs into the current cluster
 pnpm secrets:scan     # gitleaks (Docker) over the Git history and the working tree; run before pushing
