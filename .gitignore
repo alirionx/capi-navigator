@@ -31,3 +31,6 @@ apps/frontend/public/third-party-notices.txt
 
 
 sandbox/
+# Local CLI binaries (e.g. clusterawsadm, clusterctl) never go into Git
+/clusterawsadm
+/clusterctl
