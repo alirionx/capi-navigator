@@ -1123,7 +1123,7 @@ Requirements (part B; RKE2 and k0s, kubeadm is left out):
 - [ ] An RKE2 and a k0s cluster created in the wizard on Proxmox VE without outbound traffic come up from the internal registry alone; CCM, CSI and kube-vip run.
 - [ ] A missing artifact is a blocker in the preview with the push command; a changed artifact (other digest) stops the node installation.
 - [x] An upgrade of an air-gapped cluster to the next minor version pins the new artifacts and rotates the templates. Verified on 2026-10-28 on Proxmox VE with all-in-one clusters of one node: RKE2 v1.35.9 → v1.36.5 (control plane replaced in about four minutes) and k0s v1.35.8 → v1.36.4 (now replaced too, ADR-0013). Found: k0s 1.36 ships containerd 2, which needs the version 3 drop-in format for the registry mirror (fixed); on a one-node k0s cluster the CoreDNS rollout k0s starts while two nodes exist can stay pending afterwards (required anti-affinity of the running pod), until that pod is deleted.
-- [ ] Snapshot tests cover RKE2 and k0s, air-gapped, on Proxmox VE and OpenStack; clusters without the setting are unchanged.
+- [x] Snapshot tests cover RKE2 and k0s, air-gapped, on Proxmox VE and OpenStack; clusters without the setting are unchanged.
 
 ## 7. Non-functional requirements
 

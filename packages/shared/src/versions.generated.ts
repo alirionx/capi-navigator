@@ -123,7 +123,7 @@ export const VERSIONS: VersionsFile = {
         "package": "rancher/rke2"
       },
       "verified": "2026-10-20",
-      "note": "Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35.",
+      "note": "Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28).",
       "versions": [
         {
           "version": "v1.37.1+rke2r1",
@@ -132,8 +132,7 @@ export const VERSIONS: VersionsFile = {
         },
         {
           "version": "v1.36.5+rke2r1",
-          "verifiedWithProvider": "v0.27.0",
-          "untested": true
+          "verifiedWithProvider": "v0.27.0"
         },
         {
           "version": "v1.35.9+rke2r1",
@@ -156,12 +155,11 @@ export const VERSIONS: VersionsFile = {
         "package": "k0sproject/k0s"
       },
       "verified": "2026-10-20",
-      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9.",
+      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (upgrade from v1.35, 2026-10-28).",
       "versions": [
         {
           "version": "v1.36.4+k0s.1",
-          "verifiedWithProvider": "v2.3.0",
-          "untested": true
+          "verifiedWithProvider": "v2.3.0"
         },
         {
           "version": "v1.35.8+k0s.1",

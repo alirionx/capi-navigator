@@ -106,3 +106,11 @@ Decision:
   a warning in the UI. Before v2.3.0 replacement stays blocked.
 - Once a k0smotron release contains #1705, re-test a three-node rollout live and record the
   result here.
+
+Known limitation (seen on 2026-10-28, k0s v1.36.4, one control plane node with worker role):
+while the new machine joins, two nodes exist and k0s gives CoreDNS a required pod anti-affinity;
+once the old machine is gone, k0s removes it again and starts another CoreDNS rollout. Its new pod
+cannot be scheduled next to the running pod, which still carries the anti-affinity, and stays
+pending. DNS keeps working through the running pod. Deleting that pod
+(`kubectl -n kube-system delete pod -l k8s-app=kube-dns`) completes the rollout. Clusters with
+more than one node are not affected. The app does not work around it; it is not reported upstream.
