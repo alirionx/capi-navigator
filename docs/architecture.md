@@ -233,6 +233,14 @@ subscriber of that channel. Watches stop when nobody listens
    and, for kubeadm, Calico. Nodes become `Ready` once the CNI runs and the CCM has initialised
    them.
 
+**Air-gapped clusters** (FP-29, [ADR-0030](adr/0030-air-gapped-nodes-from-an-internal-registry.md)):
+the wizard copies the connection's internal registry into the spec. The preview looks up the
+binaries of each version in that registry and pins their layer digests in the spec before
+`transform(spec)` runs, so the transformation stays pure; a missing artifact is a blocker with
+the push commands. The bootstrap data then fetches the binaries by digest (sha256 checked) instead
+of downloading them from the internet, and configures the container runtime to pull every image
+through the registry. Upgrades resolve and pin the new version the same way.
+
 ### Day-2 changes, drift and template rotation
 
 Every change (machine size, image, scaling, pools, node customization, upgrade, bastion, and the

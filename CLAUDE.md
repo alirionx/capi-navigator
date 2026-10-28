@@ -52,7 +52,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-31 | Proxmox VE as infrastructure provider (optional) | done |
 | FP-33 | Day-2 changes of infrastructure settings (optional) | done |
 | FP-32 | Services of type LoadBalancer on Proxmox VE with kube-vip (optional) | done |
-| FP-29 | Air-gapped workload clusters (optional) | in progress (part A done: app and provider controllers behind a proxy, ADR-0029; part B, nodes without internet, after the node spike) |
+| FP-29 | Air-gapped workload clusters (optional) | done (proxy for app and providers, ADR-0029; nodes from an internal registry, ADR-0030; NTP servers FP29-F-18 postponed) |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.

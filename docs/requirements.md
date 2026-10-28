@@ -1068,7 +1068,7 @@ Requirements:
 
 ### FP-29: Air-gapped workload clusters (optional)
 
-**Goal:** workload clusters in networks without internet access. The app and the management cluster reach the internet through an HTTP(S) proxy (part A); the nodes of the workload clusters reach no internet at all and get everything from an internal OCI registry (part B). Running the registry and mirroring into it is not the app's task; the app names what has to be mirrored. Part A is delivered; part B follows the node spike below.
+**Goal:** workload clusters in networks without internet access. The app and the management cluster reach the internet through an HTTP(S) proxy (part A); the nodes of the workload clusters reach no internet at all and get everything from an internal OCI registry (part B). Running the registry and mirroring into it is not the app's task; the app names what has to be mirrored. Both parts are delivered (part B: ADR-0030); NTP servers for air-gapped nodes (FP29-F-18) are postponed.
 
 Agreed scope (2026-10-26; replaces the artifact bundles of the earlier outlook):
 
@@ -1112,7 +1112,7 @@ Requirements (part B; RKE2 and k0s, kubeadm is left out):
 - **FP29-F-15** MUST leave out node preparation that needs the internet for air-gapped clusters (on Proxmox VE the guest agent installation) and tell in the wizard what the image or template must contain (Proxmox VE: QEMU guest agent; RHEL 10: `kernel-modules-extra`).
 - **FP29-F-16** MUST treat a version upgrade of an air-gapped cluster like any other (FP-7): the artifacts of the new version are resolved and pinned, the templates rotate (hard rule 5).
 - **FP29-F-17** SHOULD show per cluster the images and artifacts the internal registry must hold (distribution images of the version, presets of the cluster) with copyable commands from the upstream sources (`skopeo copy` for images; download and `oras push` for artifacts); the image lists are generated from the versions in `versions.yaml` (release lists, `k0s airgap list-images`, `helm template` of the presets), not looked up at runtime.
-- **FP29-F-18** SHOULD offer NTP servers for air-gapped clusters (RKE2 `agentConfig.ntp`; k0s through a `systemd-timesyncd` drop-in).
+- **FP29-F-18** (postponed on 2026-10-28) SHOULD offer NTP servers for air-gapped clusters (RKE2 `agentConfig.ntp`; k0s through a `systemd-timesyncd` drop-in).
 
 
 **Acceptance criteria**
@@ -1120,8 +1120,8 @@ Requirements (part B; RKE2 and k0s, kubeadm is left out):
 - [x] The app installed with Helm behind a proxy that inspects TLS lists provider versions from GitHub and tests Helm repositories (HTTP and OCI) through the proxy; without the proxy CA it reports an untrusted certificate.
 - [x] With a proxy on the connection, CAAPH installs a chart from an HTTP repository and from an OCI registry through the proxy; changed settings mark the provider as outdated; switching the proxy off removes it from the controller.
 - [x] Snapshot tests cover the provider manifests with a proxy, with a proxy CA and together with the CA bundle of Proxmox VE.
-- [ ] An RKE2 and a k0s cluster created in the wizard on Proxmox VE without outbound traffic come up from the internal registry alone; CCM, CSI and kube-vip run.
-- [ ] A missing artifact is a blocker in the preview with the push command; a changed artifact (other digest) stops the node installation.
+- [x] An RKE2 and a k0s cluster created in the wizard on Proxmox VE without outbound traffic come up from the internal registry alone; CCM, CSI and kube-vip run. Verified on 2026-10-28 with one-node clusters (RKE2 v1.35.9, k0s v1.36.4) created through the app's create endpoint, the gateway pointing to an address that does not route: a pod could not reach the internet, all pods ran, the CCM set the provider ID, a volume of the CSI driver was bound, the API answered on the kube-vip address and `alpine` came from `docker.io` through the mirror.
+- [x] A missing artifact is a blocker in the preview with the push command; a changed artifact (other digest) stops the node installation. The blocker was seen live before the artifacts were pushed (2026-10-28); a changed file and a missing artifact end the node's download script with exit code 1 without leaving a file behind (test of the script against a local registry).
 - [x] An upgrade of an air-gapped cluster to the next minor version pins the new artifacts and rotates the templates. Verified on 2026-10-28 on Proxmox VE with all-in-one clusters of one node: RKE2 v1.35.9 → v1.36.5 (control plane replaced in about four minutes) and k0s v1.35.8 → v1.36.4 (now replaced too, ADR-0013). Found: k0s 1.36 ships containerd 2, which needs the version 3 drop-in format for the registry mirror (fixed); on a one-node k0s cluster the CoreDNS rollout k0s starts while two nodes exist can stay pending afterwards (required anti-affinity of the running pod), until that pod is deleted.
 - [x] Snapshot tests cover RKE2 and k0s, air-gapped, on Proxmox VE and OpenStack; clusters without the setting are unchanged.
 

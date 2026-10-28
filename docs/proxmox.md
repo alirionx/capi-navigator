@@ -148,6 +148,46 @@ RKE2 and k0s deploy it from their manifest directories, kubeadm as a static pod.
   a volume stays on its Proxmox node, which is the zone of the node labels; with several Proxmox
   nodes, shared storage (Ceph, NFS) lets pods move between them.
 
+## Air-gapped clusters
+
+RKE2 and k0s clusters can run on nodes without internet access (FP-29,
+[ADR-0030](adr/0030-air-gapped-nodes-from-an-internal-registry.md)): the nodes pull every image
+through an internal OCI registry and download the Kubernetes binaries from it. kubeadm is not
+supported. What Proxmox VE needs in addition:
+
+- **A template with the QEMU guest agent installed.** The app normally installs `qemu-guest-agent`
+  on first boot, which needs the internet; without the agent CAPMOX waits for cloud-init forever.
+  Bake it into the cloud image before you import it, e.g. with `virt-customize` from
+  libguestfs-tools:
+
+  ```bash
+  virt-customize -a debian-13-genericcloud-amd64.qcow2 --install qemu-guest-agent
+  ```
+
+  Then create the template from that image as above (`--agent enabled=1`, no cloud-init drive). On
+  RHEL 10 and derivatives, RKE2 also needs `kernel-modules-extra` in the image.
+
+- **Internal DNS servers** in the infrastructure step: the nodes must resolve the registry, and
+  public resolvers are not reachable. The wizard warns about public ones.
+- **A gateway** is still required by CAPMOX; it need not route anywhere. The nodes must reach the
+  registry, the Proxmox VE API (CCM and CSI) and each other in the bridge's network.
+
+In the app:
+
+1. **Credentials → Internal registry**: the registry's host, its CA if private, the path per
+   upstream registry (e.g. `docker.io` → `proxy-docker-io` for a Harbor proxy cache project) and
+   the path of the binary artifacts. The registry must allow anonymous pulls.
+2. **Create cluster** with RKE2 or k0s and the switch **Air-gapped** on. The preview looks up the
+   binaries of the version in the registry; if they are missing, it shows the commands that
+   download them from the upstream release and push them with `oras push`. Run them once per
+   version, then preview again.
+3. **Registry contents** in the preview and on the cluster page lists every image the cluster needs with `skopeo copy`
+   commands. A proxy cache that reaches the internet fills itself; a registry without one needs
+   them all before the nodes start.
+
+Upgrades work like for other clusters: push the binaries of the new version first, the preview
+pins them and the machines are replaced.
+
 ## Troubleshooting
 
 - **A machine stays in Provisioning with "cannot reserve … of memory"**: CAPMOX's memory

@@ -244,6 +244,14 @@ volumeMounts:
 The `NO_PROXY` of the operator must contain the service network (or the ClusterIP of
 `default/kubernetes`). See [ADR-0029](docs/adr/0029-outbound-proxy-for-app-and-providers.md).
 
+**Nodes without internet access:** RKE2 and k0s workload clusters can be created air-gapped. The
+nodes pull all images through an internal OCI registry (set per management cluster on the
+Credentials page) and download the Kubernetes binaries from it as OCI artifacts, pinned by digest.
+The app shows what the registry must hold, with `oras push` and `skopeo copy` commands. Proxmox VE
+templates need the QEMU guest agent baked in; see
+[Air-gapped clusters](docs/proxmox.md#air-gapped-clusters) and
+[ADR-0030](docs/adr/0030-air-gapped-nodes-from-an-internal-registry.md).
+
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated
 there on first start.
