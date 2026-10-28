@@ -108,7 +108,7 @@ describe('FP-4 credentials against kind', () => {
     const has = (id: string) => before.providers.some((p) => p.catalogId === id);
     for (const [id, version, namespace] of [
       ['core', 'v1.14.3', 'capi-system'],
-      ['openstack', 'v0.15.0', 'capo-system'],
+      ['openstack', 'v0.15.1', 'capo-system'],
       ['aws', 'v2.13.1', 'capa-system'],
     ] as const) {
       if (has(id)) continue;

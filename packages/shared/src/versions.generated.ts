@@ -14,13 +14,13 @@ export const VERSIONS: VersionsFile = {
       "note": "CAPI contract v1beta2."
     },
     "rke2": {
-      "version": "v0.27.0",
+      "version": "v0.27.1",
       "source": {
         "datasource": "github-releases",
         "package": "rancher/cluster-api-provider-rke2"
       },
-      "verified": "2026-10-20",
-      "note": "v0.27.0 was taken one day after its release, before the minimum release age, to test the update and rollback procedure. No API changes from v0.26.0; built on CAPI v1.14.3."
+      "verified": "2026-10-28",
+      "note": "v0.27.1 only updates Go (1.27.3). No API changes from v0.26.0; built on CAPI v1.14.3. `airGappedChecksum` is still broken (issue #1128), the app does not set it (ADR-0030)."
     },
     "k0smotron": {
       "version": "v2.3.0",
@@ -32,13 +32,13 @@ export const VERSIONS: VersionsFile = {
       "note": "v2.3.0 taken on its release day for ADR-0013: control plane replacement works live for one node; three nodes are all removed at once (etcd on one member for minutes), accepted since 2026-10-28 until the fix #1705 is released. Re-test multi-node replacement with every release. The deprecated `version` of the worker config is still honoured."
     },
     "openstack": {
-      "version": "v0.15.0",
+      "version": "v0.15.1",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-provider-openstack"
       },
-      "verified": "2026-10-17",
-      "note": "Needs the ORC version of its minor (prerequisites.orc)."
+      "verified": "2026-10-28",
+      "note": "Needs the ORC version of its minor (prerequisites.orc). v0.15.1 has bug fixes only, no API changes."
     },
     "aws": {
       "version": "v2.13.1",
@@ -86,12 +86,12 @@ export const VERSIONS: VersionsFile = {
   },
   "prerequisites": {
     "cert-manager": {
-      "version": "v1.21.2",
+      "version": "v1.21.3",
       "source": {
         "datasource": "github-releases",
         "package": "cert-manager/cert-manager"
       },
-      "verified": "2026-10-17",
+      "verified": "2026-10-28",
       "note": "Install command uses the Helm chart oci://quay.io/jetstack/charts/cert-manager with this version."
     },
     "capi-operator": {
@@ -127,25 +127,25 @@ export const VERSIONS: VersionsFile = {
       "versions": [
         {
           "version": "v1.37.1+rke2r1",
-          "verifiedWithProvider": "v0.27.0",
+          "verifiedWithProvider": "v0.27.1",
           "untested": true
         },
         {
           "version": "v1.36.5+rke2r1",
-          "verifiedWithProvider": "v0.27.0"
+          "verifiedWithProvider": "v0.27.1"
         },
         {
           "version": "v1.35.9+rke2r1",
-          "verifiedWithProvider": "v0.27.0",
+          "verifiedWithProvider": "v0.27.1",
           "default": true
         },
         {
           "version": "v1.34.12+rke2r1",
-          "verifiedWithProvider": "v0.27.0"
+          "verifiedWithProvider": "v0.27.1"
         },
         {
           "version": "v1.33.13+rke2r3",
-          "verifiedWithProvider": "v0.27.0"
+          "verifiedWithProvider": "v0.27.1"
         }
       ]
     },
@@ -154,20 +154,20 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "k0sproject/k0s"
       },
-      "verified": "2026-10-20",
-      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (upgrade from v1.35, 2026-10-28).",
+      "verified": "2026-10-28",
+      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (v1.36.4, upgrade from v1.35.8, 2026-10-28). The patches of 2026-10-27 (v1.34.12, v1.35.9, v1.36.5) were taken one day after their release, before the minimum release age, at the user's request for 0.12.0.",
       "versions": [
         {
-          "version": "v1.36.4+k0s.1",
+          "version": "v1.36.5+k0s.0",
           "verifiedWithProvider": "v2.3.0"
         },
         {
-          "version": "v1.35.8+k0s.1",
+          "version": "v1.35.9+k0s.0",
           "verifiedWithProvider": "v2.3.0",
           "default": true
         },
         {
-          "version": "v1.34.11+k0s.1",
+          "version": "v1.34.12+k0s.0",
           "verifiedWithProvider": "v2.3.0"
         },
         {
@@ -238,13 +238,13 @@ export const VERSIONS: VersionsFile = {
       "verified": "2026-10-17"
     },
     "aws-csi": {
-      "version": "2.67.0",
+      "version": "2.67.2",
       "source": {
         "datasource": "helm",
         "package": "aws-ebs-csi-driver",
         "registry": "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
       },
-      "verified": "2026-10-17"
+      "verified": "2026-10-28"
     },
     "proxmox-ccm": {
       "version": "0.2.32",
@@ -267,14 +267,14 @@ export const VERSIONS: VersionsFile = {
       "note": "App v0.20.0 (2026-08-05); chart 0.5.13 (v0.21.0, 2026-10-17) was less than two weeks old. Needs the region and zone labels the CCM sets; volumes on local storage stay on their node."
     },
     "proxmox-kube-vip": {
-      "version": "0.11.1",
+      "version": "0.11.2",
       "source": {
         "datasource": "helm",
         "package": "kube-vip",
         "registry": "https://kube-vip.github.io/helm-charts"
       },
-      "verified": "2026-10-24",
-      "note": "A DaemonSet driven by env; 0.11.2 (2026-10-20) only raises the default image tag, which the preset overrides. Rendered with the preset values it matches the FP-32 spike."
+      "verified": "2026-10-28",
+      "note": "A DaemonSet driven by env; 0.11.2 only raises the default image tag over 0.11.1, which the preset overrides. Rendered with the preset values it matches the FP-32 spike."
     },
     "proxmox-kube-vip-cloud-provider": {
       "version": "0.2.10",

@@ -21,7 +21,8 @@ describe('versions.yaml (FP-20, ADR-0018)', () => {
   });
 
   it('reports schema problems with their path', () => {
-    const broken = read('versions.yaml').replace('version: v0.15.0', 'versio: v0.15.0');
+    // Independent of the pinned version, so a provider update does not break the test.
+    const broken = read('versions.yaml').replace(/(\n {2}openstack:\n\s+)version:/, '$1versio:');
     expect(() => parseVersionsFile(broken)).toThrow(
       /versions\.yaml: providers\.openstack\.version/,
     );
