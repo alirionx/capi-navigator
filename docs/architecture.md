@@ -256,8 +256,8 @@ way:
 5. Only one rollout runs per cluster at a time; a second change is blocked until the first one
    has finished.
 
-k0s is the exception for control plane versions: k0smotron upgrades them in place, and changes
-that would replace k0s control plane machines are blocked
+k0s follows the same rule: k0smotron replaces control plane machines for version upgrades too
+(`updateStrategy: Recreate`); it needs k0smotron v2.3.0 or later
 ([ADR-0013](adr/0013-k0s-control-plane-replacement.md)).
 
 ### Kubernetes upgrades and the rollout controller

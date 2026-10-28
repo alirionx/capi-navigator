@@ -651,9 +651,9 @@ Verified on 2026-10-18 with podinfo 6.15.0 instead of ingress-nginx (retired in 
 
 - [x] Snapshot tests cover k0s for the standard topology and all-in-one.
 - [x] A k0s standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CCM and CSI working.
-- [ ] A k0s cluster can be upgraded by one minor version and rebuilt from a new image via FP-7. **Partly met, blocked upstream:** the upgrade works (control plane in place via k0s autopilot, workers replaced). A new image reaches the worker pools, and with k0smotron v2.3.0 also control planes with one node; control planes with three or five nodes stay blocked, because k0smotron v2.3.0 removes all old nodes at once and etcd runs on one member for minutes (ADR-0013, update 2026-10-20). OS updates of control plane nodes run via unattended-upgrades and the kured preset.
+- [ ] A k0s cluster can be upgraded by one minor version and rebuilt from a new image via FP-7. **Partly met, blocked upstream:** the upgrade works (control plane in place via k0s autopilot, workers replaced). A new image reaches the worker pools, and with k0smotron v2.3.0 also control planes with one node; control planes with three or five nodes stay blocked, because k0smotron v2.3.0 removes all old nodes at once and etcd runs on one member for minutes (ADR-0013, update 2026-10-20). OS updates of control plane nodes run via unattended-upgrades and the kured preset. **Update 2026-10-28:** k0s control planes are replaced for every change, upgrades included, and for all sizes with k0smotron v2.3.0; the short loss of etcd redundancy with three or five nodes is accepted until the upstream fix is released (ADR-0013). To re-verify live.
 
-Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11+k0s.1 → v1.35.8+k0s.1, Ubuntu 22.04 → 24.04 for workers). Deviations: ADR-0012 (distributions declare their network needs), ADR-0013 (in-place control plane upgrades, no control plane replacement).
+Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11+k0s.1 → v1.35.8+k0s.1, Ubuntu 22.04 → 24.04 for workers). Deviations: ADR-0012 (distributions declare their network needs), ADR-0013 (control plane replacement; in-place upgrades until 2026-10-28).
 
 ### FP-10: Vanilla Kubernetes with kubeadm on stock images (experimental)
 
@@ -906,7 +906,7 @@ Order of work: credentials first (so real credentials can be stored early), then
 
 - **FP26-F-01** MUST offer 1, 3 or 5 nodes for the all-in-one topology in the wizard; all nodes are control plane nodes without the control plane taint.
 - **FP26-F-02** MUST allow scaling the control plane of an all-in-one cluster between 1, 3 and 5 nodes as a day-2 change with preview, as for standard clusters (FP-7).
-- **FP26-F-03** MUST keep the rules of the providers and distributions: several nodes need the API load balancer (OpenStack); changes that k0smotron cannot apply safely to several control plane nodes stay blocked with their reason (ADR-0013), and scaling down is refused where it would remove etcd members faster than the distribution keeps quorum.
+- **FP26-F-03** MUST keep the rules of the providers and distributions: several nodes need the API load balancer (OpenStack); changes that k0smotron cannot apply safely stay blocked with their reason (ADR-0013), and scaling down is refused where it would remove etcd members faster than the distribution keeps quorum.
 - **FP26-F-04** SHOULD point out in the preview that all nodes carry workloads and etcd, so larger machines and SSD disks are advisable.
 
 **Acceptance criteria**

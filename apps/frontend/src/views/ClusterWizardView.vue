@@ -148,17 +148,6 @@ const airGapNeeds = computed(() =>
     .map((k) => t(k)),
 );
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
-/** ADR-0013: the distribution cannot replace control plane machines later, or only one node. */
-const cpReplacementWarning = computed(() => {
-  const updates = FLAVOR_PLUGINS[draft.flavor]?.controlPlaneUpdates;
-  if (!updates?.replacementBlocked) return '';
-  const fixed = updates.replacementFixedIn;
-  const reason =
-    fixed?.maxReplicas !== undefined && draft.cp.replicas > fixed.maxReplicas
-      ? (fixed.multiNodeReason ?? updates.replacementBlocked)
-      : updates.replacementBlocked;
-  return t('wizard.cpReplacementWarning', { reason });
-});
 watch(
   () => draft.flavor,
   (f) => (draft.version = defaultVersion(f)),
@@ -664,15 +653,6 @@ const canPreview = computed(() => issues.value.length === 0);
           <div class="text-caption text-medium-emphasis mb-3">
             {{ t('wizard.cpHint', { cp: cpKind }) }}
           </div>
-          <v-alert
-            v-if="cpReplacementWarning"
-            type="warning"
-            variant="tonal"
-            density="compact"
-            class="mb-3"
-            data-testid="cp-replacement-warning"
-            >{{ cpReplacementWarning }}</v-alert
-          >
           <MachineGroupEditor
             v-model="draft.cp"
             :provider="draft.provider"

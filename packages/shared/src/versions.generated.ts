@@ -29,7 +29,7 @@ export const VERSIONS: VersionsFile = {
         "package": "k0sproject/k0smotron"
       },
       "verified": "2026-10-20",
-      "note": "v2.3.0 taken on its release day for ADR-0013: control plane replacement works live for one node; three nodes are all removed at once (etcd on one member for minutes), so they stay blocked. Re-test multi-node replacement with every release. The deprecated `version` of the worker config is still honoured."
+      "note": "v2.3.0 taken on its release day for ADR-0013: control plane replacement works live for one node; three nodes are all removed at once (etcd on one member for minutes), accepted since 2026-10-28 until the fix #1705 is released. Re-test multi-node replacement with every release. The deprecated `version` of the worker config is still honoured."
     },
     "openstack": {
       "version": "v0.15.0",

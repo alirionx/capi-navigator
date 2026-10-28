@@ -9,8 +9,8 @@ import { compact } from './util.js';
  * regular machines. Field names verified against the CRDs of the v2.3.0 release
  * (control-plane-components.yaml, bootstrap-components.yaml) and the k0s configuration reference.
  *
- * - `updateStrategy: InPlace`: version upgrades of the control plane run via k0s autopilot; changes
- *   that would replace control plane machines are refused (ADR-0013).
+ * - `updateStrategy: Recreate`: every control plane change, version upgrades included, replaces the
+ *   machines one at a time, as with RKE2 and kubeadm (ADR-0013, update 2026-10-28).
  * - Control plane nodes run with `--enable-worker` and keep the control plane taint, so they are
  *   nodes like with RKE2 (CCM/CSI controllers schedule there); all-in-one drops the taint.
  * - k0smotron's ProviderID controller sets the node's providerID from the Machine, so no instance
@@ -158,28 +158,20 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   },
   // The k0s kubelet reports "v1.35.8+k0s" for k0s "v1.35.8+k0s.1" (seen live with CAPI v1.14.3).
   machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
-  // ADR-0013: k0smotron v2.2.0 removes all old control plane machines (and their etcd members)
-  // right after the first replacement is ready, so etcd loses quorum. Version upgrades therefore
-  // run in place (k0s autopilot); changes that would replace control plane machines are refused
-  // unless k0smotron v2.3.0 or later is installed and the control plane has one node: v2.3.0
-  // replaced a single node cleanly, but removed all three old nodes of a three-node control plane
-  // within a minute, leaving etcd on one member for two minutes (measured live, ADR-0013).
+  // ADR-0013: k0smotron before v2.3.0 removes all old control plane machines (and their etcd
+  // members) right after the first replacement is ready, so etcd loses quorum. v2.3.0 waits for
+  // draining machines; with three or five nodes it still deletes the old ones within a minute
+  // (etcd on one member for about two minutes, measured live), accepted until the upstream fix
+  // (k0smotron #1705) is released.
   controlPlaneUpdates: {
-    versionInPlace: true,
     // FP26-F-03, measured live (3 → 1 on Google Cloud): k0smotron removes the etcd members one
     // after another, so quorum holds, but starts deleting the next node before the previous one is
     // gone; the API was unreachable through the load balancer several times for 5 to 25 seconds.
     scaleDownWarning:
       'k0smotron removes the control plane nodes in quick succession: etcd keeps its quorum, but the API can be unreachable for up to half a minute at a time while the nodes leave.',
     replacementBlocked:
-      'k0smotron before v2.3.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Upgrade the k0smotron providers to v2.3.0 or later on the Providers page; version upgrades run in place meanwhile.',
-    replacementFixedIn: {
-      provider: 'k0smotron-control-plane',
-      version: 'v2.3.0',
-      maxReplicas: 1,
-      multiNodeReason:
-        'k0smotron v2.3.0 replaces a control plane with more than one node too fast: it removes all old machines within a minute, and etcd runs on a single member until the replacements are ready, without redundancy (ADR-0013, measured live). Version upgrades run in place; image, flavor, customization and rebuild changes of the control plane are possible with one control plane node only.',
-    },
+      'k0smotron before v2.3.0 cannot replace k0s control plane machines safely: it removes all old machines and their etcd members before the replacements are ready, and etcd loses quorum (ADR-0013). Upgrade the k0smotron providers to v2.3.0 or later on the Providers page.',
+    replacementFixedIn: { provider: 'k0smotron-control-plane', version: 'v2.3.0' },
   },
   // k0s HA docs: the load balancer forwards the API, Konnectivity and the controller join API.
   network: {
@@ -234,8 +226,9 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
       spec: {
         version: spec.kubernetes.version,
         replicas: cp.replicas,
-        // ADR-0013: in place via k0s autopilot (exception to hard rule 5, versions only).
-        updateStrategy: 'InPlace',
+        // ADR-0013: replace machines like every other distribution (hard rule 5); InPlace would
+        // download the new binary via autopilot, which air-gapped nodes cannot (FP29-F-16).
+        updateStrategy: 'Recreate',
         machineTemplate: {
           // k0smotron v2.2.0 reads this deprecated reference with apiVersion.
           infrastructureRef: {

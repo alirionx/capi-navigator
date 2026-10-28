@@ -175,24 +175,15 @@ export interface BootstrapFlavorPlugin {
    */
   machineVersion?(version: string): string;
   /**
-   * How the control plane takes changes (ADR-0013). `versionInPlace`: version upgrades update the
-   * nodes in place; `replacementBlocked`: changes that replace control plane machines are refused
-   * with this reason, unless the installed provider `replacementFixedIn.provider` (catalog ID) is at
-   * least `replacementFixedIn.version` and the control plane has at most `maxReplicas` nodes;
-   * larger control planes are refused with `multiNodeReason`. Unset: every change replaces
-   * machines (template rotation).
+   * How the control plane takes changes (ADR-0013). `replacementBlocked`: changes that replace
+   * control plane machines are refused with this reason, unless the installed provider
+   * `replacementFixedIn.provider` (catalog ID) is at least `replacementFixedIn.version`.
    */
   controlPlaneUpdates?: {
-    versionInPlace: boolean;
     /** Shown in the preview when the control plane shrinks (FP26-F-03). */
     scaleDownWarning?: string;
     replacementBlocked?: string;
-    replacementFixedIn?: {
-      provider: string;
-      version: string;
-      maxReplicas?: number;
-      multiNodeReason?: string;
-    };
+    replacementFixedIn?: { provider: string; version: string };
   };
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
   controlPlane(args: {

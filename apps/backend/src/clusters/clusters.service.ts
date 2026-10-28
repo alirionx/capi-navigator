@@ -674,9 +674,6 @@ export class ClustersService {
       removedDeployments,
       machines,
       workerVersionPending: !!next.kubernetes.workerVersion && !current.kubernetes.workerVersion,
-      inPlaceVersionKinds: Object.values(FLAVOR_PLUGINS)
-        .filter((p) => p?.controlPlaneUpdates?.versionInPlace)
-        .map((p) => p!.controlPlaneResource.kind),
     });
     const blockers = [...plan.blockers];
     const replaces = rollouts.some((r) => r.action === 'replace');
@@ -689,8 +686,8 @@ export class ClustersService {
     if (current.kubernetes.workerVersion && replaces && !opts.finishUpgrade) {
       blockers.push('An upgrade is still running; wait until the worker pools have followed.');
     }
-    // ADR-0013: some distributions cannot replace control plane machines, or only from a fixed
-    // provider version on.
+    // ADR-0013: some distributions replace control plane machines safely only from a fixed provider
+    // version on.
     const cpUpdates = FLAVOR_PLUGINS[next.kubernetes.flavor]?.controlPlaneUpdates;
     const cpReplaced = rollouts.some(
       (r) => r.action === 'replace' && CONTROL_PLANE_RESOURCES.some((c) => c.kind === r.kind),
@@ -698,14 +695,8 @@ export class ClustersService {
     if (cpUpdates?.replacementBlocked && cpReplaced) {
       const fixed = cpUpdates.replacementFixedIn;
       const installed = fixed ? await this.installedVersion(connection, fixed.provider) : undefined;
-      const nodes = Math.max(
-        current.topology.controlPlane.replicas,
-        next.topology.controlPlane.replicas,
-      );
       if (!fixed || !installed || compareVersions(installed, fixed.version) < 0) {
         blockers.push(cpUpdates.replacementBlocked);
-      } else if (fixed.maxReplicas !== undefined && nodes > fixed.maxReplicas) {
-        blockers.push(fixed.multiNodeReason ?? cpUpdates.replacementBlocked);
       }
     }
     // FP7-F-09: pre-checks before an upgrade.

@@ -10798,8 +10798,7 @@
             "enum": [
               "replace",
               "remove",
-              "later",
-              "inPlace"
+              "later"
             ]
           }
         },

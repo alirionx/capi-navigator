@@ -987,7 +987,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     k8s.storedSpec = undefined;
   });
 
-  it('k0s: control plane upgrades run in place, replacements are blocked (ADR-0013)', async () => {
+  it('k0s: control plane machines are replaced from k0smotron v2.3.0 on, upgrades too (ADR-0013)', async () => {
     const spec = ClusterSpecSchema.parse({
       ...OS_SPEC,
       kubernetes: { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
@@ -1011,9 +1011,9 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     const url = '/api/connections/home/clusters/team-a/demo/changes';
     const post = (change: unknown) =>
       http().post(`${url}/preview`).set(CSRF).set('Cookie', operatorCookie).send({ change });
+    // No k0smotron version known: blocked, older versions lose etcd quorum.
     const rebuildCp = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
     expect(rebuildCp.body.blockers.join()).toMatch(/cannot replace k0s control plane machines/);
-    // k0smotron v2.2.0 installed: still blocked; v2.3.0 waits for draining machines.
     const withK0smotron = (version: string) =>
       state.providers.push({
         ...ready('k0smotron-control-plane'),
@@ -1028,22 +1028,19 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     const fixed = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
     expect(fixed.body.blockers.join()).not.toMatch(/control plane machines/);
     expect(fixed.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'replace' });
-    // Three nodes: still blocked with v2.3.0 (all old nodes removed at once, measured live).
+    // Three nodes: allowed as well (ADR-0013, update 2026-10-28).
     k8s.storedSpec = JSON.stringify({
       ...spec,
       topology: { ...spec.topology, controlPlane: { ...spec.topology.controlPlane, replicas: 3 } },
     });
     const threeNodes = await post({ type: 'rebuild', group: 'control-plane' }).expect(200);
-    expect(threeNodes.body.blockers.join()).toMatch(/more than one node/);
+    expect(threeNodes.body.blockers.join()).not.toMatch(/control plane machines/);
     k8s.storedSpec = JSON.stringify(spec);
-    state.providers.pop();
-    // Worker changes stay possible.
-    const rebuildWorkers = await post({ type: 'rebuild', group: 'default' }).expect(200);
-    expect(rebuildWorkers.body.blockers.join()).not.toMatch(/control plane machines/);
-    // A version upgrade updates the control plane in place and is not blocked by it.
+    // A version upgrade replaces the control plane machines, as with RKE2 (FP29-F-16).
     const upgrade = await post({ type: 'upgrade', version: 'v1.36.4+k0s.1' }).expect(200);
-    expect(upgrade.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'inPlace' });
+    expect(upgrade.body.rollouts[0]).toMatchObject({ group: 'control plane', action: 'replace' });
     expect(upgrade.body.blockers.join()).not.toMatch(/control plane machines/);
+    state.providers.pop();
     k8s.live.clear();
     k8s.storedSpec = undefined;
     k8s.existingCluster = false;

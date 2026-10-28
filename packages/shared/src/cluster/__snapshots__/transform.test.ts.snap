@@ -241,7 +241,7 @@ metadata:
 spec:
   version: v1.35.8+k0s.1
   replicas: 3
-  updateStrategy: InPlace
+  updateStrategy: Recreate
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
@@ -470,7 +470,7 @@ metadata:
 spec:
   version: v1.35.8+k0s.1
   replicas: 1
-  updateStrategy: InPlace
+  updateStrategy: Recreate
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
@@ -617,7 +617,7 @@ metadata:
 spec:
   version: v1.35.8+k0s.1
   replicas: 3
-  updateStrategy: InPlace
+  updateStrategy: Recreate
   machineTemplate:
     infrastructureRef:
       apiVersion: infrastructure.cluster.x-k8s.io/v1beta2

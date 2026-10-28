@@ -1,6 +1,7 @@
-# ADR-0013: k0s control planes are upgraded in place and never replaced
+# ADR-0013: k0s control plane replacement
 
-- Status: accepted; updated 2026-10-20 for k0smotron v2.3.0 (see below)
+- Status: accepted; updated 2026-10-20 for k0smotron v2.3.0 and 2026-10-28 (replacement for all
+  sizes, no in-place upgrades; see below)
 - Date: 2026-10-18
 - Pack: FP-9
 
@@ -79,3 +80,29 @@ Decision:
 - The logs of both runs are kept for an upstream report (scale down should wait until a deleted
   machine is gone, as Cluster API's KubeadmControlPlane does). Re-test with every k0smotron
   release.
+
+## Update 2026-10-28: replacement for all sizes, no in-place upgrades
+
+Two things changed the trade-off:
+
+- **Air-gapped nodes (FP29-F-16):** with `InPlace`, k0smotron creates an autopilot `Plan` whose
+  `k0supdate` downloads the new k0s binary on every control plane node with a plain HTTP GET
+  (no registry token, and k0smotron sets no checksum). Registries such as Harbor answer that with
+  401, even for public projects, so in-place upgrades cannot work air-gapped. Replaced machines
+  download the binary like at creation (token, sha256 check).
+- **Upstream fix:** k0smotron #1705 (scale down waits until deleted machines are gone) was merged
+  on 2026-10-23 after our report (#1703); it is not released yet. A second user confirmed the
+  same behaviour on bare metal.
+
+Decision:
+
+- k0s control planes use `updateStrategy: Recreate` for every change, version upgrades included,
+  like RKE2 and kubeadm (hard rule 5 without exception). The webhook allows the switch on existing
+  clusters (only `--single` forbids it); existing clusters change with their next control plane
+  change.
+- With k0smotron v2.3.0 or later, replacement is allowed for one, three and five nodes. The
+  measured risk with three or five nodes (old machines deleted within a minute, etcd on one member
+  for about two minutes, the API unreachable for about five seconds) is accepted for now, without
+  a warning in the UI. Before v2.3.0 replacement stays blocked.
+- Once a k0smotron release contains #1705, re-test a three-node rollout live and record the
+  result here.
