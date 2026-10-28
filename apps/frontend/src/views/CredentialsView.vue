@@ -11,6 +11,7 @@ import {
 } from '@capi-navigator/shared';
 import CredentialDialog from '../components/CredentialDialog.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
+import InternalRegistryPanel from '../components/InternalRegistryPanel.vue';
 import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
@@ -357,6 +358,7 @@ async function loadLookup(c: Credential): Promise<void> {
           </template>
         </v-data-table>
       </v-card>
+      <InternalRegistryPanel />
     </template>
 
     <v-dialog

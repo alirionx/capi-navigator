@@ -7,6 +7,7 @@ import type { ClusterChangePreview } from '@capi-navigator/shared';
 type ChangePreview = Omit<ClusterChangePreview, 'rollouts'> &
   Partial<Pick<ClusterChangePreview, 'rollouts'>>;
 import ErrorAlert from './ErrorAlert.vue';
+import MissingArtifacts from './MissingArtifacts.vue';
 import YamlDiff from './YamlDiff.vue';
 
 /**
@@ -95,6 +96,11 @@ async function confirm(): Promise<void> {
             class="mb-2"
             >{{ b }}</v-alert
           >
+          <MissingArtifacts
+            v-if="result.missingArtifacts?.length"
+            :artifacts="result.missingArtifacts"
+            class="mb-2"
+          />
           <v-alert
             v-for="w in result.warnings"
             :key="w"

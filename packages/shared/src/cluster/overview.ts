@@ -78,7 +78,13 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
     credentialRef: infra.credentialRef,
     ...('region' in infra ? { region: infra.region } : {}),
     ...('sshKeyName' in infra && infra.sshKeyName ? { sshKeyName: infra.sshKeyName } : {}),
-    facts: plugin.infraFacts(infra),
+    facts: [
+      ...plugin.infraFacts(infra),
+      // FP-29: nodes without internet, images and binaries from the internal registry.
+      ...(spec.airGapped
+        ? [{ label: 'Air-gapped, registry', value: spec.airGapped.registry.host }]
+        : []),
+    ],
     groups: [
       group('control plane', 'control-plane', cp.replicas, cp),
       ...spec.topology.workerPools.map((p) => group(p.name, 'worker', p.replicas, p)),

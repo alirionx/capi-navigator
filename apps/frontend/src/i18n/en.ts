@@ -620,6 +620,38 @@ export const en = {
       outdatedTitle: 'Uses outdated proxy settings; update the provider to apply the current ones',
     },
   },
+  missingArtifacts: {
+    title: 'Missing in the internal registry',
+    subtitle:
+      'Run these commands on a machine with internet access and oras, logged in to the registry with push rights (oras login), then open the preview again.',
+  },
+  registry: {
+    title: 'Internal registry',
+    subtitle:
+      'For air-gapped workload clusters (RKE2, k0s): nodes pull every image through it and download the distribution from it, without internet access.',
+    none: 'Not set: workload clusters need the internet to install Kubernetes and pull images.',
+    change: 'Change',
+    editTitle: 'Internal registry of the management cluster',
+    editInfo:
+      'New clusters copy these settings when they are created air-gapped; existing clusters keep theirs. Nodes pull anonymously: credentials are not supported. Filling the registry is up to you; the preview names missing artifacts with the commands that push them.',
+    host: 'Registry',
+    hostHint: 'Host name and optional port, without https://, e.g. registry.example.com. Required.',
+    mirrors: 'Mirrored registries',
+    mirrorsHint:
+      'Upstream registry and the path its images have in the internal one, e.g. docker.io → proxy-docker-io (a Harbor proxy cache project). Empty path: the images keep their names. Default: docker.io, registry.k8s.io, ghcr.io and quay.io.',
+    mirrorOf: 'Mirror of {upstream}',
+    upstream: 'Upstream registry',
+    path: 'Path in the internal registry',
+    addMirror: 'Add registry',
+    artifactsPath: 'Path of the binaries',
+    artifactsPathHint:
+      'Where the RKE2 and k0s binaries are pushed as OCI artifacts, e.g. library → library/rke2-artifacts:v1.35.9-rke2r1. Required.',
+    caCert: 'CA certificate',
+    caCertHint:
+      "For a registry with a private CA (PEM). Added to the nodes' trust store and used by the app. Default: none.",
+    caSet: 'set',
+    remove: 'Remove registry',
+  },
   clusters: {
     title: 'Clusters',
     subtitle: 'Workload clusters on the active management cluster.',
@@ -694,6 +726,16 @@ export const en = {
       'Installed via cloud-init on stock images; its bootstrap and control plane providers must be installed. Default: RKE2.',
     kubeadmExperimental: 'kubeadm (experimental)',
     experimentalTitle: 'Experimental',
+    airGapped: 'Air-gapped: nodes without internet access, everything from {registry}',
+    airGapUnavailable:
+      '{flavor} cannot be installed air-gapped (it installs from packages); choose RKE2 or k0s for a cluster without internet access.',
+    airGappedInfo:
+      'Nodes pull every image through {registry} and download the Kubernetes binaries from it. The preview checks that the binaries of this version are there. The image must contain what the first boot would otherwise install:',
+    airGapNeeds: {
+      proxmox:
+        'Proxmox VE: the QEMU guest agent (qemu-guest-agent), which reports that cloud-init has finished.',
+      rke2: 'RKE2 on RHEL 10 and derivatives: kernel-modules-extra.',
+    },
     kubeadmTradeoffs:
       'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images.',
     cni: 'Calico CNI',

@@ -20,6 +20,7 @@ import {
   type LookupOption,
 } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
+import MissingArtifacts from '../components/MissingArtifacts.vue';
 import { stepIssues, visibleIssues } from '../forms/wizard-issues.js';
 import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
@@ -32,7 +33,7 @@ import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
 
 /** Cluster wizard (FP-5): eight steps, validated with the shared schema (FP5-F-02). */
-const { t } = useI18n();
+const { t, te } = useI18n();
 const router = useRouter();
 const connections = useConnectionsStore();
 const credentialsStore = useCredentialsStore();
@@ -113,6 +114,8 @@ const draft = reactive({
   maxSurge: 1,
   maxUnavailable: 0,
   grantNamespace: false,
+  /** FP29-F-11: on by default where the connection has an internal registry. */
+  airGapped: true,
 });
 /** FP19-F-10: users limited to namespaces may only create clusters there. */
 const allowedNamespaces = computed(() =>
@@ -128,6 +131,17 @@ watch(
 
 /** Control plane kind of the chosen distribution, for help texts (POS-04). */
 const flavorPlugin = computed(() => FLAVOR_PLUGINS[draft.flavor]);
+/** FP29-F-11: the connection's internal registry, if the distribution can use it. */
+const registry = computed(() => connections.active?.internalRegistry);
+const airGapped = computed(
+  () => !!registry.value && !!flavorPlugin.value?.airGap && draft.airGapped,
+);
+/** What images or templates must contain for air-gapped nodes (FP29-F-15). */
+const airGapNeeds = computed(() =>
+  [`wizard.airGapNeeds.${draft.provider}`, `wizard.airGapNeeds.${draft.flavor}`]
+    .filter((k) => te(k))
+    .map((k) => t(k)),
+);
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
 /** ADR-0013: the distribution cannot replace control plane machines later, or only one node. */
 const cpReplacementWarning = computed(() => {
@@ -344,6 +358,7 @@ const spec = computed<ClusterSpecInput>(() => ({
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean),
+  ...(airGapped.value ? { airGapped: { registry: registry.value!, artifacts: [] } } : {}),
   infrastructure: infraFromValues(
     draft.provider,
     form.value,
@@ -574,6 +589,34 @@ const canPreview = computed(() => issues.value.length === 0);
               :no-data-text="t('wizard.noCredentials')"
               data-testid="credential"
             />
+          </v-col>
+          <!-- FP29-F-11: nodes without internet, from the connection's internal registry -->
+          <v-col v-if="registry" cols="12">
+            <v-switch
+              v-if="flavorPlugin?.airGap"
+              v-model="draft.airGapped"
+              color="primary"
+              density="compact"
+              hide-details
+              :label="t('wizard.airGapped', { registry: registry.host })"
+              data-testid="wizard-air-gapped"
+            />
+            <div v-else class="text-body-2 text-medium-emphasis" data-testid="wizard-no-air-gap">
+              {{ t('wizard.airGapUnavailable', { flavor: flavorPlugin?.displayName }) }}
+            </div>
+            <v-alert
+              v-if="airGapped"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mt-2"
+              data-testid="wizard-air-gap-info"
+            >
+              <div>{{ t('wizard.airGappedInfo', { registry: registry.host }) }}</div>
+              <ul v-if="airGapNeeds.length" class="ml-4 mt-1">
+                <li v-for="n in airGapNeeds" :key="n">{{ n }}</li>
+              </ul>
+            </v-alert>
           </v-col>
           <v-col cols="12">
             <v-combobox
@@ -901,6 +944,11 @@ const canPreview = computed(() => issues.value.length === 0);
             data-testid="blocker"
             >{{ b }}</v-alert
           >
+          <MissingArtifacts
+            v-if="preview.missingArtifacts?.length"
+            :artifacts="preview.missingArtifacts"
+            class="mb-2"
+          />
           <v-checkbox
             v-if="preview.credentialNamespaceMissing"
             v-model="draft.grantNamespace"
