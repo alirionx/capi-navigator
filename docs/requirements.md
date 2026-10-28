@@ -1068,7 +1068,7 @@ Requirements:
 
 ### FP-29: Air-gapped workload clusters (optional)
 
-**Goal:** workload clusters in networks without internet access. The app and the management cluster reach the internet through an HTTP(S) proxy (part A); the nodes of the workload clusters reach no internet at all and get everything from an internal OCI registry (part B). Running the registry and mirroring into it is not the app's task; the app names what has to be mirrored. Part A is delivered; part B is specified after the node spike.
+**Goal:** workload clusters in networks without internet access. The app and the management cluster reach the internet through an HTTP(S) proxy (part A); the nodes of the workload clusters reach no internet at all and get everything from an internal OCI registry (part B). Running the registry and mirroring into it is not the app's task; the app names what has to be mirrored. Part A is delivered; part B follows the node spike below.
 
 Agreed scope (2026-10-26; replaces the artifact bundles of the earlier outlook):
 
@@ -1085,11 +1085,14 @@ Findings for part A (2026-10-26 and 2026-10-27, kind and a single-node k3s as ho
 - The CAPI Operator merges `spec.deployment.containers[].env` into the environment of the provider's components and applies `spec.patches` with a target of kind `Deployment` without a name; every catalog provider has one Deployment with the manager as first container.
 - CAAPH installed a chart from an HTTP repository and one from an OCI registry (ghcr.io) through the proxy; without the CA both failed with an x509 error, with the CA in `SSL_CERT_DIR` and a host in `NO_PROXY` the direct download with a public certificate still worked.
 
-Findings for part B so far (2026-10-26):
+Findings for part B (2026-10-26 to 2026-10-28; node spike with RKE2 v1.35.9+rke2r1 and k0s v1.35.8+k0s.1 on Proxmox VE, each one control plane node and one worker; the default route pointed to an address that does not route, DNS came from an internal server; the internal registry was Harbor with one proxy-cache project per upstream registry):
 
-- Harbor needs the anonymous bearer token even for public projects (`401` with `WWW-Authenticate: Bearer realm=…/service/token`; the token is fetched without credentials). A binary pushed with `oras push` is a single layer whose digest is the sha256 of the file; nodes download that blob and check it with `sha256sum`, so the app pins the layer digest, not the manifest digest the registry UI shows. Downloads use `curl` where present, otherwise Python's `urllib` (cloud-init brings Python).
-- Harbor serves one proxy-cache project per upstream registry. k3s and RKE2 map them with `rewrite` in `registries.yaml` while image names stay unchanged; containerd's `hosts.toml` (k0s) has no `rewrite`, `override_path` is to be checked. k3s falls back to the upstream registry unless `disable-default-registry-endpoint` is set, which hides mirror errors as long as the internet is reachable; the same is to be checked for RKE2. Harbor stores proxied images asynchronously, they appear in the project minutes after a pull.
-- Open for the node spike: the mirror settings per distribution, installing RKE2 from local artifacts (`INSTALL_RKE2_ARTIFACT_PATH`, `airGapped` of the RKE2 provider), k0smotron's `preInstalledK0s` and `downloadURL`, NTP in the bootstrap providers, an image without `curl`, and a cluster on Proxmox VE with outbound traffic blocked.
+- Both clusters came up without internet access: every image came through the registry mirror configuration with unchanged names (RKE2 24 images, k0s 16, including Calico, kube-vip and the Proxmox VE CCM and CSI), nodes became Ready, the CCM removed its taint, a volume of the Proxmox VE CSI driver was bound and a user pod pulled an image from `docker.io` through the mirror.
+- Binaries as OCI artifacts: `oras push` of files without a path gives one layer per file whose digest is the sha256 of the file. Nodes fetch the blob by that digest and check it with `sha256sum -c`; the app pins the layer digest, not the manifest digest a registry UI shows. Harbor needs its anonymous bearer token even for public projects (`401` with `WWW-Authenticate: Bearer realm=…/service/token`, the token is fetched without credentials). `curl` is present on the stock cloud images; Python's `urllib` is a fallback (cloud-init brings Python).
+- RKE2 (provider v0.27.0): `agentConfig.airGapped: true` replaces the download from `get.rke2.io` by `INSTALL_RKE2_ARTIFACT_PATH=/opt/rke2-artifacts sh /opt/install.sh`; `preRKE2Commands` place `rke2.linux-amd64.tar.gz`, `sha256sum-amd64.txt` and `install.sh` there. `privateRegistriesConfig.mirrors` takes an endpoint and a `rewrite` per upstream registry, which maps them to registry projects. **`airGappedChecksum` is broken upstream**: it renders a `runcmd` entry starting with `[[`, the user data becomes invalid YAML and cloud-init ignores all of it ([rancher/cluster-api-provider-rke2#1128](https://github.com/rancher/cluster-api-provider-rke2/issues/1128)); the app must not set it, the checks of its own download cover the files.
+- k0s (k0smotron v2.3.0, `v1beta2` fields `preK0sCommands`, `postK0sCommands`): `preInstalledK0s: true` skips the download; `preK0sCommands` place the binary in `/usr/local/bin/k0s`. Mirrors through the drop-in `/etc/k0s/containerd.d/cri-registry.toml` (`config_path` of the CRI registry) and one `hosts.toml` per upstream registry with `override_path = true`, since containerd's `hosts.toml` has no `rewrite`. Files without a mode made k0smotron write an empty one, cloud-init ended "degraded" and CAPMOX reported failed provisioning (fixed in the app: default `0644`).
+- Proxmox VE: CAPMOX reads the cloud-init status through the QEMU guest agent; without the agent in the template the machine stays at "WaitingForCloudInit", and installing the agent on first boot (`apt-get`, FP31-F-10) needs the internet. The templates for air-gapped clusters therefore contain the agent; the spike baked it into the Debian 13 cloud image (`qemu-nbd`, `chroot`, `apt-get install qemu-guest-agent`). Likewise `kernel-modules-extra` for RHEL 10 (RKE2 preparation) must be in such a template.
+- Image lists: RKE2 publishes them per release (`rke2-images.linux-amd64.txt`, `rke2-images-calico.linux-amd64.txt`); k0s publishes an image bundle and prints its list with `k0s airgap list-images`. A pull-through cache (Harbor proxy-cache projects) fills itself while the registry reaches the internet, which hides gaps; a registry without that needs the full list. k3s, like RKE2, falls back to the upstream registry unless `disable-default-registry-endpoint` is set, which hides mirror errors while the internet is reachable.
 
 Requirements (part A):
 
@@ -1099,14 +1102,28 @@ Requirements (part A):
 - **FP29-F-04** MUST show which providers use outdated proxy settings and apply the current ones with an update to the same version; switching the proxy off for a provider removes the environment, the patch and the app's CA Secret.
 - **FP29-F-05** SHOULD name the CA of the proxy in certificate errors of the backend when a proxy is set.
 
-Requirements for part B follow after the node spike.
+Requirements (part B; RKE2 and k0s, kubeadm is left out):
+
+- **FP29-F-10** MUST store an optional internal registry per management cluster connection: host, optional CA certificate, the path per upstream registry (`docker.io`, `registry.k8s.io`, `ghcr.io`, `quay.io`, more can be added) and the path of the binary artifacts; no registry credentials at first.
+- **FP29-F-11** MUST offer "air-gapped" in the wizard for RKE2 and k0s when the connection has an internal registry (default on), refuse it for kubeadm, and store the registry settings and the pinned artifacts in the cluster spec, so the transformation stays pure and existing clusters do not change when the connection does.
+- **FP29-F-12** MUST resolve the artifacts of the chosen version in the internal registry when the preview is built (`<artifacts path>/rke2-artifacts:<version>` with the files `rke2.linux-amd64.tar.gz`, `sha256sum-amd64.txt`, `install.sh`; `<artifacts path>/k0s-amd64:<version>`; `+` in the tag as `-`) and pin their layer digests; a missing artifact is a blocker with a copyable block of commands that downloads the files from the upstream release, checks them and pushes them with `oras push` under the expected names and tags (the project publishes no artifacts of its own).
+- **FP29-F-13** MUST download the artifacts on the nodes by digest from the internal registry (anonymous bearer token where the registry asks for one; `curl`, otherwise Python), verify each with sha256 and stop the installation on a mismatch.
+- **FP29-F-14** MUST configure the container runtime of every node to pull all images through the internal registry with unchanged names: RKE2 through `airGapped` (without `airGappedChecksum`) and `privateRegistriesConfig` with `rewrite`, k0s through `preInstalledK0s` and containerd `hosts.toml` files with `override_path`; the registry's CA certificate where set.
+- **FP29-F-15** MUST leave out node preparation that needs the internet for air-gapped clusters (on Proxmox VE the guest agent installation) and tell in the wizard what the image or template must contain (Proxmox VE: QEMU guest agent; RHEL 10: `kernel-modules-extra`).
+- **FP29-F-16** MUST treat a version upgrade of an air-gapped cluster like any other (FP-7): the artifacts of the new version are resolved and pinned, the templates rotate (hard rule 5).
+- **FP29-F-17** SHOULD show per cluster the images and artifacts the internal registry must hold (distribution images of the version, presets of the cluster) with copyable commands from the upstream sources (`skopeo copy` for images; download and `oras push` for artifacts), pinned in `versions.yaml`.
+- **FP29-F-18** SHOULD offer NTP servers for air-gapped clusters (RKE2 `agentConfig.ntp`; k0s through a `systemd-timesyncd` drop-in).
+
 
 **Acceptance criteria**
 
 - [x] The app installed with Helm behind a proxy that inspects TLS lists provider versions from GitHub and tests Helm repositories (HTTP and OCI) through the proxy; without the proxy CA it reports an untrusted certificate.
 - [x] With a proxy on the connection, CAAPH installs a chart from an HTTP repository and from an OCI registry through the proxy; changed settings mark the provider as outdated; switching the proxy off removes it from the controller.
 - [x] Snapshot tests cover the provider manifests with a proxy, with a proxy CA and together with the CA bundle of Proxmox VE.
-- [ ] Part B: an RKE2 and a k0s cluster on Proxmox VE with outbound traffic blocked come up from the internal registry alone.
+- [ ] An RKE2 and a k0s cluster created in the wizard on Proxmox VE without outbound traffic come up from the internal registry alone; CCM, CSI and kube-vip run.
+- [ ] A missing artifact is a blocker in the preview with the push command; a changed artifact (other digest) stops the node installation.
+- [ ] An upgrade of an air-gapped cluster to the next minor version pins the new artifacts and rotates the templates.
+- [ ] Snapshot tests cover RKE2 and k0s, air-gapped, on Proxmox VE and OpenStack; clusters without the setting are unchanged.
 
 ## 7. Non-functional requirements
 
