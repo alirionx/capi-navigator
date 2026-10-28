@@ -1,6 +1,7 @@
 import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
+import { airGapDnsWarnings } from './air-gap.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -233,6 +234,9 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     const b = st.bastion as { floatingIP?: string; ip?: string; state?: string } | undefined;
     return compact({ publicIP: b?.floatingIP, privateIP: b?.ip, state: b?.state });
   },
+
+  // FP-29: the nodes resolve the internal registry with the subnet's DNS servers.
+  warnings: (spec, infra) => airGapDnsWarnings(spec, infra.network.dnsNameservers),
 
   infraFacts: (infra) => [
     { label: 'Node network', value: infra.network.nodeCidr },

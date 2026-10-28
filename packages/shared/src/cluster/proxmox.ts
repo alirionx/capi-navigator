@@ -4,6 +4,7 @@ import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { MachineGroup, ProxmoxInfra } from './spec.js';
 import { ipv4RangesCover, ipv4RangesOverlap, ipv4StartEndRanges } from './cidr.js';
+import { airGapDnsWarnings } from './air-gap.js';
 import { compact } from './util.js';
 
 /**
@@ -290,6 +291,9 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       tags: ['capi-navigator'],
     });
   },
+
+  // FP-29: the nodes resolve the internal registry with these servers.
+  warnings: (spec, infra) => airGapDnsWarnings(spec, infra.network.dnsNameservers),
 
   validate(spec, _infra, ctx) {
     const sizes = ctx.credential.machineSizes ?? [];

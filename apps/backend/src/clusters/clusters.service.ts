@@ -868,6 +868,7 @@ export class ClustersService {
     };
     const infraPlugin = INFRA_PLUGINS[infra.provider];
     if (resolved) blockers.push(...(infraPlugin.validate?.(spec, infra, transformContext) ?? []));
+    warnings.push(...(infraPlugin.warnings?.(spec, infra) ?? []));
     // FP31-F-05: images whose machines would never become ready (best effort: the cloud may be
     // unreachable for a moment, the provider reports such errors on the machines anyway).
     if (resolved) {

@@ -138,7 +138,11 @@ const airGapped = computed(
 );
 /** What images or templates must contain for air-gapped nodes (FP29-F-15). */
 const airGapNeeds = computed(() =>
-  [`wizard.airGapNeeds.${draft.provider}`, `wizard.airGapNeeds.${draft.flavor}`]
+  [
+    'wizard.airGapNeeds.dns',
+    `wizard.airGapNeeds.${draft.provider}`,
+    `wizard.airGapNeeds.${draft.flavor}`,
+  ]
     .filter((k) => te(k))
     .map((k) => t(k)),
 );

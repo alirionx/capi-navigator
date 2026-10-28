@@ -740,6 +740,7 @@ export const en = {
     airGappedInfo:
       'Nodes pull every image through {registry} and download the Kubernetes binaries from it. The preview checks that the binaries of this version are there. The image must contain what the first boot would otherwise install:',
     airGapNeeds: {
+      dns: 'DNS: the nodes must resolve the registry, so set your internal DNS servers in the Infrastructure step (not the public default).',
       proxmox:
         'Proxmox VE: the QEMU guest agent (qemu-guest-agent), which reports that cloud-init has finished.',
       rke2: 'RKE2 on RHEL 10 and derivatives: kernel-modules-extra.',

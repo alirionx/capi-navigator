@@ -48,6 +48,23 @@ export const nodePreparation = (spec: ClusterSpec, infra: InfraTransformPlugin) 
   ...(spec.airGapped ? [] : (infra.onlineNodePreparation ?? [])),
 ];
 
+/** Public resolvers the wizards offer as default DNS servers. */
+const PUBLIC_RESOLVERS = ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4', '9.9.9.9'];
+
+/**
+ * Air-gapped nodes resolve the internal registry; public resolvers cannot reach or do not know it
+ * (FP-29 live test: the download stopped and cloud-init failed). For infrastructures where the
+ * nodes' DNS servers are set in the spec.
+ */
+export function airGapDnsWarnings(spec: ClusterSpec, dnsServers: string[]): string[] {
+  const host = spec.airGapped?.registry.host.replace(/:\d+$/, '');
+  const pub = dnsServers.filter((s) => PUBLIC_RESOLVERS.includes(s));
+  if (!host || pub.length === 0) return [];
+  return [
+    `The nodes use the public DNS server(s) ${pub.join(', ')}, which air-gapped nodes cannot reach, and which do not know internal names: if ${host} is only in your internal DNS, the download of the binaries fails and the nodes never come up. Set your internal DNS servers in the Infrastructure step.`,
+  ];
+}
+
 /** The pinned artifact of a version; the app resolves it before the transformation runs. */
 export function artifactPin(spec: ClusterSpec, version: string): ArtifactPin {
   const pin = spec.airGapped?.artifacts.find((a) => a.version === version);

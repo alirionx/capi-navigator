@@ -4,6 +4,8 @@ import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
 import { renderManifests } from '../operator-manifests.js';
 import { artifactPushCommands, containerdHostsFiles } from './air-gap.js';
 import { k0sPlugin } from './k0s.js';
+import { openstackPlugin } from './openstack.js';
+import { proxmoxPlugin } from './proxmox.js';
 import { rke2Plugin } from './rke2.js';
 import { ClusterSpecSchema, type ClusterSpecInput } from './spec.js';
 import { transform, type TransformContext } from './transform.js';
@@ -193,6 +195,29 @@ describe('air-gapped nodes (FP29-F-13..F-15)', () => {
     expect(cp.agentConfig.airGapped).toBeUndefined();
     expect(cp.privateRegistriesConfig).toBeUndefined();
     expect(cp.preRKE2Commands[0]).toContain('qemu-guest-agent');
+  });
+});
+
+describe('DNS of air-gapped nodes', () => {
+  it('warns about public resolvers, not about internal ones or online clusters', () => {
+    const parsed = (input: ClusterSpecInput) => ClusterSpecSchema.parse(input);
+    const pve = parsed(proxmox());
+    expect(proxmoxPlugin.warnings!(pve, pve.infrastructure as never)).toEqual([]);
+    const pub = parsed(
+      proxmox({
+        infrastructure: {
+          ...(proxmox().infrastructure as object),
+          network: { nodeCidr: '10.20.0.0/24', gateway: '10.20.0.1', addresses: ['10.20.0.71'] },
+        } as ClusterSpecInput['infrastructure'],
+      }),
+    );
+    expect(proxmoxPlugin.warnings!(pub, pub.infrastructure as never)[0]).toContain(
+      'public DNS server(s) 1.1.1.1, 8.8.8.8',
+    );
+    const os = parsed(openstack());
+    expect(openstackPlugin.warnings!(os, os.infrastructure as never)).toHaveLength(1);
+    const online = parsed({ ...openstack(), airGapped: undefined });
+    expect(openstackPlugin.warnings!(online, online.infrastructure as never)).toEqual([]);
   });
 });
 
