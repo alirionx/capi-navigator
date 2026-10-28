@@ -266,9 +266,15 @@ export class ChartSource {
         const tokenUrl = new URL(params.realm);
         if (params.service) tokenUrl.searchParams.set('service', params.service);
         if (params.scope) tokenUrl.searchParams.set('scope', params.scope);
+        // Harbor's token endpoint may live on another host name than the registry (its external
+        // URL), with its own NO_PROXY and certificate: say so in errors.
         const tokenRes = await get(tokenUrl.toString(), {
           ...tls,
           headers: basic ? { authorization: basic } : {},
+        }).catch((err: unknown) => {
+          throw err instanceof FetchError
+            ? new FetchError(`Token endpoint of the registry: ${err.message}`, err.status, err.hint)
+            : err;
         });
         if (tokenRes.status !== 200) {
           throw tokenRes.status === 401 || tokenRes.status === 403

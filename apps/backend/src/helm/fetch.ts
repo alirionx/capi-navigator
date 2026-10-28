@@ -1,5 +1,6 @@
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
+import { getCACertificates } from 'node:tls';
 
 export interface FetchOptions {
   headers?: Record<string, string>;
@@ -77,7 +78,7 @@ function once(url: URL, opts: FetchOptions): Promise<Omit<FetchResult, 'url'>> {
         timeout: opts.timeoutMs ?? DEFAULT_TIMEOUT,
         ...(https
           ? {
-              ...(opts.ca ? { ca: opts.ca } : {}),
+              ...(opts.ca ? { ca: withDefaultCAs(opts.ca) } : {}),
               rejectUnauthorized: !opts.insecureSkipTLSVerify,
             }
           : {}),
@@ -114,12 +115,62 @@ function once(url: URL, opts: FetchOptions): Promise<Omit<FetchResult, 'url'>> {
   });
 }
 
+/**
+ * Trust store of a request with a private CA: the CA is added to the default ones (bundled,
+ * NODE_EXTRA_CA_CERTS) instead of replacing them, so a request still works when it goes through
+ * a proxy that inspects TLS, or when the server's certificate is public (FP-29).
+ */
+export function withDefaultCAs(ca: string): string[] {
+  return [...getCACertificates('default'), ca];
+}
+
+/**
+ * The proxy Node.js sends a request through (`NODE_USE_ENV_PROXY=1`), with its NO_PROXY rules:
+ * exact host (optionally with port), `.domain` and `*.domain` suffixes, `*`, single IPs and IPv4
+ * ranges `a-b`. A domain without a leading dot does not cover its subdomains, unlike in Go or curl.
+ */
+export function proxyFor(url: URL, env: NodeJS.ProcessEnv = process.env): string | undefined {
+  if (env.NODE_USE_ENV_PROXY !== '1') return undefined;
+  const https = url.protocol === 'https:';
+  const proxy = https ? (env.HTTPS_PROXY ?? env.https_proxy) : (env.HTTP_PROXY ?? env.http_proxy);
+  if (!proxy) return undefined;
+  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  const port = url.port || (https ? '443' : '80');
+  for (const raw of (env.NO_PROXY ?? env.no_proxy ?? '').split(',')) {
+    const entry = raw.trim().toLowerCase();
+    if (!entry) continue;
+    if (entry === '*') return undefined;
+    const range = /^(\d+\.\d+\.\d+\.\d+)-(\d+\.\d+\.\d+\.\d+)$/.exec(entry);
+    if (range) {
+      const n = ipv4(host);
+      if (n !== undefined && n >= ipv4(range[1]!)! && n <= ipv4(range[2]!)!) return undefined;
+      continue;
+    }
+    const [name, entryPort] = entry.split(/:(?=\d+$)/) as [string, string | undefined];
+    if (entryPort && entryPort !== port) continue;
+    const suffix = name.startsWith('*.') ? name.slice(1) : name.startsWith('.') ? name : undefined;
+    if (suffix ? host.endsWith(suffix) : host === name) return undefined;
+  }
+  return proxy;
+}
+
+function ipv4(host: string): number | undefined {
+  const parts = host.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p) || p < 0 || p > 255)) {
+    return undefined;
+  }
+  return parts.reduce((n, p) => n * 256 + p, 0);
+}
+
 const TLS_TRUST = new Set([
   'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
   'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
   'SELF_SIGNED_CERT_IN_CHAIN',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
+  'UNABLE_TO_GET_ISSUER_CERT',
 ]);
+
+const TLS_WEAK = new Set(['CA_MD_TOO_WEAK', 'CA_KEY_TOO_SMALL', 'EE_KEY_TOO_SMALL']);
 
 /** Understandable messages for the usual network and TLS errors (NF-06). */
 export function describeError(
@@ -127,12 +178,21 @@ export function describeError(
   err: Error & { code?: string },
   env: NodeJS.ProcessEnv = process.env,
 ): string {
+  // Node's hint to start it with --use-system-ca does not apply to the app.
+  const reason = err.message.replace(
+    /[;,]?\s*(?:if the root CA is installed locally, )?try (?:running Node\.js with )?--use-system-ca\.?$/,
+    '',
+  );
   if (err.code && TLS_TRUST.has(err.code)) {
-    // Behind a proxy that inspects TLS, the proxy's certificate is the untrusted one (FP-29).
-    const proxied = Boolean(env.HTTPS_PROXY || env.https_proxy);
-    return proxied
-      ? `${url.host}: the server certificate is not trusted; add the CA certificate of the registry, or of the outbound proxy if it inspects TLS (NODE_EXTRA_CA_CERTS)`
-      : `${url.host}: the server certificate is not trusted; add the CA certificate of the registry`;
+    // Through a proxy that inspects TLS, the proxy's certificate is the untrusted one (FP-29).
+    const proxy = proxyFor(url, env);
+    if (proxy) {
+      return `${url.host}: the certificate is not trusted (${reason}). The request went through the outbound proxy ${new URL(proxy).host}: if ${url.hostname} is internal, add it to NO_PROXY of the app (the host or .domain; a domain without leading dot does not cover its subdomains in Node.js); if the proxy inspects TLS, add its CA with NODE_EXTRA_CA_CERTS`;
+    }
+    return `${url.host}: the server certificate is not trusted (${reason}). Add the CA certificate of the registry: the root CA and every intermediate CA, one PEM block after another`;
+  }
+  if (err.code && TLS_WEAK.has(err.code)) {
+    return `${url.host}: a certificate of the chain uses a signature algorithm or key size that OpenSSL 3 refuses, e.g. SHA-1 or RSA below 2048 bits (${reason})`;
   }
   if (err.code === 'ERR_TLS_CERT_ALTNAME_INVALID') {
     return `${url.host}: the server certificate is not valid for this host name`;

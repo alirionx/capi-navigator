@@ -48,8 +48,9 @@ describe('fetch errors (NF-06)', () => {
         code: 'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
       },
     );
+    // Node's own hint (--use-system-ca) does not apply to the app and is dropped.
     expect(describeError(url, err, {})).toBe(
-      'registry.example:5443: the server certificate is not trusted; add the CA certificate of the registry',
+      'registry.example:5443: the server certificate is not trusted (unable to verify the first certificate). Add the CA certificate of the registry: the root CA and every intermediate CA, one PEM block after another',
     );
   });
 
@@ -59,8 +60,9 @@ describe('fetch errors (NF-06)', () => {
     const err = Object.assign(new Error('unable to verify'), {
       code: 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
     });
-    expect(describeError(url, err, { HTTPS_PROXY: 'http://proxy.example:3128' })).toBe(
-      'kube-vip.github.io: the server certificate is not trusted; add the CA certificate of the registry, or of the outbound proxy if it inspects TLS (NODE_EXTRA_CA_CERTS)',
+    const env = { NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://proxy.example:3128' };
+    expect(describeError(url, err, env)).toBe(
+      'kube-vip.github.io: the certificate is not trusted (unable to verify). The request went through the outbound proxy proxy.example:3128: if kube-vip.github.io is internal, add it to NO_PROXY of the app (the host or .domain; a domain without leading dot does not cover its subdomains in Node.js); if the proxy inspects TLS, add its CA with NODE_EXTRA_CA_CERTS',
     );
   });
 });

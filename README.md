@@ -203,7 +203,10 @@ helm install capi-navigator deploy/helm/capi-navigator \
 repositories over the internet. Behind a proxy, set the standard variables with `extraEnv`; the
 image enables Node.js proxy support (`NODE_USE_ENV_PROXY=1`). The Kubernetes API is always reached
 directly. `NO_PROXY` takes host names, `.domain` suffixes, single IPs and IP ranges
-(`10.0.0.0-10.255.255.255`), no CIDRs. A proxy that inspects TLS also needs its CA certificate:
+(`10.0.0.0-10.255.255.255`), no CIDRs. Unlike Go and curl, a domain without leading dot
+(`company.cloud`) does not cover its subdomains: write `.company.cloud`. Errors with an untrusted
+certificate say whether the request went through the proxy. A proxy that inspects TLS also needs
+its CA certificate:
 
 ```yaml
 # values-proxy.yaml; the ConfigMap proxy-ca (key ca.crt) in the release namespace holds the CA

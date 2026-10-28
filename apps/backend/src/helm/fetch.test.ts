@@ -1,7 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { describeError, FetchError, get } from './fetch.js';
+import { getCACertificates } from 'node:tls';
+import { describeError, FetchError, get, proxyFor, withDefaultCAs } from './fetch.js';
 
 type Handler = (req: IncomingMessage, res: ServerResponse) => void;
 
@@ -85,12 +86,66 @@ describe('fetch for Helm repositories and registries (FP8-F-04)', () => {
   it('translates TLS and DNS errors without leaking headers (NF-06)', () => {
     const url = new URL('https://registry.example.com:5000/v2/');
     const err = (code: string) => Object.assign(new Error('raw'), { code });
-    expect(describeError(url, err('SELF_SIGNED_CERT_IN_CHAIN'))).toMatch(/add the CA certificate/);
+    expect(describeError(url, err('SELF_SIGNED_CERT_IN_CHAIN'), {})).toMatch(
+      /Add the CA certificate of the registry: the root CA and every intermediate CA/,
+    );
     expect(describeError(url, err('ERR_TLS_CERT_ALTNAME_INVALID'))).toMatch(
       /not valid for this host/,
     );
     expect(describeError(url, err('CERT_HAS_EXPIRED'))).toMatch(/expired/);
     expect(describeError(url, err('ENOTFOUND'))).toBe('registry.example.com: host name not found');
     expect(describeError(url, err('EOTHER'))).toBe('registry.example.com:5000: raw');
+    expect(describeError(url, err('CA_MD_TOO_WEAK'))).toMatch(/SHA-1 or RSA below 2048 bits/);
+  });
+
+  it('names the proxy when an untrusted certificate came through it (FP-29)', () => {
+    const url = new URL('https://bcr2.internal.company.cloud/v2/');
+    const err = Object.assign(new Error('unable to get local issuer certificate'), {
+      code: 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY',
+    });
+    const env = { NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://proxy.company.cloud:3128' };
+    expect(describeError(url, err, { ...env, NO_PROXY: 'company.cloud' })).toMatch(
+      /went through the outbound proxy proxy.company.cloud:3128: if bcr2.internal.company.cloud is internal, add it to NO_PROXY/,
+    );
+    expect(describeError(url, err, { ...env, NO_PROXY: '.company.cloud' })).toMatch(
+      /^bcr2.internal.company.cloud: the server certificate is not trusted \(unable to get local issuer certificate\)\. Add the CA/,
+    );
+  });
+
+  it('follows the NO_PROXY rules of Node.js, not those of Go (FP-29)', () => {
+    const env = (noProxy: string) => ({
+      NODE_USE_ENV_PROXY: '1',
+      HTTPS_PROXY: 'http://proxy:3128',
+      NO_PROXY: noProxy,
+    });
+    const via = (host: string, noProxy: string) =>
+      proxyFor(new URL(`https://${host}/`), env(noProxy));
+    const registry = 'bcr2.internal.company.cloud';
+    for (const direct of [
+      registry,
+      '.company.cloud',
+      '*.company.cloud',
+      'localhost, .company.cloud',
+      `${registry}:443`,
+      '*',
+    ]) {
+      expect(via(registry, direct), direct).toBeUndefined();
+    }
+    for (const proxied of ['company.cloud', `${registry}:5000`, '.other.cloud', '']) {
+      expect(via(registry, proxied), proxied).toBe('http://proxy:3128');
+    }
+    expect(via('10.20.0.5', '10.20.0.1-10.20.0.9')).toBeUndefined();
+    expect(via('10.20.0.50', '10.20.0.1-10.20.0.9')).toBe('http://proxy:3128');
+    // Without NODE_USE_ENV_PROXY, Node.js ignores the proxy variables.
+    expect(proxyFor(new URL('https://example.com/'), { HTTPS_PROXY: 'http://proxy:3128' })).toBe(
+      undefined,
+    );
+  });
+
+  it('adds a private CA to the default trust store instead of replacing it (FP-29)', () => {
+    const ca = '-----BEGIN CERTIFICATE-----\nprivate\n-----END CERTIFICATE-----';
+    const store = withDefaultCAs(ca);
+    expect(store.at(-1)).toBe(ca);
+    expect(store.length).toBe(getCACertificates('default').length + 1);
   });
 });
