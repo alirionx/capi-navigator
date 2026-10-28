@@ -135,6 +135,16 @@ export const AIR_GAP_IMAGES = {
       ],
     },
     k0s: {
+      'v1.37.1+k0s.0': [
+        'quay.io/k0sproject/apiserver-network-proxy-agent:v0.37.0-k0s.1',
+        'quay.io/k0sproject/calico-cni:v3.32.2-1',
+        'quay.io/k0sproject/calico-kube-controllers:v3.32.2-1',
+        'quay.io/k0sproject/calico-node:v3.32.2-1',
+        'quay.io/k0sproject/coredns:1.14.7-k0s.1',
+        'quay.io/k0sproject/kube-proxy:v1.37.1-1',
+        'quay.io/k0sproject/metrics-server:v0.9.0-k0s.2',
+        'quay.io/k0sproject/pause:3.10.2-0',
+      ],
       'v1.36.5+k0s.0': [
         'quay.io/k0sproject/apiserver-network-proxy-agent:v0.36.0-k0s.2',
         'quay.io/k0sproject/calico-cni:v3.32.2-1',

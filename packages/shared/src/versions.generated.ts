@@ -155,8 +155,13 @@ export const VERSIONS: VersionsFile = {
         "package": "k0sproject/k0s"
       },
       "verified": "2026-10-28",
-      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (v1.36.4, upgrade from v1.35.8, 2026-10-28). The patches of 2026-10-27 (v1.34.12, v1.35.9, v1.36.5) were taken one day after their release, before the minimum release age, at the user's request for 0.12.0.",
+      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (v1.36.4, upgrade from v1.35.8, 2026-10-28). The patches of 2026-10-27 (v1.34.12, v1.35.9, v1.36.5) were taken one day after their release, before the minimum release age, at the user's request for 0.12.0. v1.37.1: a one-node cluster on Proxmox VE upgraded live from v1.36.5 (2026-10-28).",
       "versions": [
+        {
+          "version": "v1.37.1+k0s.0",
+          "verifiedWithProvider": "v2.3.0",
+          "untested": true
+        },
         {
           "version": "v1.36.5+k0s.0",
           "verifiedWithProvider": "v2.3.0"
