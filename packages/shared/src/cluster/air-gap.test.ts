@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
 import { renderManifests } from '../operator-manifests.js';
 import { artifactPushCommands, containerdHostsFiles } from './air-gap.js';
-import { k0sPlugin } from './k0s.js';
+import { k0sCriRegistry, k0sPlugin } from './k0s.js';
 import { openstackPlugin } from './openstack.js';
 import { proxmoxPlugin } from './proxmox.js';
 import { rke2Plugin } from './rke2.js';
@@ -155,6 +155,15 @@ describe('air-gapped nodes (FP29-F-13..F-15)', () => {
       'server = "https://ghcr.io"\n\n[host."https://registry.example.internal/v2/proxy-ghcr-io"]\n  capabilities = ["pull", "resolve"]\n  override_path = true\n',
       'server = "https://quay.io"\n\n[host."https://registry.example.internal/v2"]\n  capabilities = ["pull", "resolve"]\n  override_path = true\n',
     ]);
+  });
+
+  it('k0s: containerd drop-in in the format of the bundled containerd (1.36: containerd 2)', () => {
+    expect(k0sCriRegistry('v1.35.8+k0s.1').content).toBe(
+      'version = 2\n\n[plugins."io.containerd.grpc.v1.cri".registry]\nconfig_path = "/etc/k0s/containerd.d/certs.d"\n',
+    );
+    expect(k0sCriRegistry('v1.36.4+k0s.1').content).toBe(
+      'version = 3\n\n[plugins."io.containerd.cri.v1.images".registry]\nconfig_path = "/etc/k0s/containerd.d/certs.d"\n',
+    );
   });
 
   it('without a CA no trust store change', () => {

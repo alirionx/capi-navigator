@@ -1,3 +1,4 @@
+import { compareVersions } from '../catalog/prerequisites.js';
 import { airGapNodeSetup, artifactTag, containerdHostsFiles, nodePreparation } from './air-gap.js';
 import { kubeVipDaemonSet } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
@@ -47,14 +48,21 @@ const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ];
 
 /**
  * FP29-F-14: k0s's containerd imports drop-ins from /etc/k0s/containerd.d; this one points the CRI
- * registry configuration to one hosts.toml per upstream registry.
+ * registry configuration to one hosts.toml per upstream registry. k0s 1.36 ships containerd 2,
+ * whose pre-flight check rejects the version 2 format (k0s docs, runtime.md; seen live).
  */
 const K0S_CONTAINERD_HOSTS_DIR = '/etc/k0s/containerd.d/certs.d';
-const K0S_CRI_REGISTRY = {
-  path: '/etc/k0s/containerd.d/cri-registry.toml',
-  content: `version = 2\n\n[plugins."io.containerd.grpc.v1.cri".registry]\nconfig_path = "${K0S_CONTAINERD_HOSTS_DIR}"\n`,
-  permissions: '0644',
-};
+export function k0sCriRegistry(version: string) {
+  const plugin =
+    compareVersions(version, 'v1.36.0') >= 0
+      ? 'version = 3\n\n[plugins."io.containerd.cri.v1.images".registry]'
+      : 'version = 2\n\n[plugins."io.containerd.grpc.v1.cri".registry]';
+  return {
+    path: '/etc/k0s/containerd.d/cri-registry.toml',
+    content: `${plugin}\nconfig_path = "${K0S_CONTAINERD_HOSTS_DIR}"\n`,
+    permissions: '0644',
+  };
+}
 
 /**
  * files, pre/post commands and SSH keys of one group (FP9-F-03); for air-gapped clusters the
@@ -78,7 +86,7 @@ function customizationFields(
       ...airGap.files,
       ...(spec.airGapped
         ? [
-            K0S_CRI_REGISTRY,
+            k0sCriRegistry(version),
             ...containerdHostsFiles(spec.airGapped.registry, K0S_CONTAINERD_HOSTS_DIR),
           ]
         : []),
