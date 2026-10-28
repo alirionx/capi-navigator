@@ -722,15 +722,15 @@ Verified on 2026-10-18 on Infomaniak with `fp10-kubeadm-c` (1 control plane, 1 w
 | --- | --- | --- | --- |
 | `view` | Read everything: clusters, status, YAML, dashboard, providers, add-ons, events | viewer | – (reading is global, see FP19-F-04) |
 | `clusters.create` | Create workload clusters, incl. cloud lookups in the wizard and allowing a credential in the cluster's namespace | operator | yes |
-| `clusters.change` | Day-2 changes, scaling, labels (which also assigns add-ons), bastion | operator | yes |
+| `clusters.change` | Day-2 changes incl. upgrades and infrastructure settings (FP-33), scaling, labels (which also assigns add-ons), bastion | operator | yes |
 | `clusters.delete` | Delete workload clusters | operator | yes |
 | `clusters.kubeconfig` | View and download workload kubeconfigs | operator | yes |
 | `nodes.shell` | Node shell on workload cluster nodes | operator | yes |
-| `addons.manage` | Create, change and delete add-ons; browse charts | operator | yes |
-| `presets.manage` | Override and roll out CCM, CSI and kured presets | admin | no |
-| `providers.manage` | Install, change and remove ORC and providers | admin | no |
-| `credentials.manage` | Manage and test cloud credentials | admin | no |
-| `connections.manage` | Connect management clusters | admin | no |
+| `addons.manage` | Create, change and delete add-ons (Helm and manifest, FP-30); browse charts | operator | yes |
+| `presets.manage` | Override and roll out the presets (CCM, CSI, kured, kube-vip for LoadBalancer Services, FP-32) | admin | no |
+| `providers.manage` | Install, change and remove ORC and providers; apply the outbound proxy to them (FP-29) | admin | no |
+| `credentials.manage` | Manage and test cloud credentials and their machine sizes | admin | no |
+| `connections.manage` | Connect management clusters; set their outbound proxy and internal registry (FP-29) | admin | no |
 | `helmRepositories.manage` | Manage Helm repositories | admin | no |
 | `managementNodes.shell` | Node shell on management cluster nodes | admin | no |
 | `users.manage` | Manage users, roles and role assignments | admin | no |

@@ -1439,15 +1439,19 @@ export const en = {
     },
     view: 'Read everything: clusters, status, YAML, dashboard, providers, add-ons, events.',
     clusters_create: 'Create workload clusters, incl. cloud lookups in the wizard.',
-    clusters_change: 'Day-2 changes, scaling, labels (assigns add-ons) and bastion.',
+    clusters_change:
+      'Day-2 changes incl. upgrades and infrastructure settings, scaling, labels (assigns add-ons) and bastion.',
     clusters_delete: 'Delete workload clusters.',
     clusters_kubeconfig: 'View and download the admin kubeconfig of workload clusters.',
     nodes_shell: 'Open a root shell on workload cluster nodes.',
-    addons_manage: 'Create, change and delete Helm add-ons; browse charts.',
-    presets_manage: 'Override and roll out the CCM, CSI and kured presets.',
-    providers_manage: 'Install, upgrade and remove ORC and the CAPI providers.',
-    credentials_manage: 'Manage and test cloud credentials.',
-    connections_manage: 'Connect and remove management clusters.',
+    addons_manage: 'Create, change and delete Helm and manifest add-ons; browse charts.',
+    presets_manage:
+      'Override and roll out the presets (CCM, CSI, kured, kube-vip for LoadBalancer Services).',
+    providers_manage:
+      'Install, upgrade and remove ORC and the CAPI providers; apply the outbound proxy to them.',
+    credentials_manage: 'Manage and test cloud credentials and their machine sizes.',
+    connections_manage:
+      'Connect and remove management clusters; set their outbound proxy and internal registry.',
     helmRepositories_manage: 'Manage Helm repositories.',
     managementNodes_shell: 'Open a root shell on management cluster nodes.',
     users_manage: 'Manage users, roles and role assignments (effectively admin).',
