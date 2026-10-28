@@ -236,8 +236,8 @@ export const ADDON_PRESETS: AddonPreset[] = [
   },
   {
     // Reboots nodes after OS updates (unattended-upgrades writes /var/run/reboot-required), one
-    // node at a time with drain, also control plane nodes. The OS update path for distributions
-    // whose control plane machines cannot be replaced (ADR-0013). Chart 6.1.0 (kured 1.23.0),
+    // node at a time with drain, also control plane nodes: OS updates between image rebuilds
+    // (FP-9). Chart 6.1.0 (kured 1.23.0),
     // values verified against its values.yaml on 2026-10-18.
     id: 'kured',
     provider: 'any',

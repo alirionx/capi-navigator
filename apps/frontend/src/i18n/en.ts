@@ -925,7 +925,7 @@ export const en = {
     csiHint: 'Persistent volumes (Cinder or EBS) with a default storage class. Default: on.',
     reboot: 'Reboot daemon (kured)',
     rebootHint:
-      'Reboots nodes one at a time after OS updates (unattended-upgrades), with drain; the way to apply OS updates to k0s control planes. Default: off.',
+      'Reboots nodes one at a time after OS updates (unattended-upgrades), with drain; applies OS updates between image rebuilds. Default: off.',
     addon: 'Add-on',
     chartVersion: 'Version',
     addonValuesLater:

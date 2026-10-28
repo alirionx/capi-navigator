@@ -416,7 +416,7 @@ export const ClusterSpecSchema = z
       .object({
         cloudControllerManager: z.boolean().default(true),
         csiDriver: z.boolean().default(true),
-        /** kured: reboots nodes one at a time after OS updates (FP-9, ADR-0013). */
+        /** kured: reboots nodes one at a time after OS updates (FP-9). */
         rebootDaemon: z.boolean().optional(),
         /**
          * CNI for distributions without a built-in one (kubeadm, FP10-F-04): Calico by default,
