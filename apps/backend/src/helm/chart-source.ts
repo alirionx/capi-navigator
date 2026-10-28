@@ -189,6 +189,31 @@ export class ChartSource {
     return res.body;
   }
 
+  /**
+   * Layers of an OCI artifact by tag, e.g. the distribution binaries of air-gapped clusters pushed
+   * with `oras push` (FP29-F-12); the title annotation holds each file's name.
+   */
+  async ociLayers(
+    repo: RepoAccess,
+    repository: string,
+    tag: string,
+  ): Promise<{ mediaType: string; digest: string; title?: string }[]> {
+    const manifest = JSON.parse(
+      (
+        await this.oci(repo, `/v2/${repository}/manifests/${encodeURIComponent(tag)}`, OCI_MANIFEST)
+      ).body.toString('utf8'),
+    ) as {
+      layers?: { mediaType: string; digest: string; annotations?: Record<string, string> }[];
+    };
+    return (manifest.layers ?? []).map((l) => ({
+      mediaType: l.mediaType,
+      digest: l.digest,
+      ...(l.annotations?.['org.opencontainers.image.title']
+        ? { title: l.annotations['org.opencontainers.image.title'] }
+        : {}),
+    }));
+  }
+
   private async ociArchive(repo: RepoAccess, chart: string, version: string): Promise<Buffer> {
     const name = ociRepository(repo, chart);
     const tag = version.replace(/\+/g, '_');

@@ -39,10 +39,12 @@ import {
   transform,
   type ClusterPreview,
   type ClusterSpec,
+  type MissingArtifact,
   type ClusterStatus,
   type ClusterSummary,
   type ManifestObject,
 } from '@capi-navigator/shared';
+import { pinArtifacts } from './air-gap-artifacts.js';
 import { stringify } from 'yaml';
 import { ZodError } from 'zod';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
@@ -142,6 +144,8 @@ interface Plan {
   previewObjects: KubernetesObject[];
   warnings: string[];
   blockers: string[];
+  /** Artifacts the internal registry lacks (FP29-F-12). */
+  missingArtifacts: MissingArtifact[];
   credentialNamespaceMissing: boolean;
   /** Older versions of the namespace's add-on resource sets, replaced by the new ones. */
   removed: KubernetesObject[];
@@ -185,6 +189,7 @@ export class ClustersService {
       warnings: plan.warnings,
       blockers: plan.blockers,
       credentialNamespaceMissing: plan.credentialNamespaceMissing,
+      ...(plan.missingArtifacts.length ? { missingArtifacts: plan.missingArtifacts } : {}),
     };
   }
 
@@ -718,6 +723,7 @@ export class ClustersService {
       drift,
       warnings,
       blockers,
+      ...(plan.missingArtifacts.length ? { missingArtifacts: plan.missingArtifacts } : {}),
     };
     return { preview, changed, removed, kc: plan.kc };
   }
@@ -773,15 +779,20 @@ export class ClustersService {
 
   private async plan(
     connection: string,
-    spec: ClusterSpec,
+    requested: ClusterSpec,
     grantNamespace: boolean,
     /** The stored spec before a change; limits the change to what it touches (ADR-0025). */
     baseline?: ClusterSpec,
   ): Promise<Plan> {
     const kc = await this.clients.forConnection(connection);
-    const infra = spec.infrastructure;
+    const infra = requested.infrastructure;
     const blockers: string[] = [];
     const warnings: string[] = [];
+
+    // FP29-F-12: the artifacts of an air-gapped cluster, pinned in the spec it stores.
+    const pinned = await pinArtifacts(requested);
+    const spec = pinned.spec;
+    blockers.push(...pinned.blockers);
 
     // FP5-F-05, FP5-F-18: required providers installed and ready.
     const state = await this.operator.state(connection);
@@ -892,11 +903,13 @@ export class ClustersService {
         .catch(() => []);
       blockers.push(...infraPlugin.addressConflicts(spec, infra, others));
     }
-    const generated = transform(spec, transformContext);
+    // Without its artifacts an air-gapped cluster cannot be generated; the blockers say why.
+    const generated = pinned.ready ? transform(spec, transformContext) : [];
     const objects = generated as KubernetesObject[];
-    const touched = baseline
-      ? objectsTouchedBy(transform(baseline, transformContext), generated)
-      : undefined;
+    const touched =
+      baseline && pinned.ready
+        ? objectsTouchedBy(transform(baseline, transformContext), generated)
+        : undefined;
     const extra: KubernetesObject[] = [];
     const extraPreview: KubernetesObject[] = [];
     const removed: KubernetesObject[] = [];
@@ -1120,6 +1133,7 @@ export class ClustersService {
       ],
       warnings,
       blockers,
+      missingArtifacts: pinned.missing,
       credentialNamespaceMissing,
       removed,
       generated: new Set(generated.map(objectKey)),

@@ -114,6 +114,10 @@ export class ConnectionsService {
         ...req.outboundProxy,
       };
     }
+    if (req.internalRegistry !== undefined) {
+      // Merge patch as above; the mirror list is replaced as a whole (FP29-F-10).
+      patch.internalRegistry = req.internalRegistry && { caCert: null, ...req.internalRegistry };
+    }
     if (req.credentials) {
       const creds = this.resolve(name, req.credentials);
       await this.kube(`Store credentials of ${name}`, () => this.writeCredentials(name, creds));
@@ -247,6 +251,7 @@ function toConnection(c: ConnectionResource): Connection {
       ? { manifestChartRepository: c.spec.manifestChartRepository }
       : {}),
     ...(c.spec.outboundProxy ? { outboundProxy: c.spec.outboundProxy } : {}),
+    ...(c.spec.internalRegistry ? { internalRegistry: c.spec.internalRegistry } : {}),
     ...(c.metadata.creationTimestamp ? { createdAt: String(c.metadata.creationTimestamp) } : {}),
     status: c.status ?? { phase: 'Unknown' },
   };

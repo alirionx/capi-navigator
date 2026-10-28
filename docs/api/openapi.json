@@ -7241,6 +7241,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "missingArtifacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingArtifact"
+            }
           }
         },
         "required": [
@@ -7370,6 +7376,12 @@
           },
           "credentialNamespaceMissing": {
             "type": "boolean"
+          },
+          "missingArtifacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingArtifact"
+            }
           }
         },
         "required": [
@@ -9772,6 +9784,22 @@
           "bindings",
           "mustChangePassword",
           "source"
+        ],
+        "additionalProperties": false
+      },
+      "MissingArtifact": {
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "commands": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference",
+          "commands"
         ],
         "additionalProperties": false
       },

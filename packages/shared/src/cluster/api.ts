@@ -10,11 +10,24 @@ export const ClusterCreateRequestSchema = z.object({
 });
 export type ClusterCreateRequest = z.input<typeof ClusterCreateRequestSchema>;
 
+/**
+ * FP29-F-12: an artifact the internal registry lacks, with the commands that download it from the
+ * upstream release and push it (run on a machine with internet access).
+ */
+export const MissingArtifactSchema = z.object({
+  /** host/repository:tag in the internal registry. */
+  reference: z.string(),
+  commands: z.string(),
+});
+export type MissingArtifact = z.infer<typeof MissingArtifactSchema>;
+
 export const ClusterPreviewSchema = ManifestPreviewSchema.extend({
   /** Reasons that block the creation, e.g. missing providers (FP5-F-05, FP5-F-18). */
   blockers: z.array(z.string()),
   /** The credential does not allow the cluster's namespace yet. */
   credentialNamespaceMissing: z.boolean(),
+  /** Artifacts missing in the internal registry, each also a blocker (FP29-F-12). */
+  missingArtifacts: z.array(MissingArtifactSchema).optional(),
 });
 export type ClusterPreview = z.infer<typeof ClusterPreviewSchema>;
 

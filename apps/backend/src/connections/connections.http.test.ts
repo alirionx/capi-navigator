@@ -289,6 +289,43 @@ describe('connections API (FP-2)', () => {
     expect(testConnection).not.toHaveBeenCalled();
   });
 
+  it('sets, replaces and removes the internal registry (FP29-F-10)', async () => {
+    const patch = (body: object) =>
+      http().patch('/api/connections/prod').set(CSRF).set('Cookie', admin).send(body);
+    const ca = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+    const registry = {
+      host: 'registry.example.internal',
+      caCert: ca,
+      mirrors: [{ upstream: 'docker.io', path: 'proxy-docker-io' }, { upstream: 'quay.io' }],
+      artifactsPath: 'library',
+    };
+    const bad = await patch({
+      internalRegistry: { ...registry, host: 'https://registry.example.internal' },
+    }).expect(400);
+    expect(JSON.stringify(bad.body)).toContain('without https://');
+    const twice = await patch({
+      internalRegistry: {
+        ...registry,
+        mirrors: [{ upstream: 'quay.io' }, { upstream: 'quay.io' }],
+      },
+    }).expect(400);
+    expect(JSON.stringify(twice.body)).toContain('only once');
+    const set = await patch({ internalRegistry: registry }).expect(200);
+    expect(set.body.internalRegistry).toEqual(registry);
+    // The CA left out is removed, the mirror list replaced as a whole (merge patch).
+    const withoutCa = { ...registry, caCert: undefined };
+    const replaced = await patch({
+      internalRegistry: { ...withoutCa, mirrors: [{ upstream: 'ghcr.io', path: 'ghcr' }] },
+    }).expect(200);
+    expect(replaced.body.internalRegistry).toEqual({
+      ...withoutCa,
+      mirrors: [{ upstream: 'ghcr.io', path: 'ghcr' }],
+    });
+    const removed = await patch({ internalRegistry: null }).expect(200);
+    expect(removed.body.internalRegistry).toBeUndefined();
+    expect(testConnection).not.toHaveBeenCalled();
+  });
+
   it('replaces credentials, bumps the revision and re-tests', async () => {
     const before = fake.connections.get('prod')!.spec.credentialsRevision;
     const res = await http()

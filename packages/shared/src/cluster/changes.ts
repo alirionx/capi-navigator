@@ -9,6 +9,7 @@ import {
   type Bastion,
   type ClusterSpec,
 } from './spec.js';
+import { MissingArtifactSchema } from './api.js';
 import { day2Fields, getPath, setPath } from './infra-form.js';
 import { INFRA_PLUGINS } from './transform.js';
 import { stableStringify } from './util.js';
@@ -150,6 +151,8 @@ export const ClusterChangePreviewSchema = z.object({
   drift: z.array(DriftSchema),
   warnings: z.array(z.string()),
   blockers: z.array(z.string()),
+  /** Artifacts missing in the internal registry, each also a blocker (FP29-F-12). */
+  missingArtifacts: z.array(MissingArtifactSchema).optional(),
 });
 export type ClusterChangePreview = z.infer<typeof ClusterChangePreviewSchema>;
 
