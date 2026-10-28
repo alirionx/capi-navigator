@@ -52,7 +52,9 @@ Couplings to keep in mind (the tests check most of them):
   (the ORC module version in CAPO's `go.mod`).
 - **openstack-ccm** and **openstack-csi** are released together; keep them on one version.
 - **Calico** is a shipped file with a checksum (step 3).
-- **npm caps** in [renovate.json](../renovate.json): Vuetify `<4`, TypeScript `<6.1` (ADR-0001).
+- **npm caps** in [renovate.json](../renovate.json): Vuetify `<4`; `typescript` is an alias of
+  `@typescript/typescript6` (`<7`) for typescript-eslint and vue-tsc, `tsc` comes from
+  `@typescript/native` = TypeScript 7 (ADR-0001).
   `@types/node` follows the Node.js major in `.nvmrc`, not the newest release.
 
 ## 3. Change
