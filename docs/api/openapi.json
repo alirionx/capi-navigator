@@ -6766,6 +6766,27 @@
         ],
         "additionalProperties": false
       },
+      "AirGapped": {
+        "type": "object",
+        "properties": {
+          "registry": {
+            "$ref": "#/components/schemas/InternalRegistry"
+          },
+          "artifacts": {
+            "default": [],
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArtifactPin"
+            }
+          }
+        },
+        "required": [
+          "registry",
+          "artifacts"
+        ],
+        "additionalProperties": false
+      },
       "ApiErrorBody": {
         "type": "object",
         "properties": {
@@ -6797,6 +6818,48 @@
         "required": [
           "statusCode",
           "message"
+        ],
+        "additionalProperties": false
+      },
+      "ArtifactPin": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
+          },
+          "repository": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "files": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+$"
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "name",
+                "digest"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "version",
+          "repository",
+          "files"
         ],
         "additionalProperties": false
       },
@@ -7505,6 +7568,9 @@
           },
           "infrastructure": {
             "$ref": "#/components/schemas/Infrastructure"
+          },
+          "airGapped": {
+            "$ref": "#/components/schemas/AirGapped"
           }
         },
         "required": [
@@ -7887,6 +7953,9 @@
           },
           "outboundProxy": {
             "$ref": "#/components/schemas/OutboundProxy"
+          },
+          "internalRegistry": {
+            "$ref": "#/components/schemas/InternalRegistry"
           },
           "createdAt": {
             "type": "string"
@@ -9218,6 +9287,55 @@
           "namespace",
           "phase",
           "conditions"
+        ],
+        "additionalProperties": false
+      },
+      "InternalRegistry": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\\d{1,5})?$"
+          },
+          "caCert": {
+            "type": "string",
+            "maxLength": 262144
+          },
+          "mirrors": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "upstream": {
+                  "type": "string",
+                  "maxLength": 253,
+                  "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\\d{1,5})?$"
+                },
+                "path": {
+                  "type": "string",
+                  "maxLength": 255,
+                  "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*(\\/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+                }
+              },
+              "required": [
+                "upstream"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "artifactsPath": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*(\\/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+          }
+        },
+        "required": [
+          "host",
+          "mirrors",
+          "artifactsPath"
         ],
         "additionalProperties": false
       },
@@ -10821,6 +10939,65 @@
           "clusterSelector"
         ]
       },
+      "AirGappedInput": {
+        "type": "object",
+        "properties": {
+          "registry": {
+            "$ref": "#/components/schemas/InternalRegistryInput"
+          },
+          "artifacts": {
+            "default": [],
+            "maxItems": 2,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArtifactPinInput"
+            }
+          }
+        },
+        "required": [
+          "registry"
+        ]
+      },
+      "ArtifactPinInput": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
+          },
+          "repository": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "files": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9._-]+$"
+                },
+                "digest": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "name",
+                "digest"
+              ]
+            }
+          }
+        },
+        "required": [
+          "version",
+          "repository",
+          "files"
+        ]
+      },
       "AwsCredentialInputInput": {
         "type": "object",
         "properties": {
@@ -11148,6 +11325,9 @@
           },
           "infrastructure": {
             "$ref": "#/components/schemas/Infrastructure"
+          },
+          "airGapped": {
+            "$ref": "#/components/schemas/AirGappedInput"
           }
         },
         "required": [
@@ -11716,6 +11896,53 @@
         "type": "string",
         "minLength": 1,
         "maxLength": 65536
+      },
+      "InternalRegistryInput": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "maxLength": 253,
+            "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\\d{1,5})?$"
+          },
+          "caCert": {
+            "type": "string",
+            "maxLength": 262144
+          },
+          "mirrors": {
+            "minItems": 1,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "upstream": {
+                  "type": "string",
+                  "maxLength": 253,
+                  "pattern": "^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\\d{1,5})?$"
+                },
+                "path": {
+                  "type": "string",
+                  "maxLength": 255,
+                  "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*(\\/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+                }
+              },
+              "required": [
+                "upstream"
+              ]
+            }
+          },
+          "artifactsPath": {
+            "type": "string",
+            "maxLength": 255,
+            "pattern": "^[a-z0-9]+([._-][a-z0-9]+)*(\\/[a-z0-9]+([._-][a-z0-9]+)*)*$"
+          }
+        },
+        "required": [
+          "host",
+          "mirrors",
+          "artifactsPath"
+        ]
       },
       "KubeconfigContextsRequestInput": {
         "type": "object",
@@ -12890,6 +13117,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/OutboundProxyInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "internalRegistry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InternalRegistryInput"
               },
               {
                 "type": "null"

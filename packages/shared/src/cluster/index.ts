@@ -12,6 +12,7 @@ export * from './manifest-addons.js';
 export * from './rke2.js';
 export * from './k0s.js';
 export * from './kubeadm.js';
+export * from './air-gap.js';
 export * from './cni.js';
 export * from './addons.js';
 export { transform, INFRA_PLUGINS, FLAVOR_PLUGINS } from './transform.js';

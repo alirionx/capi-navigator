@@ -1,3 +1,4 @@
+import { airGapNodeSetup, artifactTag, nodePreparation, rke2RegistryMirrors } from './air-gap.js';
 import { kubeVipDaemonSet } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
@@ -41,6 +42,10 @@ function agentConfig(
       : undefined;
   const ssh = spec.sshPublicKeys;
   return compact({
+    // FP29-F-14: install from /opt/rke2-artifacts instead of get.rke2.io. Never airGappedChecksum:
+    // it makes the user data invalid YAML (rancher/cluster-api-provider-rke2#1128); the download
+    // checks every file instead.
+    airGapped: spec.airGapped ? true : undefined,
     nodeName: identity.nodeName,
     nodeLabels: extra.nodeLabels
       ? Object.entries(extra.nodeLabels)
@@ -59,28 +64,49 @@ function agentConfig(
   });
 }
 
-/** files, pre/post commands and SSH keys of one group (FP5-F-13). */
-function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, group: MachineGroup) {
+/**
+ * files, pre/post commands and SSH keys of one group (FP5-F-13); for air-gapped clusters the
+ * download of the version's artifacts and the registry mirrors first (FP-29).
+ */
+function customizationFields(
+  spec: ClusterSpec,
+  infra: InfraTransformPlugin,
+  group: MachineGroup,
+  version: string,
+) {
   const c: NodeCustomization = group.customization ?? {
     files: [],
     preCommands: [],
     postCommands: [],
   };
+  const airGap = airGapNodeSetup(spec, rke2Plugin, version);
   return compact({
-    files: c.files.map((f) =>
-      compact({
-        path: f.path,
-        content: f.content,
-        contentFrom: f.contentFromSecret
-          ? { secret: { name: f.contentFromSecret.name, key: f.contentFromSecret.key } }
-          : undefined,
-        permissions: f.permissions,
-        owner: f.owner,
-      }),
-    ),
-    preRKE2Commands: [...(infra.nodePreparation ?? []), ...RKE2_OS_PREPARATION, ...c.preCommands],
+    files: [
+      ...airGap.files,
+      ...c.files.map((f) =>
+        compact({
+          path: f.path,
+          content: f.content,
+          contentFrom: f.contentFromSecret
+            ? { secret: { name: f.contentFromSecret.name, key: f.contentFromSecret.key } }
+            : undefined,
+          permissions: f.permissions,
+          owner: f.owner,
+        }),
+      ),
+    ],
+    preRKE2Commands: [
+      ...nodePreparation(spec, infra),
+      ...airGap.commands,
+      // FP29-F-15: air-gapped images must bring the package themselves.
+      ...(spec.airGapped ? [] : RKE2_OS_PREPARATION),
+      ...c.preCommands,
+    ],
     postRKE2Commands: c.postCommands,
     gzipUserData: false,
+    privateRegistriesConfig: spec.airGapped
+      ? { mirrors: rke2RegistryMirrors(spec.airGapped.registry) }
+      : undefined,
   });
 }
 
@@ -88,6 +114,38 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   flavor: 'rke2',
   displayName: 'RKE2',
   customizationFields: { preCommands: 'preRKE2Commands', postCommands: 'postRKE2Commands' },
+  // FP29-F-12: the files RKE2's air-gapped installation takes (docs: install/airgap, tarball
+  // method); install.sh is the one get.rke2.io serves.
+  airGap: {
+    artifact: (version) => {
+      const release = `https://github.com/rancher/rke2/releases/download/${encodeURIComponent(version)}`;
+      return {
+        name: 'rke2-artifacts',
+        tag: artifactTag(version),
+        files: [
+          {
+            name: 'rke2.linux-amd64.tar.gz',
+            url: `${release}/rke2.linux-amd64.tar.gz`,
+            target: '/opt/rke2-artifacts/rke2.linux-amd64.tar.gz',
+            mode: '0644',
+          },
+          {
+            name: 'sha256sum-amd64.txt',
+            url: `${release}/sha256sum-amd64.txt`,
+            target: '/opt/rke2-artifacts/sha256sum-amd64.txt',
+            mode: '0644',
+          },
+          {
+            name: 'install.sh',
+            url: 'https://get.rke2.io',
+            target: '/opt/install.sh',
+            mode: '0755',
+          },
+        ],
+        verify: "grep ' rke2.linux-amd64.tar.gz$' sha256sum-amd64.txt | sha256sum -c -",
+      };
+    },
+  },
   // Rules from the RKE2 provider's AWS example (v0.27.0, examples/templates/aws). Nodes register
   // via internal IPs (registrationMethod internal-first): the supervisor needs no LB listener.
   network: {
@@ -159,7 +217,9 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
     const cp = spec.topology.controlPlane;
     const external = spec.addons.cloudControllerManager;
     const vip = infra.apiVip?.(spec.infrastructure);
-    const custom = customizationFields(spec, infra, cp) as { files?: unknown[] };
+    const custom = customizationFields(spec, infra, cp, spec.kubernetes.version) as {
+      files?: unknown[];
+    };
     return {
       apiVersion: RKE2_CONTROL_PLANE_API,
       kind: 'RKE2ControlPlane',
@@ -206,7 +266,13 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   workerBootstrapSpec({ spec, infra, pool }) {
     return compact({
       agentConfig: agentConfig(spec, infra, { worker: true, nodeLabels: pool.nodeLabels }),
-      ...customizationFields(spec, infra, pool),
+      // FP7-F-08: workers follow the control plane only after it was upgraded.
+      ...customizationFields(
+        spec,
+        infra,
+        pool,
+        spec.kubernetes.workerVersion ?? spec.kubernetes.version,
+      ),
     });
   },
 };

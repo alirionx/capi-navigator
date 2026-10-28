@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   AuthTypeSchema,
+  InternalRegistrySchema,
   ManagementClusterStatusSchema,
   OutboundProxySchema,
 } from '../connections.js';
@@ -26,6 +27,8 @@ export const ManagementClusterSpecSchema = z.object({
   manifestChartRepository: z.string().optional(),
   /** Outbound proxy for provider controllers (FP-29); nothing secret in it. */
   outboundProxy: OutboundProxySchema.optional(),
+  /** Internal registry for air-gapped workload clusters (FP29-F-10); nothing secret in it. */
+  internalRegistry: InternalRegistrySchema.optional(),
 });
 export type ManagementClusterSpec = z.infer<typeof ManagementClusterSpecSchema>;
 

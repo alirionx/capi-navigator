@@ -1,3 +1,4 @@
+import { airGapNodeSetup, artifactTag, containerdHostsFiles, nodePreparation } from './air-gap.js';
 import { kubeVipDaemonSet } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
@@ -44,16 +45,43 @@ function cloudProviderArgs(spec: ClusterSpec, infra: InfraTransformPlugin): stri
 const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
 
-/** files, pre/post commands and SSH keys of one group (FP9-F-03). */
-function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, group: MachineGroup) {
+/**
+ * FP29-F-14: k0s's containerd imports drop-ins from /etc/k0s/containerd.d; this one points the CRI
+ * registry configuration to one hosts.toml per upstream registry.
+ */
+const K0S_CONTAINERD_HOSTS_DIR = '/etc/k0s/containerd.d/certs.d';
+const K0S_CRI_REGISTRY = {
+  path: '/etc/k0s/containerd.d/cri-registry.toml',
+  content: `version = 2\n\n[plugins."io.containerd.grpc.v1.cri".registry]\nconfig_path = "${K0S_CONTAINERD_HOSTS_DIR}"\n`,
+  permissions: '0644',
+};
+
+/**
+ * files, pre/post commands and SSH keys of one group (FP9-F-03); for air-gapped clusters the
+ * download of the version's binary and the registry mirrors first (FP-29).
+ */
+function customizationFields(
+  spec: ClusterSpec,
+  infra: InfraTransformPlugin,
+  group: MachineGroup,
+  version: string,
+) {
   const c: NodeCustomization = group.customization ?? {
     files: [],
     preCommands: [],
     postCommands: [],
   };
   const ssh = spec.sshPublicKeys;
+  const airGap = airGapNodeSetup(spec, k0sPlugin, version);
   return compact({
     files: [
+      ...airGap.files,
+      ...(spec.airGapped
+        ? [
+            K0S_CRI_REGISTRY,
+            ...containerdHostsFiles(spec.airGapped.registry, K0S_CONTAINERD_HOSTS_DIR),
+          ]
+        : []),
       ...c.files.map((f) =>
         compact({
           path: f.path,
@@ -72,11 +100,14 @@ function customizationFields(spec: ClusterSpec, infra: InfraTransformPlugin, gro
         : []),
     ],
     preK0sCommands: [
-      ...(infra.nodePreparation ?? []),
+      ...nodePreparation(spec, infra),
+      ...airGap.commands,
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,
     ],
     postK0sCommands: c.postCommands,
+    // FP29-F-14: the binary is in place; no download from get.k0sproject.io.
+    preInstalledK0s: spec.airGapped ? true : undefined,
   });
 }
 
@@ -110,6 +141,21 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   flavor: 'k0s',
   displayName: 'k0s',
   customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
+  // FP29-F-12: the static k0s binary of the release, where k0smotron installs it (k0sInstallDir).
+  airGap: {
+    artifact: (version) => ({
+      name: 'k0s-amd64',
+      tag: artifactTag(version),
+      files: [
+        {
+          name: 'k0s',
+          url: `https://github.com/k0sproject/k0s/releases/download/${encodeURIComponent(version)}/k0s-${encodeURIComponent(version)}-amd64`,
+          target: '/usr/local/bin/k0s',
+          mode: '0755',
+        },
+      ],
+    }),
+  },
   // The k0s kubelet reports "v1.35.8+k0s" for k0s "v1.35.8+k0s.1" (seen live with CAPI v1.14.3).
   machineVersion: (version) => version.replace(/(\+k0s)\.\d+$/, '$1'),
   // ADR-0013: k0smotron v2.2.0 removes all old control plane machines (and their etcd members)
@@ -178,7 +224,9 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;
     const vip = infra.apiVip?.(spec.infrastructure);
-    const custom = customizationFields(spec, infra, cp) as { files?: unknown[] };
+    const custom = customizationFields(spec, infra, cp, spec.kubernetes.version) as {
+      files?: unknown[];
+    };
     return {
       apiVersion: K0S_CONTROL_PLANE_API,
       kind: 'K0sControlPlane',
@@ -255,7 +303,12 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           : []),
       ],
       useSystemHostname: true,
-      ...customizationFields(spec, infra, pool),
+      ...customizationFields(
+        spec,
+        infra,
+        pool,
+        spec.kubernetes.workerVersion ?? spec.kubernetes.version,
+      ),
     });
   },
 };

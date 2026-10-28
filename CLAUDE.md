@@ -132,7 +132,7 @@ pnpm dex:up           # Dex with test users as OIDC provider in kind; configures
 pnpm crds:generate    # regenerate deploy/crds from the Zod schemas in packages/shared
 pnpm openapi:generate # regenerate docs/api/openapi.json from the routes and Zod schemas (FP-23)
 pnpm versions:generate   # regenerate the pinned versions from versions.yaml (FP-20)
-pnpm templates:generate  # regenerate the node script templates (kubeadm install script)
+pnpm templates:generate  # regenerate the node script templates (kubeadm install, artifact download)
 pnpm versions:report     # newer versions of versions.yaml, Actions and Docker → docs/versions-report.md
 pnpm crds:install     # install the app's CRDs into the current cluster
 pnpm secrets:scan     # gitleaks (Docker) over the Git history and the working tree; run before pushing

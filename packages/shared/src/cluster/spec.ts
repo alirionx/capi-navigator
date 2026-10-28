@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { InternalRegistrySchema } from '../connections.js';
 import { AwsRegionSchema, CredentialNameSchema, GcpRegionSchema } from '../credentials.js';
 import {
   cidrsOverlap,
@@ -340,6 +341,37 @@ export const FLAVOR_VERSION_FORMATS: Partial<
   },
 };
 
+/**
+ * FP29-F-12: binaries of one distribution version as OCI artifact in the internal registry,
+ * pinned by the digests of its layers (one layer per file, digest = sha256 of the file).
+ */
+export const ArtifactPinSchema = z.object({
+  version: z.string().regex(/^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/),
+  /** Repository in the internal registry, e.g. library/rke2-artifacts. */
+  repository: z.string().max(255),
+  files: z
+    .array(
+      z.object({
+        name: z.string().regex(/^[A-Za-z0-9._-]+$/, 'A file name'),
+        digest: z.string().regex(/^sha256:[a-f0-9]{64}$/, 'A sha256 digest'),
+      }),
+    )
+    .min(1)
+    .max(10),
+});
+export type ArtifactPin = z.infer<typeof ArtifactPinSchema>;
+
+/**
+ * FP29-F-11: nodes without internet. A copy of the connection's internal registry, so existing
+ * clusters do not change with the connection, and the artifacts of the versions in use (the
+ * control plane's and, during an upgrade, the workers'); the app resolves them for the preview.
+ */
+export const AirGappedSchema = z.object({
+  registry: InternalRegistrySchema,
+  artifacts: z.array(ArtifactPinSchema).max(2).default([]),
+});
+export type AirGapped = z.infer<typeof AirGappedSchema>;
+
 export const ClusterSpecSchema = z
   .object({
     name: dnsLabel(40, 'Cluster name'),
@@ -405,6 +437,8 @@ export const ClusterSpecSchema = z
       .max(20)
       .default([]),
     infrastructure: InfrastructureSchema,
+    /** FP-29: nodes pull images and binaries from an internal registry only. */
+    airGapped: AirGappedSchema.optional(),
   })
   .superRefine((spec, ctx) => {
     const issue = (path: (string | number)[], message: string) =>

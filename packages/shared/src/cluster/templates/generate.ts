@@ -24,4 +24,9 @@ export const TEMPLATES = [
     module: 'kubeadm-install.generated.ts',
     constName: 'KUBEADM_INSTALL_TEMPLATE',
   },
+  {
+    source: 'fetch-artifact.py.tmpl',
+    module: 'fetch-artifact.generated.ts',
+    constName: 'FETCH_ARTIFACT_SCRIPT',
+  },
 ];

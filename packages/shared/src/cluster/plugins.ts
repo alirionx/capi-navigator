@@ -1,5 +1,6 @@
 import type { ProxmoxMachineSize } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
+import type { AirGapArtifact } from './air-gap.js';
 import type { InfraForm } from './infra-form.js';
 import type { ClusterSpec, Infrastructure, MachineGroup } from './spec.js';
 
@@ -93,6 +94,11 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   /** Commands every node runs first, before the distribution is installed (as root). */
   nodePreparation?: string[];
   /**
+   * Further preparation that needs the internet, e.g. installing a package; left out for
+   * air-gapped clusters, whose images must already contain it (FP29-F-15).
+   */
+  onlineNodePreparation?: string[];
+  /**
    * Shell command printing the node's IPv4 address, for infrastructures whose CCM takes the node
    * address from the kubelet (`--node-ip`) instead of instance metadata (FP31-F-11). Kubelets
    * with an external cloud provider report none of their own (k0s from Kubernetes 1.36, FP-31
@@ -153,6 +159,11 @@ export interface BootstrapFlavorPlugin {
   installsPackages?: boolean;
   /** Marked as experimental in the wizard, with its trade-offs (FP10-F-08). */
   experimental?: boolean;
+  /**
+   * Installation without internet from the internal registry (FP-29 part B): the artifact with
+   * the binaries of a version. Unset: the distribution cannot run air-gapped.
+   */
+  airGap?: { artifact(version: string): AirGapArtifact };
   /** Display name and the fields node customization maps to, for help texts (POS-04). */
   displayName: string;
   customizationFields: { preCommands: string; postCommands: string };

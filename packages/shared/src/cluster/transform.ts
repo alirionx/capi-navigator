@@ -46,6 +46,9 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   const infra = INFRA_PLUGINS[spec.infrastructure.provider];
   const flavor = FLAVOR_PLUGINS[spec.kubernetes.flavor];
   if (!flavor) throw new Error(`Kubernetes flavor "${spec.kubernetes.flavor}" is not available`);
+  // FP29-F-11: only distributions that install from the internal registry.
+  if (spec.airGapped && !flavor.airGap)
+    throw new Error(`${flavor.displayName} cannot be installed air-gapped`);
 
   const labels = { [MANAGED_BY_LABEL]: MANAGED_BY_VALUE, [CLUSTER_NAME_LABEL]: spec.name };
   const infraRef = (name: string): ObjectRef => ({

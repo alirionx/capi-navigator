@@ -92,6 +92,41 @@ spec:
                       maxLength: 262144
                   required:
                     - httpsProxy
+                internalRegistry:
+                  type: object
+                  properties:
+                    host:
+                      type: string
+                      maxLength: 253
+                      pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\d{1,5})?$
+                    caCert:
+                      type: string
+                      maxLength: 262144
+                    mirrors:
+                      minItems: 1
+                      maxItems: 20
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          upstream:
+                            type: string
+                            maxLength: 253
+                            pattern: ^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\d{1,5})?$
+                          path:
+                            type: string
+                            maxLength: 255
+                            pattern: ^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$
+                        required:
+                          - upstream
+                    artifactsPath:
+                      type: string
+                      maxLength: 255
+                      pattern: ^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$
+                  required:
+                    - host
+                    - mirrors
+                    - artifactsPath
               required:
                 - authType
             status:

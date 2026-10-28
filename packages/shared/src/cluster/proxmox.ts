@@ -219,7 +219,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
 
   apiVip: (infra) => infra.apiEndpoint,
 
-  nodePreparation: [GUEST_AGENT],
+  // FP29-F-15: air-gapped clusters need the agent in the template.
+  onlineNodePreparation: [GUEST_AGENT],
 
   // The source address towards the gateway, which is always on the node's network. The Proxmox
   // CCM then sets it as InternalIP (network mode "default"); its guest agent mode also reports

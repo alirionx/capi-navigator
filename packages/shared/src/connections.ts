@@ -59,6 +59,51 @@ export const OutboundProxySchema = z.object({
 });
 export type OutboundProxy = z.infer<typeof OutboundProxySchema>;
 
+/** Registry host with an optional port, without scheme, e.g. registry.example.com:5000. */
+const RegistryHostSchema = z
+  .string()
+  .trim()
+  .max(253)
+  .regex(
+    /^[a-z0-9]([-a-z0-9.]*[a-z0-9])?(:\d{1,5})?$/,
+    'A host name with an optional port, without https://',
+  );
+
+/** Repository path in OCI distribution syntax, e.g. proxy-docker-io or mirror/k8s. */
+const RepositoryPathSchema = z
+  .string()
+  .trim()
+  .max(255)
+  .regex(
+    /^[a-z0-9]+([._-][a-z0-9]+)*(\/[a-z0-9]+([._-][a-z0-9]+)*)*$/,
+    'Lowercase path segments separated by "/", e.g. mirror/docker-io',
+  );
+
+/** Upstream registries every internal registry should mirror (FP29-F-10). */
+export const DEFAULT_MIRRORED_REGISTRIES = ['docker.io', 'registry.k8s.io', 'ghcr.io', 'quay.io'];
+
+/**
+ * FP29-F-10: internal OCI registry that nodes without internet pull from. Images keep their names
+ * through the mirror configuration of the container runtime; the binaries of the distributions are
+ * OCI artifacts below `artifactsPath`. No credentials: nodes pull anonymously.
+ */
+export const InternalRegistrySchema = z.object({
+  host: RegistryHostSchema,
+  /** CA certificate of the registry (PEM); added to the nodes' trust store. */
+  caCert: PemSchema.optional(),
+  /** Path per upstream registry, e.g. docker.io → proxy-docker-io; unset: unchanged names. */
+  mirrors: z
+    .array(z.object({ upstream: RegistryHostSchema, path: RepositoryPathSchema.optional() }))
+    .min(1, 'At least one upstream registry')
+    .max(20)
+    .refine((m) => new Set(m.map((e) => e.upstream)).size === m.length, {
+      message: 'Each upstream registry only once',
+    }),
+  /** Repository path of the distributions' binaries, e.g. library → library/rke2-artifacts. */
+  artifactsPath: RepositoryPathSchema,
+});
+export type InternalRegistry = z.infer<typeof InternalRegistrySchema>;
+
 /** FP2-F-01: credentials of a connection, by auth type. */
 export const ConnectionCredentialsSchema = z.discriminatedUnion('authType', [
   z.object({
@@ -101,13 +146,16 @@ export const UpdateConnectionRequestSchema = z
     manifestChartRepository: HelmRepositoryNameSchema.nullable().optional(),
     /** Outbound proxy for provider controllers (FP-29); `null`: none. */
     outboundProxy: OutboundProxySchema.nullable().optional(),
+    /** Internal registry for air-gapped workload clusters (FP29-F-10); `null`: none. */
+    internalRegistry: InternalRegistrySchema.nullable().optional(),
   })
   .refine(
     (v) =>
       v.displayName !== undefined ||
       v.credentials !== undefined ||
       v.manifestChartRepository !== undefined ||
-      v.outboundProxy !== undefined,
+      v.outboundProxy !== undefined ||
+      v.internalRegistry !== undefined,
     { message: 'Nothing to update' },
   );
 export type UpdateConnectionRequest = z.infer<typeof UpdateConnectionRequestSchema>;
@@ -161,6 +209,8 @@ export const ConnectionSchema = z.object({
   manifestChartRepository: z.string().optional(),
   /** FP-29; unset: provider controllers reach the internet directly. */
   outboundProxy: OutboundProxySchema.optional(),
+  /** FP-29; unset: workload clusters cannot be created air-gapped. */
+  internalRegistry: InternalRegistrySchema.optional(),
   createdAt: z.string().optional(),
   status: ManagementClusterStatusSchema,
 });

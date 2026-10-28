@@ -1,3 +1,4 @@
+import { nodePreparation } from './air-gap.js';
 import {
   KUBEADM_KUBE_VIP_INIT_COMMAND,
   KUBEADM_KUBE_VIP_RESTORE_COMMAND,
@@ -129,7 +130,7 @@ function bootstrapFields(
         : []),
     ],
     preKubeadmCommands: [
-      ...(infra.nodePreparation ?? []),
+      ...nodePreparation(spec, infra),
       INSTALL_SCRIPT_PATH,
       ...nodeAddressCommands(spec, infra),
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
