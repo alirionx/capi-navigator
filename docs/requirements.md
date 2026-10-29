@@ -1069,6 +1069,7 @@ Requirements:
 | 0.10.0 | UX-01, UX-02 | – |
 | 0.11.0 | UX-03, UX-04 | – |
 | 0.12.0 | – | UX-05 |
+| 0.13.0 | UX-05, UX-06, UX-07 | – |
 
 ### FP-29: Air-gapped workload clusters (optional)
 
