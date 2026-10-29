@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n';
 
 // UX-05: marks a cluster whose nodes run without internet (FP-29); the tooltip names the internal
 // registry they pull from.
+defineOptions({ inheritAttrs: false });
 defineProps<{ registry: string; size?: 'x-small' | 'small' }>();
 const { t } = useI18n();
 </script>
@@ -11,7 +12,7 @@ const { t } = useI18n();
   <v-tooltip location="top" :text="t('clusters.airGappedHint', { registry })">
     <template #activator="{ props: activator }">
       <v-chip
-        v-bind="activator"
+        v-bind="{ ...activator, ...$attrs }"
         :size="size ?? 'x-small'"
         variant="tonal"
         color="info"
