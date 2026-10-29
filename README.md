@@ -199,8 +199,9 @@ helm install capi-navigator deploy/helm/capi-navigator \
   --set image.repository=capi-navigator --set image.tag=dev
 ```
 
-**Outbound proxy:** the app reaches GitHub (provider versions, the ORC manifest) and Helm
-repositories over the internet. Behind a proxy, set the standard variables with `extraEnv`; the
+**Outbound proxy:** the app reaches GitHub (provider versions, the ORC manifest), Helm
+repositories and the cloud APIs for credential tests and form lookups over the internet (AWS:
+`sts.<region>.amazonaws.com`, `ec2.<region>.amazonaws.com` and `iam.amazonaws.com`). Behind a proxy, set the standard variables with `extraEnv`; the
 image enables Node.js proxy support (`NODE_USE_ENV_PROXY=1`). The Kubernetes API is always reached
 directly. `NO_PROXY` takes host names, `.domain` suffixes, single IPs and IP ranges
 (`10.0.0.0-10.255.255.255`), no CIDRs. Unlike Go and curl, a domain without leading dot

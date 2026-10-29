@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { AwsCredentialPlugin, type AwsClients } from './aws/aws-credential.plugin.js';
+import { createServer } from 'node:net';
+import { request } from 'node:https';
+import { AwsCredentialPlugin, httpsAgent, type AwsClients } from './aws/aws-credential.plugin.js';
 import { cloudsYamlInfo, normalizeOpenStack, readStoredCloud } from './openstack/clouds-yaml.js';
 import type { HttpFn } from './openstack/openstack-client.js';
 import { OpenStackCredentialPlugin } from './openstack/openstack-credential.plugin.js';
@@ -424,5 +426,43 @@ describe('AWS plugin (FP4-F-07..10)', () => {
     expect(await plugin.imageNames(data, summary, ['ami-new', 'ami-gone'], {})).toEqual({
       'ami-new': 'ubuntu-noble-24.04-amd64-server-20261001',
     });
+  });
+});
+
+describe('AWS SDK behind an outbound proxy (FP29-F-01)', () => {
+  // The SDK uses its own agent, which ignores NODE_USE_ENV_PROXY; httpsAgent() adds proxyEnv.
+  async function firstLineAtProxy(env: NodeJS.ProcessEnv): Promise<string | undefined> {
+    let line: string | undefined;
+    const proxy = createServer((s) =>
+      s.once('data', (d) => {
+        line = d.toString().split('\r\n')[0];
+        s.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+      }),
+    );
+    await new Promise<void>((r) => proxy.listen(0, '127.0.0.1', r));
+    const port = (proxy.address() as { port: number }).port;
+    const agent = httpsAgent({ ...env, HTTPS_PROXY: `http://127.0.0.1:${port}` });
+    await new Promise<void>((resolve) => {
+      // .invalid never resolves, so a direct attempt fails without touching the network.
+      const req = request('https://sts.eu-central-1.example.invalid/', { agent, timeout: 3000 });
+      req.on('error', () => resolve()).on('timeout', () => req.destroy());
+      req.end();
+    });
+    agent.destroy();
+    proxy.close();
+    return line;
+  }
+
+  it('sends the AWS calls through HTTPS_PROXY when NODE_USE_ENV_PROXY=1', async () => {
+    expect(await firstLineAtProxy({ NODE_USE_ENV_PROXY: '1' })).toBe(
+      'CONNECT sts.eu-central-1.example.invalid:443 HTTP/1.1',
+    );
+  });
+
+  it('honours NO_PROXY and connects directly without NODE_USE_ENV_PROXY', async () => {
+    expect(await firstLineAtProxy({ NODE_USE_ENV_PROXY: '1', NO_PROXY: '.example.invalid' })).toBe(
+      undefined,
+    );
+    expect(await firstLineAtProxy({})).toBe(undefined);
   });
 });

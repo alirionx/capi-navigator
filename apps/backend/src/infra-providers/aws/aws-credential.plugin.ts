@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-ec2';
 import { GetInstanceProfileCommand, GetRoleCommand, IAMClient } from '@aws-sdk/client-iam';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { Agent } from 'node:https';
 import {
   AWS_IDENTITY,
   AwsCredentialInputSchema,
@@ -35,6 +36,17 @@ export type AwsClientFactory = (region: string, data: Record<string, string>) =>
 
 const TIMEOUT_MS = 15_000;
 
+/**
+ * FP29-F-01: the SDK brings its own https.Agent, which ignores NODE_USE_ENV_PROXY (only Node's
+ * global agent and fetch honour it). An agent with proxyEnv sends the calls through the proxy.
+ */
+export function httpsAgent(env: NodeJS.ProcessEnv = process.env): Agent {
+  return new Agent({
+    keepAlive: true,
+    ...(env.NODE_USE_ENV_PROXY === '1' ? { proxyEnv: env } : {}),
+  });
+}
+
 export const sdkClients: AwsClientFactory = (region, data) => {
   const config = {
     region,
@@ -44,7 +56,11 @@ export const sdkClients: AwsClientFactory = (region, data) => {
       ...(data.SessionToken ? { sessionToken: data.SessionToken } : {}),
     },
     maxAttempts: 2,
-    requestHandler: { requestTimeout: TIMEOUT_MS, connectionTimeout: TIMEOUT_MS },
+    requestHandler: {
+      requestTimeout: TIMEOUT_MS,
+      connectionTimeout: TIMEOUT_MS,
+      httpsAgent: httpsAgent(),
+    },
   };
   // IAM is a global service; its API lives in us-east-1 (aws partition).
   return {
