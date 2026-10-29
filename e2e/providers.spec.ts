@@ -100,7 +100,7 @@ test.describe('providers via the UI (FP-3)', () => {
     for (const name of order) {
       const row = page.getByTestId('providers-table').getByRole('row', { name: new RegExp(name) });
       await row.getByRole('button', { name: 'Remove' }).click();
-      const crName = (await row.locator('.text-caption').first().textContent())!.trim();
+      const crName = (await row.locator('.text-body-small').first().textContent())!.trim();
       await page.getByTestId('remove-confirm').locator('input').fill(crName);
       await page.getByTestId('remove-apply').click();
       await expect(page.getByTestId('remove-apply')).toBeHidden();

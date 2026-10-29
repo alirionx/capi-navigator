@@ -4,9 +4,9 @@
   "minimumReleaseAge": "3 days",
   "packageRules": [
     {
-      "description": "Vuetify 3 is required by docs/requirements.md; no major upgrade without a decision.",
+      "description": "Vuetify 4 per docs/adr/0031; no major upgrade without a decision.",
       "matchPackageNames": ["vuetify"],
-      "allowedVersions": "<4"
+      "allowedVersions": "<5"
     },
     {
       "description": "The package name typescript is an alias of the TypeScript 6 API for typescript-eslint and vue-tsc; tsc itself is TypeScript 7 (@typescript/native), see docs/adr/0001.",

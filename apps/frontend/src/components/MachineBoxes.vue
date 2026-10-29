@@ -54,7 +54,7 @@ const to = computed(() => ({
 <template>
   <div class="groups" data-testid="cluster-shape">
     <div v-for="g in groups" :key="g.name" class="group">
-      <div class="text-caption text-medium-emphasis label">{{ g.name }}</div>
+      <div class="text-body-small text-medium-emphasis label">{{ g.name }}</div>
       <div class="boxes">
         <router-link
           v-for="m in g.machines.slice(0, MAX_BOXES)"
@@ -65,10 +65,10 @@ const to = computed(() => ({
           :aria-label="`${m.name}: ${m.phase}`"
           data-testid="shape-machine"
         />
-        <span v-if="g.machines.length > MAX_BOXES" class="text-caption text-medium-emphasis"
+        <span v-if="g.machines.length > MAX_BOXES" class="text-body-small text-medium-emphasis"
           >+{{ g.machines.length - MAX_BOXES }}</span
         >
-        <span v-if="!g.machines.length" class="text-caption text-disabled">–</span>
+        <span v-if="!g.machines.length" class="text-body-small text-disabled">–</span>
       </div>
     </div>
   </div>

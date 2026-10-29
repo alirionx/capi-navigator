@@ -130,7 +130,7 @@ function copy(text: string): void {
 <template>
   <v-container class="settings">
     <h1 class="page-title">{{ t('authSettings.title') }}</h1>
-    <p class="text-body-2 text-medium-emphasis mt-1 mb-4">{{ t('authSettings.subtitle') }}</p>
+    <p class="text-body-medium text-medium-emphasis mt-1 mb-4">{{ t('authSettings.subtitle') }}</p>
 
     <ErrorAlert v-if="loadError" :error="loadError" class="mb-4" />
     <v-alert
@@ -156,7 +156,7 @@ function copy(text: string): void {
         />
 
         <div v-if="store.settings.redirectUri" class="mb-6">
-          <div class="text-subtitle-2">{{ t('authSettings.redirectUri') }}</div>
+          <div class="text-title-small">{{ t('authSettings.redirectUri') }}</div>
           <div class="d-flex align-center ga-2">
             <code data-testid="redirect-uri">{{ store.settings.redirectUri }}</code>
             <v-btn
@@ -167,7 +167,7 @@ function copy(text: string): void {
               @click="copy(store.settings.redirectUri)"
             />
           </div>
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-body-small text-medium-emphasis">
             {{ t('authSettings.redirectUriHint') }}
           </div>
         </div>
@@ -203,11 +203,11 @@ function copy(text: string): void {
         >
           <template v-if="testResult.ok">
             <div>{{ t('authSettings.testOk', { issuer: testResult.issuer }) }}</div>
-            <div class="text-caption">
+            <div class="text-body-small">
               {{ t('authSettings.testScopes') }}:
               {{ testResult.scopesSupported?.join(' ') || '–' }}
             </div>
-            <div class="text-caption">
+            <div class="text-body-small">
               {{ t('authSettings.testLogout') }}:
               {{ testResult.endSessionEndpoint ? t('common.yes') : t('common.no') }}
             </div>
@@ -332,7 +332,9 @@ function copy(text: string): void {
               </tr>
             </tbody>
           </v-table>
-          <p class="text-caption text-medium-emphasis mt-3">{{ t('authSettings.confirmText') }}</p>
+          <p class="text-body-small text-medium-emphasis mt-3">
+            {{ t('authSettings.confirmText') }}
+          </p>
         </v-card-text>
         <v-card-actions class="px-6 pb-4">
           <v-spacer />

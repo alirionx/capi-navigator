@@ -189,7 +189,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
     :form-width="1000"
     @applied="emit('applied')"
   >
-    <v-row dense>
+    <v-row density="compact">
       <v-col cols="12" md="5">
         <v-text-field
           v-model="name"
@@ -221,7 +221,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           class="mt-2"
           data-testid="addon-repository"
         >
-          <template #item="{ props: p, item }">
+          <template #item="{ props: p, internalItem: item }">
             <v-list-item v-bind="p" :subtitle="item.raw.url" />
           </template>
         </v-select>
@@ -238,7 +238,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           class="mt-2"
           data-testid="addon-chart"
         >
-          <template #item="{ props: p, item }">
+          <template #item="{ props: p, internalItem: item }">
             <v-list-item
               v-bind="p"
               :subtitle="[item.raw.latestVersion, item.raw.description].filter(Boolean).join(' · ')"
@@ -265,7 +265,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           class="mt-2"
           data-testid="addon-version"
         />
-        <v-row dense class="mt-1">
+        <v-row density="compact" class="mt-1">
           <v-col cols="6">
             <v-text-field
               v-model="releaseName"
@@ -306,7 +306,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           <v-radio :label="t('addons.continuous')" value="Continuous" />
           <v-radio :label="t('addons.installOnce')" value="InstallOnce" />
         </v-radio-group>
-        <v-row dense class="mt-1">
+        <v-row density="compact" class="mt-1">
           <v-col cols="6">
             <v-checkbox v-model="wait" :label="t('addons.wait')" hide-details density="compact" />
             <v-checkbox
@@ -331,7 +331,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
 
       <v-col cols="12" md="7">
         <div class="d-flex align-center mb-1">
-          <div class="text-subtitle-2">{{ t('addons.values') }}</div>
+          <div class="text-title-small">{{ t('addons.values') }}</div>
           <v-spacer />
           <v-btn
             size="small"
@@ -344,7 +344,7 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
             >{{ t('addons.showDefaults') }}</v-btn
           >
         </div>
-        <p class="text-caption text-medium-emphasis mb-2">
+        <p class="text-body-small text-medium-emphasis mb-2">
           {{ t('addons.valuesHint') }} {{ hcpField('spec.valuesTemplate') }}
         </p>
         <ValuesEditor v-model="valuesTemplate" height="340px" />

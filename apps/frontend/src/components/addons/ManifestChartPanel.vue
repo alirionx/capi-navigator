@@ -70,7 +70,7 @@ async function save(): Promise<void> {
 <template>
   <v-card border class="mb-6" data-testid="manifest-chart-panel">
     <v-card-item>
-      <v-card-title class="text-subtitle-1">{{ t('manifestAddons.chartTitle') }}</v-card-title>
+      <v-card-title class="text-body-large">{{ t('manifestAddons.chartTitle') }}</v-card-title>
       <v-card-subtitle>{{ t('manifestAddons.chartSubtitle') }}</v-card-subtitle>
       <template #append>
         <v-btn
@@ -92,7 +92,7 @@ async function save(): Promise<void> {
   <v-dialog v-model="editOpen" max-width="640">
     <v-card :title="t('manifestAddons.sourceTitle')">
       <v-card-text>
-        <p class="text-body-2 mb-3">{{ t('manifestAddons.sourceInfo') }}</p>
+        <p class="text-body-medium mb-3">{{ t('manifestAddons.sourceInfo') }}</p>
         <v-select
           v-model="source"
           :items="sources"
@@ -101,12 +101,14 @@ async function save(): Promise<void> {
           persistent-hint
           data-testid="manifest-chart-source"
         >
-          <template #item="{ props: p, item }">
+          <template #item="{ props: p, internalItem: item }">
             <v-list-item v-bind="p" :subtitle="item.raw.subtitle" />
           </template>
         </v-select>
-        <div v-if="status" class="text-caption mt-4">{{ t('manifestAddons.mirrorCommands') }}</div>
-        <pre v-if="status" class="text-caption mt-1 mirror-commands">{{
+        <div v-if="status" class="text-body-small mt-4">
+          {{ t('manifestAddons.mirrorCommands') }}
+        </div>
+        <pre v-if="status" class="text-body-small mt-1 mirror-commands">{{
           status.mirrorCommands
         }}</pre>
         <ErrorAlert v-if="saveError" :error="saveError" class="mt-3" />

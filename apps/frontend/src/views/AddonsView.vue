@@ -103,7 +103,7 @@ const deleteOpen = ref(false);
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
         <h1 class="page-title">{{ t('addons.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('addons.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('addons.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-chip
@@ -217,7 +217,7 @@ const deleteOpen = ref(false);
               >{{ t('addons.manifestsType') }}</v-chip
             >
             {{ item.chartName }}<span class="text-medium-emphasis ml-1">{{ item.version }}</span>
-            <div class="text-caption text-medium-emphasis">
+            <div class="text-body-small text-medium-emphasis">
               {{ item.repository ?? item.repoURL }}
             </div>
           </template>
@@ -230,7 +230,7 @@ const deleteOpen = ref(false);
               class="mr-1"
               >{{ k }}={{ v }}</v-chip
             >
-            <span v-if="item.clusterSelector.matchExpressions?.length" class="text-caption">{{
+            <span v-if="item.clusterSelector.matchExpressions?.length" class="text-body-small">{{
               t('addons.expressions')
             }}</span>
           </template>
@@ -290,7 +290,7 @@ const deleteOpen = ref(false);
                 <div
                   v-for="c in item.conditions.filter((x) => x.status === 'False')"
                   :key="c.type"
-                  class="text-caption text-warning mt-2"
+                  class="text-body-small text-warning mt-2"
                 >
                   {{ c.type }}: {{ c.reason }} {{ c.message }}
                 </div>

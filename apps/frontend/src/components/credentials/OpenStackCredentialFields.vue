@@ -100,7 +100,7 @@ watchEffect(() => {
       <v-btn value="clouds.yaml" data-testid="os-source-file">clouds.yaml</v-btn>
       <v-btn value="form" data-testid="os-source-form">{{ t('credentials.os.form') }}</v-btn>
     </v-btn-toggle>
-    <div class="text-caption text-medium-emphasis mb-3">
+    <div class="text-body-small text-medium-emphasis mb-3">
       {{ t('credentials.os.recommendAppCred') }}
     </div>
 

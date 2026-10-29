@@ -86,7 +86,7 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
 <template>
   <v-card border class="mt-6" data-testid="internal-registry-panel">
     <v-card-item>
-      <v-card-title class="text-subtitle-1">{{ t('registry.title') }}</v-card-title>
+      <v-card-title class="text-body-large">{{ t('registry.title') }}</v-card-title>
       <v-card-subtitle class="text-wrap">{{ t('registry.subtitle') }}</v-card-subtitle>
       <template #append>
         <v-btn
@@ -101,7 +101,7 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
       </template>
     </v-card-item>
     <v-card-text>
-      <div v-if="!registry" class="text-body-2 text-medium-emphasis">
+      <div v-if="!registry" class="text-body-medium text-medium-emphasis">
         {{ t('registry.none') }}
       </div>
       <v-table v-else density="compact" class="registry-table">
@@ -130,7 +130,7 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
   <v-dialog v-model="editOpen" max-width="720">
     <v-card :title="t('registry.editTitle')">
       <v-card-text>
-        <p class="text-body-2 mb-4">{{ t('registry.editInfo') }}</p>
+        <p class="text-body-medium mb-4">{{ t('registry.editInfo') }}</p>
         <v-form v-model="valid" @submit.prevent="submit">
           <v-text-field
             v-model="form.host"
@@ -143,9 +143,11 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
             class="mb-3"
             data-testid="registry-host"
           />
-          <div class="text-subtitle-2 mb-1">{{ t('registry.mirrors') }}</div>
-          <div class="text-caption text-medium-emphasis mb-2">{{ t('registry.mirrorsHint') }}</div>
-          <v-row v-for="(m, i) in form.mirrors" :key="i" dense>
+          <div class="text-title-small mb-1">{{ t('registry.mirrors') }}</div>
+          <div class="text-body-small text-medium-emphasis mb-2">
+            {{ t('registry.mirrorsHint') }}
+          </div>
+          <v-row v-for="(m, i) in form.mirrors" :key="i" density="compact">
             <v-col cols="5"
               ><v-text-field
                 v-model="m.upstream"

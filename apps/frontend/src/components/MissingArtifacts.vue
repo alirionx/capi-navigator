@@ -21,7 +21,7 @@ async function copy(text: string): Promise<void> {
 <template>
   <v-card border data-testid="missing-artifacts">
     <v-card-item>
-      <v-card-title class="text-subtitle-1">{{ t('missingArtifacts.title') }}</v-card-title>
+      <v-card-title class="text-body-large">{{ t('missingArtifacts.title') }}</v-card-title>
       <v-card-subtitle class="text-wrap">{{ t('missingArtifacts.subtitle') }}</v-card-subtitle>
     </v-card-item>
     <v-card-text>

@@ -119,7 +119,7 @@ async function confirm(): Promise<void> {
             data-testid="drift"
           >
             <div class="font-weight-medium mb-1">{{ t('changes.driftTitle') }}</div>
-            <div v-for="d in blockingDrift" :key="d.kind + d.name" class="text-body-2">
+            <div v-for="d in blockingDrift" :key="d.kind + d.name" class="text-body-medium">
               {{ d.kind }} {{ d.name }}: {{ d.fields.join(', ') || '–' }} ({{
                 d.managers.join(', ')
               }})
@@ -149,8 +149,8 @@ async function confirm(): Promise<void> {
                     >
                   </td>
                   <td class="font-weight-medium">{{ r.group }}</td>
-                  <td class="text-caption">{{ r.machines.join(', ') || '–' }}</td>
-                  <td class="text-caption text-medium-emphasis">{{ r.strategy }}</td>
+                  <td class="text-body-small">{{ r.machines.join(', ') || '–' }}</td>
+                  <td class="text-body-small text-medium-emphasis">{{ r.strategy }}</td>
                 </tr>
               </tbody>
             </v-table>
@@ -158,7 +158,7 @@ async function confirm(): Promise<void> {
           <v-alert v-if="result.diffs.length === 0" type="info" variant="tonal">{{
             t('changes.nothing')
           }}</v-alert>
-          <p v-else class="text-body-2 text-medium-emphasis mb-2">
+          <p v-else class="text-body-medium text-medium-emphasis mb-2">
             {{ t('changes.summary', { n: result.diffs.length }) }}
           </p>
           <v-expansion-panels v-model="panel" multiple variant="accordion">

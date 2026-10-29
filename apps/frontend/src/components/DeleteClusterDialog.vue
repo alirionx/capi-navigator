@@ -81,8 +81,8 @@ async function confirm(): Promise<void> {
           <v-alert v-if="!preview.managed" type="info" variant="tonal" class="mb-3">{{
             t('changes.externalReadOnly')
           }}</v-alert>
-          <p class="text-body-2 mb-2">{{ t('deletion.removes') }}</p>
-          <ul class="text-body-2 mb-3 ml-5">
+          <p class="text-body-medium mb-2">{{ t('deletion.removes') }}</p>
+          <ul class="text-body-medium mb-3 ml-5">
             <li v-for="o in preview.objects" :key="o.kind + o.name">
               {{ o.kind }} <span class="font-weight-medium">{{ o.name }}</span>
             </li>
@@ -98,7 +98,7 @@ async function confirm(): Promise<void> {
               persistent-hint
               data-testid="delete-cleanup"
             />
-            <div v-if="cleanup && preview.workloadReachable" class="text-body-2 mt-3">
+            <div v-if="cleanup && preview.workloadReachable" class="text-body-medium mt-3">
               <div v-if="nothingInside" class="text-medium-emphasis">
                 {{ t('deletion.nothingInside') }}
               </div>

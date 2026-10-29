@@ -34,7 +34,7 @@ const color = (phase: string) =>
     data-testid="connection-selector"
     @update:model-value="store.setActive"
   >
-    <template #item="{ props, item }">
+    <template #item="{ props, internalItem: item }">
       <v-list-item v-bind="props">
         <template #prepend>
           <v-icon icon="mdi-circle" size="x-small" :color="color(item.raw.phase)" class="mr-2" />

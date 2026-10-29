@@ -128,7 +128,7 @@ async function loadLookup(c: Credential): Promise<void> {
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
         <h1 class="page-title">{{ t('credentials.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('credentials.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('credentials.subtitle') }}</p>
       </div>
       <v-spacer />
       <!-- UX-01: one button with a menu of the providers, as for new add-ons. -->
@@ -177,7 +177,7 @@ async function loadLookup(c: Credential): Promise<void> {
         >
           <template #[`item.name`]="{ item }">
             <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
-            <div class="text-caption text-medium-emphasis">
+            <div class="text-body-small text-medium-emphasis">
               {{ item.identity.kind }}/{{ item.name }}
             </div>
           </template>
@@ -185,7 +185,7 @@ async function loadLookup(c: Credential): Promise<void> {
             t(`credentials.providers.${item.provider}`)
           }}</template>
           <template #[`item.target`]="{ item }">
-            <div class="text-caption summary">
+            <div class="text-body-small summary">
               {{ t(`credentials.summary.${item.provider}`, { region: '–', ...item.summary }) }}
             </div>
           </template>
@@ -204,7 +204,7 @@ async function loadLookup(c: Credential): Promise<void> {
             >
               {{ t(`credentials.state.${testState(item).key}`) }}
             </v-chip>
-            <span v-else class="text-caption">–</span>
+            <span v-else class="text-body-small">–</span>
           </template>
           <template #[`item.actions`]="{ item }">
             <!-- One row of icons: they wrapped into two rows next to the wide columns. -->
@@ -259,7 +259,7 @@ async function loadLookup(c: Credential): Promise<void> {
             <tr>
               <td :colspan="columns.length" class="py-4">
                 <template v-if="item.lastTest">
-                  <div class="text-subtitle-2 mb-1">
+                  <div class="text-title-small mb-1">
                     {{
                       t('credentials.lastTestAt', {
                         at: d(new Date(item.lastTest.testedAt), 'short'),
@@ -277,7 +277,7 @@ async function loadLookup(c: Credential): Promise<void> {
                     class="mb-2"
                   >
                     <div class="font-weight-medium">{{ item.lastTest.message }}</div>
-                    <div v-if="item.lastTest.hint" class="text-body-2">
+                    <div v-if="item.lastTest.hint" class="text-body-medium">
                       {{ item.lastTest.hint }}
                     </div>
                     <pre
@@ -285,7 +285,7 @@ async function loadLookup(c: Credential): Promise<void> {
                       class="command mt-2"
                       data-testid="fix-command"
                       >{{ item.lastTest.fixCommand }}</pre>
-                    <details v-if="item.lastTest.details" class="text-caption mt-1">
+                    <details v-if="item.lastTest.details" class="text-body-small mt-1">
                       <summary>{{ t('errors.details') }}</summary>
                       <pre class="command">{{ item.lastTest.details }}</pre>
                     </details>
@@ -300,8 +300,8 @@ async function loadLookup(c: Credential): Promise<void> {
                             size="small"
                           />
                         </td>
-                        <td class="text-caption">{{ c.name }}</td>
-                        <td class="text-caption text-medium-emphasis">{{ c.message }}</td>
+                        <td class="text-body-small">{{ c.name }}</td>
+                        <td class="text-body-small text-medium-emphasis">{{ c.message }}</td>
                       </tr>
                     </tbody>
                   </v-table>
@@ -340,7 +340,7 @@ async function loadLookup(c: Credential): Promise<void> {
                   class="mt-2"
                   :data-testid="`lookup-result-${item.name}`"
                 >
-                  <div class="text-caption mb-1">
+                  <div class="text-body-small mb-1">
                     {{
                       t('credentials.lookupCount', { n: lookupResult[key(item)]!.options.length })
                     }}

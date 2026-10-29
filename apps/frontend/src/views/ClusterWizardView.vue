@@ -458,7 +458,7 @@ const canPreview = computed(() => issues.value.length === 0);
 <template>
   <v-container>
     <h1 class="page-title">{{ t('wizard.title') }}</h1>
-    <p class="text-body-2 text-medium-emphasis mt-1 mb-4">{{ t('wizard.subtitle') }}</p>
+    <p class="text-body-medium text-medium-emphasis mt-1 mb-4">{{ t('wizard.subtitle') }}</p>
 
     <v-alert v-if="!connections.active" type="info" variant="tonal">{{
       t('providers.noConnection')
@@ -525,7 +525,7 @@ const canPreview = computed(() => issues.value.length === 0);
               data-testid="wizard-experimental"
             >
               <div class="font-weight-medium">{{ t('wizard.experimentalTitle') }}</div>
-              <div class="text-body-2">{{ t('wizard.kubeadmTradeoffs') }}</div>
+              <div class="text-body-medium">{{ t('wizard.kubeadmTradeoffs') }}</div>
             </v-alert>
           </v-col>
           <v-col cols="12" md="6">
@@ -564,7 +564,9 @@ const canPreview = computed(() => issues.value.length === 0);
                 >{{ p.name }}</v-btn
               >
             </v-btn-toggle>
-            <div class="text-caption text-medium-emphasis mt-1">{{ t('wizard.providerHint') }}</div>
+            <div class="text-body-small text-medium-emphasis mt-1">
+              {{ t('wizard.providerHint') }}
+            </div>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
@@ -595,7 +597,11 @@ const canPreview = computed(() => issues.value.length === 0);
               :label="t('wizard.airGapped', { registry: registry.host })"
               data-testid="wizard-air-gapped"
             />
-            <div v-else class="text-body-2 text-medium-emphasis" data-testid="wizard-no-air-gap">
+            <div
+              v-else
+              class="text-body-medium text-medium-emphasis"
+              data-testid="wizard-no-air-gap"
+            >
               {{ t('wizard.airGapUnavailable', { flavor: flavorPlugin?.displayName }) }}
             </div>
             <v-alert
@@ -635,9 +641,11 @@ const canPreview = computed(() => issues.value.length === 0);
         </v-radio-group>
         <v-card border class="mt-4 pa-4">
           <div class="d-flex align-center mb-2">
-            <div class="text-subtitle-1">{{ t('wizard.controlPlane') }}</div>
+            <div class="text-body-large">{{ t('wizard.controlPlane') }}</div>
             <v-spacer />
-            <span class="text-body-2 text-medium-emphasis mr-3">{{ t('wizard.cpNodes') }}</span>
+            <span class="text-body-medium text-medium-emphasis mr-3">{{
+              t('wizard.cpNodes')
+            }}</span>
             <v-btn-toggle
               v-model="draft.cp.replicas"
               mandatory
@@ -650,7 +658,7 @@ const canPreview = computed(() => issues.value.length === 0);
               <v-btn :value="5">5</v-btn>
             </v-btn-toggle>
           </div>
-          <div class="text-caption text-medium-emphasis mb-3">
+          <div class="text-body-small text-medium-emphasis mb-3">
             {{ t('wizard.cpHint', { cp: cpKind }) }}
           </div>
           <MachineGroupEditor
@@ -755,7 +763,7 @@ const canPreview = computed(() => issues.value.length === 0);
           :loading="listLoading"
         />
         <v-card v-if="form.bastion" border class="pa-4 mt-4">
-          <div class="text-subtitle-1 mb-1">{{ t('bastion.title') }}</div>
+          <div class="text-body-large mb-1">{{ t('bastion.title') }}</div>
           <BastionEditor
             v-model="draft.bastion"
             :provider="draft.provider"
@@ -813,12 +821,14 @@ const canPreview = computed(() => issues.value.length === 0);
           <tbody>
             <tr v-for="p in presets" :key="p.id">
               <td>{{ p.displayName }}</td>
-              <td class="font-monospace text-caption">{{ p.chartName }}</td>
+              <td class="font-monospace text-body-small">{{ p.chartName }}</td>
               <td>{{ p.version }}</td>
             </tr>
           </tbody>
         </v-table>
-        <div class="text-caption text-medium-emphasis mt-2">{{ t('wizard.addonValuesLater') }}</div>
+        <div class="text-body-small text-medium-emphasis mt-2">
+          {{ t('wizard.addonValuesLater') }}
+        </div>
       </template>
 
       <!-- 5 Node customization -->
@@ -1009,7 +1019,7 @@ const canPreview = computed(() => issues.value.length === 0);
       >
         <div v-for="i in issuesFor(step)" :key="i.path">
           <template v-if="i.labelKey">{{ t(i.labelKey) }}</template>
-          <span v-else class="font-monospace text-caption">{{ i.path }}</span
+          <span v-else class="font-monospace text-body-small">{{ i.path }}</span
           >: {{ i.message }}
         </div>
       </v-alert>
@@ -1051,7 +1061,7 @@ const canPreview = computed(() => issues.value.length === 0);
           {{ t('wizard.next') }}
         </v-btn>
       </div>
-      <div v-if="!canPreview && step === 6" class="text-caption text-error mt-2">
+      <div v-if="!canPreview && step === 6" class="text-body-small text-error mt-2">
         {{ t('wizard.fixFirst', { step: firstInvalidStep }) }}
       </div>
     </div>

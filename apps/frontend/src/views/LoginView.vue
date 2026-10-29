@@ -72,7 +72,7 @@ async function submit(): Promise<void> {
         <AppLogo :size="42" />
         <div>
           <div class="brand-title">{{ t('app.title') }}</div>
-          <div class="text-body-2 text-medium-emphasis">{{ t('login.title') }}</div>
+          <div class="text-body-medium text-medium-emphasis">{{ t('login.title') }}</div>
         </div>
       </div>
       <v-form class="pa-6" @submit.prevent="submit">
@@ -106,7 +106,7 @@ async function submit(): Promise<void> {
           {{ t('login.submit') }}
         </v-btn>
         <template v-if="options.oidc">
-          <div class="d-flex align-center ga-3 my-4 text-medium-emphasis text-body-2">
+          <div class="d-flex align-center ga-3 my-4 text-medium-emphasis text-body-medium">
             <v-divider />{{ t('login.or') }}<v-divider />
           </div>
           <v-alert

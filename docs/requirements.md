@@ -134,7 +134,7 @@ The browser calls only the backend (REST and server-sent events). The backend tr
 | Frontend | Vue 3 (Composition API, `<script setup>`), Vite |  |
 | State | Pinia | One store per domain (auth, connections, providers, clusters, addons) |
 | Routing | Vue Router | Routes with role guards |
-| UI | Vuetify 3 | Light/dark theme, form components, steppers for wizards |
+| UI | Vuetify 4 (ADR-0031) | Light/dark theme, form components, steppers for wizards |
 | YAML editor | Monaco Editor with `monaco-yaml` | Read-only YAML view with syntax highlighting; also used for Helm values in FP-8 |
 | YAML | `yaml` (npm) | Generating and rendering manifests |
 | Live status | Server-sent events fed by Kubernetes watches | Simpler than WebSockets, sufficient for status views |

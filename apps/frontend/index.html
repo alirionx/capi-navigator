@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CAPI Navigator</title>
+    <!-- Vuetify 4 layer order before any bundled CSS; component CSS may load before the core
+         styles and would otherwise lose against the reset (ADR-0031). -->
+    <style>
+      @layer vuetify-core, vuetify-components, vuetify-overrides, vuetify-utilities, vuetify-final;
+    </style>
   </head>
   <body>
     <div id="app"></div>

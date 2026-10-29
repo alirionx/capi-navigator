@@ -80,7 +80,7 @@ function submit(): Promise<void> {
 <template>
   <v-card border class="mb-6" data-testid="outbound-proxy-panel">
     <v-card-item>
-      <v-card-title class="text-subtitle-1">{{ t('providers.proxy.title') }}</v-card-title>
+      <v-card-title class="text-body-large">{{ t('providers.proxy.title') }}</v-card-title>
       <v-card-subtitle>{{ t('providers.proxy.subtitle') }}</v-card-subtitle>
       <template #append>
         <v-btn
@@ -95,7 +95,7 @@ function submit(): Promise<void> {
       </template>
     </v-card-item>
     <v-card-text>
-      <div v-if="!proxy" class="text-body-2 text-medium-emphasis">
+      <div v-if="!proxy" class="text-body-medium text-medium-emphasis">
         {{ t('providers.proxy.none') }}
       </div>
       <v-table v-else density="compact" class="proxy-table">
@@ -144,7 +144,7 @@ function submit(): Promise<void> {
   <v-dialog v-model="editOpen" max-width="680">
     <v-card :title="t('providers.proxy.editTitle')">
       <v-card-text>
-        <p class="text-body-2 mb-4">{{ t('providers.proxy.editInfo') }}</p>
+        <p class="text-body-medium mb-4">{{ t('providers.proxy.editInfo') }}</p>
         <v-form v-model="valid" @submit.prevent="submit">
           <v-text-field
             v-model="form.httpsProxy"
@@ -158,7 +158,7 @@ function submit(): Promise<void> {
             data-testid="proxy-https"
           >
             <template #append-inner>
-              <span class="text-caption text-medium-emphasis">HTTPS_PROXY</span>
+              <span class="text-body-small text-medium-emphasis">HTTPS_PROXY</span>
             </template>
           </v-text-field>
           <v-text-field
@@ -170,7 +170,7 @@ function submit(): Promise<void> {
             class="mb-3"
           >
             <template #append-inner>
-              <span class="text-caption text-medium-emphasis">HTTP_PROXY</span>
+              <span class="text-body-small text-medium-emphasis">HTTP_PROXY</span>
             </template>
           </v-text-field>
           <v-textarea

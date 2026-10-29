@@ -184,7 +184,7 @@ async function confirmDelete(): Promise<void> {
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
         <h1 class="page-title">{{ t('helmRepos.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('helmRepos.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('helmRepos.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-btn
@@ -209,7 +209,7 @@ async function confirmDelete(): Promise<void> {
       >
         <template #[`item.name`]="{ item }">
           <span class="font-weight-medium">{{ item.name }}</span>
-          <div v-if="item.displayName" class="text-caption text-medium-emphasis">
+          <div v-if="item.displayName" class="text-body-small text-medium-emphasis">
             {{ item.displayName }}
           </div>
         </template>
@@ -232,12 +232,12 @@ async function confirmDelete(): Promise<void> {
           >
           <span
             v-if="!item.hasCredentials && !item.hasCaCertificate && !item.insecureSkipTLSVerify"
-            class="text-caption text-medium-emphasis"
+            class="text-body-small text-medium-emphasis"
             >{{ t('helmRepos.public') }}</span
           >
           <div
             v-if="rowResult[item.name] && rowResult[item.name] !== 'busy'"
-            class="text-caption mt-1"
+            class="text-body-small mt-1"
             :class="
               (rowResult[item.name] as HelmRepositoryTestResult).ok ? 'text-success' : 'text-error'
             "
@@ -324,7 +324,7 @@ async function confirmDelete(): Promise<void> {
               hide-details
               class="mt-2"
             />
-            <v-row v-if="useCredentials" dense>
+            <v-row v-if="useCredentials" density="compact">
               <v-col cols="6">
                 <v-text-field
                   v-model="username"
@@ -384,7 +384,7 @@ async function confirmDelete(): Promise<void> {
             data-testid="helm-repo-test-result"
           >
             {{ testResult.message }}
-            <div v-if="testResult.hint" class="text-caption">{{ testResult.hint }}</div>
+            <div v-if="testResult.hint" class="text-body-small">{{ testResult.hint }}</div>
           </v-alert>
           <ErrorAlert v-if="formError" :error="formError" class="mt-3" />
         </v-card-text>

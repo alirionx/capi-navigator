@@ -38,8 +38,8 @@ watchEffect(() => {
 
 <template>
   <div class="mt-4" data-testid="machine-sizes">
-    <div class="text-subtitle-2">{{ t('credentials.sizes.title') }}</div>
-    <p class="text-caption text-medium-emphasis mb-2">{{ t('credentials.sizes.hint') }}</p>
+    <div class="text-title-small">{{ t('credentials.sizes.title') }}</div>
+    <p class="text-body-small text-medium-emphasis mb-2">{{ t('credentials.sizes.hint') }}</p>
     <div v-for="(r, i) in rows" :key="i" class="d-flex ga-2 align-center mb-3">
       <v-text-field
         v-model="r.name"
@@ -83,7 +83,7 @@ watchEffect(() => {
       @click="rows.push({ name: '', vcpus: 2, memoryGiB: 4 })"
       >{{ t('credentials.sizes.add') }}</v-btn
     >
-    <div v-if="!check.success" class="text-caption text-error mt-1">
+    <div v-if="!check.success" class="text-body-small text-error mt-1">
       {{ check.error.issues[0]?.message }}
     </div>
   </div>

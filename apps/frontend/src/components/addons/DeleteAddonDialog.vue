@@ -63,7 +63,7 @@ async function confirm(): Promise<void> {
             class="mb-3"
             >{{ w }}</v-alert
           >
-          <div class="text-subtitle-2 mb-1">{{ t('addons.affectedReleases') }}</div>
+          <div class="text-title-small mb-1">{{ t('addons.affectedReleases') }}</div>
           <div class="mb-3" data-testid="delete-releases">
             <v-chip
               v-for="r in preview.releases"
@@ -74,7 +74,7 @@ async function confirm(): Promise<void> {
               class="mr-1 mb-1"
               >{{ r.cluster }}{{ r.releaseName ? ` / ${r.releaseName}` : '' }}</v-chip
             >
-            <span v-if="!preview.releases.length" class="text-body-2">{{
+            <span v-if="!preview.releases.length" class="text-body-medium">{{
               t('addons.noReleases')
             }}</span>
           </div>

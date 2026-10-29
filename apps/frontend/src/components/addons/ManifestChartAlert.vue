@@ -16,7 +16,7 @@ const { t } = useI18n();
   <template v-else-if="status">
     <div
       v-if="status.available"
-      class="text-caption text-medium-emphasis"
+      class="text-body-small text-medium-emphasis"
       data-testid="manifest-chart-ok"
     >
       <v-icon icon="mdi-check-circle" color="success" size="small" class="mr-1" />
@@ -36,9 +36,9 @@ const { t } = useI18n();
       data-testid="manifest-chart-missing"
     >
       <div>{{ status.message }}</div>
-      <div v-if="status.hint" class="text-caption mt-1">{{ status.hint }}</div>
+      <div v-if="status.hint" class="text-body-small mt-1">{{ status.hint }}</div>
       <template v-if="!compact">
-        <div class="text-caption mt-2">{{ t('manifestAddons.mirrorCommands') }}</div>
+        <div class="text-body-small mt-2">{{ t('manifestAddons.mirrorCommands') }}</div>
         <pre class="mirror-commands mt-1">{{ status.mirrorCommands }}</pre>
       </template>
     </v-alert>

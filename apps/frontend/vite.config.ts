@@ -19,6 +19,13 @@ export default defineConfig({
       'monaco-editor/features/codicon/register',
       '@xterm/xterm',
       '@xterm/addon-fit',
+      // Vuetify 4 stacks overlays through one shared module; a split pre-bundle puts menus behind
+      // dialogs in dev mode (upgrade guide, ADR-0031).
+      'vuetify/components/VOverlay',
+      'vuetify/components/VDialog',
+      'vuetify/components/VMenu',
+      'vuetify/components/VSelect',
+      'vuetify/components/VTooltip',
     ],
   },
   build: { outDir: 'dist', emptyOutDir: true },

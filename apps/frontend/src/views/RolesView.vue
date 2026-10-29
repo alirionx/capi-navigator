@@ -93,7 +93,7 @@ async function confirm(): Promise<void> {
     <div class="d-flex align-center mb-4">
       <div>
         <h1 class="page-title">{{ t('rolesPage.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('rolesPage.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('rolesPage.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-btn
@@ -118,7 +118,7 @@ async function confirm(): Promise<void> {
       >
         <template #[`item.name`]="{ item }">
           <div class="font-weight-medium">{{ title(item) }}</div>
-          <div class="text-caption text-medium-emphasis">
+          <div class="text-body-small text-medium-emphasis">
             {{ item.name }}
             <v-chip v-if="item.builtin" size="x-small" class="ml-1">{{
               t('rolesPage.builtin')
@@ -214,12 +214,12 @@ async function confirm(): Promise<void> {
               :label="t('rolesPage.description')"
               class="mb-2"
             />
-            <div class="text-subtitle-2">{{ t('rolesPage.permissions') }}</div>
-            <p class="text-caption text-medium-emphasis mb-2">
+            <div class="text-title-small">{{ t('rolesPage.permissions') }}</div>
+            <p class="text-body-small text-medium-emphasis mb-2">
               {{ t('rolesPage.permissionsHint') }}
             </p>
             <div v-for="g in PERMISSION_GROUPS" :key="g.group" class="mb-2">
-              <div class="text-caption font-weight-medium text-uppercase mt-2">
+              <div class="text-body-small font-weight-medium text-uppercase mt-2">
                 {{ t(`permissions.groups.${g.group}`) }}
               </div>
               <v-checkbox
@@ -243,14 +243,14 @@ async function confirm(): Promise<void> {
                       class="ml-1"
                       >{{ t('rolesPage.platform') }}</v-chip
                     >
-                    <div class="text-caption text-medium-emphasis">
+                    <div class="text-body-small text-medium-emphasis">
                       {{ t(`permissions.${p.replace('.', '_')}`) }}
                     </div>
                   </div>
                 </template>
               </v-checkbox>
             </div>
-            <p class="text-caption text-medium-emphasis mt-3">
+            <p class="text-body-small text-medium-emphasis mt-3">
               {{ t('rolesPage.learn', { name: form.name || '…' }) }}
             </p>
           </v-form>

@@ -125,8 +125,8 @@ async function confirm(): Promise<void> {
   <div data-testid="oidc-groups">
     <div class="d-flex align-center mt-8 mb-4">
       <div>
-        <h2 class="text-h6">{{ t('oidcGroups.title') }}</h2>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('oidcGroups.subtitle') }}</p>
+        <h2 class="text-title-large">{{ t('oidcGroups.title') }}</h2>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('oidcGroups.subtitle') }}</p>
       </div>
       <v-spacer />
       <div class="d-flex ga-2 flex-wrap justify-end">
@@ -178,7 +178,7 @@ async function confirm(): Promise<void> {
             >{{ t(`oidcGroups.kind.${item.kind}`) }}</v-chip
           >
           <span class="font-weight-medium">{{ label(item) }}</span>
-          <div v-if="item.description" class="text-caption text-medium-emphasis">
+          <div v-if="item.description" class="text-body-small text-medium-emphasis">
             {{ item.description }}
           </div>
         </template>
@@ -217,8 +217,10 @@ async function confirm(): Promise<void> {
     </v-card>
 
     <!-- FP14-F-15: who signed in recently, to map people without typing their ID. -->
-    <h3 class="text-subtitle-1 font-weight-medium mt-8">{{ t('oidcGroups.signIns.title') }}</h3>
-    <p class="text-body-2 text-medium-emphasis mt-1 mb-3">{{ t('oidcGroups.signIns.subtitle') }}</p>
+    <h3 class="text-body-large font-weight-medium mt-8">{{ t('oidcGroups.signIns.title') }}</h3>
+    <p class="text-body-medium text-medium-emphasis mt-1 mb-3">
+      {{ t('oidcGroups.signIns.subtitle') }}
+    </p>
     <v-card border class="table-card">
       <v-data-table
         :headers="signInHeaders"
@@ -229,7 +231,7 @@ async function confirm(): Promise<void> {
         data-testid="oidc-sign-ins"
       >
         <template #[`item.subject`]="{ item }">
-          <code class="text-caption">{{ item.subject }}</code>
+          <code class="text-body-small">{{ item.subject }}</code>
         </template>
         <template #[`item.lastSignIn`]="{ item }">
           {{ formatTime(item.lastSignIn) }}
@@ -314,8 +316,8 @@ async function confirm(): Promise<void> {
                 persistent-hint
                 class="mb-2"
               />
-              <div class="text-subtitle-2 mt-2">{{ t('users.bindings') }}</div>
-              <p class="text-caption text-medium-emphasis mb-2">
+              <div class="text-title-small mt-2">{{ t('users.bindings') }}</div>
+              <p class="text-body-small text-medium-emphasis mb-2">
                 {{ t('oidcGroups.bindingsHint') }}
               </p>
               <BindingsEditor

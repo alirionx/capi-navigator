@@ -241,7 +241,7 @@ const machineHeaders = computed(() => [
       />
       <div>
         <h1 class="page-title">{{ name }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">
+        <p class="text-body-medium text-medium-emphasis mt-1">
           {{ namespace }}
           <template v-if="s">
             · {{ s.summary.provider ?? '–' }} · {{ s.summary.flavor ?? '–' }}
@@ -318,10 +318,10 @@ const machineHeaders = computed(() => [
       <div class="font-weight-medium">
         {{ t(`deletion.phase.${s.summary.deletion.phase}`) }}
       </div>
-      <div v-if="s.summary.deletion.message" class="text-body-2">
+      <div v-if="s.summary.deletion.message" class="text-body-medium">
         {{ s.summary.deletion.message }}
       </div>
-      <div v-if="s.summary.deletion.phase === 'cleanup-timeout'" class="text-body-2 mt-1">
+      <div v-if="s.summary.deletion.phase === 'cleanup-timeout'" class="text-body-medium mt-1">
         {{ t('deletion.timeoutHint') }}
       </div>
     </v-alert>
@@ -366,7 +366,7 @@ const machineHeaders = computed(() => [
                   }}</v-chip>
                   <div
                     v-if="s.summary.createdAt"
-                    class="text-caption mt-2"
+                    class="text-body-small mt-2"
                     data-testid="cluster-created"
                   >
                     {{
@@ -376,7 +376,7 @@ const machineHeaders = computed(() => [
                       })
                     }}
                   </div>
-                  <div v-if="s.kubeconfigAvailable" class="text-caption">
+                  <div v-if="s.kubeconfigAvailable" class="text-body-small">
                     {{ t('clusters.kubeconfigReady') }}
                   </div>
                 </v-card-text>
@@ -436,8 +436,8 @@ const machineHeaders = computed(() => [
             <v-card-text>
               <div class="d-flex flex-wrap ga-6 mb-4">
                 <div v-for="f in s.infraSummary.facts" :key="f.label">
-                  <div class="text-caption text-medium-emphasis">{{ f.label }}</div>
-                  <div class="text-body-2 font-monospace">{{ f.value }}</div>
+                  <div class="text-body-small text-medium-emphasis">{{ f.label }}</div>
+                  <div class="text-body-medium font-monospace">{{ f.value }}</div>
                 </div>
               </div>
               <v-table density="comfortable">
@@ -503,7 +503,7 @@ const machineHeaders = computed(() => [
               <template v-else>
                 <div class="d-flex flex-wrap ga-6">
                   <div>
-                    <div class="text-caption text-medium-emphasis">{{ t('bastion.state') }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ t('bastion.state') }}</div>
                     <v-chip
                       size="small"
                       variant="tonal"
@@ -518,19 +518,21 @@ const machineHeaders = computed(() => [
                     >
                   </div>
                   <div v-if="s.bastion.publicIP">
-                    <div class="text-caption text-medium-emphasis">{{ t('bastion.publicIP') }}</div>
+                    <div class="text-body-small text-medium-emphasis">
+                      {{ t('bastion.publicIP') }}
+                    </div>
                     <div class="font-monospace" data-testid="bastion-ip">
                       {{ s.bastion.publicIP }}
                     </div>
                   </div>
                   <div v-if="s.bastion.privateIP">
-                    <div class="text-caption text-medium-emphasis">
+                    <div class="text-body-small text-medium-emphasis">
                       {{ t('bastion.privateIP') }}
                     </div>
                     <div class="font-monospace">{{ s.bastion.privateIP }}</div>
                   </div>
                   <div v-if="s.bastion.allowedCidrs?.length">
-                    <div class="text-caption text-medium-emphasis">{{ t('bastion.cidrs') }}</div>
+                    <div class="text-body-small text-medium-emphasis">{{ t('bastion.cidrs') }}</div>
                     <div class="font-monospace">{{ s.bastion.allowedCidrs.join(', ') }}</div>
                   </div>
                 </div>
@@ -600,7 +602,7 @@ const machineHeaders = computed(() => [
                 <span
                   v-if="item.image"
                   :title="item.image"
-                  :class="item.imageName ? '' : 'font-monospace text-caption'"
+                  :class="item.imageName ? '' : 'font-monospace text-body-small'"
                   >{{
                     item.imageName ??
                     (item.image.length > 20
@@ -615,7 +617,7 @@ const machineHeaders = computed(() => [
               }}</template>
               <template #[`item.nodeName`]="{ item }">{{ item.nodeName ?? '–' }}</template>
               <template #[`item.internalIP`]="{ item }">
-                <span class="font-monospace text-caption" data-testid="machine-internal-ip">{{
+                <span class="font-monospace text-body-small" data-testid="machine-internal-ip">{{
                   item.internalIP ?? '–'
                 }}</span>
               </template>
@@ -644,13 +646,13 @@ const machineHeaders = computed(() => [
                 }}</span>
               </template>
               <template #[`item.providerID`]="{ item }">
-                <span class="text-caption font-monospace">{{ item.providerID ?? '–' }}</span>
+                <span class="text-body-small font-monospace">{{ item.providerID ?? '–' }}</span>
               </template>
               <template #expanded-row="{ columns, item }">
                 <tr>
                   <td :colspan="columns.length" class="py-3">
                     <div v-if="s.bastion?.enabled" class="mb-3">
-                      <div class="text-subtitle-2 mb-1">{{ t('bastion.sshCommand') }}</div>
+                      <div class="text-title-small mb-1">{{ t('bastion.sshCommand') }}</div>
                       <div v-if="sshCommand(item)" class="d-flex align-center ga-1">
                         <code class="ssh-cmd" data-testid="ssh-command">{{
                           sshCommand(item)
@@ -663,18 +665,18 @@ const machineHeaders = computed(() => [
                           @click="copyCmd(sshCommand(item)!)"
                         />
                       </div>
-                      <div v-else class="text-caption text-medium-emphasis">
+                      <div v-else class="text-body-small text-medium-emphasis">
                         {{ s.bastion.publicIP ? t('bastion.noIP') : t('bastion.waiting') }}
                       </div>
-                      <div class="text-caption text-medium-emphasis mt-1">
+                      <div class="text-body-small text-medium-emphasis mt-1">
                         {{ t('bastion.sshHint') }}
                       </div>
                     </div>
                     <div v-if="item.image" class="mb-3" style="max-width: 32rem">
-                      <div class="text-subtitle-2 mb-1">{{ t('infra.image') }}</div>
+                      <div class="text-title-small mb-1">{{ t('infra.image') }}</div>
                       <ImageLabel :id="item.image" :name="item.imageName" dense />
                     </div>
-                    <div class="text-subtitle-2 mb-2">{{ t('clusters.conditions') }}</div>
+                    <div class="text-title-small mb-2">{{ t('clusters.conditions') }}</div>
                     <v-table density="compact">
                       <tbody>
                         <tr v-for="c in item.conditions" :key="c.type">
@@ -686,7 +688,7 @@ const machineHeaders = computed(() => [
                               size="small"
                             />
                           </td>
-                          <td class="text-caption">
+                          <td class="text-body-small">
                             {{ c.reason }}{{ c.message ? ': ' + c.message : '' }}
                           </td>
                         </tr>
@@ -760,10 +762,10 @@ const machineHeaders = computed(() => [
                     {{ e.object.kind }}/<span class="font-weight-medium">{{ e.object.name }}</span>
                   </td>
                   <td>{{ e.reason }}</td>
-                  <td class="text-caption">
+                  <td class="text-body-small">
                     {{ e.message }}<span v-if="e.count > 1"> (×{{ e.count }})</span>
                   </td>
-                  <td class="text-no-wrap text-caption">{{ when(e.lastSeen) }}</td>
+                  <td class="text-no-wrap text-body-small">{{ when(e.lastSeen) }}</td>
                 </tr>
                 <tr v-if="s.events.length === 0">
                   <td colspan="5" class="text-medium-emphasis">{{ t('clusters.noEvents') }}</td>

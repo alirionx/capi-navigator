@@ -103,7 +103,7 @@ async function revoke(): Promise<void> {
     <v-card data-testid="tokens-dialog">
       <v-card-title class="pt-4 px-6">{{ t('tokens.title', { username }) }}</v-card-title>
       <v-card-text>
-        <p class="text-body-2 text-medium-emphasis mb-4">{{ t('tokens.intro') }}</p>
+        <p class="text-body-medium text-medium-emphasis mb-4">{{ t('tokens.intro') }}</p>
 
         <v-alert
           v-if="created"
@@ -115,7 +115,7 @@ async function revoke(): Promise<void> {
           <div class="font-weight-medium mb-2">
             {{ t('tokens.createdTitle', { name: created.name }) }}
           </div>
-          <div class="text-body-2 mb-2">{{ t('tokens.createdOnce') }}</div>
+          <div class="text-body-medium mb-2">{{ t('tokens.createdOnce') }}</div>
           <div class="d-flex align-center ga-2">
             <code class="token-value pa-2 flex-grow-1" data-testid="token-value">{{
               created.token
@@ -128,7 +128,7 @@ async function revoke(): Promise<void> {
               >{{ copied ? t('tokens.copied') : t('tokens.copy') }}</v-btn
             >
           </div>
-          <div class="text-caption mt-2">
+          <div class="text-body-small mt-2">
             {{ t('tokens.usage') }} <code>Authorization: Bearer capin_…</code>
           </div>
         </v-alert>
@@ -144,7 +144,7 @@ async function revoke(): Promise<void> {
         >
           <template #[`item.name`]="{ item }">
             <div class="font-weight-medium">{{ item.name }}</div>
-            <div v-if="item.description" class="text-caption text-medium-emphasis">
+            <div v-if="item.description" class="text-body-small text-medium-emphasis">
               {{ item.description }}
             </div>
           </template>
@@ -184,7 +184,7 @@ async function revoke(): Promise<void> {
           }}</v-btn>
         </v-alert>
 
-        <div class="text-subtitle-2 mb-2">{{ t('tokens.generate') }}</div>
+        <div class="text-title-small mb-2">{{ t('tokens.generate') }}</div>
         <v-form ref="formRef" v-model="valid" @submit.prevent="generate">
           <div class="d-flex flex-wrap ga-3">
             <v-text-field

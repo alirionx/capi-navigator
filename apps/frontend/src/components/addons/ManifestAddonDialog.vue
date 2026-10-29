@@ -126,7 +126,7 @@ const TEMPLATE_HELP = {
     @applied="emit('applied')"
   >
     <ManifestChartAlert :status="chart" :error="chartError" class="mb-3" />
-    <v-row dense>
+    <v-row density="compact">
       <v-col cols="12" md="5">
         <v-text-field
           v-model="name"
@@ -175,7 +175,7 @@ const TEMPLATE_HELP = {
           <v-radio :label="t('manifestAddons.continuous')" value="Continuous" />
           <v-radio :label="t('addons.installOnce')" value="InstallOnce" />
         </v-radio-group>
-        <v-row dense class="mt-1">
+        <v-row density="compact" class="mt-1">
           <v-col cols="6">
             <v-checkbox v-model="wait" :label="t('addons.wait')" hide-details density="compact" />
             <v-checkbox
@@ -199,8 +199,8 @@ const TEMPLATE_HELP = {
       </v-col>
 
       <v-col cols="12" md="7">
-        <div class="text-subtitle-2 mb-1">{{ t('manifestAddons.manifests') }}</div>
-        <p class="text-caption text-medium-emphasis mb-2">
+        <div class="text-title-small mb-1">{{ t('manifestAddons.manifests') }}</div>
+        <p class="text-body-small text-medium-emphasis mb-2">
           {{ t('manifestAddons.manifestsHint') }} {{ hcpField('spec.valuesTemplate') }}
         </p>
         <ValuesEditor v-model="manifests" height="360px" data-testid="manifest-addon-manifests" />
@@ -210,7 +210,7 @@ const TEMPLATE_HELP = {
             <div v-for="e in check.errors" :key="e">{{ e }}</div>
           </v-alert>
           <template v-else>
-            <span class="text-caption text-medium-emphasis mr-2">{{
+            <span class="text-body-small text-medium-emphasis mr-2">{{
               t('manifestAddons.objects', { count: check.objects.length })
             }}</span>
             <v-chip
@@ -248,7 +248,7 @@ const TEMPLATE_HELP = {
             </v-expansion-panel-text>
           </v-expansion-panel>
           <v-expansion-panel :title="t('manifestAddons.templates')">
-            <v-expansion-panel-text class="text-body-2">
+            <v-expansion-panel-text class="text-body-medium">
               {{ t('manifestAddons.templatesHelp', TEMPLATE_HELP) }}
             </v-expansion-panel-text>
           </v-expansion-panel>

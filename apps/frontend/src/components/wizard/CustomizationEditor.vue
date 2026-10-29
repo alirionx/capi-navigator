@@ -45,7 +45,7 @@ function addFile(fromSecret: boolean): void {
 
 <template>
   <div>
-    <div class="text-subtitle-2 mb-1">{{ t('wizard.custom.files') }}</div>
+    <div class="text-title-small mb-1">{{ t('wizard.custom.files') }}</div>
     <div v-for="(f, i) in model.files" :key="i" class="d-flex flex-wrap ga-2 align-start mb-2">
       <v-text-field
         v-model="f.path"

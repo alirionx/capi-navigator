@@ -194,7 +194,7 @@ const selectedNode = computed(() => nodes.value.find((n) => n.id === selected.va
       <template #append><YamlButton :target="refOf(selectedNode)" label /></template>
     </v-card-item>
     <v-card-text>
-      <div class="text-subtitle-2 mb-2">{{ t('clusters.conditions') }}</div>
+      <div class="text-title-small mb-2">{{ t('clusters.conditions') }}</div>
       <v-table v-if="selectedNode.conditions.length" density="compact">
         <tbody>
           <tr v-for="c in selectedNode.conditions" :key="c.type">
@@ -206,7 +206,7 @@ const selectedNode = computed(() => nodes.value.find((n) => n.id === selected.va
                 size="small"
               />
             </td>
-            <td class="text-caption">{{ c.reason }}{{ c.message ? ': ' + c.message : '' }}</td>
+            <td class="text-body-small">{{ c.reason }}{{ c.message ? ': ' + c.message : '' }}</td>
           </tr>
         </tbody>
       </v-table>

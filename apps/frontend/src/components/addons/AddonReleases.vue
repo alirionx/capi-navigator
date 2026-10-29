@@ -47,7 +47,7 @@ const problem = (r: HelmReleaseStatus) =>
           <v-chip size="small" variant="tonal" :color="statusColor(r)">{{
             r.status ?? t('addons.pending')
           }}</v-chip>
-          <div v-if="problem(r)" class="text-caption text-error mt-1">{{ problem(r) }}</div>
+          <div v-if="problem(r)" class="text-body-small text-error mt-1">{{ problem(r) }}</div>
         </td>
         <td class="text-right">
           <YamlButton

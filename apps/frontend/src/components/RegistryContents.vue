@@ -28,7 +28,7 @@ async function copy(text: string): Promise<void> {
 
 <template>
   <div data-testid="registry-contents">
-    <p class="text-body-2 mb-3">{{ t('registryContents.intro') }}</p>
+    <p class="text-body-medium mb-3">{{ t('registryContents.intro') }}</p>
     <v-alert
       v-if="contents.unknown.length"
       type="warning"

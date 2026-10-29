@@ -509,9 +509,11 @@ const infraNotes = computed(() =>
         <v-card-text
           v-if="drift && !drift.checking && (drift.objects.length || drift.fields.length)"
         >
-          <div class="text-body-2 mb-1">{{ t('day2.driftExplain') }}</div>
-          <div v-for="o in drift.fields" :key="o" class="text-caption font-monospace">{{ o }}</div>
-          <div v-for="o in drift.objects" :key="o" class="text-caption">{{ o }}</div>
+          <div class="text-body-medium mb-1">{{ t('day2.driftExplain') }}</div>
+          <div v-for="o in drift.fields" :key="o" class="text-body-small font-monospace">
+            {{ o }}
+          </div>
+          <div v-for="o in drift.objects" :key="o" class="text-body-small">{{ o }}</div>
         </v-card-text>
       </v-card>
 
@@ -532,7 +534,7 @@ const infraNotes = computed(() =>
                   </tr>
                   <tr>
                     <td class="text-medium-emphasis">{{ t('infra.image') }}</td>
-                    <td class="font-monospace text-caption" :title="g.group.image">
+                    <td class="font-monospace text-body-small" :title="g.group.image">
                       {{ shortImage(g.group.image) }}
                     </td>
                   </tr>
@@ -654,7 +656,7 @@ const infraNotes = computed(() =>
           t('day2.reapplyExplain')
         }}</v-alert>
         <template v-else-if="mode === 'cpScale'">
-          <div class="text-body-2 text-medium-emphasis mb-2">{{ t('wizard.cpNodes') }}</div>
+          <div class="text-body-medium text-medium-emphasis mb-2">{{ t('wizard.cpNodes') }}</div>
           <v-btn-toggle
             v-model="form.replicas"
             mandatory
@@ -664,7 +666,7 @@ const infraNotes = computed(() =>
           >
             <v-btn :value="1">1</v-btn><v-btn :value="3">3</v-btn><v-btn :value="5">5</v-btn>
           </v-btn-toggle>
-          <div class="text-caption text-medium-emphasis mt-2">
+          <div class="text-body-small text-medium-emphasis mt-2">
             {{
               t('wizard.cpHint', {
                 cp: FLAVOR_PLUGINS[spec?.kubernetes.flavor ?? 'rke2']?.controlPlaneResource.kind,

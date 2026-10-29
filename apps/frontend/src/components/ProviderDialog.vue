@@ -172,7 +172,7 @@ async function apply(): Promise<void> {
           name="version"
         >
           <template #append-inner>
-            <span class="text-caption text-medium-emphasis">spec.version</span>
+            <span class="text-body-small text-medium-emphasis">spec.version</span>
           </template>
         </v-combobox>
 
@@ -216,12 +216,15 @@ async function apply(): Promise<void> {
           <v-expansion-panel>
             <v-expansion-panel-title>
               {{ t('providers.variables') }}
-              <span v-if="existingVariables.length" class="text-caption text-medium-emphasis ml-2">
+              <span
+                v-if="existingVariables.length"
+                class="text-body-small text-medium-emphasis ml-2"
+              >
                 ({{ t('providers.storedVariables', { names: existingVariables.join(', ') }) }})
               </span>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
-              <p class="text-caption text-medium-emphasis mb-2">
+              <p class="text-body-small text-medium-emphasis mb-2">
                 {{ t('providers.variablesHint') }}
               </p>
               <v-alert
@@ -282,7 +285,7 @@ async function apply(): Promise<void> {
           <v-expansion-panel>
             <v-expansion-panel-title>{{ t('providers.featureGates') }}</v-expansion-panel-title>
             <v-expansion-panel-text>
-              <p class="text-caption text-medium-emphasis mb-2">
+              <p class="text-body-small text-medium-emphasis mb-2">
                 {{ t('providers.featureGatesHint') }}
               </p>
               <div v-for="(g, i) in featureGates" :key="i" class="d-flex ga-2 align-center">

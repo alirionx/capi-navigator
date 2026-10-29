@@ -72,7 +72,7 @@ const phaseColor = (c: ClusterSummary) =>
     <div class="d-flex align-center flex-wrap ga-3 mb-6">
       <div>
         <h1 class="page-title">{{ t('clusters.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">
+        <p class="text-body-medium text-medium-emphasis mt-1">
           {{ t('clusters.count', { n: store.clusters.length }) }} · {{ t('clusters.subtitle') }}
         </p>
       </div>

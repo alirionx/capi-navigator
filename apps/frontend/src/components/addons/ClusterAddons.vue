@@ -103,7 +103,7 @@ function unassign(addon: AddonStatus): void {
             style="max-width: 360px"
             data-testid="assign-addon-select"
           >
-            <template #item="{ props: p, item }">
+            <template #item="{ props: p, internalItem: item }">
               <v-list-item
                 v-bind="p"
                 :subtitle="
@@ -123,7 +123,7 @@ function unassign(addon: AddonStatus): void {
             @click="assign"
             >{{ t('addons.assign') }}</v-btn
           >
-          <span class="text-caption text-medium-emphasis">{{ t('addons.assignHint') }}</span>
+          <span class="text-body-small text-medium-emphasis">{{ t('addons.assignHint') }}</span>
         </v-card-text>
       </v-card>
 
@@ -180,7 +180,7 @@ function unassign(addon: AddonStatus): void {
           clusters.setLabels(connection, namespace, name, { labels: change!.labels, takeOver })
       "
     >
-      <p class="text-body-2">
+      <p class="text-body-medium">
         {{
           change.assign
             ? t('addons.assignText', {

@@ -31,7 +31,7 @@ const tone = computed(() => {
 
 <template>
   <div class="usage">
-    <div class="d-flex text-caption mb-1">
+    <div class="d-flex text-body-small mb-1">
       <span class="font-weight-medium">{{ label }}</span>
       <v-spacer />
       <span v-if="use.usage !== undefined"
@@ -48,7 +48,7 @@ const tone = computed(() => {
         :style="{ width: `${Math.min(usagePct, 100)}%` }"
       />
     </div>
-    <div class="text-caption text-medium-emphasis mt-1">
+    <div class="text-body-small text-medium-emphasis mt-1">
       {{ t('dashboard.requests') }} {{ fmt(use.requests) }} ({{ requestPct }}%) ·
       {{ t('dashboard.limits') }} {{ fmt(use.limits) }} ({{ limitPct }}%)
     </div>

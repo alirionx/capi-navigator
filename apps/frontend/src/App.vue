@@ -217,27 +217,43 @@ async function signOut(): Promise<void> {
 </template>
 
 <style>
+/* ADR-0031: Vuetify 4 has no global reset; plain headings, paragraphs and lists keep no margins. */
+@layer vuetify-core.reset {
+  ul,
+  ol,
+  figure,
+  details,
+  summary {
+    padding: 0;
+    margin: 0;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p {
+    margin: 0;
+  }
+}
 :root {
   --app-font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 .v-application,
 .v-overlay-container,
-:is(.v-application, .v-overlay-container) .text-h1,
-:is(.v-application, .v-overlay-container) .text-h2,
-:is(.v-application, .v-overlay-container) .text-h3,
-:is(.v-application, .v-overlay-container) .text-h4,
-:is(.v-application, .v-overlay-container) .text-h5,
-:is(.v-application, .v-overlay-container) .text-h6,
-:is(.v-application, .v-overlay-container) .text-subtitle-1,
-:is(.v-application, .v-overlay-container) .text-subtitle-2,
-:is(.v-application, .v-overlay-container) .text-body-1,
-:is(.v-application, .v-overlay-container) .text-body-2,
-:is(.v-application, .v-overlay-container) .text-caption,
-:is(.v-application, .v-overlay-container) .text-button {
+:is(.v-application, .v-overlay-container)
+  :is(
+    [class*='text-display-'],
+    [class*='text-headline-'],
+    [class*='text-title-'],
+    [class*='text-body-'],
+    [class*='text-label-']
+  ) {
   font-family: var(--app-font) !important;
   letter-spacing: normal !important;
 }
-/* Vuetify 3 tracks out buttons, chips and messages; the shared style uses normal spacing. */
+/* Vuetify tracks out buttons, chips and messages; the shared style uses normal spacing. */
 :is(.v-application, .v-overlay-container) .v-btn,
 :is(.v-application, .v-overlay-container) .v-chip,
 :is(.v-application, .v-overlay-container) .v-messages,
@@ -257,6 +273,10 @@ async function signOut(): Promise<void> {
 /* Links in the accent color. */
 .v-application a:not(.v-btn):not(.v-list-item):not(.brand) {
   color: rgb(var(--v-theme-primary));
+}
+/* Vuetify 4 rounds container widths down (1000px at 1440px); pages use the width as in Vuetify 3. */
+.v-main .v-container {
+  max-width: 1800px;
 }
 /* Page header used by the views. */
 .page-title {

@@ -83,7 +83,7 @@ const kindLabel = (k: string) => k.replace('Provider', '');
 
 <template>
   <div class="graph-scroll" data-testid="provider-graph">
-    <div class="d-flex text-caption text-medium-emphasis mb-2" :style="{ width: `${width}px` }">
+    <div class="d-flex text-body-small text-medium-emphasis mb-2" :style="{ width: `${width}px` }">
       <span :style="{ width: `${clusterX}px` }">{{ t('overview.providers') }}</span>
       <span :style="{ width: `${NODE_W + SHAPE_GAP}px` }">{{ t('overview.clusters') }}</span>
       <span v-if="clusters.length">{{ t('overview.nodes') }}</span>
@@ -172,13 +172,13 @@ const kindLabel = (k: string) => k.replace('Provider', '');
       />
       <div
         v-if="clusters.length === 0"
-        class="empty text-medium-emphasis text-body-2"
+        class="empty text-medium-emphasis text-body-medium"
         :style="{ left: `${clusterX}px`, width: `${NODE_W}px` }"
       >
         {{ t('clusters.empty') }}
       </div>
     </div>
-    <div v-if="clusters.length" class="legend text-caption text-medium-emphasis">
+    <div v-if="clusters.length" class="legend text-body-small text-medium-emphasis">
       <span><span class="box box--ready" />{{ t('shapes.ready') }}</span>
       <span><span class="box box--pending" />{{ t('shapes.pending') }}</span>
       <span><span class="box box--deleting" />{{ t('shapes.deleting') }}</span>

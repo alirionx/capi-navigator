@@ -67,7 +67,7 @@ function openShell(node: string): void {
               <td class="font-weight-medium">{{ n.name }}</td>
               <td>{{ n.roles.join(', ') || '–' }}</td>
               <td>{{ n.kubeletVersion ?? '–' }}</td>
-              <td class="font-monospace text-caption">{{ n.internalIP ?? '–' }}</td>
+              <td class="font-monospace text-body-small">{{ n.internalIP ?? '–' }}</td>
               <td>
                 <v-chip size="small" variant="tonal" :color="n.ready ? 'success' : 'warning'">{{
                   n.ready ? t('clusters.ready') : t('shell.notReady')
@@ -89,7 +89,7 @@ function openShell(node: string): void {
         </v-table>
         <div
           v-if="!auth.can('managementNodes.shell')"
-          class="text-caption text-medium-emphasis mt-2"
+          class="text-body-small text-medium-emphasis mt-2"
         >
           {{ t('shell.adminOnly') }}
         </div>

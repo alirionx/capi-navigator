@@ -88,9 +88,11 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
           <tr v-for="p in presets" :key="p.id" :data-testid="`preset-${p.id}`">
             <td>
               <div class="font-weight-medium">{{ p.displayName }}</div>
-              <div class="text-caption text-medium-emphasis">{{ p.provider }} · {{ p.kind }}</div>
+              <div class="text-body-small text-medium-emphasis">
+                {{ p.provider }} · {{ p.kind }}
+              </div>
             </td>
-            <td class="text-caption">{{ p.chartName }}<br />{{ p.repoURL }}</td>
+            <td class="text-body-small">{{ p.chartName }}<br />{{ p.repoURL }}</td>
             <td>
               {{ p.effective.version }}
               <v-chip
@@ -101,7 +103,7 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
                 class="ml-1"
                 >{{ t('presets.customized') }}</v-chip
               >
-              <div v-if="p.override" class="text-caption text-medium-emphasis">
+              <div v-if="p.override" class="text-body-small text-medium-emphasis">
                 {{ t('presets.default', { version: p.defaults.version }) }}
               </div>
             </td>
@@ -122,7 +124,9 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
                 "
                 >{{ n.namespace }} ({{ n.clusters }})</v-chip
               >
-              <span v-if="!p.namespaces.length" class="text-caption text-medium-emphasis">–</span>
+              <span v-if="!p.namespaces.length" class="text-body-small text-medium-emphasis"
+                >–</span
+              >
             </td>
             <td class="text-right text-no-wrap">
               <v-btn
@@ -167,7 +171,7 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
             class="mb-3"
             data-testid="preset-version"
           />
-          <div class="text-subtitle-2 mb-1">{{ t('addons.values') }}</div>
+          <div class="text-title-small mb-1">{{ t('addons.values') }}</div>
           <ValuesEditor v-model="values" height="320px" />
           <ErrorAlert v-if="saveError" :error="saveError" class="mt-3" />
         </v-card-text>
@@ -199,7 +203,7 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
       :apply="() => repos.presetRollout(connection, rollout!.id)"
       @applied="load"
     >
-      <p class="text-body-2">
+      <p class="text-body-medium">
         {{
           t('presets.rolloutText', {
             version: rollout.effective.version,

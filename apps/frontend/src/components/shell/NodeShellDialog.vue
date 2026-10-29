@@ -145,10 +145,10 @@ function restart(): void {
           class="mb-2"
         >
           {{ status }}
-          <div v-if="hint" class="text-caption mt-1">{{ hint }}</div>
+          <div v-if="hint" class="text-body-small mt-1">{{ hint }}</div>
         </v-alert>
         <div ref="container" class="terminal" />
-        <div class="text-caption text-medium-emphasis mt-2">{{ t('shell.note') }}</div>
+        <div class="text-body-small text-medium-emphasis mt-2">{{ t('shell.note') }}</div>
       </v-card-text>
       <v-card-actions>
         <v-btn

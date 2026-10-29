@@ -134,7 +134,7 @@ const displayName = (p: InstalledProvider) =>
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
         <h1 class="page-title">{{ t('providers.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('providers.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('providers.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-chip
@@ -191,11 +191,11 @@ const displayName = (p: InstalledProvider) =>
                 <v-card-subtitle>{{ componentText(comp) }}</v-card-subtitle>
               </v-card-item>
               <v-card-text class="pt-0">
-                <div class="text-caption text-medium-emphasis mb-2">
+                <div class="text-body-small text-medium-emphasis mb-2">
                   {{ t(`providers.prereqHint.${key}`) }}
                 </div>
                 <template v-if="!comp.installed && key !== 'orc'">
-                  <div class="text-caption mb-1">{{ t('providers.installWith') }}</div>
+                  <div class="text-body-small mb-1">{{ t('providers.installWith') }}</div>
                   <pre class="command" data-testid="install-instructions">{{
                     pre.instructions[key]
                   }}</pre>
@@ -212,7 +212,7 @@ const displayName = (p: InstalledProvider) =>
                   >
                     {{ comp.installed ? t('orc.upgradeButton') : t('orc.installButton') }}
                   </v-btn>
-                  <div v-if="!comp.installed" class="text-caption mt-2">
+                  <div v-if="!comp.installed" class="text-body-small mt-2">
                     {{ t('providers.orcManual') }}
                     <pre class="command">{{ pre.instructions.orc }}</pre>
                   </div>
@@ -226,7 +226,7 @@ const displayName = (p: InstalledProvider) =>
         <OutboundProxyPanel :providers="providers" />
 
         <!-- Installed providers (FP3-F-08) -->
-        <h2 class="text-h6 mb-2">{{ t('providers.installed') }}</h2>
+        <h2 class="text-title-large mb-2">{{ t('providers.installed') }}</h2>
         <ErrorAlert v-if="actionError && !dialog" :error="actionError" class="mb-2" />
         <v-card border class="table-card">
           <v-data-table
@@ -244,14 +244,14 @@ const displayName = (p: InstalledProvider) =>
           >
             <template #[`item.name`]="{ item }">
               <div class="font-weight-medium">{{ displayName(item) }}</div>
-              <div class="text-caption text-medium-emphasis">{{ item.name }}</div>
+              <div class="text-body-small text-medium-emphasis">{{ item.name }}</div>
             </template>
             <template #[`item.kind`]="{ item }">{{ t(`providers.kinds.${item.kind}`) }}</template>
             <template #[`item.version`]="{ item }">
               {{ item.installedVersion ?? '–' }}
               <span
                 v-if="item.version && item.version !== item.installedVersion"
-                class="text-caption text-medium-emphasis"
+                class="text-body-small text-medium-emphasis"
               >
                 → {{ item.version }}
               </span>
@@ -313,7 +313,7 @@ const displayName = (p: InstalledProvider) =>
             <template #expanded-row="{ columns, item }">
               <tr>
                 <td :colspan="columns.length" class="py-3">
-                  <div class="text-subtitle-2 mb-1">{{ t('providers.conditions') }}</div>
+                  <div class="text-title-small mb-1">{{ t('providers.conditions') }}</div>
                   <v-table density="compact">
                     <tbody>
                       <tr v-for="c in item.conditions" :key="c.type">
@@ -324,18 +324,18 @@ const displayName = (p: InstalledProvider) =>
                             size="small"
                           />
                         </td>
-                        <td class="font-monospace text-caption">{{ c.type }}</td>
-                        <td class="text-caption">{{ c.reason }}</td>
-                        <td class="text-caption">{{ c.message }}</td>
+                        <td class="font-monospace text-body-small">{{ c.type }}</td>
+                        <td class="text-body-small">{{ c.reason }}</td>
+                        <td class="text-body-small">{{ c.message }}</td>
                       </tr>
                       <tr v-if="item.conditions.length === 0">
-                        <td class="text-caption text-medium-emphasis">
+                        <td class="text-body-small text-medium-emphasis">
                           {{ t('providers.noConditions') }}
                         </td>
                       </tr>
                     </tbody>
                   </v-table>
-                  <div v-if="item.featureGates" class="text-caption mt-2">
+                  <div v-if="item.featureGates" class="text-body-small mt-2">
                     {{ t('providers.featureGates') }}:
                     <span class="font-monospace">{{
                       Object.entries(item.featureGates)
@@ -350,12 +350,12 @@ const displayName = (p: InstalledProvider) =>
         </v-card>
 
         <!-- Catalog (FP3-F-05, FP3-F-06) -->
-        <h2 class="text-h6 mb-2">{{ t('providers.catalog') }}</h2>
+        <h2 class="text-title-large mb-2">{{ t('providers.catalog') }}</h2>
         <template v-for="group in groups" :key="group.kind">
-          <div class="text-subtitle-2 text-medium-emphasis mt-2 mb-1">
+          <div class="text-title-small text-medium-emphasis mt-2 mb-1">
             {{ t(`providers.kinds.${group.kind}`) }}
           </div>
-          <v-row dense>
+          <v-row density="compact">
             <v-col v-for="entry in group.entries" :key="entry.id" cols="12" sm="6" lg="4">
               <v-card
                 border
@@ -363,18 +363,18 @@ const displayName = (p: InstalledProvider) =>
                 :data-testid="`catalog-${entry.id}`"
               >
                 <v-card-item>
-                  <v-card-title class="text-body-1 font-weight-medium">{{
+                  <v-card-title class="text-body-large font-weight-medium">{{
                     entry.displayName
                   }}</v-card-title>
                   <v-card-subtitle
                     >{{ entry.recommendedVersion }} · {{ entry.contract }}</v-card-subtitle
                   >
                 </v-card-item>
-                <v-card-text class="pt-0 flex-grow-1 text-body-2">
+                <v-card-text class="pt-0 flex-grow-1 text-body-medium">
                   {{ entry.description }}
                   <div
                     v-if="blocker(entry) && !installedFor(entry)"
-                    class="text-caption text-warning mt-1"
+                    class="text-body-small text-warning mt-1"
                   >
                     {{ blocker(entry) }}
                   </div>
@@ -471,7 +471,7 @@ const displayName = (p: InstalledProvider) =>
             class="mb-3"
           >
             {{ t('providers.removeInUse', { n: dialog.usage.clusters.length }) }}
-            <div class="text-caption font-monospace">
+            <div class="text-body-small font-monospace">
               {{ dialog.usage.clusters.map((c) => `${c.namespace}/${c.name}`).join(', ') }}
             </div>
           </v-alert>

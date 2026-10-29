@@ -108,7 +108,7 @@ function showNodes(name: string): void {
     <div class="d-flex align-center flex-wrap ga-2 mb-4">
       <div>
         <h1 class="page-title">{{ t('connections.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('connections.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('connections.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-menu v-if="isAdmin">
@@ -153,7 +153,7 @@ function showNodes(name: string): void {
       class="mb-4"
     >
       <div class="font-weight-medium">{{ t('connections.emptyTitle') }}</div>
-      <div class="text-body-2">
+      <div class="text-body-medium">
         {{ isAdmin ? t('connections.emptyAdmin') : t('connections.emptyViewer') }}
       </div>
     </v-alert>
@@ -170,25 +170,25 @@ function showNodes(name: string): void {
       >
         <template #[`item.name`]="{ item }">
           <div class="font-weight-medium">{{ item.displayName || item.name }}</div>
-          <div v-if="item.displayName" class="text-caption text-medium-emphasis">
+          <div v-if="item.displayName" class="text-body-small text-medium-emphasis">
             {{ item.name }}
           </div>
         </template>
         <template #[`item.authType`]="{ item }">
           {{ t(`connections.auth.${item.authType}`) }}
-          <div v-if="item.context" class="text-caption text-medium-emphasis">
+          <div v-if="item.context" class="text-body-small text-medium-emphasis">
             {{ item.context }}
           </div>
         </template>
         <template #[`item.server`]="{ item }">
-          <span class="text-caption font-monospace">{{ item.server }}</span>
+          <span class="text-body-small font-monospace">{{ item.server }}</span>
         </template>
         <template #[`item.status`]="{ item }">
           <ConnectionStatusChip :connection="item" />
         </template>
         <template #[`item.version`]="{ item }">{{ item.status.kubernetesVersion ?? '–' }}</template>
         <template #[`item.lastChecked`]="{ item }">
-          <span class="text-caption">
+          <span class="text-body-small">
             {{ item.status.lastCheckedAt ? d(new Date(item.status.lastCheckedAt), 'short') : '–' }}
           </span>
         </template>
@@ -245,14 +245,14 @@ function showNodes(name: string): void {
                 class="mb-3"
               >
                 <div class="font-weight-medium">{{ item.status.message }}</div>
-                <div v-if="item.status.hint" class="text-body-2">{{ item.status.hint }}</div>
-                <details v-if="item.status.details" class="text-caption mt-1">
+                <div v-if="item.status.hint" class="text-body-medium">{{ item.status.hint }}</div>
+                <details v-if="item.status.details" class="text-body-small mt-1">
                   <summary>{{ t('errors.details') }}</summary>
                   <pre class="details">{{ item.status.details }}</pre>
                 </details>
               </v-alert>
               <div v-if="item.status.permissions?.length">
-                <div class="text-subtitle-2 mb-1">
+                <div class="text-title-small mb-1">
                   {{ t('connections.permissions') }}
                   <span class="text-medium-emphasis">
                     ({{ t('connections.missingRequired', { n: missingRequired(item) }) }})
@@ -273,11 +273,11 @@ function showNodes(name: string): void {
                           size="small"
                         />
                       </td>
-                      <td class="font-monospace text-caption">
+                      <td class="font-monospace text-body-small">
                         {{ p.verb }} {{ p.group ? `${p.resource}.${p.group}` : p.resource }}
                       </td>
-                      <td class="text-caption">{{ p.purpose }}</td>
-                      <td class="text-caption text-medium-emphasis">
+                      <td class="text-body-small">{{ p.purpose }}</td>
+                      <td class="text-body-small text-medium-emphasis">
                         {{ t(`connections.level.${p.level}`) }}
                       </td>
                     </tr>

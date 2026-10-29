@@ -42,7 +42,7 @@ const shown = computed(() => {
 <template>
   <div data-testid="cluster-resources">
     <div class="d-flex align-center flex-wrap ga-3 mb-3">
-      <span class="text-body-2 text-medium-emphasis">{{ t('yamlView.resourcesHint') }}</span>
+      <span class="text-body-medium text-medium-emphasis">{{ t('yamlView.resourcesHint') }}</span>
       <v-spacer />
       <v-text-field
         v-model="search"
@@ -67,9 +67,9 @@ const shown = computed(() => {
         </thead>
         <tbody>
           <tr v-for="r in shown" :key="r.kind + r.name">
-            <td class="text-caption">{{ r.kind }}</td>
+            <td class="text-body-small">{{ r.kind }}</td>
             <td class="font-weight-medium">{{ r.name }}</td>
-            <td class="text-caption font-monospace text-medium-emphasis">{{ r.apiVersion }}</td>
+            <td class="text-body-small font-monospace text-medium-emphasis">{{ r.apiVersion }}</td>
             <td class="text-right"><YamlButton :target="r" label /></td>
           </tr>
           <tr v-if="!loading && !shown.length">

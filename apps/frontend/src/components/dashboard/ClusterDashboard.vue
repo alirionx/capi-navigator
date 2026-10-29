@@ -144,7 +144,7 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
           >{{ n }} {{ type }}</v-chip
         >
         <v-spacer />
-        <span class="text-caption text-medium-emphasis">
+        <span class="text-body-small text-medium-emphasis">
           {{ t('dashboard.updated', { age: when(d.generatedAt) }) }}
         </span>
         <v-chip
@@ -179,9 +179,11 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
         <v-col v-for="n in d.nodes" :key="n.name" cols="12" md="4">
           <v-card border class="fill-height" :data-testid="`dash-node-${n.name}`">
             <v-card-item>
-              <v-card-title class="text-body-1 font-weight-medium text-truncate" :title="n.name">{{
-                n.name
-              }}</v-card-title>
+              <v-card-title
+                class="text-body-large font-weight-medium text-truncate"
+                :title="n.name"
+                >{{ n.name }}</v-card-title
+              >
               <v-card-subtitle
                 >{{ n.roles.join(', ') || 'worker' }} · {{ n.pods.count }}/{{
                   n.pods.capacity
@@ -235,8 +237,8 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
                 <v-chip size="x-small" variant="tonal" color="warning">{{ p.reason }}</v-chip>
               </td>
               <td>{{ p.restarts }}</td>
-              <td class="text-caption">{{ p.node ?? '–' }}</td>
-              <td class="text-caption">{{ p.message ?? '' }}</td>
+              <td class="text-body-small">{{ p.node ?? '–' }}</td>
+              <td class="text-body-small">{{ p.message ?? '' }}</td>
               <td><YamlButton :target="inCluster('Pod', p.name, p.namespace)" /></td>
             </tr>
           </tbody>
@@ -280,7 +282,7 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
               </thead>
               <tbody>
                 <tr v-for="w in workloads" :key="w.kind + w.namespace + w.name">
-                  <td class="text-caption">{{ w.kind }}</td>
+                  <td class="text-body-small">{{ w.kind }}</td>
                   <td class="text-no-wrap">
                     <span class="text-medium-emphasis">{{ w.namespace }}/</span>{{ w.name }}
                   </td>
@@ -304,7 +306,7 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
           <v-card border class="fill-height" data-testid="dash-network">
             <v-card-item :title="t('dashboard.network')" />
             <v-card-text>
-              <div class="text-subtitle-2 mb-1">{{ t('dashboard.exposedServices') }}</div>
+              <div class="text-title-small mb-1">{{ t('dashboard.exposedServices') }}</div>
               <v-table density="compact" class="mb-4">
                 <tbody>
                   <tr v-for="s in d.services.filter(inNs)" :key="s.namespace + s.name">
@@ -314,13 +316,13 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
                     <td>
                       <v-chip size="x-small" variant="outlined">{{ s.type }}</v-chip>
                     </td>
-                    <td class="font-monospace text-caption">
+                    <td class="font-monospace text-body-small">
                       {{
                         s.external.join(', ') ||
                         (s.type === 'LoadBalancer' ? t('dashboard.pendingIP') : '')
                       }}
                     </td>
-                    <td class="text-caption">{{ s.ports.join(', ') }}</td>
+                    <td class="text-body-small">{{ s.ports.join(', ') }}</td>
                     <td><YamlButton :target="inCluster('Service', s.name, s.namespace)" /></td>
                   </tr>
                   <tr v-if="!d.services.filter(inNs).length">
@@ -328,23 +330,23 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
                   </tr>
                 </tbody>
               </v-table>
-              <div class="text-subtitle-2 mb-1">{{ t('dashboard.ingresses') }}</div>
+              <div class="text-title-small mb-1">{{ t('dashboard.ingresses') }}</div>
               <v-table density="compact">
                 <tbody>
                   <tr v-for="i in d.ingresses.filter(inNs)" :key="i.kind + i.namespace + i.name">
                     <td class="text-no-wrap">
                       <span class="text-medium-emphasis">{{ i.namespace }}/</span>{{ i.name }}
-                      <div class="text-caption text-medium-emphasis">
+                      <div class="text-body-small text-medium-emphasis">
                         {{ i.kind }}{{ i.className ? ` · ${i.className}` : '' }}
                       </div>
                     </td>
                     <td>
-                      <div v-for="h in i.hosts" :key="h" class="text-caption">
+                      <div v-for="h in i.hosts" :key="h" class="text-body-small">
                         <v-icon v-if="i.tls" icon="mdi-lock" size="x-small" class="mr-1" />{{ h }}
                       </div>
                     </td>
-                    <td class="text-caption">→ {{ i.backends.join(', ') || '–' }}</td>
-                    <td class="font-monospace text-caption">{{ i.addresses.join(', ') }}</td>
+                    <td class="text-body-small">→ {{ i.backends.join(', ') || '–' }}</td>
+                    <td class="font-monospace text-body-small">{{ i.addresses.join(', ') }}</td>
                     <td><YamlButton :target="inCluster(i.kind, i.name, i.namespace)" /></td>
                   </tr>
                   <tr v-if="!d.ingresses.filter(inNs).length">
@@ -379,16 +381,16 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
                   size="small"
                 />
               </td>
-              <td class="text-no-wrap text-caption">
+              <td class="text-no-wrap text-body-small">
                 <span class="text-medium-emphasis">{{ e.namespace }}/</span>{{ e.object.kind }}/{{
                   e.object.name
                 }}
               </td>
-              <td class="text-caption">{{ e.reason }}</td>
-              <td class="text-caption">
+              <td class="text-body-small">{{ e.reason }}</td>
+              <td class="text-body-small">
                 {{ e.message }}<span v-if="e.count > 1"> (×{{ e.count }})</span>
               </td>
-              <td class="text-caption text-no-wrap">{{ when(e.lastSeen) }}</td>
+              <td class="text-body-small text-no-wrap">{{ when(e.lastSeen) }}</td>
             </tr>
             <tr v-if="!events.length">
               <td colspan="5" class="text-medium-emphasis">{{ t('clusters.noEvents') }}</td>

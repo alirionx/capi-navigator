@@ -22,7 +22,7 @@ function details(): string | undefined {
 <template>
   <v-alert type="error" variant="tonal" density="comfortable" data-testid="error-alert">
     <div class="font-weight-medium">{{ message() }}</div>
-    <div v-if="hint()" class="text-body-2 mt-1">{{ hint() }}</div>
+    <div v-if="hint()" class="text-body-medium mt-1">{{ hint() }}</div>
     <template v-if="details()">
       <v-btn
         variant="text"
@@ -33,7 +33,7 @@ function details(): string | undefined {
       >
         {{ t('errors.details') }}
       </v-btn>
-      <pre v-if="showDetails" class="text-caption mt-1 error-details">{{ details() }}</pre>
+      <pre v-if="showDetails" class="text-body-small mt-1 error-details">{{ details() }}</pre>
     </template>
   </v-alert>
 </template>

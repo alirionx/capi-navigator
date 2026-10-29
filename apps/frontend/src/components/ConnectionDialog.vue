@@ -168,7 +168,7 @@ async function save(): Promise<void> {
         />
 
         <template v-if="replaceCredentials">
-          <div class="text-subtitle-2 mt-2 mb-1">{{ t('connections.authType') }}</div>
+          <div class="text-title-small mt-2 mb-1">{{ t('connections.authType') }}</div>
           <v-btn-toggle
             v-model="authType"
             mandatory
@@ -185,7 +185,7 @@ async function save(): Promise<void> {
               t('connections.auth.in-cluster')
             }}</v-btn>
           </v-btn-toggle>
-          <div class="text-caption text-medium-emphasis mb-4">
+          <div class="text-body-small text-medium-emphasis mb-4">
             {{ t(`connections.authHint.${authType}`) }}
           </div>
 

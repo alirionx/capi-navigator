@@ -136,7 +136,7 @@ async function confirm(): Promise<void> {
     <div class="d-flex align-center mb-4">
       <div>
         <h1 class="page-title">{{ t('users.title') }}</h1>
-        <p class="text-body-2 text-medium-emphasis mt-1">{{ t('users.subtitle') }}</p>
+        <p class="text-body-medium text-medium-emphasis mt-1">{{ t('users.subtitle') }}</p>
       </div>
       <v-spacer />
       <v-btn color="primary" prepend-icon="mdi-account-plus" @click="open('create')">
@@ -263,8 +263,8 @@ async function confirm(): Promise<void> {
               name="username"
             />
             <template v-if="dialog === 'create' || dialog === 'edit'">
-              <div class="text-subtitle-2 mt-2">{{ t('users.bindings') }}</div>
-              <p class="text-caption text-medium-emphasis mb-2">{{ t('users.bindingsHint') }}</p>
+              <div class="text-title-small mt-2">{{ t('users.bindings') }}</div>
+              <p class="text-body-small text-medium-emphasis mb-2">{{ t('users.bindingsHint') }}</p>
               <BindingsEditor
                 v-model="form.bindings"
                 :roles="roles.roles"

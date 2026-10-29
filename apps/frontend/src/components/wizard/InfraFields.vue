@@ -48,7 +48,7 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         persistent-hint
         :data-testid="f.testId"
       >
-        <template #item="{ props: itemProps, item }">
+        <template #item="{ props: itemProps, internalItem: item }">
           <v-list-item
             v-bind="itemProps"
             :subtitle="warningOf(item.raw)"

@@ -34,8 +34,8 @@ watch(
 </script>
 
 <template>
-  <div class="text-subtitle-2 mt-4">{{ t('addons.selector') }}</div>
-  <p class="text-caption text-medium-emphasis mb-2">
+  <div class="text-title-small mt-4">{{ t('addons.selector') }}</div>
+  <p class="text-body-small text-medium-emphasis mb-2">
     {{ t('addons.selectorHint') }}
     {{ t('addons.mapsTo', { field: 'spec.clusterSelector.matchLabels' }) }}
   </p>
@@ -72,7 +72,7 @@ watch(
     >{{ t('addons.addLabel') }}</v-btn
   >
   <div class="mt-2" data-testid="addon-matching">
-    <span class="text-caption text-medium-emphasis mr-2">{{ t('addons.matching') }}</span>
+    <span class="text-body-small text-medium-emphasis mr-2">{{ t('addons.matching') }}</span>
     <template v-if="matching">
       <v-chip
         v-for="c in matching"
@@ -83,8 +83,8 @@ watch(
         class="mr-1"
         >{{ c }}</v-chip
       >
-      <span v-if="!matching.length" class="text-caption">{{ t('addons.noMatch') }}</span>
+      <span v-if="!matching.length" class="text-body-small">{{ t('addons.noMatch') }}</span>
     </template>
-    <span v-else class="text-caption">–</span>
+    <span v-else class="text-body-small">–</span>
   </div>
 </template>
