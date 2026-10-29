@@ -12,6 +12,7 @@ import { ApiError } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useRolesStore } from '../stores/roles.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 /** Roles page (FP19-F-09): built-in and custom roles, permissions grouped with help texts. */
 const { t } = useI18n();
@@ -195,18 +196,18 @@ async function confirm(): Promise<void> {
               v-model="form.name"
               :label="t('rolesPage.name')"
               :rules="[zodRule(RoleNameSchema)]"
-              :hint="t('rolesPage.nameHint')"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'name')"
-              class="mb-2"
               data-testid="role-name"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('rolesPage.nameHint')" />
+              </template>
+            </v-text-field>
             <v-text-field
               v-model="form.displayName"
               :label="t('rolesPage.displayName')"
               :rules="[(v: string) => !!v.trim() || t('rolesPage.displayName')]"
               :error-messages="fieldErrors(serverFieldErrors, 'displayName')"
-              class="mb-2"
               data-testid="role-display-name"
             />
             <v-text-field
@@ -214,10 +215,10 @@ async function confirm(): Promise<void> {
               :label="t('rolesPage.description')"
               class="mb-2"
             />
-            <div class="text-title-small">{{ t('rolesPage.permissions') }}</div>
-            <p class="text-body-small text-medium-emphasis mb-2">
-              {{ t('rolesPage.permissionsHint') }}
-            </p>
+            <div class="text-title-small mb-1">
+              {{ t('rolesPage.permissions') }}
+              <FieldHelp :text="t('rolesPage.permissionsHint')" />
+            </div>
             <div v-for="g in PERMISSION_GROUPS" :key="g.group" class="mb-2">
               <div class="text-body-small font-weight-medium text-uppercase mt-2">
                 {{ t(`permissions.groups.${g.group}`) }}

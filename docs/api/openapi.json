@@ -7908,6 +7908,9 @@
           "managed": {
             "type": "boolean"
           },
+          "airGappedRegistry": {
+            "type": "string"
+          },
           "deletion": {
             "$ref": "#/components/schemas/DeletionStatus"
           },

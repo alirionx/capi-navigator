@@ -3,6 +3,7 @@ import { ref, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { AwsCredentialInputSchema, type Credential } from '@capi-navigator/shared';
 import { fieldErrors, zodRule } from '../../forms/zod-rules.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Secret part of AWS credentials: access key of an IAM user (FP4-F-07). */
 const input = defineModel<unknown>({ required: true });
@@ -51,9 +52,11 @@ watchEffect(() => {
       v-model="awsRegion"
       :label="t('credentials.aws.region')"
       :rules="[zodRule(awsShape.region)]"
-      :hint="t('credentials.aws.regionHint')"
-      persistent-hint
       name="region"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.aws.regionHint')" />
+      </template>
+    </v-text-field>
   </div>
 </template>

@@ -18,6 +18,7 @@ import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useRolesStore } from '../stores/roles.js';
 import { useUsersStore } from '../stores/users.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 const { t } = useI18n();
 const store = useUsersStore();
@@ -256,15 +257,19 @@ async function confirm(): Promise<void> {
               v-model="form.username"
               :label="t('users.username')"
               :rules="[zodRule(UsernameSchema)]"
-              :hint="t('users.usernameHint')"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'username')"
               class="mb-2"
               name="username"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('users.usernameHint')" />
+              </template>
+            </v-text-field>
             <template v-if="dialog === 'create' || dialog === 'edit'">
-              <div class="text-title-small mt-2">{{ t('users.bindings') }}</div>
-              <p class="text-body-small text-medium-emphasis mb-2">{{ t('users.bindingsHint') }}</p>
+              <div class="text-title-small mt-2 mb-2">
+                {{ t('users.bindings') }}
+                <FieldHelp :text="t('users.bindingsHint')" />
+              </div>
               <BindingsEditor
                 v-model="form.bindings"
                 :roles="roles.roles"
@@ -272,25 +277,24 @@ async function confirm(): Promise<void> {
                 class="mb-2"
               />
             </template>
-            <v-switch
-              v-if="dialog === 'edit'"
-              v-model="form.disabled"
-              :label="t('users.disabledLabel')"
-              :hint="t('users.disabledHint')"
-              persistent-hint
-              color="error"
-              class="mb-2"
-            />
+            <v-switch v-if="dialog === 'edit'" v-model="form.disabled" color="error" class="mb-2">
+              <template #label>
+                {{ t('users.disabledLabel') }}
+                <FieldHelp :text="t('users.disabledHint')" />
+              </template>
+            </v-switch>
             <v-switch
               v-if="dialog === 'create'"
               v-model="form.apiOnly"
-              :label="t('users.apiOnly')"
-              :hint="t('users.apiOnlyHint')"
-              persistent-hint
               color="primary"
               class="mb-2"
               data-testid="user-api-only"
-            />
+            >
+              <template #label>
+                {{ t('users.apiOnly') }}
+                <FieldHelp :text="t('users.apiOnlyHint')" />
+              </template>
+            </v-switch>
             <v-text-field
               v-if="(dialog === 'create' && !form.apiOnly) || dialog === 'reset'"
               v-model="form.password"
@@ -298,15 +302,19 @@ async function confirm(): Promise<void> {
               type="password"
               autocomplete="new-password"
               :rules="[zodRule(PasswordSchema)]"
-              :hint="
-                dialog === 'create'
-                  ? t('users.passwordHint', { min: PASSWORD_MIN_LENGTH })
-                  : t('users.resetHint', { min: PASSWORD_MIN_LENGTH })
-              "
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'password')"
               name="password"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp
+                  :text="
+                    dialog === 'create'
+                      ? t('users.passwordHint', { min: PASSWORD_MIN_LENGTH })
+                      : t('users.resetHint', { min: PASSWORD_MIN_LENGTH })
+                  "
+                />
+              </template>
+            </v-text-field>
             <p v-if="dialog === 'delete'">{{ t('users.deleteText') }}</p>
             <ErrorAlert v-if="dialogError" :error="dialogError" class="mt-4" />
           </v-form>

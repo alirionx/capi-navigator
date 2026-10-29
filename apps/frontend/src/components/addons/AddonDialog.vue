@@ -18,6 +18,7 @@ import ValuesEditor from './ValuesEditor.vue';
 import { selectorLabels as labelsOf, selectorRows, type SelectorRow } from './selector.js';
 import { useAddonsStore } from '../../stores/addons.js';
 import { useHelmRepositoriesStore } from '../../stores/helm-repositories.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * Create or edit a Helm add-on (FP8-F-05 to F-10): the form maps 1:1 onto a CAAPH
@@ -195,32 +196,37 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           v-model="name"
           :label="t('addons.name')"
           :disabled="editing"
-          :hint="`${t('addons.nameHint')} ${hcpField('metadata.name')}`"
-          persistent-hint
           :error-messages="name ? fieldError('name') : []"
           data-testid="addon-name"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('addons.nameHint')} ${hcpField('metadata.name')}`" />
+          </template>
+        </v-text-field>
         <v-combobox
           v-model="namespace"
           :items="namespaces"
           :label="t('addons.namespace')"
           :disabled="editing"
-          :hint="`${t('addons.namespaceHint')} ${hcpField('metadata.namespace')}`"
-          persistent-hint
-          class="mt-2"
           data-testid="addon-namespace"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('addons.namespaceHint')} ${hcpField('metadata.namespace')}`" />
+          </template>
+        </v-combobox>
         <v-select
           v-model="repository"
           :items="repos.repositories"
           item-title="name"
           item-value="name"
           :label="t('addons.repository')"
-          :hint="repo ? `${repo.url} ${hcpField('spec.repoURL')}` : t('addons.noRepositories')"
-          persistent-hint
-          class="mt-2"
           data-testid="addon-repository"
         >
+          <template #append-inner>
+            <FieldHelp
+              :text="repo ? `${repo.url} ${hcpField('spec.repoURL')}` : t('addons.noRepositories')"
+            />
+          </template>
           <template #item="{ props: p, internalItem: item }">
             <v-list-item v-bind="p" :subtitle="item.raw.url" />
           </template>
@@ -233,11 +239,11 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           item-value="name"
           :loading="loadingCharts"
           :label="t('addons.chart')"
-          :hint="hcpField('spec.chartName')"
-          persistent-hint
-          class="mt-2"
           data-testid="addon-chart"
         >
+          <template #append-inner>
+            <FieldHelp :text="hcpField('spec.chartName')" />
+          </template>
           <template #item="{ props: p, internalItem: item }">
             <v-list-item
               v-bind="p"
@@ -249,42 +255,52 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           v-else
           v-model="chartName"
           :label="t('addons.chart')"
-          :hint="`${t('addons.ociChartHint')} ${hcpField('spec.chartName')}`"
-          persistent-hint
-          class="mt-2"
           data-testid="addon-chart"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('addons.ociChartHint')} ${hcpField('spec.chartName')}`" />
+          </template>
+        </v-text-field>
         <v-combobox
           v-model="version"
           :items="versionItems"
           :return-object="false"
           :loading="loadingVersions"
           :label="t('addons.version')"
-          :hint="`${t('addons.versionHint')} ${hcpField('spec.version')}`"
-          persistent-hint
-          class="mt-2"
           data-testid="addon-version"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('addons.versionHint')} ${hcpField('spec.version')}`" />
+          </template>
+        </v-combobox>
         <v-row density="compact" class="mt-1">
           <v-col cols="6">
             <v-text-field
               v-model="releaseName"
               :label="t('addons.releaseName')"
               :placeholder="chartName"
-              :hint="`${t('addons.releaseNameHint')} ${hcpField('spec.releaseName')}`"
-              persistent-hint
               :error-messages="releaseName ? fieldError('releaseName') : []"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp
+                  :text="`${t('addons.releaseNameHint')} ${hcpField('spec.releaseName')}`"
+                />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="6">
             <v-text-field
               v-model="releaseNamespace"
               :label="t('addons.releaseNamespace')"
-              :hint="`${t('addons.releaseNamespaceHint')} ${hcpField('spec.namespace')}`"
-              persistent-hint
               :error-messages="fieldError('releaseNamespace')"
               data-testid="addon-release-namespace"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp
+                  :text="`${t('addons.releaseNamespaceHint')} ${hcpField('spec.namespace')}`"
+                />
+              </template>
+            </v-text-field>
           </v-col>
         </v-row>
 
@@ -295,14 +311,13 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
           :active="open"
         />
 
-        <v-radio-group
-          v-model="reconcileStrategy"
-          :label="t('addons.strategy')"
-          :disabled="editing"
-          :hint="`${t('addons.strategyHint')} ${hcpField('spec.reconcileStrategy')}`"
-          persistent-hint
-          class="mt-3"
-        >
+        <v-radio-group v-model="reconcileStrategy" :disabled="editing" class="mt-3">
+          <template #label>
+            {{ t('addons.strategy') }}
+            <FieldHelp
+              :text="`${t('addons.strategyHint')} ${hcpField('spec.reconcileStrategy')}`"
+            />
+          </template>
           <v-radio :label="t('addons.continuous')" value="Continuous" />
           <v-radio :label="t('addons.installOnce')" value="InstallOnce" />
         </v-radio-group>
@@ -320,18 +335,23 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
             <v-text-field
               v-model="timeout"
               :label="t('addons.timeout')"
-              :hint="hcpField('spec.options.timeout')"
-              persistent-hint
               density="compact"
               :error-messages="fieldError('options.timeout')"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="hcpField('spec.options.timeout')" />
+              </template>
+            </v-text-field>
           </v-col>
         </v-row>
       </v-col>
 
       <v-col cols="12" md="7">
         <div class="d-flex align-center mb-1">
-          <div class="text-title-small">{{ t('addons.values') }}</div>
+          <div class="text-title-small">
+            {{ t('addons.values') }}
+            <FieldHelp :text="`${t('addons.valuesHint')} ${hcpField('spec.valuesTemplate')}`" />
+          </div>
           <v-spacer />
           <v-btn
             size="small"
@@ -344,9 +364,6 @@ const hcpField = (field: string) => t('addons.mapsTo', { field });
             >{{ t('addons.showDefaults') }}</v-btn
           >
         </div>
-        <p class="text-body-small text-medium-emphasis mb-2">
-          {{ t('addons.valuesHint') }} {{ hcpField('spec.valuesTemplate') }}
-        </p>
         <ValuesEditor v-model="valuesTemplate" height="340px" />
         <v-expansion-panels class="mt-3" variant="accordion">
           <v-expansion-panel :title="t('addons.templateExample')">

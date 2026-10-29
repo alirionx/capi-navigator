@@ -13,6 +13,7 @@ import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import ErrorAlert from './ErrorAlert.vue';
 import { providersWithoutProxy } from './outbound-proxy.js';
+import FieldHelp from './FieldHelp.vue';
 
 /**
  * Outbound proxy of the active management cluster for provider controllers that need the
@@ -149,52 +150,52 @@ function submit(): Promise<void> {
           <v-text-field
             v-model="form.httpsProxy"
             :label="t('providers.proxy.httpsProxy')"
-            :hint="t('providers.proxy.httpsProxyHint')"
-            persistent-hint
             placeholder="http://proxy.example.com:3128"
             :rules="[zodRule(shape.httpsProxy)]"
             :error-messages="fieldErrors(serverFieldErrors, 'outboundProxy.httpsProxy')"
-            class="mb-3"
             data-testid="proxy-https"
           >
             <template #append-inner>
               <span class="text-body-small text-medium-emphasis">HTTPS_PROXY</span>
+              <FieldHelp :text="t('providers.proxy.httpsProxyHint')" />
             </template>
           </v-text-field>
           <v-text-field
             v-model="form.httpProxy"
             :label="t('providers.proxy.httpProxy')"
-            :hint="t('providers.proxy.httpProxyHint')"
-            persistent-hint
             :rules="[(v: string) => !v.trim() || zodRule(shape.httpsProxy)(v.trim())]"
-            class="mb-3"
           >
             <template #append-inner>
               <span class="text-body-small text-medium-emphasis">HTTP_PROXY</span>
+              <FieldHelp :text="t('providers.proxy.httpProxyHint')" />
             </template>
           </v-text-field>
           <v-textarea
             v-model="form.noProxy"
             :label="t('providers.proxy.noProxy')"
-            :hint="t('providers.proxy.noProxyHint')"
-            persistent-hint
             rows="2"
             auto-grow
             placeholder="10.20.0.0/24,.example.internal"
-            class="mb-3 mono-input"
+            class="mono-input"
             data-testid="proxy-no-proxy"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('providers.proxy.noProxyHint')" />
+            </template>
+          </v-textarea>
           <v-textarea
             v-model="form.caCert"
             :label="t('providers.proxy.caCert')"
-            :hint="t('providers.proxy.caCertHint')"
-            persistent-hint
             rows="3"
             placeholder="-----BEGIN CERTIFICATE-----"
             :rules="[zodRule(shape.caCert)]"
             class="mono-input"
             data-testid="proxy-ca"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('providers.proxy.caCertHint')" />
+            </template>
+          </v-textarea>
         </v-form>
         <ErrorAlert v-if="saveError" :error="saveError" class="mt-3" />
       </v-card-text>

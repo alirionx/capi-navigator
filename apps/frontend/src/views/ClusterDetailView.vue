@@ -16,6 +16,7 @@ import {
   isReservedLabel,
 } from '@capi-navigator/shared';
 import { useRoute, useRouter } from 'vue-router';
+import AirGappedChip from '../components/AirGappedChip.vue';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
 import BastionEditor, { type BastionDraft } from '../components/BastionEditor.vue';
@@ -36,6 +37,7 @@ import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 /** Live status of a cluster (US-07, FP6-F-02): overview, machines and events. */
 const props = defineProps<{ namespace: string; name: string }>();
@@ -260,6 +262,12 @@ const machineHeaders = computed(() => [
         :title="t('clusters.externalHint')"
         >{{ t('clusters.external') }}</v-chip
       >
+      <AirGappedChip
+        v-if="s?.summary.airGappedRegistry"
+        :registry="s.summary.airGappedRegistry"
+        size="small"
+        class="ml-2"
+      />
       <v-spacer />
       <v-btn
         v-if="canDelete"
@@ -809,10 +817,12 @@ const machineHeaders = computed(() => [
         min="0"
         max="100"
         :label="t('changes.replicas')"
-        :hint="t('changes.replicasHint', { current: scaling.current })"
-        persistent-hint
         data-testid="scale-replicas"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('changes.replicasHint', { current: scaling.current })" />
+        </template>
+      </v-text-field>
     </ChangeDialog>
     <ChangeDialog
       v-model="labelsOpen"
@@ -826,14 +836,16 @@ const machineHeaders = computed(() => [
       <v-combobox
         v-model="labelItems"
         :label="t('changes.labelsField')"
-        :hint="t('changes.labelsHint')"
-        persistent-hint
         multiple
         chips
         closable-chips
         :error-messages="parsedLabels === null ? [t('changes.labelsInvalid')] : []"
         data-testid="labels-field"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('changes.labelsHint')" />
+        </template>
+      </v-combobox>
     </ChangeDialog>
     <DeleteClusterDialog
       v-if="connections.activeName"

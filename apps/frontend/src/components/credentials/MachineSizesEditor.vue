@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
+import FieldHelp from '../FieldHelp.vue';
 import {
   DEFAULT_PROXMOX_MACHINE_SIZES,
   ProxmoxMachineSizesSchema,
@@ -38,8 +39,10 @@ watchEffect(() => {
 
 <template>
   <div class="mt-4" data-testid="machine-sizes">
-    <div class="text-title-small">{{ t('credentials.sizes.title') }}</div>
-    <p class="text-body-small text-medium-emphasis mb-2">{{ t('credentials.sizes.hint') }}</p>
+    <div class="text-title-small mb-2">
+      {{ t('credentials.sizes.title') }}
+      <FieldHelp :text="t('credentials.sizes.hint')" />
+    </div>
     <div v-for="(r, i) in rows" :key="i" class="d-flex ga-2 align-center mb-3">
       <v-text-field
         v-model="r.name"

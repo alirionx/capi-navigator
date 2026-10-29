@@ -6,6 +6,7 @@ import { ApiError } from '../../api/client.js';
 import { fieldErrors, zodRule } from '../../forms/zod-rules.js';
 import { useTokensStore } from '../../stores/tokens.js';
 import ErrorAlert from '../ErrorAlert.vue';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * API tokens of a technical user (FP22-F-02, FP22-F-03): list, generate (shown exactly once) and
@@ -191,32 +192,34 @@ async function revoke(): Promise<void> {
               v-model="form.name"
               :label="t('tokens.name')"
               :rules="[zodRule(TokenNameSchema)]"
-              :hint="t('tokens.nameHint')"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'name')"
               style="min-width: 200px"
               data-testid="token-name"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('tokens.nameHint')" />
+              </template>
+            </v-text-field>
             <v-text-field
               v-model.number="form.expiresInDays"
               type="number"
               :min="1"
               :max="API_TOKEN_MAX_DAYS"
               :label="t('tokens.days')"
-              :hint="t('tokens.daysHint', { max: API_TOKEN_MAX_DAYS })"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'expiresInDays')"
               style="max-width: 200px"
               data-testid="token-days"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('tokens.daysHint', { max: API_TOKEN_MAX_DAYS })" />
+              </template>
+            </v-text-field>
           </div>
-          <v-text-field
-            v-model="form.description"
-            :label="t('tokens.description')"
-            :hint="t('tokens.descriptionHint')"
-            persistent-hint
-            class="mt-2"
-          />
+          <v-text-field v-model="form.description" :label="t('tokens.description')" class="mt-2">
+            <template #append-inner>
+              <FieldHelp :text="t('tokens.descriptionHint')" />
+            </template>
+          </v-text-field>
         </v-form>
         <ErrorAlert v-if="error" :error="error" class="mt-4" />
       </v-card-text>

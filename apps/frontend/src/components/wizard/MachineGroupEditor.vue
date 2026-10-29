@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { INFRA_PLUGINS, type Infrastructure, type LookupOption } from '@capi-navigator/shared';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Machine size, root disk and image override of one group (FP-5 step 2, FP5-F-19). */
 interface Group {
@@ -85,12 +86,14 @@ const rootRules = [
       item-value="value"
       :loading="sizesLoading"
       :label="t(form.sizeLabel)"
-      :hint="t('wizard.machineSizeHint', { target, field: form.sizeField })"
-      persistent-hint
       :rules="[(v: string) => !!v || t('wizard.required')]"
       style="min-width: 320px; flex: 2"
       :data-testid="`size-${role}`"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('wizard.machineSizeHint', { target, field: form.sizeField })" />
+      </template>
+    </v-autocomplete>
     <v-autocomplete
       v-model="group.image"
       :items="images"
@@ -98,10 +101,12 @@ const rootRules = [
       item-value="value"
       clearable
       :label="t('wizard.imageOverride')"
-      :hint="t('wizard.imageOverrideHint')"
-      persistent-hint
       style="min-width: 260px; flex: 1"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('wizard.imageOverrideHint')" />
+      </template>
+    </v-autocomplete>
   </div>
   <v-alert v-if="imageWarning" type="warning" variant="tonal" density="compact" class="mt-2">{{
     imageWarning
@@ -114,8 +119,6 @@ const rootRules = [
       max="4000"
       :label="t('wizard.rootVolume')"
       :placeholder="root.defaultGB ? String(root.defaultGB) : undefined"
-      :hint="rootHint"
-      persistent-hint
       :rules="rootRules"
       :disabled="rootDiskLocked"
       :clearable="!root.defaultGB && !needsVolume"
@@ -126,7 +129,11 @@ const rootRules = [
         (v: string | number | null) =>
           (group.rootVolumeSizeGB = v === '' || v === null ? undefined : Number(v))
       "
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="rootHint" />
+      </template>
+    </v-text-field>
     <v-select
       v-if="hasTypes"
       v-model="group.rootVolumeType"
@@ -136,11 +143,13 @@ const rootRules = [
       clearable
       :label="t('wizard.rootVolumeType')"
       :placeholder="root.defaultType"
-      :hint="rootDiskLocked ? t('wizard.rootDiskLocked') : t(root.typeHint)"
-      persistent-hint
       :disabled="rootDiskLocked || (!!root.typeNeedsSize && !group.rootVolumeSizeGB)"
       style="min-width: 220px; flex: 1"
       :data-testid="`root-type-${role}`"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="rootDiskLocked ? t('wizard.rootDiskLocked') : t(root.typeHint)" />
+      </template>
+    </v-select>
   </div>
 </template>

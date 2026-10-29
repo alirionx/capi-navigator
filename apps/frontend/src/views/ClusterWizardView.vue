@@ -32,6 +32,7 @@ import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 /** Cluster wizard (FP-5): eight steps, validated with the shared schema (FP5-F-02). */
 const { t, te } = useI18n();
@@ -476,31 +477,33 @@ const canPreview = computed(() => issues.value.length === 0);
       <template #[`item.1`]>
         <v-row>
           <v-col cols="12" md="6">
-            <v-text-field
-              v-model="draft.name"
-              :label="t('wizard.name')"
-              :hint="t('wizard.nameHint')"
-              persistent-hint
-              data-testid="name"
-            />
+            <v-text-field v-model="draft.name" :label="t('wizard.name')" data-testid="name">
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.nameHint')" />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-if="allowedNamespaces === 'all'"
               v-model="draft.namespace"
               :label="t('wizard.namespace')"
-              :hint="t('wizard.namespaceHint')"
-              persistent-hint
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.namespaceHint')" />
+              </template>
+            </v-text-field>
             <v-select
               v-else
               v-model="draft.namespace"
               :items="allowedNamespaces"
               :label="t('wizard.namespace')"
-              :hint="t('wizard.namespaceLimited')"
-              persistent-hint
               data-testid="namespace-select"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.namespaceLimited')" />
+              </template>
+            </v-select>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
@@ -512,9 +515,11 @@ const canPreview = computed(() => issues.value.length === 0);
               ]"
               data-testid="wizard-flavor"
               :label="t('wizard.distribution')"
-              :hint="t('wizard.distributionHint')"
-              persistent-hint
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.distributionHint')" />
+              </template>
+            </v-select>
             <!-- FP10-F-08: experimental, with its trade-offs before creation -->
             <v-alert
               v-if="flavorPlugin?.experimental"
@@ -544,9 +549,11 @@ const canPreview = computed(() => issues.value.length === 0);
                 }))
               "
               :label="t('wizard.version')"
-              :hint="t('wizard.versionHint', { cp: cpKind })"
-              persistent-hint
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.versionHint', { cp: cpKind })" />
+              </template>
+            </v-select>
           </v-col>
           <v-col cols="12" md="6">
             <v-btn-toggle
@@ -564,9 +571,7 @@ const canPreview = computed(() => issues.value.length === 0);
                 >{{ p.name }}</v-btn
               >
             </v-btn-toggle>
-            <div class="text-body-small text-medium-emphasis mt-1">
-              {{ t('wizard.providerHint') }}
-            </div>
+            <FieldHelp :text="t('wizard.providerHint')" class="ml-2" />
           </v-col>
           <v-col cols="12" md="6">
             <v-select
@@ -580,11 +585,13 @@ const canPreview = computed(() => issues.value.length === 0);
                 }))
               "
               :label="t('wizard.credential')"
-              :hint="t('wizard.credentialHint')"
-              persistent-hint
               :no-data-text="t('wizard.noCredentials')"
               data-testid="credential"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.credentialHint')" />
+              </template>
+            </v-select>
           </v-col>
           <!-- FP29-F-11: nodes without internet, from the connection's internal registry -->
           <v-col v-if="registry" cols="12">
@@ -609,7 +616,7 @@ const canPreview = computed(() => issues.value.length === 0);
               type="info"
               variant="tonal"
               density="compact"
-              class="mt-2"
+              class="mt-2 text-body-medium"
               data-testid="wizard-air-gap-info"
             >
               <div>{{ t('wizard.airGappedInfo', { registry: registry.host }) }}</div>
@@ -622,12 +629,14 @@ const canPreview = computed(() => issues.value.length === 0);
             <v-combobox
               v-model="draft.labels"
               :label="t('wizard.labels')"
-              :hint="t('wizard.labelsHint')"
-              persistent-hint
               multiple
               chips
               closable-chips
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.labelsHint')" />
+              </template>
+            </v-combobox>
           </v-col>
         </v-row>
         <ErrorAlert v-if="listError" :error="listError" class="mt-3" />
@@ -635,17 +644,19 @@ const canPreview = computed(() => issues.value.length === 0);
 
       <!-- 2 Topology -->
       <template #[`item.2`]>
-        <v-radio-group v-model="draft.mode" inline :hint="t('wizard.modeHint')" persistent-hint>
+        <v-radio-group v-model="draft.mode" inline>
           <v-radio :label="t('wizard.modeStandard')" value="standard" />
           <v-radio :label="t('wizard.modeAio')" value="all-in-one" data-testid="mode-aio" />
+          <FieldHelp :text="t('wizard.modeHint')" class="align-self-center" />
         </v-radio-group>
         <v-card border class="mt-4 pa-4">
           <div class="d-flex align-center mb-2">
             <div class="text-body-large">{{ t('wizard.controlPlane') }}</div>
             <v-spacer />
-            <span class="text-body-medium text-medium-emphasis mr-3">{{
+            <span class="text-body-medium text-medium-emphasis mr-1">{{
               t('wizard.cpNodes')
             }}</span>
+            <FieldHelp :text="t('wizard.cpHint', { cp: cpKind })" class="mr-3" />
             <v-btn-toggle
               v-model="draft.cp.replicas"
               mandatory
@@ -657,9 +668,6 @@ const canPreview = computed(() => issues.value.length === 0);
               <v-btn :value="3">3</v-btn>
               <v-btn :value="5">5</v-btn>
             </v-btn-toggle>
-          </div>
-          <div class="text-body-small text-medium-emphasis mb-3">
-            {{ t('wizard.cpHint', { cp: cpKind }) }}
           </div>
           <MachineGroupEditor
             v-model="draft.cp"
@@ -673,12 +681,14 @@ const canPreview = computed(() => issues.value.length === 0);
           <v-switch
             v-if="draft.mode === 'standard'"
             v-model="draft.sameRootDisk"
-            :label="t('wizard.sameRootDisk')"
-            :hint="t('wizard.sameRootDiskHint')"
-            persistent-hint
             class="mt-3"
             data-testid="same-root-disk"
-          />
+          >
+            <template #label>
+              {{ t('wizard.sameRootDisk') }}
+              <FieldHelp :text="t('wizard.sameRootDiskHint')" />
+            </template>
+          </v-switch>
         </v-card>
         <template v-if="draft.mode === 'standard'">
           <v-card v-for="(pool, i) in draft.pools" :key="i" border class="mt-4 pa-4">
@@ -686,29 +696,35 @@ const canPreview = computed(() => issues.value.length === 0);
               <v-text-field
                 v-model="pool.name"
                 :label="t('wizard.poolName')"
-                :hint="t('wizard.poolNameHint')"
-                persistent-hint
                 style="max-width: 220px"
-              />
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.poolNameHint')" />
+                </template>
+              </v-text-field>
               <v-text-field
                 v-model.number="pool.replicas"
                 type="number"
                 min="0"
                 :label="t('wizard.replicas')"
-                :hint="t('wizard.replicasHint')"
-                persistent-hint
                 style="max-width: 160px"
-              />
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.replicasHint')" />
+                </template>
+              </v-text-field>
               <v-combobox
                 v-model="pool.nodeLabels"
                 :label="t('wizard.nodeLabels')"
-                :hint="t('wizard.nodeLabelsHint')"
-                persistent-hint
                 multiple
                 chips
                 closable-chips
                 style="min-width: 240px; flex: 1"
-              />
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.nodeLabelsHint')" />
+                </template>
+              </v-combobox>
               <v-btn
                 icon="mdi-delete"
                 variant="text"
@@ -776,40 +792,41 @@ const canPreview = computed(() => issues.value.length === 0);
 
       <!-- 4 Add-ons -->
       <template #[`item.4`]>
-        <v-switch
-          v-model="draft.addons.ccm"
-          color="primary"
-          :label="t('wizard.ccm')"
-          :hint="t('wizard.ccmHint')"
-          persistent-hint
-        />
-        <v-switch
-          v-model="draft.addons.csi"
-          color="primary"
-          :label="t('wizard.csi')"
-          :hint="t('wizard.csiHint')"
-          persistent-hint
-          class="mt-2"
-        />
+        <v-switch v-model="draft.addons.ccm" color="primary">
+          <template #label>
+            {{ t('wizard.ccm') }}
+            <FieldHelp :text="t('wizard.ccmHint')" />
+          </template>
+        </v-switch>
+        <v-switch v-model="draft.addons.csi" color="primary" class="mt-2">
+          <template #label>
+            {{ t('wizard.csi') }}
+            <FieldHelp :text="t('wizard.csiHint')" />
+          </template>
+        </v-switch>
         <v-switch
           v-if="flavorPlugin?.needsCni"
           v-model="draft.cni"
           color="primary"
-          :label="t('wizard.cni')"
-          :hint="t('wizard.cniHint')"
-          persistent-hint
           class="mt-2"
           data-testid="wizard-cni"
-        />
+        >
+          <template #label>
+            {{ t('wizard.cni') }}
+            <FieldHelp :text="t('wizard.cniHint')" />
+          </template>
+        </v-switch>
         <v-switch
           v-model="draft.addons.reboot"
           color="primary"
-          :label="t('wizard.reboot')"
-          :hint="t('wizard.rebootHint')"
-          persistent-hint
           class="mt-2"
           data-testid="wizard-reboot-daemon"
-        />
+        >
+          <template #label>
+            {{ t('wizard.reboot') }}
+            <FieldHelp :text="t('wizard.rebootHint')" />
+          </template>
+        </v-switch>
         <v-table density="compact" class="mt-4">
           <thead>
             <tr>
@@ -866,61 +883,69 @@ const canPreview = computed(() => issues.value.length === 0);
               ><v-text-field
                 v-model="draft.packageRepository"
                 :label="t('wizard.packageRepository')"
-                :hint="t('wizard.packageRepositoryHint')"
-                persistent-hint
                 placeholder="https://pkgs.k8s.io"
-            /></v-col>
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.packageRepositoryHint')" />
+                </template> </v-text-field
+            ></v-col>
             <v-col cols="12" md="6"
               ><v-text-field
                 v-model="draft.binaryDownloads"
                 :label="t('wizard.binaryDownloads')"
-                :hint="t('wizard.binaryDownloadsHint')"
-                persistent-hint
                 placeholder="https://github.com"
-            /></v-col>
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.binaryDownloadsHint')" />
+                </template> </v-text-field
+            ></v-col>
           </template>
           <v-col cols="12" md="6"
-            ><v-text-field
-              v-model="draft.podCidr"
-              :label="t('wizard.podCidr')"
-              :hint="t('wizard.podCidrHint')"
-              persistent-hint
-          /></v-col>
+            ><v-text-field v-model="draft.podCidr" :label="t('wizard.podCidr')">
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.podCidrHint')" />
+              </template> </v-text-field
+          ></v-col>
           <v-col cols="12" md="6"
-            ><v-text-field
-              v-model="draft.serviceCidr"
-              :label="t('wizard.serviceCidr')"
-              :hint="t('wizard.serviceCidrHint')"
-              persistent-hint
-          /></v-col>
+            ><v-text-field v-model="draft.serviceCidr" :label="t('wizard.serviceCidr')">
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.serviceCidrHint')" />
+              </template> </v-text-field
+          ></v-col>
           <v-col cols="12"
             ><v-textarea
               v-model="draft.sshKeys"
               :label="t('wizard.sshPublicKeys')"
-              :hint="t('wizard.sshPublicKeysHint')"
-              persistent-hint
               rows="2"
               auto-grow
               class="font-monospace"
-          /></v-col>
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.sshPublicKeysHint')" />
+              </template> </v-textarea
+          ></v-col>
           <v-col cols="12" md="6"
             ><v-text-field
               v-model.number="draft.maxSurge"
               type="number"
               min="0"
               :label="t('wizard.maxSurge')"
-              :hint="t('wizard.maxSurgeHint')"
-              persistent-hint
-          /></v-col>
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.maxSurgeHint')" />
+              </template> </v-text-field
+          ></v-col>
           <v-col cols="12" md="6"
             ><v-text-field
               v-model.number="draft.maxUnavailable"
               type="number"
               min="0"
               :label="t('wizard.maxUnavailable')"
-              :hint="t('wizard.maxUnavailableHint')"
-              persistent-hint
-          /></v-col>
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.maxUnavailableHint')" />
+              </template> </v-text-field
+          ></v-col>
         </v-row>
       </template>
 

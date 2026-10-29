@@ -56,6 +56,7 @@ export const en = {
     no: 'No',
     back: 'Back',
     close: 'Close',
+    help: 'Help',
   },
   changes: {
     preview: 'Preview changes',
@@ -710,6 +711,8 @@ export const en = {
     external: 'external',
     externalHint:
       'Created outside CAPI Navigator: shown read-only, since there is no stored cluster spec.',
+    airGapped: 'Air-gapped',
+    airGappedHint: 'Nodes without internet access; images and binaries come from {registry}.',
     size: 'Size',
     image: 'Image',
     rootDisk: 'Root disk',

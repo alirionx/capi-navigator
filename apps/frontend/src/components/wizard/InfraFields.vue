@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { InfraForm, InfraValues, LookupOption } from '@capi-navigator/shared';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Infrastructure step of the wizard, rendered from the provider's form description (FP25-F-05). */
 const values = defineModel<InfraValues>({ required: true });
@@ -30,11 +31,13 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         v-if="f.kind === 'switch'"
         v-model="values[f.path]"
         color="primary"
-        :label="t(f.label)"
-        :hint="t(f.hint)"
-        persistent-hint
         :data-testid="f.testId"
-      />
+      >
+        <template #label>
+          {{ t(f.label) }}
+          <FieldHelp :text="t(f.hint)" />
+        </template>
+      </v-switch>
       <v-autocomplete
         v-else-if="f.kind === 'autocomplete'"
         v-model="values[f.path]"
@@ -44,10 +47,11 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         :loading="!!f.lookup && loading"
         :clearable="f.clearable"
         :label="t(f.label)"
-        :hint="t(f.hint)"
-        persistent-hint
         :data-testid="f.testId"
       >
+        <template #append-inner>
+          <FieldHelp :text="t(f.hint)" />
+        </template>
         <template #item="{ props: itemProps, internalItem: item }">
           <v-list-item
             v-bind="itemProps"
@@ -66,20 +70,24 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         :loading="!!f.lookup && loading"
         :clearable="f.clearable"
         :label="t(f.label)"
-        :hint="t(f.hint)"
-        persistent-hint
         :data-testid="f.testId"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t(f.hint)" />
+        </template>
+      </v-select>
       <v-text-field
         v-else
         v-model="values[f.path]"
         :type="f.kind === 'number' ? 'number' : 'text'"
         :clearable="f.clearable"
         :label="t(f.label)"
-        :hint="t(f.hint)"
-        persistent-hint
         :data-testid="f.testId"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t(f.hint)" />
+        </template>
+      </v-text-field>
       <v-alert
         v-if="chosenWarning(f)"
         type="warning"

@@ -3,6 +3,7 @@ import { computed, ref, watch, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { GcpCredentialInputSchema, type Credential } from '@capi-navigator/shared';
 import { fieldErrors, zodRule } from '../../forms/zod-rules.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Secret part of Google Cloud credentials: the JSON key of a service account (FP25-F-02). */
 const input = defineModel<unknown>({ required: true });
@@ -57,15 +58,17 @@ watchEffect(() => {
     <v-textarea
       v-model="gcpKey"
       :label="t('credentials.gcp.keyPaste')"
-      :hint="t('credentials.gcp.keyHint')"
-      persistent-hint
       :rules="[zodRule(gcpShape.serviceAccountKey)]"
       :error-messages="fieldErrors(serverFieldErrors, 'gcp.serviceAccountKey')"
       rows="3"
       class="secret-text mb-4"
       autocomplete="off"
       data-testid="gcp-key"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.gcp.keyHint')" />
+      </template>
+    </v-textarea>
     <v-alert
       v-if="gcpKeyInfo"
       type="success"
@@ -79,11 +82,13 @@ watchEffect(() => {
       v-model="gcpRegion"
       :label="t('credentials.gcp.region')"
       :rules="[zodRule(gcpShape.region)]"
-      :hint="t('credentials.gcp.regionHint')"
-      persistent-hint
       name="gcpRegion"
       data-testid="gcp-region"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.gcp.regionHint')" />
+      </template>
+    </v-text-field>
   </div>
 </template>
 

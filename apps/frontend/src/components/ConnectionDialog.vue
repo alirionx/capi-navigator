@@ -13,6 +13,7 @@ import { ApiError } from '../api/client.js';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import ErrorAlert from './ErrorAlert.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /** Create or edit a management cluster connection (FP2-F-01). */
 const props = defineProps<{ connection?: Connection | null }>();
@@ -142,30 +143,30 @@ async function save(): Promise<void> {
           v-model="name"
           :label="t('connections.name')"
           :rules="[zodRule(ConnectionNameSchema)]"
-          :hint="t('connections.nameHint')"
-          persistent-hint
           :error-messages="fieldErrors(serverFieldErrors, 'name')"
-          class="mb-2"
           name="name"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="t('connections.nameHint')" />
+          </template>
+        </v-text-field>
         <v-text-field
           v-model="displayName"
           :label="t('connections.displayName')"
-          :hint="t('connections.displayNameHint')"
-          persistent-hint
           class="mb-2"
           name="displayName"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="t('connections.displayNameHint')" />
+          </template>
+        </v-text-field>
 
-        <v-switch
-          v-if="editing"
-          v-model="replaceCredentials"
-          :label="t('connections.replaceCredentials')"
-          :hint="t('connections.replaceCredentialsHint')"
-          persistent-hint
-          color="primary"
-          class="mb-2"
-        />
+        <v-switch v-if="editing" v-model="replaceCredentials" color="primary" class="mb-2">
+          <template #label>
+            {{ t('connections.replaceCredentials') }}
+            <FieldHelp :text="t('connections.replaceCredentialsHint')" />
+          </template>
+        </v-switch>
 
         <template v-if="replaceCredentials">
           <div class="text-title-small mt-2 mb-1">{{ t('connections.authType') }}</div>
@@ -200,25 +201,29 @@ async function save(): Promise<void> {
             <v-textarea
               v-model="kubeconfig"
               :label="t('connections.kubeconfig')"
-              :hint="t('connections.kubeconfigHint')"
-              persistent-hint
               :rules="[required]"
               :error-messages="fieldErrors(serverFieldErrors, 'credentials.kubeconfig')"
               rows="5"
               class="font-monospace mb-2"
               name="kubeconfig"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('connections.kubeconfigHint')" />
+              </template>
+            </v-textarea>
             <ErrorAlert v-if="contextsError" :error="contextsError" class="mb-2" />
             <v-select
               v-if="contexts"
               v-model="context"
               :items="contextItems"
               :label="t('connections.context')"
-              :hint="t('connections.contextHint')"
-              persistent-hint
               class="mb-2"
               name="context"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('connections.contextHint')" />
+              </template>
+            </v-select>
           </template>
 
           <template v-else-if="authType === 'token'">
@@ -227,26 +232,31 @@ async function save(): Promise<void> {
               :label="t('connections.server')"
               placeholder="https://203.0.113.10:6443"
               :rules="[zodRule(tokenSchemas.server)]"
-              :hint="t('connections.serverHint')"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'credentials.server')"
-              class="mb-2"
               name="server"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('connections.serverHint')" />
+              </template>
+            </v-text-field>
             <v-text-field
               v-model="token"
               :label="t('connections.token')"
               :type="showToken ? 'text' : 'password'"
-              :append-inner-icon="showToken ? 'mdi-eye-off' : 'mdi-eye'"
               :rules="[required]"
-              :hint="t('connections.tokenHint')"
-              persistent-hint
               autocomplete="off"
               :error-messages="fieldErrors(serverFieldErrors, 'credentials.token')"
-              class="mb-2"
               name="token"
-              @click:append-inner="showToken = !showToken"
-            />
+            >
+              <template #append-inner>
+                <v-icon
+                  :icon="showToken ? 'mdi-eye-off' : 'mdi-eye'"
+                  class="mr-1"
+                  @click="showToken = !showToken"
+                />
+                <FieldHelp :text="t('connections.tokenHint')" />
+              </template>
+            </v-text-field>
             <v-file-input
               v-model="caFile"
               :label="t('connections.caFile')"
@@ -256,14 +266,16 @@ async function save(): Promise<void> {
             <v-textarea
               v-model="caCert"
               :label="t('connections.caCert')"
-              :hint="t('connections.caCertHint')"
-              persistent-hint
               :rules="[zodRule(tokenSchemas.caCert)]"
               :error-messages="fieldErrors(serverFieldErrors, 'credentials.caCert')"
               rows="4"
               class="font-monospace"
               name="caCert"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('connections.caCertHint')" />
+              </template>
+            </v-textarea>
           </template>
 
           <v-alert v-else type="info" variant="tonal" density="comfortable">

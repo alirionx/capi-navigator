@@ -98,8 +98,10 @@ test.describe('sign-in with OpenID Connect (FP-14)', () => {
     await admin.goto('/users');
     // FP14-F-15: carol is in the list of recent sign-ins; mapping her prefills ID and name.
     await admin.getByTestId(`oidc-sign-in-map-${subject}`).click();
-    await expect(admin.getByTestId('oidc-person-subject').locator('input')).toHaveValue(subject!);
-    await admin.getByTestId('oidc-person-name').locator('input').fill('Carol');
+    await expect(
+      admin.getByTestId('oidc-person-subject').locator('input:not([type=hidden])'),
+    ).toHaveValue(subject!);
+    await admin.getByTestId('oidc-person-name').locator('input:not([type=hidden])').fill('Carol');
     await admin.getByTestId('bindings-editor').getByRole('combobox').first().click();
     await admin.locator('.v-overlay--active .v-list-item').filter({ hasText: 'Operator' }).click();
     await admin.getByTestId('oidc-group-confirm').click();
@@ -141,10 +143,10 @@ test.describe('sign-in with OpenID Connect (FP-14)', () => {
     expect(await options()).toEqual({ label: 'Sign in with Company SSO' });
 
     // Off: the button disappears; on again with the original label.
-    await page.getByTestId('oidc-enabled').locator('input').click();
+    await page.getByTestId('oidc-enabled').locator('input:not([type=hidden])').click();
     await save();
     expect(await options()).toBeNull();
-    await page.getByTestId('oidc-enabled').locator('input').click();
+    await page.getByTestId('oidc-enabled').locator('input:not([type=hidden])').click();
     await label.fill('Sign in with Dex');
     await save();
     expect(await options()).toEqual({ label: 'Sign in with Dex' });

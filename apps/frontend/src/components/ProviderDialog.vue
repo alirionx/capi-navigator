@@ -15,6 +15,7 @@ import { useOperatorStore } from '../stores/operator.js';
 import ErrorAlert from './ErrorAlert.vue';
 import { proxySwitchDefault } from './outbound-proxy.js';
 import YamlViewer from './YamlViewer.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /**
  * Install (FP3-F-09) or upgrade/configure (FP3-F-12) a provider. Two steps: form, then the
@@ -162,17 +163,17 @@ async function apply(): Promise<void> {
           :items="versions"
           :label="t('providers.version')"
           :rules="[zodRule(shape.version)]"
-          :hint="
-            t('providers.versionHint', { version: entry?.recommendedVersion }) +
-            (versionsLive ? '' : ' ' + t('providers.versionsOffline'))
-          "
-          persistent-hint
           :error-messages="fieldErrors(serverFieldErrors, 'version')"
-          class="mb-3"
           name="version"
         >
           <template #append-inner>
             <span class="text-body-small text-medium-emphasis">spec.version</span>
+            <FieldHelp
+              :text="
+                t('providers.versionHint', { version: entry?.recommendedVersion }) +
+                (versionsLive ? '' : ' ' + t('providers.versionsOffline'))
+              "
+            />
           </template>
         </v-combobox>
 
@@ -181,27 +182,33 @@ async function apply(): Promise<void> {
           :label="t('providers.namespace')"
           :disabled="upgrade"
           :rules="[zodRule(shape.namespace)]"
-          :hint="t('providers.namespaceHint', { ns: entry?.defaultNamespace })"
-          persistent-hint
           :error-messages="fieldErrors(serverFieldErrors, 'namespace')"
           class="mb-3"
           name="namespace"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="t('providers.namespaceHint', { ns: entry?.defaultNamespace })" />
+          </template>
+        </v-text-field>
 
         <v-switch
           v-if="hasProxy"
           v-model="useProxy"
-          :label="t('providers.useProxy')"
-          :hint="
-            t('providers.useProxyHint', {
-              default: proxyDefault ? t('providers.proxyOn') : t('providers.proxyOff'),
-            })
-          "
-          persistent-hint
           color="primary"
           class="mb-3"
           data-testid="provider-use-proxy"
-        />
+        >
+          <template #label>
+            {{ t('providers.useProxy') }}
+            <FieldHelp
+              :text="
+                t('providers.useProxyHint', {
+                  default: proxyDefault ? t('providers.proxyOn') : t('providers.proxyOff'),
+                })
+              "
+            />
+          </template>
+        </v-switch>
         <v-alert
           v-else-if="proxyRemoved"
           type="info"
@@ -320,10 +327,12 @@ async function apply(): Promise<void> {
               <v-text-field
                 v-model="fetchConfigUrl"
                 :label="t('providers.fetchConfig')"
-                :hint="t('providers.fetchConfigHint')"
-                persistent-hint
                 placeholder="https://…/infrastructure-components.yaml"
-              />
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('providers.fetchConfigHint')" />
+                </template>
+              </v-text-field>
             </v-expansion-panel-text>
           </v-expansion-panel>
         </v-expansion-panels>

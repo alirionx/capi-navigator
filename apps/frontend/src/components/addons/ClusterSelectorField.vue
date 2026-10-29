@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAddonsStore } from '../../stores/addons.js';
 import { selectorLabels, type SelectorRow } from './selector.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * matchLabels of a HelmChartProxy with the clusters they select right now (FP8-F-07); shared by
@@ -34,11 +35,12 @@ watch(
 </script>
 
 <template>
-  <div class="text-title-small mt-4">{{ t('addons.selector') }}</div>
-  <p class="text-body-small text-medium-emphasis mb-2">
-    {{ t('addons.selectorHint') }}
-    {{ t('addons.mapsTo', { field: 'spec.clusterSelector.matchLabels' }) }}
-  </p>
+  <div class="text-title-small mt-4 mb-2">
+    {{ t('addons.selector') }}
+    <FieldHelp
+      :text="`${t('addons.selectorHint')} ${t('addons.mapsTo', { field: 'spec.clusterSelector.matchLabels' })}`"
+    />
+  </div>
   <div v-for="(s, i) in rows" :key="i" class="d-flex ga-2 align-center">
     <v-text-field
       v-model="s.key"

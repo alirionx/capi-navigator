@@ -24,6 +24,7 @@ import CustomizationEditor from '../wizard/CustomizationEditor.vue';
 import InfraFields from '../wizard/InfraFields.vue';
 import MachineGroupEditor from '../wizard/MachineGroupEditor.vue';
 import { newerImage } from './newer-image.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * Day-2 configuration of a managed cluster (FP-7): every change updates the stored spec and is
@@ -656,7 +657,16 @@ const infraNotes = computed(() =>
           t('day2.reapplyExplain')
         }}</v-alert>
         <template v-else-if="mode === 'cpScale'">
-          <div class="text-body-medium text-medium-emphasis mb-2">{{ t('wizard.cpNodes') }}</div>
+          <div class="text-body-medium text-medium-emphasis mb-2">
+            {{ t('wizard.cpNodes') }}
+            <FieldHelp
+              :text="
+                t('wizard.cpHint', {
+                  cp: FLAVOR_PLUGINS[spec?.kubernetes.flavor ?? 'rke2']?.controlPlaneResource.kind,
+                })
+              "
+            />
+          </div>
           <v-btn-toggle
             v-model="form.replicas"
             mandatory
@@ -666,13 +676,6 @@ const infraNotes = computed(() =>
           >
             <v-btn :value="1">1</v-btn><v-btn :value="3">3</v-btn><v-btn :value="5">5</v-btn>
           </v-btn-toggle>
-          <div class="text-body-small text-medium-emphasis mt-2">
-            {{
-              t('wizard.cpHint', {
-                cp: FLAVOR_PLUGINS[spec?.kubernetes.flavor ?? 'rke2']?.controlPlaneResource.kind,
-              })
-            }}
-          </div>
           <v-alert
             v-if="form.replicas < spec.topology.controlPlane.replicas"
             type="warning"
@@ -693,22 +696,28 @@ const infraNotes = computed(() =>
           type="number"
           min="0"
           :label="t('changes.replicas')"
-          :hint="
-            t('changes.replicasHint', {
-              current: groups.find((x) => x.id === target)?.group.replicas ?? 0,
-            })
-          "
-          persistent-hint
-        />
+        >
+          <template #append-inner>
+            <FieldHelp
+              :text="
+                t('changes.replicasHint', {
+                  current: groups.find((x) => x.id === target)?.group.replicas ?? 0,
+                })
+              "
+            />
+          </template>
+        </v-text-field>
         <template v-else-if="mode === 'addPool'">
           <div class="d-flex ga-3 mb-3">
             <v-text-field
               v-model="form.name"
               :label="t('wizard.poolName')"
-              :hint="t('wizard.poolNameHint')"
-              persistent-hint
               data-testid="day2-pool-name"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('wizard.poolNameHint')" />
+              </template>
+            </v-text-field>
             <v-text-field
               v-model.number="form.replicas"
               type="number"
@@ -766,18 +775,22 @@ const infraNotes = computed(() =>
             min="0"
             max="10"
             label="maxSurge"
-            :hint="t('day2.maxSurgeHint')"
-            persistent-hint
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('day2.maxSurgeHint')" />
+            </template>
+          </v-text-field>
           <v-text-field
             v-model.number="form.maxUnavailable"
             type="number"
             min="0"
             max="10"
             label="maxUnavailable"
-            :hint="t('day2.maxUnavailableHint')"
-            persistent-hint
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('day2.maxUnavailableHint')" />
+            </template>
+          </v-text-field>
         </div>
         <template v-else-if="mode === 'infrastructure'">
           <v-alert type="info" variant="tonal" density="compact" class="mb-2">
@@ -792,10 +805,12 @@ const infraNotes = computed(() =>
             v-model="form.version"
             :items="upgradeTargets"
             :label="t('day2.targetVersion')"
-            :hint="t('day2.upgradeHint', { current: spec.kubernetes.version })"
-            persistent-hint
             data-testid="day2-version"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('day2.upgradeHint', { current: spec.kubernetes.version })" />
+            </template>
+          </v-select>
           <v-alert type="info" variant="tonal" density="compact" class="mt-3">{{
             t('day2.upgradeOrder')
           }}</v-alert>

@@ -69,10 +69,16 @@ export function toSummary(
   const cpKind = (spec.controlPlaneRef as { kind?: string } | undefined)?.kind;
   const stored = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
   let flavor: string | undefined;
+  let airGappedRegistry: string | undefined;
   try {
-    flavor = stored
-      ? (JSON.parse(stored) as { kubernetes?: { flavor?: string } }).kubernetes?.flavor
+    const parsed = stored
+      ? (JSON.parse(stored) as {
+          kubernetes?: { flavor?: string };
+          airGapped?: { registry?: { host?: string } };
+        })
       : undefined;
+    flavor = parsed?.kubernetes?.flavor;
+    airGappedRegistry = parsed?.airGapped?.registry?.host;
   } catch {
     flavor = undefined;
   }
@@ -107,6 +113,7 @@ export function toSummary(
       ? { createdAt: String(cluster.metadata.creationTimestamp) }
       : {}),
     managed: !!stored,
+    ...(airGappedRegistry ? { airGappedRegistry } : {}),
     ...deletionOf(cluster),
     ...(machines ? { machines: machines.map(briefMachine).sort(byRoleAndName) } : {}),
   };

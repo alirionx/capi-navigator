@@ -90,7 +90,6 @@ const remove = (i: number) => (bindings.value = bindings.value.filter((_, j) => 
         chips
         closable-chips
         density="compact"
-        class="mt-3"
         :data-testid="`binding-${i}-namespaces`"
         @update:model-value="(v: string[]) => update(i, { namespaces: v })"
       />

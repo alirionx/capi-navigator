@@ -8,6 +8,7 @@ import { useAddonsStore } from '../../stores/addons.js';
 import { useAuthStore } from '../../stores/auth.js';
 import { useConnectionsStore } from '../../stores/connections.js';
 import { useHelmRepositoriesStore } from '../../stores/helm-repositories.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * Chart source of the manifest add-ons of one connection (FP30-F-02, FP30-F-03): the chart on
@@ -97,10 +98,11 @@ async function save(): Promise<void> {
           v-model="source"
           :items="sources"
           :label="t('manifestAddons.source')"
-          :hint="t('manifestAddons.sourceHint')"
-          persistent-hint
           data-testid="manifest-chart-source"
         >
+          <template #append-inner>
+            <FieldHelp :text="t('manifestAddons.sourceHint')" />
+          </template>
           <template #item="{ props: p, internalItem: item }">
             <v-list-item v-bind="p" :subtitle="item.raw.subtitle" />
           </template>

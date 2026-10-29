@@ -3,6 +3,7 @@ import { ref, watch, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { ProxmoxCredentialInputSchema, type Credential } from '@capi-navigator/shared';
 import { fieldErrors, zodRule } from '../../forms/zod-rules.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Secret part of Proxmox VE credentials: API URL, token and its CA (FP31-F-02). */
 const input = defineModel<unknown>({ required: true });
@@ -42,51 +43,55 @@ watchEffect(() => {
       v-model="url"
       :label="t('credentials.proxmox.url')"
       :rules="[zodRule(shape.url)]"
-      :hint="t('credentials.proxmox.urlHint')"
-      persistent-hint
       :error-messages="fieldErrors(serverFieldErrors, 'proxmox.url')"
-      class="mb-2"
       data-testid="proxmox-url"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.proxmox.urlHint')" />
+      </template>
+    </v-text-field>
     <v-text-field
       v-model="tokenId"
       :label="t('credentials.proxmox.tokenId')"
       :rules="[zodRule(shape.tokenId)]"
-      :hint="t('credentials.proxmox.tokenIdHint')"
-      persistent-hint
       :error-messages="fieldErrors(serverFieldErrors, 'proxmox.tokenId')"
-      class="mb-2"
       data-testid="proxmox-token-id"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.proxmox.tokenIdHint')" />
+      </template>
+    </v-text-field>
     <v-text-field
       v-model="tokenSecret"
       :label="t('credentials.proxmox.tokenSecret')"
       :rules="[zodRule(shape.tokenSecret)]"
-      :hint="t('credentials.proxmox.tokenSecretHint')"
-      persistent-hint
       type="password"
       autocomplete="new-password"
       :error-messages="fieldErrors(serverFieldErrors, 'proxmox.tokenSecret')"
-      class="mb-2"
       data-testid="proxmox-token-secret"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.proxmox.tokenSecretHint')" />
+      </template>
+    </v-text-field>
     <v-file-input
       v-model="caFile"
       :label="t('credentials.proxmox.caFile')"
       accept=".pem,.crt"
       prepend-icon="mdi-certificate"
       show-size
-      class="mb-1"
     />
     <v-textarea
       v-model="caCert"
       :label="t('credentials.proxmox.ca')"
-      :hint="t('credentials.proxmox.caHint')"
-      persistent-hint
       :rules="[zodRule(shape.caCert)]"
       :error-messages="fieldErrors(serverFieldErrors, 'proxmox.caCert')"
       rows="3"
       data-testid="proxmox-ca"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.proxmox.caHint')" />
+      </template>
+    </v-textarea>
   </div>
 </template>

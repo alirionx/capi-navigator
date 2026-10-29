@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { FLAVOR_PLUGINS, type KubernetesFlavor } from '@capi-navigator/shared';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Files and pre/post commands of one group (FP5-F-13). Runs as root on the nodes. */
 interface FileEntry {
@@ -93,20 +94,24 @@ function addFile(fromSecret: boolean): void {
     <v-textarea
       v-model="pre"
       :label="t('wizard.custom.pre')"
-      :hint="t('wizard.custom.preHint', { field: fields.preCommands })"
-      persistent-hint
       rows="2"
       auto-grow
       class="mt-3 font-monospace"
-    />
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('wizard.custom.preHint', { field: fields.preCommands })" />
+      </template>
+    </v-textarea>
     <v-textarea
       v-model="post"
       :label="t('wizard.custom.post')"
-      :hint="t('wizard.custom.postHint', { field: fields.postCommands })"
-      persistent-hint
       rows="2"
       auto-grow
-      class="mt-3 font-monospace"
-    />
+      class="font-monospace"
+    >
+      <template #append-inner>
+        <FieldHelp :text="t('wizard.custom.postHint', { field: fields.postCommands })" />
+      </template>
+    </v-textarea>
   </div>
 </template>

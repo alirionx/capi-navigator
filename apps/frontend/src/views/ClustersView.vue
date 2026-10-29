@@ -6,6 +6,7 @@ import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
+import AirGappedChip from '../components/AirGappedChip.vue';
 
 /** Live list of the workload clusters of the active management cluster (FP6-F-01). */
 const { t } = useI18n();
@@ -139,6 +140,11 @@ const phaseColor = (c: ClusterSummary) =>
               :title="t('clusters.externalHint')"
               >{{ t('clusters.external') }}</v-chip
             >
+            <AirGappedChip
+              v-if="item.airGappedRegistry"
+              :registry="item.airGappedRegistry"
+              class="ml-2"
+            />
           </template>
           <template #[`item.provider`]="{ item }">{{ item.provider ?? '–' }}</template>
           <template #[`item.flavor`]="{ item }">{{ item.flavor ?? '–' }}</template>

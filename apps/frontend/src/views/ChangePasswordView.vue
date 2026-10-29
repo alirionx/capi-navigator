@@ -7,6 +7,7 @@ import { ApiError } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthStore } from '../stores/auth.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -73,18 +74,19 @@ async function submit(): Promise<void> {
             type="password"
             autocomplete="new-password"
             :rules="[zodRule(PasswordSchema)]"
-            :hint="t('changePassword.newHint', { min: PASSWORD_MIN_LENGTH })"
-            persistent-hint
             :error-messages="fieldErrors(serverFieldErrors, 'newPassword')"
             name="new-password"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('changePassword.newHint', { min: PASSWORD_MIN_LENGTH })" />
+            </template>
+          </v-text-field>
           <v-text-field
             v-model="confirm"
             :label="t('changePassword.confirm')"
             type="password"
             autocomplete="new-password"
             :rules="[confirmRule]"
-            class="mt-2"
             name="confirm-password"
           />
           <ErrorAlert v-if="error" :error="error" class="mb-4" />

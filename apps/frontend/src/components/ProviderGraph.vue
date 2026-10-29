@@ -149,7 +149,16 @@ const kindLabel = (k: string) => k.replace('Provider', '');
         <span class="dot" aria-hidden="true" />
         <span class="text">
           <span class="kind">{{ c.namespace }}</span>
-          <span class="name">{{ c.name }}</span>
+          <span class="name"
+            >{{ c.name }}
+            <v-icon
+              v-if="c.airGappedRegistry"
+              icon="mdi-lan-disconnect"
+              size="x-small"
+              :title="t('clusters.airGappedHint', { registry: c.airGappedRegistry })"
+              :aria-label="t('clusters.airGapped')"
+              data-testid="air-gapped-icon"
+          /></span>
           <span class="detail"
             >{{ c.provider ?? '–' }} · {{ c.flavor ?? '–' }} ·
             {{ c.ready ? t('clusters.ready') : c.phase }}</span

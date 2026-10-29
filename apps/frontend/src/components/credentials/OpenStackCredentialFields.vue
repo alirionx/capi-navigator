@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { CloudsYamlInfo, Credential } from '@capi-navigator/shared';
 import { useCredentialsStore } from '../../stores/credentials.js';
 import ErrorAlert from '../ErrorAlert.vue';
+import FieldHelp from '../FieldHelp.vue';
 
 /** Secret part of OpenStack credentials: clouds.yaml or a form (FP4-F-01). */
 const input = defineModel<unknown>({ required: true });
@@ -114,23 +115,27 @@ watchEffect(() => {
       <v-textarea
         v-model="cloudsYaml"
         :label="t('credentials.os.cloudsYaml')"
-        :hint="t('credentials.os.cloudsYamlHint')"
-        persistent-hint
         :rules="[required]"
         rows="5"
         name="cloudsYaml"
         class="mb-2"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('credentials.os.cloudsYamlHint')" />
+        </template>
+      </v-textarea>
       <ErrorAlert v-if="cloudsError" :error="cloudsError" class="mb-2" />
       <v-select
         v-if="cloudsInfo"
         v-model="cloudName"
         :items="cloudItems"
         :label="t('credentials.os.cloud')"
-        :hint="t('credentials.os.cloudHint')"
-        persistent-hint
         class="mb-2"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('credentials.os.cloudHint')" />
+        </template>
+      </v-select>
     </template>
 
     <template v-else>
@@ -138,20 +143,23 @@ watchEffect(() => {
         v-model="authUrl"
         :label="t('credentials.os.authUrl')"
         :rules="[required]"
-        :hint="t('credentials.os.authUrlHint')"
-        persistent-hint
         placeholder="https://api.pub1.infomaniak.cloud/identity"
-        class="mb-2"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('credentials.os.authUrlHint')" />
+        </template>
+      </v-text-field>
       <v-text-field
         v-model="region"
         :label="t('credentials.os.region')"
         :rules="[required]"
-        :hint="t('credentials.os.regionHint')"
-        persistent-hint
         placeholder="dc4-a"
         class="mb-2"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('credentials.os.regionHint')" />
+        </template>
+      </v-text-field>
       <v-radio-group v-model="authType" inline hide-details class="mb-2">
         <v-radio :label="t('credentials.os.appCred')" value="applicationCredential" />
         <v-radio :label="t('credentials.os.password')" value="password" />
@@ -195,12 +203,10 @@ watchEffect(() => {
         />
       </template>
     </template>
-    <v-textarea
-      v-model="cacert"
-      :label="t('credentials.os.cacert')"
-      :hint="t('credentials.os.cacertHint')"
-      persistent-hint
-      rows="2"
-    />
+    <v-textarea v-model="cacert" :label="t('credentials.os.cacert')" rows="2">
+      <template #append-inner>
+        <FieldHelp :text="t('credentials.os.cacertHint')" />
+      </template>
+    </v-textarea>
   </div>
 </template>

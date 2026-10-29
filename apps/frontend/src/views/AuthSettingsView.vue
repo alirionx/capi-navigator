@@ -7,6 +7,7 @@ import ErrorAlert from '../components/ErrorAlert.vue';
 import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthSettingsStore } from '../stores/authSettings.js';
 import { useRolesStore } from '../stores/roles.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 /**
  * Authentication page (FP14-F-12, ADR-0020): the OpenID Connect provider, tested before saving,
@@ -147,13 +148,15 @@ function copy(text: string): void {
         <v-switch
           v-model="form.enabled"
           color="primary"
-          :label="t('authSettings.enabled')"
-          :hint="t('authSettings.enabledHint')"
-          persistent-hint
           :disabled="publicUrlMissing"
           class="mb-4"
           data-testid="oidc-enabled"
-        />
+        >
+          <template #label>
+            {{ t('authSettings.enabled') }}
+            <FieldHelp :text="t('authSettings.enabledHint')" />
+          </template>
+        </v-switch>
 
         <div v-if="store.settings.redirectUri" class="mb-6">
           <div class="text-title-small">{{ t('authSettings.redirectUri') }}</div>
@@ -176,12 +179,14 @@ function copy(text: string): void {
           <v-text-field
             v-model="form.issuerUrl"
             :label="t('authSettings.fields.issuerUrl')"
-            :hint="t('authSettings.issuerUrlHint')"
-            persistent-hint
             :rules="[zodRule(OidcSettingsSchema.shape.issuerUrl)]"
             :error-messages="fieldErrors(serverFieldErrors, 'issuerUrl')"
             data-testid="oidc-issuer"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('authSettings.issuerUrlHint')" />
+            </template>
+          </v-text-field>
           <v-btn
             variant="tonal"
             class="mt-2"
@@ -232,59 +237,72 @@ function copy(text: string): void {
               autocomplete="new-password"
               :placeholder="stored?.secretSet ? '••••••••' : ''"
               persistent-placeholder
-              :hint="
-                stored?.secretSet ? t('authSettings.secretSetHint') : t('authSettings.secretHint')
-              "
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'clientSecret')"
               data-testid="oidc-client-secret"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp
+                  :text="
+                    stored?.secretSet
+                      ? t('authSettings.secretSetHint')
+                      : t('authSettings.secretHint')
+                  "
+                />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
-            <v-text-field
-              v-model="form.scopes"
-              :label="t('authSettings.fields.scopes')"
-              :hint="t('authSettings.scopesHint')"
-              persistent-hint
-            />
+            <v-text-field v-model="form.scopes" :label="t('authSettings.fields.scopes')">
+              <template #append-inner>
+                <FieldHelp :text="t('authSettings.scopesHint')" />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="form.groupsClaim"
               :label="t('authSettings.fields.groupsClaim')"
-              :hint="t('authSettings.groupsClaimHint')"
-              persistent-hint
               :rules="[zodRule(OidcSettingsSchema.shape.groupsClaim)]"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('authSettings.groupsClaimHint')" />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="form.usernameClaim"
               :label="t('authSettings.fields.usernameClaim')"
-              :hint="t('authSettings.usernameClaimHint')"
-              persistent-hint
               :rules="[zodRule(OidcSettingsSchema.shape.usernameClaim)]"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('authSettings.usernameClaimHint')" />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-text-field
               v-model="form.buttonLabel"
               :label="t('authSettings.fields.buttonLabel')"
-              :hint="t('authSettings.buttonLabelHint')"
-              persistent-hint
               :rules="[zodRule(OidcSettingsSchema.shape.buttonLabel)]"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('authSettings.buttonLabelHint')" />
+              </template>
+            </v-text-field>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
               v-model="form.defaultRole"
               :items="roleItems"
               :label="t('authSettings.fields.defaultRole')"
-              :hint="t('authSettings.defaultRoleHint')"
-              persistent-hint
               :error-messages="fieldErrors(serverFieldErrors, 'defaultRole')"
               data-testid="oidc-default-role"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('authSettings.defaultRoleHint')" />
+              </template>
+            </v-select>
           </v-col>
         </v-row>
 

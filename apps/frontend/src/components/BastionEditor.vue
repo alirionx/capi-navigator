@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { INFRA_PLUGINS, type Infrastructure, type LookupOption } from '@capi-navigator/shared';
+import FieldHelp from './FieldHelp.vue';
 
 /**
  * Bastion host settings (FP5-F-20), used in the wizard and as day-2 change. The provider's form
@@ -36,13 +37,12 @@ const openToAll = computed(
 
 <template>
   <div data-testid="bastion-editor">
-    <v-switch
-      v-model="model.enabled"
-      :label="t('bastion.enable')"
-      :hint="t('bastion.enableHint')"
-      persistent-hint
-      data-testid="bastion-enabled"
-    />
+    <v-switch v-model="model.enabled" data-testid="bastion-enabled">
+      <template #label>
+        {{ t('bastion.enable') }}
+        <FieldHelp :text="t('bastion.enableHint')" />
+      </template>
+    </v-switch>
     <template v-if="model.enabled">
       <v-alert v-if="!hasKeyPair" type="error" variant="tonal" density="compact" class="mt-3">
         {{ t('bastion.needsKeyPair') }}
@@ -77,11 +77,15 @@ const openToAll = computed(
             clearable
             :disabled="sizeLocked"
             :label="form ? t(form.sizeLabel) : ''"
-            :hint="sizeLocked ? t('bastion.sizeLocked') : form ? t(form.sizeHint) : ''"
-            persistent-hint
             :rules="[(v: string) => !form?.sizeRequired || !!v || t('wizard.required')]"
             data-testid="bastion-size"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp
+                :text="sizeLocked ? t('bastion.sizeLocked') : form ? t(form.sizeHint) : ''"
+              />
+            </template>
+          </v-autocomplete>
         </v-col>
         <v-col v-if="form?.allowedCidrs" cols="12" md="7">
           <v-combobox
@@ -90,11 +94,13 @@ const openToAll = computed(
             chips
             closable-chips
             :label="t('bastion.cidrs')"
-            :hint="t('bastion.cidrsHint')"
-            persistent-hint
             :rules="[(v: string[]) => (v ?? []).length > 0 || t('bastion.cidrsRequired'), cidrRule]"
             data-testid="bastion-cidrs"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('bastion.cidrsHint')" />
+            </template>
+          </v-combobox>
           <v-alert v-if="openToAll" type="warning" variant="tonal" density="compact" class="mt-2">
             {{ t('bastion.openWarning') }}
           </v-alert>

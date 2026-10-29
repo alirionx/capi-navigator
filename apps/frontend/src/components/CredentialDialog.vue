@@ -14,6 +14,7 @@ import { useCredentialsStore } from '../stores/credentials.js';
 import ErrorAlert from './ErrorAlert.vue';
 import { CREDENTIAL_FIELDS, CREDENTIAL_SETTINGS } from './credentials/index.js';
 import YamlViewer from './YamlViewer.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /** Create or edit infrastructure credentials (FP4-F-01, FP4-F-07, FP25-F-02, FP31-F-02). */
 const props = defineProps<{ provider: CredentialProvider; credential?: Credential | null }>();
@@ -108,30 +109,31 @@ async function save(): Promise<void> {
           v-model="name"
           :label="t('credentials.name')"
           :rules="[zodRule(CredentialNameSchema)]"
-          :hint="t('credentials.nameHint')"
-          persistent-hint
           :error-messages="fieldErrors(serverFieldErrors, 'name')"
-          class="mb-2"
           name="name"
-        />
-        <v-text-field
-          v-model="displayName"
-          :label="t('credentials.displayName')"
-          :hint="t('credentials.displayNameHint')"
-          persistent-hint
-          class="mb-2"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="t('credentials.nameHint')" />
+          </template>
+        </v-text-field>
+        <v-text-field v-model="displayName" :label="t('credentials.displayName')">
+          <template #append-inner>
+            <FieldHelp :text="t('credentials.displayNameHint')" />
+          </template>
+        </v-text-field>
         <v-combobox
           v-model="namespaces"
           :label="t('credentials.allowedNamespaces')"
-          :hint="t(`credentials.allowedNamespacesHint.${provider}`)"
-          persistent-hint
           multiple
           chips
           closable-chips
           class="mb-3"
           name="allowedNamespaces"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="t(`credentials.allowedNamespacesHint.${provider}`)" />
+          </template>
+        </v-combobox>
 
         <v-switch
           v-if="editing"

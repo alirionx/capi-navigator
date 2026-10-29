@@ -172,7 +172,7 @@ test.describe('UI tour screenshots', () => {
   test('wizard', async ({ page }) => {
     // Fills the wizard up to the YAML preview; "Create" is never clicked.
     await page.goto('/clusters/new');
-    await page.getByTestId('name').locator('input').fill('demo-openstack');
+    await page.getByTestId('name').locator('input:not([type=hidden])').fill('demo-openstack');
     await page.getByTestId('provider-openstack').click();
     await pick(page, page.getByTestId('credential'), /Infomaniak|OpenStack/);
     await shot(page, '20-wizard-basics');
@@ -207,8 +207,14 @@ test.describe('UI tour screenshots', () => {
     await shot(page, '31-roles');
     await page.setViewportSize({ width: 1440, height: 1250 }); // the dialog is tall
     await page.getByTestId('role-add').click();
-    await page.getByTestId('role-name').locator('input').fill('cluster-operator');
-    await page.getByTestId('role-display-name').locator('input').fill('Cluster operator');
+    await page
+      .getByTestId('role-name')
+      .locator('input:not([type=hidden])')
+      .fill('cluster-operator');
+    await page
+      .getByTestId('role-display-name')
+      .locator('input:not([type=hidden])')
+      .fill('Cluster operator');
     for (const p of ['clusters.create', 'clusters.change', 'nodes.shell']) {
       await page.getByTestId(`permission-${p}`).click();
     }

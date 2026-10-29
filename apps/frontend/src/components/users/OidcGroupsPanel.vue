@@ -13,6 +13,7 @@ import ErrorAlert from '../ErrorAlert.vue';
 import BindingsEditor from './BindingsEditor.vue';
 import { zodRule } from '../../forms/zod-rules.js';
 import { useOidcGroupsStore } from '../../stores/oidcGroups.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * Mappings of OpenID Connect groups, and of single people, to role assignments (FP14-F-04): people
@@ -282,44 +283,50 @@ async function confirm(): Promise<void> {
                 v-if="mode === 'group'"
                 v-model="form.group"
                 :label="t('oidcGroups.group')"
-                :hint="t('oidcGroups.groupHint')"
-                persistent-hint
                 :rules="[zodRule(OidcGroupNameSchema)]"
                 :disabled="dialog === 'edit'"
-                class="mb-2"
                 data-testid="oidc-group-name"
-              />
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('oidcGroups.groupHint')" />
+                </template>
+              </v-text-field>
               <template v-else>
                 <v-text-field
                   v-model="form.subject"
                   :label="t('oidcGroups.subject')"
-                  :hint="t('oidcGroups.subjectHint')"
-                  persistent-hint
                   :rules="[zodRule(OidcSubjectSchema)]"
                   :disabled="dialog === 'edit'"
-                  class="mb-2"
                   data-testid="oidc-person-subject"
-                />
+                >
+                  <template #append-inner>
+                    <FieldHelp :text="t('oidcGroups.subjectHint')" />
+                  </template>
+                </v-text-field>
                 <v-text-field
                   v-model="form.displayName"
                   :label="t('oidcGroups.displayName')"
-                  :hint="t('oidcGroups.displayNameHint')"
-                  persistent-hint
                   class="mb-2"
                   data-testid="oidc-person-name"
-                />
+                >
+                  <template #append-inner>
+                    <FieldHelp :text="t('oidcGroups.displayNameHint')" />
+                  </template>
+                </v-text-field>
               </template>
               <v-text-field
                 v-model="form.description"
                 :label="t('oidcGroups.description')"
-                :hint="t('oidcGroups.descriptionHint')"
-                persistent-hint
                 class="mb-2"
-              />
-              <div class="text-title-small mt-2">{{ t('users.bindings') }}</div>
-              <p class="text-body-small text-medium-emphasis mb-2">
-                {{ t('oidcGroups.bindingsHint') }}
-              </p>
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('oidcGroups.descriptionHint')" />
+                </template>
+              </v-text-field>
+              <div class="text-title-small mt-2 mb-2">
+                {{ t('users.bindings') }}
+                <FieldHelp :text="t('oidcGroups.bindingsHint')" />
+              </div>
               <BindingsEditor
                 v-model="form.bindings"
                 :roles="props.roles"

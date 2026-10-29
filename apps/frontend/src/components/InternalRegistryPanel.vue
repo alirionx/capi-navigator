@@ -11,6 +11,7 @@ import { fieldErrors, zodRule } from '../forms/zod-rules.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import ErrorAlert from './ErrorAlert.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /**
  * Internal OCI registry of the active management cluster (FP29-F-10): air-gapped workload
@@ -135,17 +136,19 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
           <v-text-field
             v-model="form.host"
             :label="t('registry.host')"
-            :hint="t('registry.hostHint')"
-            persistent-hint
             placeholder="registry.example.com"
             :rules="[zodRule(shape.host)]"
             :error-messages="fieldErrors(serverFieldErrors, 'internalRegistry.host')"
             class="mb-3"
             data-testid="registry-host"
-          />
-          <div class="text-title-small mb-1">{{ t('registry.mirrors') }}</div>
-          <div class="text-body-small text-medium-emphasis mb-2">
-            {{ t('registry.mirrorsHint') }}
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('registry.hostHint')" />
+            </template>
+          </v-text-field>
+          <div class="text-title-small mb-2">
+            {{ t('registry.mirrors') }}
+            <FieldHelp :text="t('registry.mirrorsHint')" />
           </div>
           <v-row v-for="(m, i) in form.mirrors" :key="i" density="compact">
             <v-col cols="5"
@@ -183,24 +186,27 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
           <v-text-field
             v-model="form.artifactsPath"
             :label="t('registry.artifactsPath')"
-            :hint="t('registry.artifactsPathHint')"
-            persistent-hint
             placeholder="library"
             :rules="[zodRule(shape.artifactsPath)]"
-            class="mb-3"
             data-testid="registry-artifacts-path"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('registry.artifactsPathHint')" />
+            </template>
+          </v-text-field>
           <v-textarea
             v-model="form.caCert"
             :label="t('registry.caCert')"
-            :hint="t('registry.caCertHint')"
-            persistent-hint
             rows="3"
             placeholder="-----BEGIN CERTIFICATE-----"
             :rules="[zodRule(shape.caCert)]"
             class="mono-input"
             data-testid="registry-ca"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('registry.caCertHint')" />
+            </template>
+          </v-textarea>
         </v-form>
         <ErrorAlert v-if="saveError" :error="saveError" class="mt-3" />
       </v-card-text>

@@ -12,6 +12,7 @@ import {
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { useAuthStore } from '../stores/auth.js';
 import { useHelmRepositoriesStore } from '../stores/helm-repositories.js';
+import FieldHelp from '../components/FieldHelp.vue';
 
 /**
  * Helm repositories (FP8-F-02, FP8-F-03). Password and CA certificate are write-only: the
@@ -290,11 +291,13 @@ async function confirmDelete(): Promise<void> {
             v-model="name"
             :label="t('helmRepos.name')"
             :disabled="!!editing"
-            :hint="t('helmRepos.nameHint')"
-            persistent-hint
             data-testid="helm-repo-name"
-          />
-          <v-text-field v-model="displayName" :label="t('helmRepos.displayName')" class="mt-2" />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('helmRepos.nameHint')" />
+            </template>
+          </v-text-field>
+          <v-text-field v-model="displayName" :label="t('helmRepos.displayName')" />
           <v-btn-toggle
             v-model="type"
             mandatory
@@ -311,12 +314,16 @@ async function confirmDelete(): Promise<void> {
             v-model="url"
             :label="t('helmRepos.url')"
             :placeholder="urlPlaceholder"
-            :hint="type === 'oci' ? t('helmRepos.ociUrlHint') : t('helmRepos.httpUrlHint')"
-            persistent-hint
             :error-messages="urlError"
             class="mt-3"
             data-testid="helm-repo-url"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp
+                :text="type === 'oci' ? t('helmRepos.ociUrlHint') : t('helmRepos.httpUrlHint')"
+              />
+            </template>
+          </v-text-field>
           <template v-if="type === 'oci'">
             <v-checkbox
               v-model="useCredentials"
@@ -347,11 +354,15 @@ async function confirmDelete(): Promise<void> {
               :label="t('helmRepos.caFile')"
               accept=".crt,.pem"
               prepend-icon="mdi-certificate"
-              :hint="editing?.hasCaCertificate ? t('helmRepos.caKeep') : t('helmRepos.caHint')"
-              persistent-hint
               class="mt-2"
               @update:model-value="readCa"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp
+                  :text="editing?.hasCaCertificate ? t('helmRepos.caKeep') : t('helmRepos.caHint')"
+                />
+              </template>
+            </v-file-input>
             <v-checkbox
               v-if="editing?.hasCaCertificate"
               v-model="removeCa"

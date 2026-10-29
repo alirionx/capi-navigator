@@ -88,6 +88,8 @@ export const ClusterSummarySchema = z.object({
   createdAt: z.string().optional(),
   /** Created by CAPI Navigator (has a stored spec). */
   managed: z.boolean(),
+  /** Host of the internal registry when the nodes run without internet (FP-29, UX-05). */
+  airGappedRegistry: z.string().optional(),
   /** Deletion in progress through the app (FP6-F-06). */
   deletion: DeletionStatusSchema.optional(),
   /** The cluster's machines in brief, for the shape of every cluster on the home page (UX-02). */

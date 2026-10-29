@@ -1058,7 +1058,9 @@ Requirements:
 - **UX-02** (done in 0.10.0) Overview of a management cluster on the home page: next to the providers, one row per workload cluster with its infrastructure (provider, name, state), its control plane nodes and its worker nodes (per pool) as small boxes with their state, so the shape of every cluster is visible at a glance; a click leads to the cluster or machine.
 - **UX-03** (done in 0.11.0) Machines tab: the internal address of every machine as a column, from `Machine.status.addresses` (the infrastructure provider fills them). The app gives nodes no public addresses on purpose (outbound through NAT, inbound through load balancers; per-node floating or elastic IPs were rejected, FP-28), so only internal addresses are shown.
 - **UX-04** (done in 0.11.0) Home page: the nodes of each workload cluster (UX-02) sit in the provider graph next to their cluster, linked to it, instead of in a card of their own below.
-- **UX-05** Air-gapped clusters (FP-29) are recognizable only by the "Registry contents" button on the cluster page. An "Air-gapped" tag next to the cluster's name in the cluster list, on the home page and on the cluster page, with the internal registry as tooltip.
+- **UX-05** (done in 0.13.0) Air-gapped clusters (FP-29) are recognizable only by the "Registry contents" button on the cluster page. An "Air-gapped" tag next to the cluster's name in the cluster list, on the home page and on the cluster page, with the internal registry as tooltip.
+- **UX-06** (done in 0.13.0) Forms look overloaded: every field carries a permanent hint (help text, default, CAPI field) of one to five lines below it. The help text moves behind an info icon in the field or next to its label, shown on hover, focus or click; section explanations move next to their heading. Hints that describe a condition (alerts) stay visible.
+- **UX-07** (done in 0.13.0) Vertical spacing of forms is uneven: hints of different length shift fields in a row, and every dialog has its own margins. Fields reserve no space below unless they show an error, and stacked fields are evenly spaced (one rule for all forms).
 
 **Review log**
 

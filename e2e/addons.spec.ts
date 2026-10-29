@@ -44,10 +44,10 @@ test.describe('Helm add-ons (FP-8)', () => {
       // FP8-F-02: add and test an HTTP repository.
       await page.goto('/helm-repositories');
       await page.getByTestId('add-helm-repo').click();
-      await page.getByTestId('helm-repo-name').locator('input').fill(repo);
+      await page.getByTestId('helm-repo-name').locator('input:not([type=hidden])').fill(repo);
       await page
         .getByTestId('helm-repo-url')
-        .locator('input')
+        .locator('input:not([type=hidden])')
         .fill('https://stefanprodan.github.io/podinfo');
       await page.getByTestId('helm-repo-test').click();
       await expect(page.getByTestId('helm-repo-test-result')).toContainText('chart', {
@@ -60,19 +60,24 @@ test.describe('Helm add-ons (FP-8)', () => {
       await page.goto('/addons');
       await page.getByTestId('new-addon').click();
       await page.getByTestId('new-helm-addon').click();
-      await page.getByTestId('addon-name').locator('input').fill(addon);
-      await page.getByTestId('addon-namespace').locator('input').fill(namespace);
+      await page.getByTestId('addon-name').locator('input:not([type=hidden])').fill(addon);
+      await page.getByTestId('addon-namespace').locator('input:not([type=hidden])').fill(namespace);
       await page.getByTestId('addon-repository').click();
       await page.getByRole('option', { name: new RegExp(repo) }).click();
-      await page.getByTestId('addon-chart').locator('input').click();
+      await page.getByTestId('addon-chart').locator('input:not([type=hidden])').click();
       await page
         .getByRole('option', { name: /podinfo/ })
         .first()
         .click();
-      await expect(page.getByTestId('addon-version').locator('input')).not.toHaveValue('', {
+      await expect(
+        page.getByTestId('addon-version').locator('input:not([type=hidden])'),
+      ).not.toHaveValue('', {
         timeout: 30_000,
       });
-      await page.getByTestId('selector-key-0').locator('input').fill(`e2e/${suffix}`);
+      await page
+        .getByTestId('selector-key-0')
+        .locator('input:not([type=hidden])')
+        .fill(`e2e/${suffix}`);
       await page.getByTestId('load-defaults').click();
       await expect(page.getByText(/Default values of podinfo/)).toBeVisible({ timeout: 30_000 });
       await expect(page.getByTestId('addon-matching')).toContainText('none yet');
@@ -88,7 +93,10 @@ test.describe('Helm add-ons (FP-8)', () => {
 
       // FP8-F-13: delete with confirmation.
       await page.getByTestId(`delete-addon-${addon}`).click();
-      await page.getByTestId('delete-addon-confirm').locator('input').fill(addon);
+      await page
+        .getByTestId('delete-addon-confirm')
+        .locator('input:not([type=hidden])')
+        .fill(addon);
       await page.getByTestId('delete-addon-apply').click();
       await expect(table).not.toContainText(addon, { timeout: 30_000 });
     } finally {
@@ -115,9 +123,15 @@ test.describe('Manifest add-ons (FP-30)', () => {
 
       await page.getByTestId('new-addon').click();
       await page.getByTestId('new-manifest-addon').click();
-      await page.getByTestId('manifest-addon-name').locator('input').fill(addon);
-      await page.getByTestId('manifest-addon-namespace').locator('input').fill(namespace);
-      await page.getByTestId('selector-key-0').locator('input').fill(`e2e/${addon}`);
+      await page.getByTestId('manifest-addon-name').locator('input:not([type=hidden])').fill(addon);
+      await page
+        .getByTestId('manifest-addon-namespace')
+        .locator('input:not([type=hidden])')
+        .fill(namespace);
+      await page
+        .getByTestId('selector-key-0')
+        .locator('input:not([type=hidden])')
+        .fill(`e2e/${addon}`);
       // FP30-F-07: example with a CAAPH template; FP30-F-05: objects listed while typing.
       await page.getByText('Example: cert-manager ClusterIssuer').click();
       await page.getByTestId('use-example-cluster-issuer').click();
@@ -137,7 +151,10 @@ test.describe('Manifest add-ons (FP-30)', () => {
       await expect(page.getByTestId(`addon-releases-${addon}`)).toHaveText('0/0');
 
       await page.getByTestId(`delete-addon-${addon}`).click();
-      await page.getByTestId('delete-addon-confirm').locator('input').fill(addon);
+      await page
+        .getByTestId('delete-addon-confirm')
+        .locator('input:not([type=hidden])')
+        .fill(addon);
       await page.getByTestId('delete-addon-apply').click();
       await expect(table).not.toContainText(addon, { timeout: 30_000 });
     } finally {

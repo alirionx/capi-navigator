@@ -18,6 +18,7 @@ import ManifestChartAlert from './ManifestChartAlert.vue';
 import ValuesEditor from './ValuesEditor.vue';
 import { selectorLabels, selectorRows, type SelectorRow } from './selector.js';
 import { useAddonsStore } from '../../stores/addons.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * Create or edit a manifest add-on (FP30-F-04 to F-09): plain manifests rolled out through CAAPH
@@ -132,30 +133,36 @@ const TEMPLATE_HELP = {
           v-model="name"
           :label="t('addons.name')"
           :disabled="editing"
-          :hint="`${t('manifestAddons.nameHint')} ${hcpField('metadata.name')}`"
-          persistent-hint
           :error-messages="name ? fieldErrors('name').slice(0, 1) : []"
           data-testid="manifest-addon-name"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('manifestAddons.nameHint')} ${hcpField('metadata.name')}`" />
+          </template>
+        </v-text-field>
         <v-combobox
           v-model="namespace"
           :items="namespaces"
           :label="t('addons.namespace')"
           :disabled="editing"
-          :hint="`${t('addons.namespaceHint')} ${hcpField('metadata.namespace')}`"
-          persistent-hint
-          class="mt-2"
           data-testid="manifest-addon-namespace"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp :text="`${t('addons.namespaceHint')} ${hcpField('metadata.namespace')}`" />
+          </template>
+        </v-combobox>
         <v-text-field
           v-model="releaseNamespace"
           :label="t('addons.releaseNamespace')"
-          :hint="`${t('manifestAddons.releaseNamespaceHint')} ${hcpField('spec.namespace')}`"
-          persistent-hint
           :error-messages="fieldErrors('releaseNamespace').slice(0, 1)"
-          class="mt-2"
           data-testid="manifest-addon-release-namespace"
-        />
+        >
+          <template #append-inner>
+            <FieldHelp
+              :text="`${t('manifestAddons.releaseNamespaceHint')} ${hcpField('spec.namespace')}`"
+            />
+          </template>
+        </v-text-field>
 
         <ClusterSelectorField
           v-model="selector"
@@ -164,14 +171,13 @@ const TEMPLATE_HELP = {
           :active="open"
         />
 
-        <v-radio-group
-          v-model="reconcileStrategy"
-          :label="t('addons.strategy')"
-          :disabled="editing"
-          :hint="`${t('manifestAddons.strategyHint')} ${hcpField('spec.reconcileStrategy')}`"
-          persistent-hint
-          class="mt-3"
-        >
+        <v-radio-group v-model="reconcileStrategy" :disabled="editing" class="mt-3">
+          <template #label>
+            {{ t('addons.strategy') }}
+            <FieldHelp
+              :text="`${t('manifestAddons.strategyHint')} ${hcpField('spec.reconcileStrategy')}`"
+            />
+          </template>
           <v-radio :label="t('manifestAddons.continuous')" value="Continuous" />
           <v-radio :label="t('addons.installOnce')" value="InstallOnce" />
         </v-radio-group>
@@ -189,20 +195,24 @@ const TEMPLATE_HELP = {
             <v-text-field
               v-model="timeout"
               :label="t('addons.timeout')"
-              :hint="hcpField('spec.options.timeout')"
-              persistent-hint
               density="compact"
               :error-messages="fieldErrors('options.timeout').slice(0, 1)"
-            />
+            >
+              <template #append-inner>
+                <FieldHelp :text="hcpField('spec.options.timeout')" />
+              </template>
+            </v-text-field>
           </v-col>
         </v-row>
       </v-col>
 
       <v-col cols="12" md="7">
-        <div class="text-title-small mb-1">{{ t('manifestAddons.manifests') }}</div>
-        <p class="text-body-small text-medium-emphasis mb-2">
-          {{ t('manifestAddons.manifestsHint') }} {{ hcpField('spec.valuesTemplate') }}
-        </p>
+        <div class="text-title-small mb-2">
+          {{ t('manifestAddons.manifests') }}
+          <FieldHelp
+            :text="`${t('manifestAddons.manifestsHint')} ${hcpField('spec.valuesTemplate')}`"
+          />
+        </div>
         <ValuesEditor v-model="manifests" height="360px" data-testid="manifest-addon-manifests" />
         <!-- FP30-F-05, FP30-F-06: checked while typing, again in the backend -->
         <div v-if="check" class="mt-2" data-testid="manifest-addon-check">

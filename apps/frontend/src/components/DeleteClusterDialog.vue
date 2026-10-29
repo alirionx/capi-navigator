@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { DeletePreview } from '@capi-navigator/shared';
 import { useClustersStore } from '../stores/clusters.js';
 import ErrorAlert from './ErrorAlert.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /**
  * Deletes a cluster (FP6-F-06): shows what will be removed (hard rule 6), cleans up workloads,
@@ -93,11 +94,13 @@ async function confirm(): Promise<void> {
             <v-switch
               v-model="cleanup"
               :disabled="!preview.workloadReachable"
-              :label="t('deletion.cleanup')"
-              :hint="t('deletion.cleanupHint')"
-              persistent-hint
               data-testid="delete-cleanup"
-            />
+            >
+              <template #label>
+                {{ t('deletion.cleanup') }}
+                <FieldHelp :text="t('deletion.cleanupHint')" />
+              </template>
+            </v-switch>
             <div v-if="cleanup && preview.workloadReachable" class="text-body-medium mt-3">
               <div v-if="nothingInside" class="text-medium-emphasis">
                 {{ t('deletion.nothingInside') }}
@@ -117,13 +120,15 @@ async function confirm(): Promise<void> {
             <v-switch
               v-if="!preview.workloadReachable"
               v-model="skipDrain"
-              :label="t('deletion.skipDrain')"
-              :hint="t('deletion.skipDrainHint')"
-              persistent-hint
               color="warning"
               class="mt-2"
               data-testid="delete-skip-drain"
-            />
+            >
+              <template #label>
+                {{ t('deletion.skipDrain') }}
+                <FieldHelp :text="t('deletion.skipDrainHint')" />
+              </template>
+            </v-switch>
           </v-card>
 
           <v-alert

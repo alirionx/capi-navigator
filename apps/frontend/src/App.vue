@@ -278,6 +278,13 @@ async function signOut(): Promise<void> {
 .v-main .v-container {
   max-width: 1800px;
 }
+/* Stacked form fields are evenly spaced; fields in grid columns are spaced by the grid gap. */
+:is(.v-application, .v-overlay-container)
+  :is(:not(.d-flex), .flex-column)
+  > :is(.v-text-field, .v-file-input)
+  + :is(.v-text-field, .v-file-input) {
+  margin-top: 12px;
+}
 /* Page header used by the views. */
 .page-title {
   font-size: 1.75rem;

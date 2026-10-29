@@ -7,6 +7,7 @@ import ErrorAlert from '../ErrorAlert.vue';
 import ValuesEditor from './ValuesEditor.vue';
 import { useAuthStore } from '../../stores/auth.js';
 import { useHelmRepositoriesStore } from '../../stores/helm-repositories.js';
+import FieldHelp from '../FieldHelp.vue';
 
 /**
  * CCM/CSI presets (FP8-F-14): defaults from the app, overrides by admins. New clusters use the
@@ -166,11 +167,13 @@ const outdated = (p: AddonPresetView) => p.namespaces.filter((n) => !n.upToDate)
           <v-text-field
             v-model="version"
             :label="t('addons.version')"
-            :hint="t('presets.versionHint', { version: editing.defaults.version })"
-            persistent-hint
             class="mb-3"
             data-testid="preset-version"
-          />
+          >
+            <template #append-inner>
+              <FieldHelp :text="t('presets.versionHint', { version: editing.defaults.version })" />
+            </template>
+          </v-text-field>
           <div class="text-title-small mb-1">{{ t('addons.values') }}</div>
           <ValuesEditor v-model="values" height="320px" />
           <ErrorAlert v-if="saveError" :error="saveError" class="mt-3" />

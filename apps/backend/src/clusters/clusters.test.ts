@@ -173,6 +173,23 @@ describe('status mapping (US-07)', () => {
       managed: true,
     });
     expect(toSummary({ metadata: { name: 'x' } }).managed).toBe(false);
+    expect(toSummary(cluster, cp, [md]).airGappedRegistry).toBeUndefined();
+  });
+
+  it('names the internal registry of an air-gapped cluster (UX-05)', () => {
+    const airGapped: K8sObj = {
+      ...cluster,
+      metadata: {
+        ...cluster.metadata,
+        annotations: {
+          'capi-navigator.io/cluster-spec': JSON.stringify({
+            kubernetes: { flavor: 'rke2' },
+            airGapped: { registry: { host: 'registry.example.internal' } },
+          }),
+        },
+      },
+    };
+    expect(toSummary(airGapped).airGappedRegistry).toBe('registry.example.internal');
   });
 
   it('watches infrastructure kinds with the version of their provider (FP-31)', () => {

@@ -5,6 +5,7 @@ import { ORC_FOR_CAPO, type ManifestPreview } from '@capi-navigator/shared';
 import { useOperatorStore } from '../stores/operator.js';
 import ErrorAlert from './ErrorAlert.vue';
 import YamlViewer from './YamlViewer.vue';
+import FieldHelp from './FieldHelp.vue';
 
 /** Install or upgrade ORC from its release manifest, with preview (FP3-F-04a). */
 const props = defineProps<{ installedVersion?: string }>();
@@ -79,12 +80,14 @@ async function install(): Promise<void> {
         v-model="version"
         :items="versions"
         :label="t('orc.version')"
-        :hint="t('orc.versionHint', { version: recommended })"
-        persistent-hint
         :disabled="!!preview"
         class="mb-3"
         data-testid="orc-version"
-      />
+      >
+        <template #append-inner>
+          <FieldHelp :text="t('orc.versionHint', { version: recommended })" />
+        </template>
+      </v-select>
       <template v-if="preview">
         <p class="mb-2">{{ t('orc.previewText', { n: preview.objects.length }) }}</p>
         <v-alert
