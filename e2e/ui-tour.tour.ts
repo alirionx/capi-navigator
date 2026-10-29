@@ -23,7 +23,7 @@ const REPLACE: [RegExp, string][] = [
       ];
     }),
   [/\b\d{12}\b/g, '123456789012'], // AWS account IDs
-  [/\.\.\.[A-Z0-9]{4}\b/g, '...ABCD'], // end of an access key
+  [/(?:\.\.\.|…)[A-Z0-9]{4}\b/g, '…ABCD'], // end of an access key
   // Public IPv4 addresses (bastion, floating IPs) → documentation range; private addresses,
   // 0.0.0.0 and public DNS resolvers stay.
   [
