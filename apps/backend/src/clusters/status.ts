@@ -70,15 +70,29 @@ export function toSummary(
   const stored = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
   let flavor: string | undefined;
   let airGappedRegistry: string | undefined;
+  let credential: string | undefined;
+  let location: string | undefined;
   try {
     const parsed = stored
       ? (JSON.parse(stored) as {
           kubernetes?: { flavor?: string };
           airGapped?: { registry?: { host?: string } };
+          infrastructure?: {
+            credentialRef?: string;
+            region?: string;
+            project?: string;
+            sourceNode?: string;
+          };
         })
       : undefined;
     flavor = parsed?.kubernetes?.flavor;
     airGappedRegistry = parsed?.airGapped?.registry?.host;
+    // UX-08: where the cluster runs; OpenStack's region comes with the credential.
+    const infra = parsed?.infrastructure;
+    credential = infra?.credentialRef;
+    location =
+      infra?.sourceNode ??
+      (infra?.project && infra.region ? `${infra.project} / ${infra.region}` : infra?.region);
   } catch {
     flavor = undefined;
   }
@@ -113,6 +127,8 @@ export function toSummary(
       ? { createdAt: String(cluster.metadata.creationTimestamp) }
       : {}),
     managed: !!stored,
+    ...(credential ? { credential } : {}),
+    ...(location ? { location } : {}),
     ...(airGappedRegistry ? { airGappedRegistry } : {}),
     ...deletionOf(cluster),
     ...(machines ? { machines: machines.map(briefMachine).sort(byRoleAndName) } : {}),

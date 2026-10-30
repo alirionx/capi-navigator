@@ -137,6 +137,7 @@ export const en = {
   infra: {
     title: 'Infrastructure',
     subtitle: 'From the stored cluster spec; image names from the cloud.',
+    credentials: 'Credentials',
     group: 'Group',
     nodes: 'Nodes',
     size: 'Size',

@@ -6,6 +6,8 @@ import { formatAge, formatCreated, useNow } from '../composables/age.js';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
+import { useCredentialsStore } from '../stores/credentials.js';
+import { infraLocation } from '../components/infra-location.js';
 import AirGappedChip from '../components/AirGappedChip.vue';
 
 /** Live list of the workload clusters of the active management cluster (FP6-F-01). */
@@ -13,6 +15,7 @@ const { t } = useI18n();
 const auth = useAuthStore();
 const connections = useConnectionsStore();
 const store = useClustersStore();
+const credentials = useCredentialsStore();
 const search = ref('');
 const now = useNow();
 
@@ -22,6 +25,8 @@ watch(
     store.clusters = [];
     if (name) store.watchList(name);
     else store.unwatchList();
+    // UX-08: the region of OpenStack credentials; without it the list shows the credential name.
+    if (name) credentials.load(name).catch(() => undefined);
   },
   { immediate: true },
 );
@@ -53,10 +58,17 @@ function filter(_value: unknown, query: string, item?: { raw: ClusterSummary }):
   if (!item) return false;
   const q = query.trim().toLowerCase();
   const c = item.raw;
-  return [c.name, c.namespace, c.provider ?? '', ...Object.entries(c.labels).flat()].some((s) =>
-    s.toLowerCase().includes(q),
-  );
+  return [
+    c.name,
+    c.namespace,
+    c.provider ?? '',
+    location(c) ?? '',
+    ...Object.entries(c.labels).flat(),
+  ].some((s) => s.toLowerCase().includes(q));
 }
+
+/** UX-08: credentials and region or node the cluster runs on. */
+const location = (c: ClusterSummary) => infraLocation(c, credentials.credentials);
 
 const phaseColor = (c: ClusterSummary) =>
   c.ready
@@ -146,7 +158,16 @@ const phaseColor = (c: ClusterSummary) =>
               class="ml-2"
             />
           </template>
-          <template #[`item.provider`]="{ item }">{{ item.provider ?? '–' }}</template>
+          <template #[`item.provider`]="{ item }">
+            <div>{{ item.provider ?? '–' }}</div>
+            <div
+              v-if="location(item)"
+              class="text-body-small text-medium-emphasis"
+              data-testid="cluster-location"
+            >
+              {{ location(item) }}
+            </div>
+          </template>
           <template #[`item.flavor`]="{ item }">{{ item.flavor ?? '–' }}</template>
           <template #[`item.version`]="{ item }">{{ item.version ?? '–' }}</template>
           <template #[`item.nodes`]="{ item }">

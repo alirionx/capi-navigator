@@ -7913,6 +7913,12 @@
           "managed": {
             "type": "boolean"
           },
+          "credential": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
           "airGappedRegistry": {
             "type": "string"
           },

@@ -88,6 +88,10 @@ export const ClusterSummarySchema = z.object({
   createdAt: z.string().optional(),
   /** Created by CAPI Navigator (has a stored spec). */
   managed: z.boolean(),
+  /** Stored credentials the cluster is built with (UX-08). */
+  credential: z.string().optional(),
+  /** Where it runs from the spec: AWS/GCP region, Proxmox VE node (UX-08). */
+  location: z.string().optional(),
   /** Host of the internal registry when the nodes run without internet (FP-29, UX-05). */
   airGappedRegistry: z.string().optional(),
   /** Deletion in progress through the app (FP6-F-06). */

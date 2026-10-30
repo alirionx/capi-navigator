@@ -192,6 +192,35 @@ describe('status mapping (US-07)', () => {
     expect(toSummary(airGapped).airGappedRegistry).toBe('registry.example.internal');
   });
 
+  it('names the credentials and, from the spec, where the cluster runs (UX-08)', () => {
+    const at = (infrastructure: object): K8sObj => ({
+      ...cluster,
+      metadata: {
+        ...cluster.metadata,
+        annotations: {
+          'capi-navigator.io/cluster-spec': JSON.stringify({ kubernetes: {}, infrastructure }),
+        },
+      },
+    });
+    expect(toSummary(at({ provider: 'openstack', credentialRef: 'infomaniak' }))).toMatchObject({
+      credential: 'infomaniak',
+    });
+    expect(toSummary(at({ provider: 'openstack', credentialRef: 'x' })).location).toBeUndefined();
+    expect(
+      toSummary(at({ provider: 'aws', credentialRef: 'aws', region: 'eu-central-1' })),
+    ).toMatchObject({ credential: 'aws', location: 'eu-central-1' });
+    expect(
+      toSummary(
+        at({ provider: 'gcp', credentialRef: 'g', project: 'p-123', region: 'europe-west6' }),
+      ).location,
+    ).toBe('p-123 / europe-west6');
+    expect(
+      toSummary(at({ provider: 'proxmox', credentialRef: 'pve', sourceNode: 'homeserver' }))
+        .location,
+    ).toBe('homeserver');
+    expect(toSummary({ metadata: { name: 'x' } }).credential).toBeUndefined();
+  });
+
   it('watches infrastructure kinds with the version of their provider (FP-31)', () => {
     const paths = namespaceWatchPaths('lab');
     expect(paths).toContain(

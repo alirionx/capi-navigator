@@ -22,6 +22,7 @@ import ImageLabel from '../components/ImageLabel.vue';
 import BastionEditor, { type BastionDraft } from '../components/BastionEditor.vue';
 import { sshJumpCommand, sshUserFor } from '../composables/ssh.js';
 import { useCredentialsStore } from '../stores/credentials.js';
+import { infraLocation } from '../components/infra-location.js';
 import DeleteClusterDialog from '../components/DeleteClusterDialog.vue';
 import KubeconfigDialog from '../components/KubeconfigDialog.vue';
 import RegistryContents from '../components/RegistryContents.vue';
@@ -186,12 +187,18 @@ watch(
   ([conn, ns, name]) => {
     store.status = null;
     if (conn) store.watch(conn, ns, name);
+    // UX-08: the region of OpenStack credentials for "where it runs".
+    if (conn) credentials.load(conn).catch(() => undefined);
   },
   { immediate: true },
 );
 onBeforeUnmount(() => store.unwatch());
 
 const s = computed(() => store.status);
+/** UX-08: credentials and region or node the cluster runs on. */
+const location = computed(() =>
+  s.value ? infraLocation(s.value.summary, credentials.credentials) : undefined,
+);
 /** Form description of the cluster's infrastructure provider (FP25-F-05). */
 const infraForm = computed(() => {
   const p = s.value?.infraSummary?.provider;
@@ -246,7 +253,9 @@ const machineHeaders = computed(() => [
         <p class="text-body-medium text-medium-emphasis mt-1">
           {{ namespace }}
           <template v-if="s">
-            · {{ s.summary.provider ?? '–' }} · {{ s.summary.flavor ?? '–' }}
+            · {{ s.summary.provider ?? '–' }}
+            <span v-if="location" data-testid="cluster-location">({{ location }})</span>
+            · {{ s.summary.flavor ?? '–' }}
             {{ s.summary.version ? '· ' + s.summary.version : '' }}
             <span v-if="s.summary.createdAt" :title="formatCreated(s.summary.createdAt)">
               · {{ t('clusters.age') }} {{ formatAge(s.summary.createdAt, now) }}</span
@@ -365,7 +374,9 @@ const machineHeaders = computed(() => [
                 <v-card-item
                   :title="t('clusters.phase')"
                   :subtitle="
-                    s.summary.provider + (s.summary.version ? ' · ' + s.summary.version : '')
+                    s.summary.provider +
+                    (location ? ' · ' + location : '') +
+                    (s.summary.version ? ' · ' + s.summary.version : '')
                   "
                 />
                 <v-card-text>
@@ -443,6 +454,12 @@ const machineHeaders = computed(() => [
             <v-card-item :title="t('infra.title')" :subtitle="t('infra.subtitle')" />
             <v-card-text>
               <div class="d-flex flex-wrap ga-6 mb-4">
+                <div v-if="location" data-testid="infra-credentials">
+                  <div class="text-body-small text-medium-emphasis">
+                    {{ t('infra.credentials') }}
+                  </div>
+                  <div class="text-body-medium font-monospace">{{ location }}</div>
+                </div>
                 <div v-for="f in s.infraSummary.facts" :key="f.label">
                   <div class="text-body-small text-medium-emphasis">{{ f.label }}</div>
                   <div class="text-body-medium font-monospace">{{ f.value }}</div>
