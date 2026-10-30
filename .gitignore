@@ -12,6 +12,8 @@ playwright-report/
 .env
 .env.*
 !.env.example
+# Private working notes (backlog, spike plans), e.g. docs/claude-backlog.local.md
+*.local.md
 .kube/
 *.kubeconfig
 kubeconfig*

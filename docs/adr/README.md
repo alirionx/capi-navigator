@@ -35,3 +35,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0029](0029-outbound-proxy-for-app-and-providers.md)        | Outbound proxy for the app and the provider controllers                          | accepted |
 | [0030](0030-air-gapped-nodes-from-an-internal-registry.md)  | Air-gapped nodes from an internal OCI registry                                   | accepted |
 | [0031](0031-vuetify-4.md)                                   | Vuetify 4                                                                        | accepted |
+| [0032](0032-kubeadm-on-capi-images.md)                      | kubeadm on Cluster API images, online and air-gapped                             | accepted |
