@@ -390,6 +390,12 @@ export const ClusterSpecSchema = z
         .regex(/^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/)
         .optional(),
       /**
+       * FP29-F-16, ADR-0032: an upgrade with a new image keeps the worker pools on their image
+       * until they follow, since a node's image must match its Kubernetes version; removed
+       * together with workerVersion.
+       */
+      workerImage: z.string().trim().min(1).max(255).optional(),
+      /**
        * Package repository instead of https://pkgs.k8s.io for distributions installed from
        * packages (kubeadm, FP10-F-09); the minor version path is appended, as on pkgs.k8s.io.
        */
@@ -506,6 +512,18 @@ export const ClusterSpecSchema = z
     const groups = [spec.topology.controlPlane, ...workerPools];
     const groupPath = (i: number, field: string) =>
       i === 0 ? ['topology', 'controlPlane', field] : ['topology', 'workerPools', i - 1, field];
+    /** Why an image ID does not fit the provider's format, if it does not. */
+    const imageProblem = (image: string): string | undefined => {
+      const [ok, message] =
+        infra.provider === 'openstack'
+          ? [z.uuid().safeParse(image).success, 'An image ID (UUID)']
+          : infra.provider === 'aws'
+            ? [/^ami-[0-9a-f]{8,17}$/.test(image), 'An AMI ID like ami-0123456789abcdef0']
+            : infra.provider === 'proxmox'
+              ? [PROXMOX_TEMPLATE_PATTERN.test(image), PROXMOX_TEMPLATE_MESSAGE]
+              : [GCP_IMAGE_PATTERN.test(image), GCP_IMAGE_MESSAGE];
+      return ok ? undefined : message;
+    };
 
     // FP5-F-19: root disk type.
     groups.forEach((g, i) => {
@@ -529,16 +547,14 @@ export const ClusterSpecSchema = z
 
     groups.forEach((g, i) => {
       if (!g.image) return;
-      const [ok, message] =
-        infra.provider === 'openstack'
-          ? [z.uuid().safeParse(g.image).success, 'An image ID (UUID)']
-          : infra.provider === 'aws'
-            ? [/^ami-[0-9a-f]{8,17}$/.test(g.image), 'An AMI ID like ami-0123456789abcdef0']
-            : infra.provider === 'proxmox'
-              ? [PROXMOX_TEMPLATE_PATTERN.test(g.image), PROXMOX_TEMPLATE_MESSAGE]
-              : [GCP_IMAGE_PATTERN.test(g.image), GCP_IMAGE_MESSAGE];
-      if (!ok) issue(groupPath(i, 'image'), message);
+      const message = imageProblem(g.image);
+      if (message) issue(groupPath(i, 'image'), message);
     });
+    // FP29-F-16: the workers' image during an upgrade with a new image.
+    if (spec.kubernetes.workerImage) {
+      const message = imageProblem(spec.kubernetes.workerImage);
+      if (message) issue(['kubernetes', 'workerImage'], message);
+    }
 
     // FP31-F-08: addresses of a Proxmox VE cluster inside its network; the VIP outside the nodes.
     if (infra.provider === 'proxmox') {

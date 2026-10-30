@@ -27,6 +27,7 @@ import YamlViewer from '../components/YamlViewer.vue';
 import CustomizationEditor from '../components/wizard/CustomizationEditor.vue';
 import MachineGroupEditor from '../components/wizard/MachineGroupEditor.vue';
 import InfraFields from '../components/wizard/InfraFields.vue';
+import { imageNameMatchesVersion } from '../components/wizard/capi-image.js';
 import BastionEditor from '../components/BastionEditor.vue';
 import { useAuthStore } from '../stores/auth.js';
 import { useClustersStore } from '../stores/clusters.js';
@@ -148,6 +149,22 @@ const airGapNeeds = computed(() =>
     .filter((k) => te(k))
     .map((k) => t(k)),
 );
+/**
+ * FP29-F-11, ADR-0032: air-gapped kubeadm needs a Cluster API image of exactly this version; images
+ * whose name does not show the version get a warning (the app cannot look into an image).
+ */
+const capiImage = computed(() => airGapped.value && !flavorPlugin.value?.airGap?.artifact);
+const capiImageWarnings = computed(() => {
+  if (!capiImage.value) return [];
+  const chosen = [
+    infraValues.value.image,
+    draft.cp.image,
+    ...(draft.mode === 'standard' ? draft.pools.map((p) => p.image) : []),
+  ].filter((v): v is string => !!v);
+  return [...new Set(chosen)]
+    .map((id) => images.value.find((o) => o.value === id)?.label ?? id)
+    .filter((name) => !imageNameMatchesVersion(name, draft.version));
+});
 const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
 watch(
   () => draft.flavor,
@@ -619,10 +636,30 @@ const canPreview = computed(() => issues.value.length === 0);
               class="mt-2 text-body-medium"
               data-testid="wizard-air-gap-info"
             >
-              <div>{{ t('wizard.airGappedInfo', { registry: registry.host }) }}</div>
+              <div>
+                {{
+                  capiImage
+                    ? t('wizard.airGappedInfoCapiImage', {
+                        registry: registry.host,
+                        version: draft.version,
+                      })
+                    : t('wizard.airGappedInfo', { registry: registry.host })
+                }}
+              </div>
               <ul v-if="airGapNeeds.length" class="ml-4 mt-1">
                 <li v-for="n in airGapNeeds" :key="n">{{ n }}</li>
               </ul>
+            </v-alert>
+            <v-alert
+              v-for="name in capiImageWarnings"
+              :key="name"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-2 text-body-medium"
+              data-testid="wizard-capi-image-warning"
+            >
+              {{ t('wizard.capiImageName', { image: name, version: draft.version }) }}
             </v-alert>
           </v-col>
           <v-col cols="12">

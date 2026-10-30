@@ -44,6 +44,71 @@ function expectNoTemplateEdited(before: ClusterSpec, after: ClusterSpec): void {
   }
 }
 
+// FP29-F-16, ADR-0032: air-gapped kubeadm nodes run on a Cluster API image of their version.
+describe('upgrade with the image of the new version', () => {
+  const OLD = '6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2';
+  const NEW = '7a2c3b4d-1e5f-4a6b-9c7d-8e9fa0b1c2d3';
+  const kubeadm = (over: Partial<ClusterSpec> = {}): ClusterSpec =>
+    ClusterSpecSchema.parse({
+      ...spec,
+      kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+      airGapped: {
+        registry: {
+          host: 'registry.example.internal',
+          mirrors: [{ upstream: 'registry.k8s.io' }],
+          artifactsPath: 'library',
+        },
+        artifacts: [],
+      },
+      ...over,
+    });
+
+  it('control plane on the new image now, workers keep theirs until they follow', () => {
+    const up = applySpecChange(kubeadm(), { type: 'upgrade', version: 'v1.36.5', image: NEW }, now);
+    expect(up.infrastructure.image).toBe(NEW);
+    expect(up.kubernetes).toMatchObject({
+      version: 'v1.36.5',
+      workerVersion: 'v1.35.9',
+      workerImage: OLD,
+    });
+    const cp = get(up, 'OpenStackMachineTemplate');
+    expect(cp.spec.template.spec.image).toEqual({ id: NEW });
+    const workers = objs(up).filter(
+      (o) => o.kind === 'OpenStackMachineTemplate' && o.metadata.name.includes('-default-'),
+    ) as unknown as { spec: Record<string, any> }[];
+    expect(workers.map((w) => w.spec.template.spec.image)).toEqual([{ id: OLD }]);
+    // When the workers follow, workerVersion and workerImage go together (rollout controller).
+    const done = ClusterSpecSchema.parse({
+      ...up,
+      kubernetes: { ...up.kubernetes, workerVersion: undefined, workerImage: undefined },
+    });
+    const followed = objs(done).filter(
+      (o) => o.kind === 'OpenStackMachineTemplate' && o.metadata.name.includes('-default-'),
+    ) as unknown as { spec: Record<string, any> }[];
+    expect(followed.map((w) => w.spec.template.spec.image)).toEqual([{ id: NEW }]);
+  });
+
+  it('refuses an air-gapped kubeadm upgrade without the new image', () => {
+    expect(() => applySpecChange(kubeadm(), { type: 'upgrade', version: 'v1.36.5' }, now)).toThrow(
+      /Cluster API image of v1\.36\.5/,
+    );
+  });
+
+  it('refuses per-group images, which would keep an image of the old version', () => {
+    const base = kubeadm();
+    const withOverride = ClusterSpecSchema.parse({
+      ...base,
+      topology: {
+        ...base.topology,
+        workerPools: [{ ...base.topology.workerPools[0]!, image: OLD }],
+      },
+    });
+    expect(() =>
+      applySpecChange(withOverride, { type: 'upgrade', version: 'v1.36.5', image: NEW }, now),
+    ).toThrow(/image of its own/);
+  });
+});
+
 describe('day-2 changes (FP-7)', () => {
   it('upgrades the control plane first and keeps workers on the old version (FP7-F-08)', () => {
     const up = applySpecChange(spec, { type: 'upgrade', version: 'v1.35.9+rke2r1' }, now);

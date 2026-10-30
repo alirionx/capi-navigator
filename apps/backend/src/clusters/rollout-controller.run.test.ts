@@ -100,7 +100,11 @@ describe('rollout controller run (FP7-F-08, FP7-F-15, ADR-0010)', () => {
   it('lets the workers follow once the control plane runs the new version', async () => {
     const upgrading = {
       ...SPEC,
-      kubernetes: { ...SPEC.kubernetes, workerVersion: 'v1.34.12+rke2r1' },
+      kubernetes: {
+        ...SPEC.kubernetes,
+        workerVersion: 'v1.34.12+rke2r1',
+        workerImage: SPEC.infrastructure.image,
+      },
     };
     const at = (version: string) =>
       controlPlane({ version, replicas: 1, upToDateReplicas: 1, readyReplicas: 1 });
@@ -129,6 +133,8 @@ describe('rollout controller run (FP7-F-08, FP7-F-15, ADR-0010)', () => {
       s: ClusterSpec,
     ) => ClusterSpec;
     expect(mutate(upgrading).kubernetes.workerVersion).toBeUndefined();
+    // FP29-F-16: the workers take the new image together with the new version.
+    expect(mutate(upgrading).kubernetes.workerImage).toBeUndefined();
     expect(upgrading.kubernetes.workerVersion).toBe('v1.34.12+rke2r1');
     expect(ready.record).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -232,7 +232,12 @@ export const SpecChangeSchema = z.discriminatedUnion('type', [
     pool: z.string().min(1).optional(),
     settings: RolloutSettingsSchema,
   }),
-  z.object({ type: z.literal('upgrade'), version: z.string().min(1) }),
+  z.object({
+    type: z.literal('upgrade'),
+    version: z.string().min(1),
+    /** FP29-F-16: image of the new version (Cluster API image for air-gapped kubeadm). */
+    image: z.string().trim().min(1).max(255).optional(),
+  }),
   /** FP-33: settings of the infrastructure cluster by field path; null removes a value. */
   z.object({
     type: z.literal('infrastructure'),
@@ -397,14 +402,37 @@ export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date
       }
       const problem = upgradeProblem(spec.kubernetes.version, change.version);
       if (problem) throw new SpecChangeError(problem);
+      // FP29-F-16, ADR-0032: air-gapped kubeadm nodes run on a Cluster API image of their version.
+      if (spec.airGapped && spec.kubernetes.flavor === 'kubeadm' && !change.image) {
+        throw new SpecChangeError(
+          `Air-gapped kubeadm nodes need a Cluster API image of ${change.version}: choose it with the upgrade`,
+        );
+      }
+      if (change.image) {
+        const own = [spec.topology.controlPlane, ...spec.topology.workerPools].find((g) => g.image);
+        if (own) {
+          throw new SpecChangeError(
+            'A machine group has an image of its own, which would stay on the old version: set the image of the groups first, or remove their own images',
+          );
+        }
+      }
       const hasWorkers = spec.topology.mode === 'standard' && spec.topology.workerPools.length > 0;
       next = {
         ...spec,
+        ...(change.image
+          ? {
+              infrastructure: {
+                ...spec.infrastructure,
+                image: change.image,
+              } as typeof spec.infrastructure,
+            }
+          : {}),
         kubernetes: {
           ...spec.kubernetes,
           version: change.version,
-          // Workers stay on the old version until the control plane runs the new one.
+          // Workers stay on the old version (and image) until the control plane runs the new one.
           ...(hasWorkers ? { workerVersion: spec.kubernetes.version } : {}),
+          ...(hasWorkers && change.image ? { workerImage: spec.infrastructure.image } : {}),
         },
       };
       break;

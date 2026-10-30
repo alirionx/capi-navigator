@@ -7517,6 +7517,11 @@
                 "type": "string",
                 "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
               },
+              "workerImage": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
               "packageRepository": {
                 "type": "string",
                 "format": "uri"
@@ -11358,6 +11363,11 @@
                 "type": "string",
                 "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
               },
+              "workerImage": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
+              },
               "packageRepository": {
                 "type": "string",
                 "format": "uri"
@@ -13164,6 +13174,11 @@
               "version": {
                 "type": "string",
                 "minLength": 1
+              },
+              "image": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 255
               }
             },
             "required": [

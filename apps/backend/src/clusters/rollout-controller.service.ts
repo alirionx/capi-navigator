@@ -184,6 +184,8 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
           (s) => {
             const next = structuredClone(s);
             delete next.kubernetes.workerVersion;
+            // FP29-F-16: the workers take the new image together with the new version.
+            delete next.kubernetes.workerImage;
             return next;
           },
           false,

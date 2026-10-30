@@ -115,7 +115,15 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   // Worker pools (FP5-F-12), none for all-in-one.
   if (spec.topology.mode === 'standard') {
     for (const pool of spec.topology.workerPools) {
-      const machineSpec = infra.machineTemplateSpec(spec, spec.infrastructure, pool, 'worker', ctx);
+      // FP29-F-16: during an upgrade with a new image the workers keep theirs until they follow.
+      const workerImage = spec.kubernetes.workerImage;
+      const machineSpec = infra.machineTemplateSpec(
+        spec,
+        spec.infrastructure,
+        workerImage && !pool.image ? { ...pool, image: workerImage } : pool,
+        'worker',
+        ctx,
+      );
       const bootstrapSpec = flavor.workerBootstrapSpec({ spec, infra, pool });
       const machineName = `${spec.name}-${pool.name}-${shortHash(machineSpec)}`;
       const bootstrapName = `${spec.name}-${pool.name}-${shortHash(bootstrapSpec)}`;

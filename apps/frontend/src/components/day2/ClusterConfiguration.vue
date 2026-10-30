@@ -23,6 +23,7 @@ import ErrorAlert from '../ErrorAlert.vue';
 import CustomizationEditor from '../wizard/CustomizationEditor.vue';
 import InfraFields from '../wizard/InfraFields.vue';
 import MachineGroupEditor from '../wizard/MachineGroupEditor.vue';
+import { imageNameMatchesVersion } from '../wizard/capi-image.js';
 import { newerImage } from './newer-image.js';
 import FieldHelp from '../FieldHelp.vue';
 
@@ -180,6 +181,8 @@ interface Day2Form {
   maxSurge: number;
   maxUnavailable: number;
   version: string;
+  /** FP29-F-16: Cluster API image of the new version (air-gapped kubeadm). */
+  upgradeImage: string;
   infra: InfraValues;
 }
 const emptyForm = (): Day2Form => ({
@@ -192,6 +195,7 @@ const emptyForm = (): Day2Form => ({
   maxSurge: 1,
   maxUnavailable: 0,
   version: '',
+  upgradeImage: '',
   infra: {},
 });
 const form = ref<Day2Form>(emptyForm());
@@ -249,6 +253,7 @@ function start(m: Mode, groupId = '', g?: Group): void {
     }
     case 'upgrade':
       form.value = { ...emptyForm(), version: upgradeTargets.value[0]?.value ?? '' };
+      if (upgradeNeedsImage.value) void loadLists();
       break;
     case 'infrastructure':
       form.value = { ...emptyForm(), infra: { ...storedInfra.value } };
@@ -257,6 +262,15 @@ function start(m: Mode, groupId = '', g?: Group): void {
   if (m === 'machine' || m === 'addPool') void loadLists();
   open.value = true;
 }
+
+/** FP29-F-16, ADR-0032: air-gapped kubeadm upgrades take the Cluster API image of the new version. */
+const upgradeNeedsImage = computed(
+  () => !!spec.value?.airGapped && spec.value.kubernetes.flavor === 'kubeadm',
+);
+const upgradeImageName = computed(
+  () =>
+    images.value.find((o) => o.value === form.value.upgradeImage)?.label ?? form.value.upgradeImage,
+);
 
 const upgradeTargets = computed(() => {
   const s = spec.value;
@@ -315,7 +329,12 @@ const change = computed<SpecChangeInput | null>(() => {
         settings: { maxSurge: Number(f.maxSurge), maxUnavailable: Number(f.maxUnavailable) },
       };
     case 'upgrade':
-      return f.version ? { type: 'upgrade', version: f.version } : null;
+      if (!f.version || (upgradeNeedsImage.value && !f.upgradeImage)) return null;
+      return {
+        type: 'upgrade',
+        version: f.version,
+        ...(upgradeNeedsImage.value ? { image: f.upgradeImage } : {}),
+      };
     case 'infrastructure':
       return { type: 'infrastructure', values: day2Request(infraForm.value!, f.infra) };
   }
@@ -811,6 +830,32 @@ const infraNotes = computed(() =>
               <FieldHelp :text="t('day2.upgradeHint', { current: spec.kubernetes.version })" />
             </template>
           </v-select>
+          <template v-if="upgradeNeedsImage">
+            <v-autocomplete
+              v-model="form.upgradeImage"
+              :items="images"
+              item-title="label"
+              item-value="value"
+              :label="t('day2.upgradeImage')"
+              class="mt-3"
+              data-testid="day2-upgrade-image"
+            >
+              <template #append-inner>
+                <FieldHelp :text="t('day2.upgradeImageHint', { version: form.version })" />
+              </template>
+            </v-autocomplete>
+            <v-alert
+              v-if="form.upgradeImage && !imageNameMatchesVersion(upgradeImageName, form.version)"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-2"
+              data-testid="day2-upgrade-image-warning"
+              >{{
+                t('wizard.capiImageName', { image: upgradeImageName, version: form.version })
+              }}</v-alert
+            >
+          </template>
           <v-alert type="info" variant="tonal" density="compact" class="mt-3">{{
             t('day2.upgradeOrder')
           }}</v-alert>

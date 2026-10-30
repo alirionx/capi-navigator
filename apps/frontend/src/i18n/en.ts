@@ -282,6 +282,9 @@ export const en = {
     maxUnavailableHint: 'Nodes that may be missing during the rollout.',
     targetVersion: 'Target version',
     upgradeHint: 'Only upgrades, at most one minor version. Current: {current}.',
+    upgradeImage: 'Cluster API image of the new version',
+    upgradeImageHint:
+      'Air-gapped kubeadm nodes run on a Cluster API image of exactly their version (kubelet and kubeadm in the image). The control plane gets this image now, the worker pools when they follow the new version. Required.',
     upgradeOrder:
       'The control plane is upgraded first, node by node; the worker pools follow automatically once it runs the new version. The preview runs the pre-checks.',
     infrastructure: 'Infrastructure settings',
@@ -758,9 +761,13 @@ export const en = {
     experimentalTitle: 'Experimental',
     airGapped: 'Air-gapped: nodes without internet access, everything from {registry}',
     airGapUnavailable:
-      '{flavor} cannot be installed air-gapped (it installs from packages); choose RKE2 or k0s for a cluster without internet access.',
+      '{flavor} cannot be installed air-gapped; choose another distribution for a cluster without internet access.',
     airGappedInfo:
       'Nodes pull every image through {registry} and download the Kubernetes binaries from it. The preview checks that the binaries of this version are there. The image must contain what the first boot would otherwise install:',
+    airGappedInfoCapiImage:
+      'Nodes pull every image through {registry}. kubeadm needs a Cluster API image of exactly {version} as image or template, with kubeadm, kubelet and containerd preinstalled; a node on another image stops instead of mixing versions. Such images: OpenStack: the images of osism; other infrastructures: the official Image Builder; Proxmox VE: see the recipes in docs/proxmox.md. The image must also contain:',
+    capiImageName:
+      'The name of {image} does not show {version}. Check that it is a Cluster API image of exactly this version; otherwise its nodes stop during bootstrap.',
     airGapNeeds: {
       dns: 'DNS: the nodes must resolve the registry, so set your internal DNS servers in the Infrastructure step (not the public default).',
       proxmox:
@@ -768,7 +775,7 @@ export const en = {
       rke2: 'RKE2 on RHEL 10 and derivatives: kernel-modules-extra.',
     },
     kubeadmTradeoffs:
-      'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images.',
+      'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images; on a Cluster API image of the selected version nothing is installed.',
     cni: 'Calico CNI',
     cniHint:
       'kubeadm ships no network plugin: Calico with VXLAN, as with RKE2 and k0s, from the official manifest via a ClusterResourceSet. Turn off only to install your own CNI. Default: on.',
