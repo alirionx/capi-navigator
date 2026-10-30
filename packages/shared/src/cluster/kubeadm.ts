@@ -34,7 +34,8 @@ const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
 
 /**
- * FP10-F-02: prepares a stock image and installs containerd, runc, kubelet, kubeadm and kubectl.
+ * FP10-F-02: prepares a stock image and installs containerd, runc, kubelet, kubeadm and kubectl;
+ * on a Cluster API image it installs nothing or only the selected Kubernetes version (ADR-0032).
  * Pure function of the version and the mirrors, so a version change creates new templates.
  */
 export function kubeadmInstallScript(spec: ClusterSpec, version: string): string {
@@ -131,7 +132,9 @@ function bootstrapFields(
     ],
     preKubeadmCommands: [
       ...nodePreparation(spec, infra),
-      INSTALL_SCRIPT_PATH,
+      // ADR-0032: a failed installation ends the bootstrap commands, so kubeadm never runs on a
+      // half-installed node or with the kubeadm of another version.
+      `${INSTALL_SCRIPT_PATH} || exit 1`,
       ...nodeAddressCommands(spec, infra),
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,

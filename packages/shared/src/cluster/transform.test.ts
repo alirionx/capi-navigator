@@ -539,7 +539,8 @@ describe('kubeadm flavor (FP-10)', () => {
     )!;
     const s = (t.spec as { template: { spec: Record<string, string[]> } }).template.spec;
     expect(s.preKubeadmCommands).toEqual([
-      '/usr/local/bin/capi-navigator-install-kubernetes.sh',
+      // ADR-0032: a failed installation ends the bootstrap, kubeadm join never runs.
+      '/usr/local/bin/capi-navigator-install-kubernetes.sh || exit 1',
       'echo before',
     ]);
     expect(s.postKubeadmCommands).toEqual(['echo after']);
@@ -589,5 +590,52 @@ describe('kubeadm install script runs in bash (FP10-F-02)', () => {
       `set -euo pipefail; pkg=$( { ${list}; } | awk -v v="1.35.9-" '${program}'); echo "$pkg"`,
     ]).toString();
     expect(out.trim()).toBe('1.35.9-1.1');
+  });
+
+  // ADR-0032: Cluster API images bring kubeadm, kubelet, containerd and the node preparation.
+  const runWithStubs = async (kubeadmVersion: string) => {
+    const { execFileSync } = await import('node:child_process');
+    const { mkdtempSync, writeFileSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const bin = mkdtempSync(join(tmpdir(), 'kubeadm-stubs-'));
+    const stub = (name: string, body: string) =>
+      writeFileSync(join(bin, name), `#!/bin/bash\n${body}\n`, { mode: 0o755 });
+    stub('kubeadm', `[ "$1 $2 $3" = "version -o short" ] && echo ${kubeadmVersion}`);
+    for (const forbidden of ['modprobe', 'sysctl', 'swapoff', 'curl', 'apt-get', 'dnf', 'tar'])
+      stub(forbidden, `echo "UNEXPECTED ${forbidden}" >&2; exit 99`);
+    const spec = ClusterSpecSchema.parse({
+      ...openstack(),
+      kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+    });
+    try {
+      return execFileSync('bash', ['-c', kubeadmInstallScript(spec, 'v1.35.9')], {
+        env: { ...process.env, PATH: `${bin}:${process.env.PATH}` },
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).toString();
+    } finally {
+      rmSync(bin, { recursive: true, force: true });
+    }
+  };
+  it('installs nothing on a Cluster API image of the selected version (ADR-0032)', async () => {
+    expect(await runWithStubs('v1.35.9')).toContain(
+      'kubeadm v1.35.9 is preinstalled (Cluster API image), nothing to install',
+    );
+  });
+  it('on an image of another version changes only the Kubernetes packages (ADR-0032)', async () => {
+    // The script does not stop early: it goes on to prepare and install (which fails here without
+    // root and with the stubs); containerd stays untouched, as the guard below shows.
+    await expect(runWithStubs('v1.34.12')).rejects.toThrow();
+    const script = kubeadmInstallScript(
+      ClusterSpecSchema.parse({
+        ...openstack(),
+        kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+      }),
+      'v1.35.9',
+    );
+    expect(script).toContain('--allow-change-held-packages');
+    expect(script).toMatch(/if \[ "\$PREINSTALLED" = false \]; then\n# containerd and runc/);
+    // Whatever happened, the node runs kubeadm of exactly the selected version or stops.
+    expect(script).toMatch(/kubeadm version -o short.*!= "v\$\{K8S_VERSION\}"/);
   });
 });
