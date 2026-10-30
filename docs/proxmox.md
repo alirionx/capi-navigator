@@ -167,7 +167,10 @@ Proxmox VE needs in addition:
   ```
 
   Then create the template from that image as above (`--agent enabled=1`, no cloud-init drive). On
-  RHEL 10 and derivatives, RKE2 also needs `kernel-modules-extra` in the image.
+  RHEL 10 and derivatives, RKE2 also needs `kernel-modules-extra` in the image. Ready-made images of
+  this kind (`<os>-qga`: the stock Ubuntu or Debian cloud image plus the guest agent) are in the
+  releases of [capi-navigator-images](https://github.com/alirionx/capi-navigator-images), for
+  testing only.
 
 - **Internal DNS servers** in the infrastructure step: the nodes must resolve the registry, and
   public resolvers are not reachable. The wizard warns about public ones.

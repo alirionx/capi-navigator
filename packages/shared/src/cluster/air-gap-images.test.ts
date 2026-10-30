@@ -146,20 +146,21 @@ describe('registry contents of a cluster (FP29-F-17)', () => {
   });
 
   it('kubeadm: images of the version and Calico, no artifacts (ADR-0032)', () => {
-    const c = contents(spec({ kubernetes: { flavor: 'kubeadm', version: 'v1.36.5' } }));
+    const version = VERSIONS.kubernetes.kubeadm.versions[0]!.version;
+    const c = contents(spec({ kubernetes: { flavor: 'kubeadm', version } }));
     expect(c.artifacts).toEqual([]);
     expect(c.unknown).toEqual([]);
-    const sources = c.images.filter((i) => i.usedBy === 'kubeadm v1.36.5').map((i) => i.source);
+    const sources = c.images.filter((i) => i.usedBy === `kubeadm ${version}`).map((i) => i.source);
     expect(sources).toEqual(
       expect.arrayContaining([
-        'registry.k8s.io/kube-apiserver:v1.36.5',
-        'registry.k8s.io/pause:3.10.2',
+        `registry.k8s.io/kube-apiserver:${version}`,
         `quay.io/calico/node:${VERSIONS.cni.calico.version}`,
       ]),
     );
+    expect(sources.some((s) => s.startsWith('registry.k8s.io/pause:'))).toBe(true);
     expect(
-      c.images.find((i) => i.source === 'registry.k8s.io/kube-apiserver:v1.36.5')?.target,
-    ).toBe('registry.example.internal/proxy-k8s-io/kube-apiserver:v1.36.5');
+      c.images.find((i) => i.source === `registry.k8s.io/kube-apiserver:${version}`)?.target,
+    ).toBe(`registry.example.internal/proxy-k8s-io/kube-apiserver:${version}`);
   });
 
   it('lists both versions during an upgrade', () => {

@@ -185,24 +185,24 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "kubernetes/kubernetes"
       },
-      "verified": "2026-10-18",
-      "note": "Checked against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and rpm repositories (FP10-F-02); Cluster API v1.14 supports v1.33 to v1.37 for kubeadm.",
+      "verified": "2026-10-30",
+      "note": "Checked against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and rpm repositories (FP10-F-02); Cluster API v1.14 supports v1.33 to v1.37 for kubeadm. The Cluster API images of capi-navigator-images and osism carry the same patch versions (ADR-0032).",
       "versions": [
         {
-          "version": "v1.37.1",
+          "version": "v1.37.2",
           "verifiedWithProvider": "v1.14.3"
         },
         {
-          "version": "v1.36.5",
+          "version": "v1.36.6",
           "verifiedWithProvider": "v1.14.3"
         },
         {
-          "version": "v1.35.9",
+          "version": "v1.35.10",
           "verifiedWithProvider": "v1.14.3",
           "default": true
         },
         {
-          "version": "v1.34.12",
+          "version": "v1.34.13",
           "verifiedWithProvider": "v1.14.3"
         },
         {
