@@ -1,4 +1,4 @@
-import { nodePreparation } from './air-gap.js';
+import { airGapNodeSetup, containerdHostsFiles, nodePreparation } from './air-gap.js';
 import {
   KUBEADM_KUBE_VIP_INIT_COMMAND,
   KUBEADM_KUBE_VIP_RESTORE_COMMAND,
@@ -30,6 +30,15 @@ export const KUBEADM_RUNTIME = {
 };
 
 const INSTALL_SCRIPT_PATH = '/usr/local/bin/capi-navigator-install-kubernetes.sh';
+/** containerd's `config_path` in Cluster API images (Image Builder and capi-navigator-images). */
+const CONTAINERD_HOSTS_DIR = '/etc/containerd/certs.d';
+
+/**
+ * FP29-F-19, ADR-0032: an air-gapped node runs on a Cluster API image; without kubeadm of exactly
+ * this version it stops the bootstrap instead of mixing versions.
+ */
+export const kubeadmVersionCheck = (version: string) =>
+  `[ "$(kubeadm version -o short)" = "${version}" ] || { echo "This image has no kubeadm ${version}: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }`;
 const SSH_KEYS_FILE = '/etc/capi-navigator/ssh_authorized_keys';
 const SSH_KEYS_COMMAND = `u=$(getent passwd 1000 | cut -d: -f1); if [ -n "$u" ]; then h=$(getent passwd "$u" | cut -d: -f6); install -d -m 0700 -o "$u" -g "$u" "$h/.ssh"; cat ${SSH_KEYS_FILE} >> "$h/.ssh/authorized_keys"; chown "$u:$u" "$h/.ssh/authorized_keys"; chmod 0600 "$h/.ssh/authorized_keys"; fi`;
 
@@ -106,15 +115,29 @@ function bootstrapFields(
     postCommands: [],
   };
   const ssh = spec.sshPublicKeys;
+  // FP29-F-14, FP29-F-19 (ADR-0032): air-gapped nodes install nothing; containerd of the Cluster
+  // API image pulls through the internal registry, which the nodes trust.
+  const airGap = airGapNodeSetup(spec, kubeadmPlugin, version);
+  const install = spec.airGapped
+    ? [
+        ...airGap.files.map((f) => ({ ...f, owner: 'root:root' })),
+        ...containerdHostsFiles(spec.airGapped.registry, CONTAINERD_HOSTS_DIR).map((f) => ({
+          ...f,
+          owner: 'root:root',
+        })),
+      ]
+    : [
+        {
+          path: INSTALL_SCRIPT_PATH,
+          content: kubeadmInstallScript(spec, version),
+          permissions: '0755',
+          owner: 'root:root',
+        },
+      ];
   return compact({
     format: 'cloud-config',
     files: [
-      {
-        path: INSTALL_SCRIPT_PATH,
-        content: kubeadmInstallScript(spec, version),
-        permissions: '0755',
-        owner: 'root:root',
-      },
+      ...install,
       ...c.files.map((f) =>
         compact({
           path: f.path,
@@ -134,7 +157,15 @@ function bootstrapFields(
       ...nodePreparation(spec, infra),
       // ADR-0032: a failed installation ends the bootstrap commands, so kubeadm never runs on a
       // half-installed node or with the kubeadm of another version.
-      `${INSTALL_SCRIPT_PATH} || exit 1`,
+      ...(spec.airGapped
+        ? [
+            ...airGap.commands,
+            // containerd of the image runs since boot and read the trust store before the
+            // registry's CA was added (Go loads the system roots once per process).
+            ...(spec.airGapped.registry.caCert ? ['systemctl restart containerd'] : []),
+            kubeadmVersionCheck(version),
+          ]
+        : [`${INSTALL_SCRIPT_PATH} || exit 1`]),
       ...nodeAddressCommands(spec, infra),
       ...(ssh.length ? [SSH_KEYS_COMMAND] : []),
       ...c.preCommands,
@@ -158,6 +189,8 @@ export const kubeadmPlugin: BootstrapFlavorPlugin = {
   experimental: true,
   needsCni: true,
   installsPackages: true,
+  // ADR-0032: air-gapped on a Cluster API image, no artifact to pin.
+  airGap: {},
   customizationFields: { preCommands: 'preKubeadmCommands', postCommands: 'postKubeadmCommands' },
   // API server only behind the load balancer; Calico VXLAN with Typha between nodes (FP10-F-04).
   network: {

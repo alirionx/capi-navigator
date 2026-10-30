@@ -2276,3 +2276,726 @@ spec:
   strategy: Reconcile
 "
 `;
+
+exports[`air-gapped transformation snapshots (FP-29 part B) > kubeadm on OpenStack 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: offline-os
+  namespace: airgap
+  labels:
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/cni: calico
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"airGapped":{"artifacts":[],"registry":{"artifactsPath":"library","caCert":"-----BEGIN CERTIFICATE-----\\nMIIBexample\\n-----END CERTIFICATE-----","host":"registry.example.internal","mirrors":[{"path":"proxy-docker-io","upstream":"docker.io"},{"path":"proxy-k8s-io","upstream":"registry.k8s.io"},{"path":"proxy-ghcr-io","upstream":"ghcr.io"},{"upstream":"quay.io"}]}},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"internal","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.36.5"},"name":"offline-os","namespace":"airgap","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk0","replicas":1,"rootVolumeSizeGB":50},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":1}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: KubeadmControlPlane
+    name: offline-os-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: offline-os
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: offline-os
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: internal
+    cloudName: internal
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: offline-os-cp-e14339e4
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk0
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+      rootVolume:
+        sizeGiB: 50
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: offline-os-control-plane
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  version: v1.36.5
+  replicas: 1
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: offline-os-cp-e14339e4
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+  kubeadmConfigSpec:
+    format: cloud-config
+    files:
+      - path: /etc/capi-navigator/registry-ca.crt
+        content: |
+          -----BEGIN CERTIFICATE-----
+          MIIBexample
+          -----END CERTIFICATE-----
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/docker.io/hosts.toml
+        content: |
+          server = "https://registry-1.docker.io"
+
+          [host."https://registry.example.internal/v2/proxy-docker-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+        content: |
+          server = "https://registry.k8s.io"
+
+          [host."https://registry.example.internal/v2/proxy-k8s-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
+        content: |
+          server = "https://ghcr.io"
+
+          [host."https://registry.example.internal/v2/proxy-ghcr-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/quay.io/hosts.toml
+        content: |
+          server = "https://quay.io"
+
+          [host."https://registry.example.internal/v2"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+    preKubeadmCommands:
+      - if command -v update-ca-certificates >/dev/null; then install -m 0644 /etc/capi-navigator/registry-ca.crt /usr/local/share/ca-certificates/capi-navigator-registry.crt && update-ca-certificates; else install -m 0644 /etc/capi-navigator/registry-ca.crt /etc/pki/ca-trust/source/anchors/capi-navigator-registry.crt && update-ca-trust extract; fi
+      - systemctl restart containerd
+      - '[ "$(kubeadm version -o short)" = "v1.36.5" ] || { echo "This image has no kubeadm v1.36.5: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }'
+    initConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: openstack:///{{ v1.instance_id }}
+    joinConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: openstack:///{{ v1.instance_id }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: offline-os-default-38abfb98
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: offline-os-default-8c62fe01
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  template:
+    spec:
+      format: cloud-config
+      files:
+        - path: /etc/capi-navigator/registry-ca.crt
+          content: |
+            -----BEGIN CERTIFICATE-----
+            MIIBexample
+            -----END CERTIFICATE-----
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/docker.io/hosts.toml
+          content: |
+            server = "https://registry-1.docker.io"
+
+            [host."https://registry.example.internal/v2/proxy-docker-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+          content: |
+            server = "https://registry.k8s.io"
+
+            [host."https://registry.example.internal/v2/proxy-k8s-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
+          content: |
+            server = "https://ghcr.io"
+
+            [host."https://registry.example.internal/v2/proxy-ghcr-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/quay.io/hosts.toml
+          content: |
+            server = "https://quay.io"
+
+            [host."https://registry.example.internal/v2"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+      preKubeadmCommands:
+        - if command -v update-ca-certificates >/dev/null; then install -m 0644 /etc/capi-navigator/registry-ca.crt /usr/local/share/ca-certificates/capi-navigator-registry.crt && update-ca-certificates; else install -m 0644 /etc/capi-navigator/registry-ca.crt /etc/pki/ca-trust/source/anchors/capi-navigator-registry.crt && update-ca-trust extract; fi
+        - systemctl restart containerd
+        - '[ "$(kubeadm version -o short)" = "v1.36.5" ] || { echo "This image has no kubeadm v1.36.5: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }'
+      joinConfiguration:
+        nodeRegistration:
+          name: "{{ v1.local_hostname }}"
+          kubeletExtraArgs:
+            - name: cloud-provider
+              value: external
+            - name: provider-id
+              value: openstack:///{{ v1.instance_id }}
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: offline-os-default
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  clusterName: offline-os
+  replicas: 1
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: offline-os
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: offline-os
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: offline-os
+      version: v1.36.5
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: KubeadmConfigTemplate
+          name: offline-os-default-8c62fe01
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: offline-os-default-38abfb98
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: offline-os-cloud-config
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline-os
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: offline-os
+  resources:
+    - kind: Secret
+      name: offline-os-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`air-gapped transformation snapshots (FP-29 part B) > kubeadm on Proxmox VE 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: offline
+  namespace: airgap
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/cni: calico
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"airGapped":{"artifacts":[],"registry":{"artifactsPath":"library","caCert":"-----BEGIN CERTIFICATE-----\\nMIIBexample\\n-----END CERTIFICATE-----","host":"registry.example.internal","mirrors":[{"path":"proxy-docker-io","upstream":"docker.io"},{"path":"proxy-k8s-io","upstream":"registry.k8s.io"},{"path":"proxy-ghcr-io","upstream":"ghcr.io"},{"upstream":"quay.io"}]}},"infrastructure":{"apiEndpoint":"10.20.0.80","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7114","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.79"],"dnsNameservers":["10.20.0.53"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"pve1","storage":"local-zfs"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.36.5"},"name":"offline","namespace":"airgap","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":1}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: KubeadmControlPlane
+    name: offline-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: offline
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: offline
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+  annotations:
+    capi-navigator.io/credential: homelab
+spec:
+  controlPlaneEndpoint:
+    host: 10.20.0.80
+    port: 6443
+  ipv4Config:
+    addresses:
+      - 10.20.0.71-10.20.0.79
+    prefix: 24
+    gateway: 10.20.0.1
+  dnsServers:
+    - 10.20.0.53
+  allowedNodes:
+    - pve1
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: offline-proxmox-credentials
+    namespace: airgap
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: offline-cp-eefa1e86
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  template:
+    spec:
+      sourceNode: pve1
+      templateID: 7114
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: virtio0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: offline-control-plane
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  version: v1.36.5
+  replicas: 1
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: offline-cp-eefa1e86
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+  kubeadmConfigSpec:
+    format: cloud-config
+    files:
+      - path: /etc/capi-navigator/registry-ca.crt
+        content: |
+          -----BEGIN CERTIFICATE-----
+          MIIBexample
+          -----END CERTIFICATE-----
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/docker.io/hosts.toml
+        content: |
+          server = "https://registry-1.docker.io"
+
+          [host."https://registry.example.internal/v2/proxy-docker-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+        content: |
+          server = "https://registry.k8s.io"
+
+          [host."https://registry.example.internal/v2/proxy-k8s-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
+        content: |
+          server = "https://ghcr.io"
+
+          [host."https://registry.example.internal/v2/proxy-ghcr-io"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/containerd/certs.d/quay.io/hosts.toml
+        content: |
+          server = "https://quay.io"
+
+          [host."https://registry.example.internal/v2"]
+            capabilities = ["pull", "resolve"]
+            override_path = true
+        permissions: "0644"
+        owner: root:root
+      - path: /etc/kubernetes/manifests/kube-vip.yaml
+        content: |
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: kube-vip
+            namespace: kube-system
+          spec:
+            containers:
+              - name: kube-vip
+                image: ghcr.io/kube-vip/kube-vip:v1.3.1
+                imagePullPolicy: IfNotPresent
+                args:
+                  - manager
+                env:
+                  - name: vip_arp
+                    value: "true"
+                  - name: port
+                    value: "6443"
+                  - name: vip_nodename
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: spec.nodeName
+                  - name: vip_subnet
+                    value: "32"
+                  - name: dns_mode
+                    value: first
+                  - name: dhcp_mode
+                    value: ipv4
+                  - name: cp_enable
+                    value: "true"
+                  - name: cp_namespace
+                    value: kube-system
+                  - name: svc_enable
+                    value: "false"
+                  - name: vip_leaderelection
+                    value: "true"
+                  - name: vip_leasename
+                    value: plndr-cp-lock
+                  - name: vip_leaseduration
+                    value: "15"
+                  - name: vip_renewdeadline
+                    value: "10"
+                  - name: vip_retryperiod
+                    value: "2"
+                  - name: address
+                    value: 10.20.0.80
+                  - name: prometheus_server
+                    value: :2112
+                securityContext:
+                  capabilities:
+                    add:
+                      - NET_ADMIN
+                      - NET_RAW
+                    drop:
+                      - ALL
+                volumeMounts:
+                  - name: kubeconfig
+                    mountPath: /etc/kubernetes/admin.conf
+            hostNetwork: true
+            hostAliases:
+              - ip: 127.0.0.1
+                hostnames:
+                  - kubernetes
+            volumes:
+              - name: kubeconfig
+                hostPath:
+                  path: /etc/kubernetes/admin.conf
+        permissions: "0644"
+        owner: root:root
+    preKubeadmCommands:
+      - if command -v update-ca-certificates >/dev/null; then install -m 0644 /etc/capi-navigator/registry-ca.crt /usr/local/share/ca-certificates/capi-navigator-registry.crt && update-ca-certificates; else install -m 0644 /etc/capi-navigator/registry-ca.crt /etc/pki/ca-trust/source/anchors/capi-navigator-registry.crt && update-ca-trust extract; fi
+      - systemctl restart containerd
+      - '[ "$(kubeadm version -o short)" = "v1.36.5" ] || { echo "This image has no kubeadm v1.36.5: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }'
+      - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
+    postKubeadmCommands:
+      - "if [ -f /run/kubeadm/kubeadm.yaml ]; then sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml; fi"
+    initConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: proxmox://{{ v1.instance_id }}
+    joinConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: proxmox://{{ v1.instance_id }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: offline-default-2b080706
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  template:
+    spec:
+      sourceNode: pve1
+      templateID: 7114
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 8
+      memoryMiB: 16384
+      disks:
+        bootVolume:
+          disk: virtio0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: offline-default-f4ec6844
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  template:
+    spec:
+      format: cloud-config
+      files:
+        - path: /etc/capi-navigator/registry-ca.crt
+          content: |
+            -----BEGIN CERTIFICATE-----
+            MIIBexample
+            -----END CERTIFICATE-----
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/docker.io/hosts.toml
+          content: |
+            server = "https://registry-1.docker.io"
+
+            [host."https://registry.example.internal/v2/proxy-docker-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/registry.k8s.io/hosts.toml
+          content: |
+            server = "https://registry.k8s.io"
+
+            [host."https://registry.example.internal/v2/proxy-k8s-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/ghcr.io/hosts.toml
+          content: |
+            server = "https://ghcr.io"
+
+            [host."https://registry.example.internal/v2/proxy-ghcr-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+        - path: /etc/containerd/certs.d/quay.io/hosts.toml
+          content: |
+            server = "https://quay.io"
+
+            [host."https://registry.example.internal/v2"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+          owner: root:root
+      preKubeadmCommands:
+        - if command -v update-ca-certificates >/dev/null; then install -m 0644 /etc/capi-navigator/registry-ca.crt /usr/local/share/ca-certificates/capi-navigator-registry.crt && update-ca-certificates; else install -m 0644 /etc/capi-navigator/registry-ca.crt /etc/pki/ca-trust/source/anchors/capi-navigator-registry.crt && update-ca-trust extract; fi
+        - systemctl restart containerd
+        - '[ "$(kubeadm version -o short)" = "v1.36.5" ] || { echo "This image has no kubeadm v1.36.5: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }'
+        - f=/etc/default/kubelet; [ -d /etc/sysconfig ] && f=/etc/sysconfig/kubelet; echo "KUBELET_EXTRA_ARGS=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')" > "$f"
+      joinConfiguration:
+        nodeRegistration:
+          name: "{{ v1.local_hostname }}"
+          kubeletExtraArgs:
+            - name: cloud-provider
+              value: external
+            - name: provider-id
+              value: proxmox://{{ v1.instance_id }}
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: offline-default
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  clusterName: offline
+  replicas: 1
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: offline
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: offline
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: offline
+      version: v1.36.5
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: KubeadmConfigTemplate
+          name: offline-default-f4ec6844
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: offline-default-2b080706
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: offline-proxmox-cloud-config
+  namespace: airgap
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: offline
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: offline
+  resources:
+    - kind: Secret
+      name: offline-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;

@@ -162,10 +162,11 @@ export interface BootstrapFlavorPlugin {
   /** Marked as experimental in the wizard, with its trade-offs (FP10-F-08). */
   experimental?: boolean;
   /**
-   * Installation without internet from the internal registry (FP-29 part B): the artifact with
-   * the binaries of a version. Unset: the distribution cannot run air-gapped.
+   * Installation without internet from the internal registry (FP-29 part B). `artifact`: the
+   * binaries of a version, pinned in the spec (RKE2, k0s); without it the image brings them (a
+   * Cluster API image for kubeadm, ADR-0032). Unset: the distribution cannot run air-gapped.
    */
-  airGap?: { artifact(version: string): AirGapArtifact };
+  airGap?: { artifact?(version: string): AirGapArtifact };
   /** Display name and the fields node customization maps to, for help texts (POS-04). */
   displayName: string;
   customizationFields: { preCommands: string; postCommands: string };

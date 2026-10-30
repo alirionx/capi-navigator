@@ -90,6 +90,13 @@ const k0s = (base: ClusterSpecInput): ClusterSpecInput => ({
   kubernetes: { flavor: 'k0s', version: K0S },
   airGapped: { registry, artifacts: [k0sPin(K0S, 'd')] },
 });
+// ADR-0032: kubeadm on a Cluster API image, no artifacts to pin.
+const KUBEADM = 'v1.36.5';
+const kubeadm = (base: ClusterSpecInput): ClusterSpecInput => ({
+  ...base,
+  kubernetes: { flavor: 'kubeadm', version: KUBEADM },
+  airGapped: { registry, artifacts: [] },
+});
 
 const ctx: TransformContext = {
   credential: { cloudName: 'internal', machineSizes: DEFAULT_PROXMOX_MACHINE_SIZES },
@@ -104,6 +111,8 @@ describe('air-gapped transformation snapshots (FP-29 part B)', () => {
   it('k0s on Proxmox VE', () => expect(render(k0s(proxmox()))).toMatchSnapshot());
   it('RKE2 on OpenStack', () => expect(render(openstack())).toMatchSnapshot());
   it('k0s on OpenStack', () => expect(render(k0s(openstack()))).toMatchSnapshot());
+  it('kubeadm on Proxmox VE', () => expect(render(kubeadm(proxmox()))).toMatchSnapshot());
+  it('kubeadm on OpenStack', () => expect(render(kubeadm(openstack()))).toMatchSnapshot());
 });
 
 describe('air-gapped nodes (FP29-F-13..F-15)', () => {
@@ -192,10 +201,43 @@ describe('air-gapped nodes (FP29-F-13..F-15)', () => {
     );
   });
 
-  it('refuses kubeadm, which installs from packages (FP29-F-11)', () => {
-    expect(() =>
-      objects(proxmox({ kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' } })),
-    ).toThrow('cannot be installed air-gapped');
+  it('kubeadm: no install script, a version check, mirrors and the registry CA (FP29-F-19, ADR-0032)', () => {
+    const cp = specOf(kubeadm(proxmox()), 'KubeadmControlPlane').spec.kubeadmConfigSpec;
+    const paths = cp.files.map((f: { path: string }) => f.path);
+    expect(paths).not.toContain('/usr/local/bin/capi-navigator-install-kubernetes.sh');
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        '/etc/capi-navigator/registry-ca.crt',
+        '/etc/containerd/certs.d/docker.io/hosts.toml',
+        '/etc/containerd/certs.d/registry.k8s.io/hosts.toml',
+        '/etc/containerd/certs.d/ghcr.io/hosts.toml',
+        '/etc/containerd/certs.d/quay.io/hosts.toml',
+      ]),
+    );
+    const hosts = cp.files.find((f: { path: string }) =>
+      f.path.endsWith('/registry.k8s.io/hosts.toml'),
+    );
+    expect(hosts.content).toContain('[host."https://registry.example.internal/v2/proxy-k8s-io"]');
+    const pre: string[] = cp.preKubeadmCommands;
+    expect(pre.join('\n')).not.toContain('qemu-guest-agent');
+    expect(pre.join('\n')).not.toContain('capi-navigator-install-kubernetes');
+    expect(pre.some((c) => c.includes('update-ca-certificates'))).toBe(true);
+    // containerd of the image runs since boot: it reads the new CA only after a restart.
+    expect(pre.indexOf('systemctl restart containerd')).toBe(
+      pre.findIndex((c) => c.includes('update-ca-certificates')) + 1,
+    );
+    expect(pre).toContain(
+      `[ "$(kubeadm version -o short)" = "${KUBEADM}" ] || { echo "This image has no kubeadm ${KUBEADM}: air-gapped kubeadm nodes need a Cluster API image of exactly this version (ADR-0032)" >&2; exit 1; }`,
+    );
+  });
+
+  it('kubeadm workers check their own version during an upgrade', () => {
+    const spec = kubeadm(proxmox());
+    spec.kubernetes = { flavor: 'kubeadm', version: KUBEADM, workerVersion: 'v1.35.9' };
+    const pre: string[] = specOf(spec, 'KubeadmConfigTemplate').spec.template.spec
+      .preKubeadmCommands;
+    expect(pre.some((c) => c.includes('= "v1.35.9" ]'))).toBe(true);
+    expect(pre.some((c) => c.includes(`= "${KUBEADM}" ]`))).toBe(false);
   });
 
   it('clusters without the setting keep the online preparation', () => {
@@ -232,7 +274,7 @@ describe('DNS of air-gapped nodes', () => {
 
 describe('artifact push commands (FP29-F-12)', () => {
   it('RKE2: downloads from the release, checks the tarball, pushes the files without a path', () => {
-    expect(artifactPushCommands(registry, rke2Plugin.airGap!.artifact(RKE2))).toBe(
+    expect(artifactPushCommands(registry, rke2Plugin.airGap!.artifact!(RKE2))).toBe(
       [
         'mkdir -p rke2-artifacts-v1.35.9-rke2r1 && cd rke2-artifacts-v1.35.9-rke2r1',
         "curl -fL -o rke2.linux-amd64.tar.gz 'https://github.com/rancher/rke2/releases/download/v1.35.9%2Brke2r1/rke2.linux-amd64.tar.gz'",
@@ -245,7 +287,7 @@ describe('artifact push commands (FP29-F-12)', () => {
   });
 
   it('k0s: the static binary', () => {
-    expect(artifactPushCommands(registry, k0sPlugin.airGap!.artifact(K0S))).toBe(
+    expect(artifactPushCommands(registry, k0sPlugin.airGap!.artifact!(K0S))).toBe(
       [
         'mkdir -p k0s-amd64-v1.35.8-k0s.1 && cd k0s-amd64-v1.35.8-k0s.1',
         "curl -fL -o k0s 'https://github.com/k0sproject/k0s/releases/download/v1.35.8%2Bk0s.1/k0s-v1.35.8%2Bk0s.1-amd64'",

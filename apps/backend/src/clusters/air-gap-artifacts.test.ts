@@ -117,7 +117,7 @@ describe('pinArtifacts (FP29-F-12, FP29-F-16)', () => {
     expect(res.spec.airGapped!.artifacts[0]!.files).toEqual([{ name: 'k0s', digest: digest('d') }]);
   });
 
-  it('names missing files, an unreachable registry and kubeadm', async () => {
+  it('names missing files and an unreachable registry; kubeadm needs no artifacts', async () => {
     const partial = { ociLayers: vi.fn().mockResolvedValue(rke2Layers('a').slice(0, 2)) };
     expect(
       (await pinArtifacts(spec({ version: 'v1.35.9+rke2r1' }), partial)).blockers[0],
@@ -126,8 +126,10 @@ describe('pinArtifacts (FP29-F-12, FP29-F-16)', () => {
     expect((await pinArtifacts(spec({ version: 'v1.35.9+rke2r1' }), down)).blockers[0]).toContain(
       'cannot read the internal registry registry.example.internal: connect ECONNREFUSED',
     );
+    // ADR-0032: kubeadm runs on a Cluster API image and pins nothing.
     const kubeadm = await pinArtifacts(spec({ flavor: 'kubeadm', version: 'v1.35.9' }), partial);
-    expect(kubeadm.ready).toBe(false);
-    expect(kubeadm.blockers[0]).toContain('cannot be installed air-gapped');
+    expect(kubeadm.ready).toBe(true);
+    expect(kubeadm.blockers).toEqual([]);
+    expect(kubeadm.spec.airGapped?.artifacts).toEqual([]);
   });
 });

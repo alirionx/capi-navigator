@@ -35,10 +35,19 @@ export async function pinArtifacts(
     return {
       spec,
       blockers: [
-        `${flavor?.displayName ?? spec.kubernetes.flavor} cannot be installed air-gapped; choose RKE2 or k0s, or switch air-gapped off.`,
+        `${flavor?.displayName ?? spec.kubernetes.flavor} cannot be installed air-gapped; choose another distribution, or switch air-gapped off.`,
       ],
       missing: [],
       ready: false,
+    };
+  }
+  // ADR-0032: kubeadm runs on a Cluster API image that brings its binaries; nothing to pin.
+  if (!flavor.airGap.artifact) {
+    return {
+      spec: { ...spec, airGapped: { ...airGapped, artifacts: [] } },
+      blockers: [],
+      missing: [],
+      ready: true,
     };
   }
   const { registry } = airGapped;

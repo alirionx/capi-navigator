@@ -86,6 +86,16 @@ export function airGapNodeSetup(
   const airGapped = spec.airGapped;
   if (!airGapped || !flavor.airGap) return { files: [], commands: [] };
   const { registry } = airGapped;
+  const ca = registry.caCert
+    ? {
+        files: [
+          { path: REGISTRY_CA_PATH, content: `${registry.caCert.trim()}\n`, permissions: '0644' },
+        ],
+        commands: [TRUST_REGISTRY_CA],
+      }
+    : { files: [], commands: [] };
+  // ADR-0032: distributions without an artifact (kubeadm) find their binaries in the image.
+  if (!flavor.airGap.artifact) return ca;
   const artifact = flavor.airGap.artifact(version);
   const pin = artifactPin(spec, version);
   const targets = artifact.files.map((f) => {
@@ -95,13 +105,11 @@ export function airGapNodeSetup(
   });
   return {
     files: [
-      ...(registry.caCert
-        ? [{ path: REGISTRY_CA_PATH, content: `${registry.caCert.trim()}\n`, permissions: '0644' }]
-        : []),
+      ...ca.files,
       { path: FETCH_SCRIPT_PATH, content: FETCH_ARTIFACT_SCRIPT, permissions: '0755' },
     ],
     commands: [
-      ...(registry.caCert ? [TRUST_REGISTRY_CA] : []),
+      ...ca.commands,
       `python3 ${FETCH_SCRIPT_PATH} https://${registry.host} ${pin.repository} ${targets.join(' ')} || exit 1`,
     ],
   };

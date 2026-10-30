@@ -98,10 +98,13 @@ export function registryContents(
       return { source: image, ...(target ? { target } : {}), usedBy };
     });
   return {
-    artifacts: versions.map((v) => {
-      const artifact = flavor.airGap!.artifact(v);
-      return { artifact, commands: artifactPushCommands(registry, artifact) };
-    }),
+    // ADR-0032: kubeadm has no artifacts, its binaries are in the Cluster API image.
+    artifacts: flavor.airGap.artifact
+      ? versions.map((v) => {
+          const artifact = flavor.airGap!.artifact!(v);
+          return { artifact, commands: artifactPushCommands(registry, artifact) };
+        })
+      : [],
     images,
     unknown,
   };
