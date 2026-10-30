@@ -150,12 +150,14 @@ RKE2 and k0s deploy it from their manifest directories, kubeadm as a static pod.
 
 ## Air-gapped clusters
 
-RKE2 and k0s clusters can run on nodes without internet access (FP-29,
-[ADR-0030](adr/0030-air-gapped-nodes-from-an-internal-registry.md)): the nodes pull every image
-through an internal OCI registry and download the Kubernetes binaries from it. kubeadm is not
-supported. What Proxmox VE needs in addition:
+RKE2, k0s and kubeadm clusters can run on nodes without internet access (FP-29,
+[ADR-0030](adr/0030-air-gapped-nodes-from-an-internal-registry.md),
+[ADR-0032](adr/0032-kubeadm-on-capi-images.md)): the nodes pull every image through an internal OCI
+registry. RKE2 and k0s download their binaries from it; kubeadm runs on a Cluster API image that
+has them already (see [Cluster API images for kubeadm](#cluster-api-images-for-kubeadm)). What
+Proxmox VE needs in addition:
 
-- **A template with the QEMU guest agent installed.** The app normally installs `qemu-guest-agent`
+- **RKE2 and k0s: a template with the QEMU guest agent installed.** The app normally installs `qemu-guest-agent`
   on first boot, which needs the internet; without the agent CAPMOX waits for cloud-init forever.
   Bake it into the cloud image before you import it, e.g. with `virt-customize` from
   libguestfs-tools:
@@ -177,16 +179,63 @@ In the app:
 1. **Credentials → Internal registry**: the registry's host, its CA if private, the path per
    upstream registry (e.g. `docker.io` → `proxy-docker-io` for a Harbor proxy cache project) and
    the path of the binary artifacts. The registry must allow anonymous pulls.
-2. **Create cluster** with RKE2 or k0s and the switch **Air-gapped** on. The preview looks up the
-   binaries of the version in the registry; if they are missing, it shows the commands that
-   download them from the upstream release and push them with `oras push`. Run them once per
-   version, then preview again.
+2. **Create cluster** with RKE2, k0s or kubeadm and the switch **Air-gapped** on. For RKE2 and k0s
+   the preview looks up the binaries of the version in the registry; if they are missing, it shows
+   the commands that download them from the upstream release and push them with `oras push`. Run
+   them once per version, then preview again. For kubeadm choose a template with a Cluster API
+   image of exactly the selected version; a node on another image stops during bootstrap.
 3. **Registry contents** in the preview and on the cluster page lists every image the cluster needs with `skopeo copy`
    commands. A proxy cache that reaches the internet fills itself; a registry without one needs
    them all before the nodes start.
 
 Upgrades work like for other clusters: push the binaries of the new version first, the preview
-pins them and the machines are replaced.
+pins them and the machines are replaced. kubeadm upgrades ask for the template of the new version:
+the control plane moves to it at once, the worker pools when they follow.
+
+### Cluster API images for kubeadm
+
+A Cluster API image has containerd, runc, kubelet, kubeadm and kubectl of one Kubernetes version
+preinstalled, as the Image Builder of Cluster API produces them. On Proxmox VE it also needs the QEMU
+guest agent. The app uses such a template **air-gapped and online**: online, the install script
+finds kubeadm of the selected version and installs nothing (another version: it changes only the
+Kubernetes packages), so one template serves both. The version in the template's name lets the
+wizard warn about a mismatch, e.g. `debian-13-kube-v1-36-5`.
+
+The project publishes no supported images. Two ways to get one for Proxmox VE:
+
+- **An osism image with the guest agent added.** [osism](https://github.com/osism/k8s-capi-images)
+  publishes maintained Cluster API images for OpenStack (Ubuntu, one per Kubernetes version). They
+  boot on Proxmox VE with NoCloud as well, but lack the guest agent; add it with `virt-customize`
+  (needs internet while customizing):
+
+  ```bash
+  apt-get install -y libguestfs-tools
+  virt-customize -a ubuntu-2404-kube-v1.36.5.qcow2 --install qemu-guest-agent
+  ```
+
+  Note that osism holds every package of the image, so the image gets no OS updates on its own.
+
+- **Build one from a stock cloud image with `virt-customize`**, directly on a Proxmox VE node:
+  start from the Ubuntu or Debian cloud image, install `qemu-guest-agent`, `conntrack` and `socat`,
+  containerd and runc (release binaries), kubelet, kubeadm, kubectl, cri-tools and kubernetes-cni of
+  the version from `pkgs.k8s.io` (held), and configure containerd with `SystemdCgroup = true`,
+  `config_path = '/etc/containerd/certs.d'` (for the registry mirrors) and the pause image kubeadm
+  of that version expects. A complete example with a boot test, also as a GitHub Actions workflow,
+  is in [capi-navigator-images](https://github.com/alirionx/capi-navigator-images) (for testing
+  only, without warranty). Building takes about 90 seconds.
+
+For other infrastructures use the official [Image Builder](https://image-builder.sigs.k8s.io/)
+(Packer); on OpenStack the osism images work as they are.
+
+Import the image as template as [above](#setup-in-proxmox-ve), e.g.:
+
+```bash
+qm create 9000 --name debian-13-kube-v1-36-5 --ostype l26 --cpu host --cores 2 --memory 4096 \
+  --net0 virtio,bridge=vmbr0 --scsihw virtio-scsi-single --serial0 socket --vga serial0 --agent enabled=1
+qm disk import 9000 debian-13-kube-v1.36.5.qcow2 local-zfs
+qm set 9000 --virtio0 local-zfs:vm-9000-disk-0 --boot order=virtio0
+qm template 9000
+```
 
 ## Troubleshooting
 

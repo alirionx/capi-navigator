@@ -239,7 +239,12 @@ binaries of each version in that registry and pins their layer digests in the sp
 `transform(spec)` runs, so the transformation stays pure; a missing artifact is a blocker with
 the push commands. The bootstrap data then fetches the binaries by digest (sha256 checked) instead
 of downloading them from the internet, and configures the container runtime to pull every image
-through the registry. Upgrades resolve and pin the new version the same way.
+through the registry. Upgrades resolve and pin the new version the same way. kubeadm has no
+artifacts ([ADR-0032](adr/0032-kubeadm-on-capi-images.md)): its nodes run on a Cluster API image
+of exactly their version, check that before `kubeadm init` or `join` (or stop), and get only the
+registry mirrors and CA; its upgrades carry the image of the new version, which the worker pools
+take when they follow (`kubernetes.workerImage`). Online, the same image works: the install script
+finds kubeadm of the selected version and installs nothing.
 
 ### Day-2 changes, drift and template rotation
 
