@@ -285,6 +285,13 @@ async function signOut(): Promise<void> {
   + :is(.v-text-field, .v-file-input) {
   margin-top: 12px;
 }
+/* A button or alert right below the last stacked field keeps the same distance as a section. */
+:is(.v-application, .v-overlay-container)
+  :is(:not(.d-flex), .flex-column)
+  > :is(.v-text-field, .v-file-input)
+  + :is(.v-btn, .v-alert) {
+  margin-top: 20px;
+}
 /* Page header used by the views. */
 .page-title {
   font-size: 1.75rem;
