@@ -84,6 +84,7 @@ describe('generated image lists (FP29-F-17)', () => {
   it.each([
     ...VERSIONS.kubernetes.rke2.versions.map((v) => ['rke2', v.version]),
     ...VERSIONS.kubernetes.k0s.versions.map((v) => ['k0s', v.version]),
+    ...VERSIONS.kubernetes.kubeadm.versions.map((v) => ['kubeadm', v.version]),
   ])('%s %s has its images: run pnpm airgap:images', (flavor, version) => {
     if (broken.has(version)) return;
     expect(lists[flavor]?.[version]?.length).toBeGreaterThan(5);
@@ -142,6 +143,23 @@ describe('registry contents of a cluster (FP29-F-17)', () => {
   it('names add-ons it does not know, e.g. a preset on another chart version', () => {
     const c = contents(spec(), { 'proxmox-ccm': { version: '9.9.9' } });
     expect(c.unknown).toEqual(['Proxmox VE Cloud Controller Manager 9.9.9']);
+  });
+
+  it('kubeadm: images of the version and Calico, no artifacts (ADR-0032)', () => {
+    const c = contents(spec({ kubernetes: { flavor: 'kubeadm', version: 'v1.36.5' } }));
+    expect(c.artifacts).toEqual([]);
+    expect(c.unknown).toEqual([]);
+    const sources = c.images.filter((i) => i.usedBy === 'kubeadm v1.36.5').map((i) => i.source);
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        'registry.k8s.io/kube-apiserver:v1.36.5',
+        'registry.k8s.io/pause:3.10.2',
+        `quay.io/calico/node:${VERSIONS.cni.calico.version}`,
+      ]),
+    );
+    expect(
+      c.images.find((i) => i.source === 'registry.k8s.io/kube-apiserver:v1.36.5')?.target,
+    ).toBe('registry.example.internal/proxy-k8s-io/kube-apiserver:v1.36.5');
   });
 
   it('lists both versions during an upgrade', () => {

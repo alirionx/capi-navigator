@@ -1,8 +1,17 @@
-// Writes air-gap-images.generated.ts (FP29-F-17): the images of every RKE2 and k0s version and of
-// every add-on preset in versions.yaml. Run with `pnpm airgap:images` after a version change; needs
-// the internet and helm. k0s binaries are cached in ~/.cache/capi-navigator/k0s.
+// Writes air-gap-images.generated.ts (FP29-F-17): the images of every RKE2, k0s and kubeadm version
+// and of every add-on preset in versions.yaml. Run with `pnpm airgap:images` after a version change;
+// needs the internet and helm. k0s and kubeadm binaries are cached in ~/.cache/capi-navigator.
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { VERSIONS } from '../versions.generated.js';
@@ -60,6 +69,56 @@ async function k0sImages(version: string): Promise<string[]> {
   ].sort();
 }
 
+/**
+ * kubeadm prints the images of a version (ADR-0032); the node name is set, since kubeadm validates
+ * it and a build host's name may not be a valid one.
+ */
+async function kubeadmImages(version: string): Promise<string[]> {
+  const dir = join(homedir(), '.cache', 'capi-navigator', 'kubeadm', version);
+  const bin = join(dir, 'kubeadm');
+  if (!existsSync(bin)) {
+    mkdirSync(dir, { recursive: true });
+    const url = `https://dl.k8s.io/release/${version}/bin/linux/amd64/kubeadm`;
+    const [res, sum] = await Promise.all([fetch(url), fetch(`${url}.sha256`)]);
+    if (!res.ok || !sum.ok) throw new Error(`kubeadm ${version}: HTTP ${res.status}/${sum.status}`);
+    const data = Buffer.from(await res.arrayBuffer());
+    const expected = (await sum.text()).trim().split(/\s+/)[0];
+    if (createHash('sha256').update(data).digest('hex') !== expected)
+      throw new Error(`kubeadm ${version}: checksum mismatch`);
+    writeFileSync(bin, data);
+    chmodSync(bin, 0o755);
+  }
+  const config = [
+    'apiVersion: kubeadm.k8s.io/v1beta4',
+    'kind: InitConfiguration',
+    'nodeRegistration:',
+    '  name: image-list',
+    '---',
+    'apiVersion: kubeadm.k8s.io/v1beta4',
+    'kind: ClusterConfiguration',
+    `kubernetesVersion: ${version}`,
+    '',
+  ].join('\n');
+  const file = join(dir, 'config.yaml');
+  writeFileSync(file, config);
+  const out = execFileSync(bin, ['config', 'images', 'list', '--config', file], {
+    encoding: 'utf8',
+  });
+  return out
+    .split('\n')
+    .filter((l) => l.trim())
+    .map((l) => normalizeImage(l.trim()));
+}
+
+/** Calico of kubeadm clusters comes as manifest shipped with the backend (ADR-0014). */
+function calicoImages(): string[] {
+  const manifest = new URL(
+    `../../../../apps/backend/assets/calico/${VERSIONS.cni.calico.manifest}`,
+    import.meta.url,
+  );
+  return imagesInManifests(readFileSync(manifest, 'utf8'));
+}
+
 /** Renders a preset's chart with its values; CAAPH's Go templates get placeholders. */
 function presetImages(preset: (typeof ADDON_PRESETS)[number], work: string): string[] {
   const values = join(work, `${preset.id}.yaml`);
@@ -77,7 +136,11 @@ function presetImages(preset: (typeof ADDON_PRESETS)[number], work: string): str
 
 const work = mkdtempSync(join(tmpdir(), 'air-gap-images-'));
 try {
-  const distributions: Record<string, Record<string, string[]>> = { rke2: {}, k0s: {} };
+  const distributions: Record<string, Record<string, string[]>> = {
+    rke2: {},
+    k0s: {},
+    kubeadm: {},
+  };
   for (const { version } of VERSIONS.kubernetes.rke2.versions) {
     try {
       distributions.rke2![version] = await rke2Images(version);
@@ -90,6 +153,13 @@ try {
   for (const { version } of VERSIONS.kubernetes.k0s.versions) {
     distributions.k0s![version] = await k0sImages(version);
     console.log(`k0s ${version}: ${distributions.k0s![version]!.length} images`);
+  }
+  const calico = calicoImages();
+  for (const { version } of VERSIONS.kubernetes.kubeadm.versions) {
+    distributions.kubeadm![version] = [
+      ...new Set([...(await kubeadmImages(version)), ...calico]),
+    ].sort();
+    console.log(`kubeadm ${version}: ${distributions.kubeadm![version]!.length} images`);
   }
   const presets: Record<string, { version: string; images: string[] }> = {};
   for (const preset of ADDON_PRESETS) {
