@@ -22,4 +22,10 @@ describe('UI texts', () => {
     }
     expect(broken).toEqual([]);
   });
+
+  it('no message looks like HTML (vue-i18n warns on every render, e.g. "<name>")', () => {
+    const { t } = createAppI18n().global;
+    const html = keys(en).filter((key) => /<[^<>]+>/.test(t(key, {})));
+    expect(html).toEqual([]);
+  });
 });

@@ -805,7 +805,8 @@ export const en = {
     cpNodes: 'Control plane nodes',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',
     poolName: 'Pool name',
-    poolNameHint: 'Lowercase, at most 12 characters. MachineDeployment <cluster>-<pool>.',
+    poolNameHint:
+      'Lowercase, at most 12 characters. The MachineDeployment is named after the cluster and the pool, e.g. demo-workers.',
     poolTitle: 'Pool {name}',
     replicas: 'Nodes',
     replicasHint: 'Maps to MachineDeployment.spec.replicas. Default: 2.',
@@ -1308,7 +1309,7 @@ export const en = {
     groupsClaimHint:
       'Claim with the groups; URL-like names (Auth0) and dotted paths (realm_access.roles) work. Default: groups.',
     usernameClaimHint:
-      'Shown as "<name> (oidc)"; falls back to email, then the subject. Rancher: name. Default: preferred_username.',
+      'Shown with "(oidc)" appended, e.g. "jane (oidc)"; falls back to email, then the subject. Rancher: name. Default: preferred_username.',
     buttonLabelHint: 'Text of the button on the sign-in page. Default: Sign in with OIDC.',
     defaultRoleHint:
       'Role for people whose groups have no mapping; "nobody" refuses them. Use it with providers where anyone can register. Default: Viewer.',
