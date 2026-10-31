@@ -1061,7 +1061,7 @@ Requirements:
 - **UX-05** (done in 0.13.0) Air-gapped clusters (FP-29) are recognizable only by the "Registry contents" button on the cluster page. An "Air-gapped" tag next to the cluster's name in the cluster list, on the home page and on the cluster page, with the internal registry as tooltip.
 - **UX-06** (done in 0.13.0) Forms look overloaded: every field carries a permanent hint (help text, default, CAPI field) of one to five lines below it. The help text moves behind an info icon in the field or next to its label, shown on hover, focus or click; section explanations move next to their heading. Hints that describe a condition (alerts) stay visible.
 - **UX-07** (done in 0.13.0) Vertical spacing of forms is uneven: hints of different length shift fields in a row, and every dialog has its own margins. Fields reserve no space below unless they show an error, and stacked fields are evenly spaced (one rule for all forms).
-- **UX-08** The cluster list and the cluster page do not show where a cluster runs (which OpenStack cloud, Proxmox VE, region of a public cloud). Both name the credentials entry and the region or node: OpenStack the region of the credential, AWS and Google Cloud the region (and project) of the spec, Proxmox VE the node; the list search finds them.
+- **UX-08** (done in 0.14.0) The cluster list and the cluster page do not show where a cluster runs (which OpenStack cloud, Proxmox VE, region of a public cloud). Both name the credentials entry and the region or node: OpenStack the region of the credential, AWS and Google Cloud the region (and project) of the spec, Proxmox VE the node; the list search finds them.
 
 **Review log**
 
@@ -1071,6 +1071,7 @@ Requirements:
 | 0.11.0 | UX-03, UX-04 | – |
 | 0.12.0 | – | UX-05 |
 | 0.13.0 | UX-05, UX-06, UX-07 | – |
+| 0.14.0 | UX-08 | – |
 
 ### FP-29: Air-gapped workload clusters (optional)
 
