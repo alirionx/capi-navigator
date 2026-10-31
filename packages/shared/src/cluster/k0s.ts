@@ -6,8 +6,8 @@ import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
 /**
- * k0s via k0smotron v2.3.0 (controlplane/bootstrap.cluster.x-k8s.io/v1beta2), control plane on
- * regular machines. Field names verified against the CRDs of the v2.3.0 release
+ * k0s via k0smotron v2.3 (controlplane/bootstrap.cluster.x-k8s.io/v1beta2), control plane on
+ * regular machines. Field names verified against the CRDs of the v2.3.0 and v2.3.1 releases
  * (control-plane-components.yaml, bootstrap-components.yaml) and the k0s configuration reference.
  *
  * - `updateStrategy: Recreate`: every control plane change, version upgrades included, replaces the
@@ -169,8 +169,8 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
   // ADR-0013: k0smotron before v2.3.0 removes all old control plane machines (and their etcd
   // members) right after the first replacement is ready, so etcd loses quorum. v2.3.0 waits for
   // draining machines; with three or five nodes it still deletes the old ones within a minute
-  // (etcd on one member for about two minutes, measured live), accepted until the upstream fix
-  // (k0smotron #1705) is released.
+  // (etcd on one member for about two minutes, measured live). v2.3.1 (#1705) replaces one node at
+  // a time, measured live with three nodes (ADR-0013, update 2026-10-31).
   controlPlaneUpdates: {
     // FP26-F-03, measured live (3 → 1 on Google Cloud): k0smotron removes the etcd members one
     // after another, so quorum holds, but starts deleting the next node before the previous one is

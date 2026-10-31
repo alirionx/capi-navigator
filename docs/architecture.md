@@ -270,7 +270,8 @@ way:
    has finished.
 
 k0s follows the same rule: k0smotron replaces control plane machines for version upgrades too
-(`updateStrategy: Recreate`); it needs k0smotron v2.3.0 or later
+(`updateStrategy: Recreate`); it needs k0smotron v2.3.0 or later, and v2.3.1 replaces control
+planes with three or five nodes one node at a time
 ([ADR-0013](adr/0013-k0s-control-plane-replacement.md)).
 
 ### Kubernetes upgrades and the rollout controller

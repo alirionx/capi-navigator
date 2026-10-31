@@ -1,7 +1,8 @@
 # ADR-0013: k0s control plane replacement
 
-- Status: accepted; updated 2026-10-20 for k0smotron v2.3.0 and 2026-10-28 (replacement for all
-  sizes, no in-place upgrades; see below)
+- Status: accepted; updated 2026-10-20 for k0smotron v2.3.0, 2026-10-28 (replacement for all
+  sizes, no in-place upgrades) and 2026-10-31 (k0smotron v2.3.1 replaces one node at a time; see
+  below)
 - Date: 2026-10-18
 - Pack: FP-9
 
@@ -114,3 +115,25 @@ cannot be scheduled next to the running pod, which still carries the anti-affini
 pending. DNS keeps working through the running pod. Deleting that pod
 (`kubectl -n kube-system delete pod -l k8s-app=kube-dns`) completes the rollout. Clusters with
 more than one node are not affected. The app does not work around it; it is not reported upstream.
+
+## Update 2026-10-31: k0smotron v2.3.1
+
+k0smotron v2.3.1 contains #1705: `isNeededScaleDown` returns false while a deleted control plane
+machine still exists. Live test on Infomaniak (k0s v1.35.9 → v1.36.5 through the app, three
+control plane nodes and one worker, CAPO v0.15.1; machines, `EtcdMember` objects and `/readyz`
+through the load balancer sampled every three seconds):
+
+- Each round created one new machine, waited until it was running and had joined etcd (four
+  members), then deleted exactly one old machine; its member left after the drain, and the next
+  round started only once the old machine was gone. Three rounds of about 2.5 minutes, the control
+  plane done after 7 min 40 s, the worker after another 2.5 min.
+- etcd never had fewer than three members, and the API answered at every sample.
+
+Decision:
+
+- The accepted risk of the 2026-10-28 update is gone with v2.3.1: control planes with three or five
+  nodes are replaced one node at a time, like `KubeadmControlPlane` and `RKE2ControlPlane`.
+  `versions.yaml` pins v2.3.1; v2.3.0 stays the minimum for replacement (one node is safe there,
+  more nodes keep the measured risk until the provider is updated on the Providers page).
+- The live re-test with every k0smotron release is no longer needed; regular provider updates
+  follow docs/maintenance.md.

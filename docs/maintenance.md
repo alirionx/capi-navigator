@@ -46,8 +46,8 @@ Couplings to keep in mind (the tests check most of them):
 - **CAPI** (`providers.cluster-api`) and the **kubeadm catalog**: every Kubernetes version must be
   verified with the pinned provider version (`verifiedWithProvider`); check the CAPI support matrix.
 - **RKE2 provider** and the **RKE2 catalog**, **k0smotron** and the **k0s catalog**: same rule.
-  k0smotron: read [ADR-0013](adr/0013-k0s-control-plane-replacement.md) first; re-test a
-  three-node control plane rollout with every release until the fix #1705 is in.
+  k0smotron: read [ADR-0013](adr/0013-k0s-control-plane-replacement.md) first; since v2.3.1
+  (fix #1705) control planes are replaced one node at a time.
 - **CAPO** and **ORC**: `prerequisites.orc.byCapoMinor` needs the ORC version of the CAPO minor
   (the ORC module version in CAPO's `go.mod`).
 - **openstack-ccm** and **openstack-csi** are released together; keep them on one version.
