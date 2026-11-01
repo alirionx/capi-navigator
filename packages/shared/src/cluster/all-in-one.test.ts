@@ -64,6 +64,31 @@ describe('all-in-one with three or five nodes (FP-26)', () => {
     expect(JSON.stringify(find(standard, 'KubeadmControlPlane'))).not.toContain(label);
   });
 
+  it('excludes rke2 and k0s control plane nodes from external load balancers like kubeadm (FP5-F-10, FP9-F-04)', () => {
+    // The CCM puts every node behind a LoadBalancer Service, but CAPO opens NodePorts only for
+    // workers: connections to a control plane node hung for 5 s (seen on OpenStack).
+    const label = 'node.kubernetes.io/exclude-from-external-load-balancers';
+    const standard = (flavor: 'rke2' | 'k0s') => ({
+      ...aio(flavor),
+      topology: {
+        mode: 'standard' as const,
+        controlPlane: { replicas: 3 as const, machineSize: 'a4' },
+        workerPools: [{ name: 'w', replicas: 1, machineSize: 'a4', nodeLabels: { tier: 'web' } }],
+      },
+    });
+    expect(find(standard('rke2'), 'RKE2ControlPlane').spec.agentConfig.nodeLabels).toEqual([
+      `${label}=`,
+    ]);
+    expect(find(standard('k0s'), 'K0sControlPlane').spec.k0sConfigSpec.args).toContain(
+      `--labels=${label}=`,
+    );
+    // Workers carry the Services; all-in-one nodes too.
+    expect(JSON.stringify(find(standard('rke2'), 'RKE2ConfigTemplate'))).not.toContain(label);
+    expect(JSON.stringify(find(standard('k0s'), 'K0sWorkerConfigTemplate'))).not.toContain(label);
+    expect(JSON.stringify(find(aio('rke2'), 'RKE2ControlPlane'))).not.toContain(label);
+    expect(JSON.stringify(find(aio('k0s'), 'K0sControlPlane'))).not.toContain(label);
+  });
+
   it('scales an all-in-one control plane as a day-2 change (FP26-F-02)', () => {
     const one = ClusterSpecSchema.parse(aio('rke2', 1));
     const three = applySpecChange(one, { type: 'scaleControlPlane', replicas: 3 }, new Date());

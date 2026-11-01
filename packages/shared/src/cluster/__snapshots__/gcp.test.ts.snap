@@ -242,6 +242,7 @@ spec:
           enabled: false
     args:
       - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
       - --disable-components=konnectivity-server
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
@@ -1255,6 +1256,8 @@ spec:
         - anonymous-auth=true
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:

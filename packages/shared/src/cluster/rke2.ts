@@ -1,6 +1,10 @@
 import { airGapNodeSetup, artifactTag, nodePreparation, rke2RegistryMirrors } from './air-gap.js';
 import { kubeVipDaemonSet } from './kube-vip.js';
-import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
+import {
+  EXCLUDE_FROM_EXTERNAL_LB_LABEL,
+  type BootstrapFlavorPlugin,
+  type InfraTransformPlugin,
+} from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
@@ -244,7 +248,14 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
           // FP31-F-07: the API certificate is valid for the virtual IP.
           tlsSan: vip ? [vip] : undefined,
         }),
-        agentConfig: agentConfig(spec, infra, { worker: false }),
+        agentConfig: agentConfig(spec, infra, {
+          worker: false,
+          // Workloads, and so LoadBalancer Services, run on control plane nodes only in all-in-one.
+          nodeLabels:
+            spec.topology.mode === 'standard'
+              ? { [EXCLUDE_FROM_EXTERNAL_LB_LABEL]: '' }
+              : undefined,
+        }),
         ...custom,
         // FP31-F-07: kube-vip with the server's admin kubeconfig (localhost).
         ...(vip

@@ -273,6 +273,7 @@ spec:
           enabled: false
     args:
       - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
@@ -649,6 +650,7 @@ spec:
           enabled: false
     args:
       - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
@@ -2872,6 +2874,8 @@ spec:
         - cloudController
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -3136,6 +3140,8 @@ spec:
     cni: calico
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -3536,6 +3542,8 @@ spec:
         - cloudController
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -3846,6 +3854,8 @@ spec:
     cni: calico
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -4143,6 +4153,8 @@ spec:
         - cloudController
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:

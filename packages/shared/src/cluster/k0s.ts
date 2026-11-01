@@ -1,7 +1,11 @@
 import { compareVersions } from '../catalog/prerequisites.js';
 import { airGapNodeSetup, artifactTag, containerdHostsFiles, nodePreparation } from './air-gap.js';
 import { kubeVipDaemonSet } from './kube-vip.js';
-import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
+import {
+  EXCLUDE_FROM_EXTERNAL_LB_LABEL,
+  type BootstrapFlavorPlugin,
+  type InfraTransformPlugin,
+} from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 
@@ -261,7 +265,10 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
           k0s: clusterConfig(spec, vip),
           args: [
             '--enable-worker',
-            ...(spec.topology.mode === 'all-in-one' ? ['--no-taints'] : []),
+            // Workloads, and so LoadBalancer Services, run on control plane nodes only in all-in-one.
+            ...(spec.topology.mode === 'all-in-one'
+              ? ['--no-taints']
+              : [`--labels=${EXCLUDE_FROM_EXTERNAL_LB_LABEL}=`]),
             // ADR-0022: Konnectivity agents connect through the load balancer on 8132; where it
             // forwards only the API port (Google Cloud), the API server reaches the kubelets
             // directly instead. Further controllers join on 9443 via the first controller's

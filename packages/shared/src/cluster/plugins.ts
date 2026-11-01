@@ -4,6 +4,13 @@ import type { AirGapArtifact } from './air-gap.js';
 import type { InfraForm } from './infra-form.js';
 import type { ClusterSpec, Infrastructure, MachineGroup } from './spec.js';
 
+/**
+ * Keeps nodes out of the backends of LoadBalancer Services; kubeadm sets it on control plane nodes
+ * by default and the CCMs honor it. CAPO opens NodePorts only for workers (FP5-F-10, FP9-F-04).
+ */
+export const EXCLUDE_FROM_EXTERNAL_LB_LABEL =
+  'node.kubernetes.io/exclude-from-external-load-balancers';
+
 /** Resolved, non-secret facts the transformation needs besides the spec. */
 export interface TransformContext {
   credential: {

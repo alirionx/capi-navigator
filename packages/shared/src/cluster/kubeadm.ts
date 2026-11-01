@@ -5,7 +5,11 @@ import {
   KUBEADM_KUBE_VIP_MANIFEST,
   kubeVipStaticPod,
 } from './kube-vip.js';
-import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
+import {
+  EXCLUDE_FROM_EXTERNAL_LB_LABEL,
+  type BootstrapFlavorPlugin,
+  type InfraTransformPlugin,
+} from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
 import { VERSIONS } from '../versions.generated.js';
@@ -175,7 +179,7 @@ function bootstrapFields(
       // so a LoadBalancer Service found no backends (seen on OpenStack). The workloads run here.
       ...(spec.topology.mode === 'all-in-one'
         ? [
-            `kubectl --kubeconfig /etc/kubernetes/admin.conf label node "${infra.nodeIdentity(spec.infrastructure).nodeName}" node.kubernetes.io/exclude-from-external-load-balancers- || true`,
+            `kubectl --kubeconfig /etc/kubernetes/admin.conf label node "${infra.nodeIdentity(spec.infrastructure).nodeName}" ${EXCLUDE_FROM_EXTERNAL_LB_LABEL}- || true`,
           ]
         : []),
       ...c.postCommands,

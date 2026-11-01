@@ -106,6 +106,8 @@ spec:
   agentConfig:
     airGapped: true
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -619,6 +621,8 @@ spec:
   agentConfig:
     airGapped: true
     nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
     nodeTaints:
       - node-role.kubernetes.io/control-plane:NoSchedule
     kubelet:
@@ -1234,6 +1238,7 @@ spec:
           enabled: false
     args:
       - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
       - --enable-cloud-provider
       - --kubelet-root-dir=/var/lib/kubelet
     useSystemHostname: true
@@ -1770,6 +1775,7 @@ spec:
           enabled: false
     args:
       - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
       - --enable-cloud-provider
       - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 10.20.0.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
       - --kubelet-root-dir=/var/lib/kubelet
