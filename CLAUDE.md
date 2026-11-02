@@ -10,7 +10,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 
 ## Source of truth
 
-- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-33, outlook FP-11 to FP-21, FP-27 and FP-28, non-functional requirements, decisions). Always follow it.
+- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-34, outlook FP-11 to FP-21, FP-27, FP-28 and FP-35, non-functional requirements, decisions). Always follow it.
 - **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
@@ -54,6 +54,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-32 | Services of type LoadBalancer on Proxmox VE with kube-vip (optional) | done |
 | FP-29 | Air-gapped workload clusters (optional) | done (proxy for app and providers, ADR-0029; nodes from an internal registry, ADR-0030; kubeadm on Cluster API images, ADR-0032; NTP servers FP29-F-18 postponed) |
 | FP-24 | Hosted control planes with k0smotron (optional, experimental; OpenStack, Proxmox VE, AWS) | done (experimental, ADR-0034; live acceptance on Proxmox VE, OpenStack and AWS; Google Cloud not supported) |
+| FP-34 | Cluster blueprints (optional; groundwork for a separate Open Service Broker, ADR-0035) | specified, in progress |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.

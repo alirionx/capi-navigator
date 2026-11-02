@@ -182,6 +182,7 @@ CAPI Navigator keeps no database. All of its own state lives in the home cluster
 | Helm repositories | `HelmRepository` CR (name, URL, type HTTP/OCI) | Repository credentials in a Secret |
 | Add-on presets (CCM, CSI) | ConfigMap with default chart, version and values | – |
 | App settings | ConfigMap `capi-navigator-settings` | Session signing key in a Secret |
+| Cluster blueprints (FP-34) | `ClusterBlueprint` CR (base spec, parameters with limits) | – |
 | Audit log | `AuditEvent` CR with retention (default 90 days, cleaned up by the backend) | – |
 | Cluster spec | Annotation on the CAPI `Cluster` object in the management cluster | – |
 | Provider credentials | Secret in the management cluster, in the format the provider expects | All |
@@ -361,6 +362,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-33 | Day-2 changes of infrastructure settings (optional) | FP-7, FP-31 |
 | FP-29 | Air-gapped workload clusters; management side behind a proxy (optional) | FP-3, FP-8 |
 | FP-24 | Hosted control planes with k0smotron (optional, experimental) | FP-9, FP-31, FP-32, FP-33 |
+| FP-34 | Cluster blueprints (optional) | FP-7, FP-19, FP-22 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -737,6 +739,7 @@ Highly available control plane verified on 2026-11-02 on Proxmox VE (ADR-0033): 
 | `helmRepositories.manage` | Manage Helm repositories | admin | no |
 | `managementNodes.shell` | Node shell on management cluster nodes | admin | no |
 | `users.manage` | Manage users, roles and role assignments | admin | no |
+| `blueprints.manage` | Manage cluster blueprints and upgrade clusters created from them (FP-34) | admin | no |
 
 Built-in roles: viewer = `view`; operator = viewer plus all `clusters.*`, `nodes.shell` and `addons.manage`; admin = all permissions.
 
@@ -1186,6 +1189,36 @@ Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control pla
 - AWS: the host's CCM created a Classic ELB for the tenant at once. The host's own Konnectivity agents never connected (ports behind the NLB were allowed only from security groups, while nodes come through the NAT gateways), so k0smotron could not fetch the tenant kubeconfig with `exec`; fixed for all k0s clusters on AWS (FP9-F-04). Host upgrade with control plane and workers replaced: 3 of 171 probes failed, etcd volumes moved within the zone.
 - Resource use per replica when idle: k0s controller about 55m CPU and 420 MiB, etcd about 15m and 45 MiB.
 
+### FP-34: Cluster blueprints (optional)
+
+**Goal:** admins define cluster blueprints: a complete, reviewed cluster spec with a few parameters that may vary within limits. A client (first of all a separate Open Service Broker for Cloud Foundry, see the outlook) creates clusters from a blueprint through the API without composing a cluster spec and without a preview per request; the blueprint is what was reviewed in advance (ADR-0035). The first version keeps it small: no blueprint versions, no changes of blueprint clusters except Kubernetes upgrades by admins, no creation from a blueprint in the UI.
+
+**Requirements**
+
+- **FP34-F-01** MUST store blueprints as `ClusterBlueprint` resources in the app namespace of the home cluster, with schemas from Zod in `packages/shared` (hard rule 2): name, display name, description, and a concrete base spec, i.e. a cluster spec without name with a fixed management cluster connection, namespace, credential, infrastructure provider, distribution, topology, add-ons and labels.
+- **FP34-F-02** MUST offer only a fixed list of parameters, each with a default and limits set in the blueprint: the number of workers per worker pool (minimum and maximum), the machine size per worker pool (a choice from the sizes of the credential) and the Kubernetes version (a choice from the versions of the distribution in the version catalog). Parameters the blueprint does not offer keep the value of the base spec.
+- **FP34-F-03** MUST provide the parameters of each blueprint as JSON Schema (draft-04, as the Open Service Broker API expects for plan schemas), derived from the same Zod schema that checks the requests.
+- **FP34-F-04** MUST check a blueprint when it is saved like a new cluster with the default parameters: the cluster spec checks of the wizard and a dry run on the management cluster (hard rule 6); saving shows the generated YAML and is refused while the check fails. Saving a blueprint needs the new permission `blueprints.manage` (admin, not scopable).
+- **FP34-F-05** MUST create a cluster from a blueprint through the API (`POST …/blueprints/{name}/clusters`) with a cluster name, parameters and optional additional labels (e.g. the instance ID of a service broker): the app checks the parameters against the limits, builds the cluster spec from the base spec and applies it without a preview (ADR-0035). The request needs `clusters.create` in the blueprint's namespace; additional labels cannot override or remove the blueprint's labels and follow the rules for user labels (no reserved prefixes, FP6-F-07). The audit event names the blueprint.
+- **FP34-F-06** MUST store the cluster spec on the cluster as for every other cluster (hard rule 4) and mark the cluster with the annotation `capi-navigator.io/blueprint`; the cluster stays a regular Cluster API cluster that works without the app.
+- **FP34-F-07** MUST keep a blueprint cluster bound to its blueprint: the backend refuses scaling, label changes, infrastructure settings, bastion and other day-2 changes with a message that names the blueprint. Only a Kubernetes upgrade is allowed, with preview, for users with `blueprints.manage`. Deleting, kubeconfig, dashboard and node shell work as for every cluster.
+- **FP34-F-08** MUST apply changes to a blueprint only to clusters created afterwards; existing clusters stay as they are.
+- **FP34-F-09** MUST refuse deleting a blueprint while clusters created from it exist; the message names the clusters.
+- **FP34-F-10** MUST filter the cluster list by a label selector (`GET …/clusters?labelSelector=…`), so a client can find its cluster by its own label.
+- **FP34-F-11** MUST provide a blueprints page for users with `blueprints.manage`: list, create (starting from an existing cluster's spec or empty), change, delete, the parameters with their limits, and the clusters of each blueprint. The cluster detail view shows the blueprint of a blueprint cluster and hides the refused actions (cosmetic, FP19-F-10).
+- **FP34-F-12** MUST record creating, changing and deleting blueprints and creating clusters from them as `AuditEvent`s, and describe the new endpoints in the OpenAPI document (FP-23).
+- **FP34-F-13** MUST document blueprints (`docs/blueprints.md`): purpose, parameters, permissions for a technical user of a client (`view`, `clusters.create`, `clusters.delete`, `clusters.kubeconfig` in the blueprint's namespace), and what is not possible in the first version.
+
+**Acceptance criteria**
+
+- [ ] An admin saves a blueprint for each infrastructure provider; saving shows the YAML and is refused for a blueprint whose dry run fails.
+- [ ] The JSON Schema of a blueprint lists exactly its parameters with defaults and limits; snapshot tests cover blueprint plus parameters → cluster spec → YAML for one blueprint per provider.
+- [ ] A technical user with `clusters.create` in the blueprint's namespace creates a cluster from it with `curl`, with parameters and an additional label; values outside the limits, unknown parameters and labels that override the blueprint's are refused with 400, other namespaces with 403.
+- [ ] The cluster is found with `labelSelector`, carries the blueprint annotation and becomes ready; its kubeconfig can be downloaded with the token.
+- [ ] Scaling and label changes of the cluster are refused in the backend; an admin upgrades it to the next minor version with preview.
+- [ ] Changing the blueprint leaves the cluster unchanged; deleting the blueprint is refused while the cluster exists and works after the cluster is deleted.
+- [ ] A Playwright test covers creating a blueprint on the blueprints page.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -1230,7 +1263,7 @@ These requirements apply to all feature packs and are checked in every pack.
 ### Outlook after FP-10
 
 - **FP-11: Further infrastructure providers** (e.g. Azure, Hetzner), purely as new plugins as described in section 5. AWS is part of FP-4 and FP-5; Google Cloud is specified as FP-25 in section 6.
-- **FP-12: ClusterClass support**, so teams can offer their own cluster templates in the UI.
+- **FP-12: ClusterClass support**, so teams can offer their own cluster templates in the UI. Cluster blueprints (FP-34) cover the ordering side without ClusterClass: they produce ordinary cluster specs.
 - **FP-13: Fleet view** across multiple management clusters, including bulk upgrades, bulk rebuilds and bulk add-on rollouts.
 - **FP-14: External identity provider**: specified above as an optional pack (OpenID Connect sign-in with group mapping).
 - **FP-15: Immutable OS images** such as openSUSE MicroOS. To check first: MicroOS is usually configured with Ignition or Combustion rather than cloud-init, so it may need its own bootstrap path.
@@ -1252,6 +1285,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - App changes: a topology mode "hosted" (k0s first), the transformation without control plane machine templates and without the infrastructure cluster's API load balancer, wizard fields for replicas and etcd storage, overview, tree and dashboard showing the control plane as pods and service in the management cluster, day 2 (version upgrade, scaling), deletion including the etcd PVCs, pre-checks of the management cluster (StorageClass, LoadBalancer), separation and resource limits of tenant control planes.
   - Start with OpenStack, one replica; AWS and highly available control planes later. Effort about the size of FP-9, plus a management cluster in the cloud for live tests.
 - **FP-27: k3s as distribution** (optional, lowest priority; not started). Bootstrap and control plane provider [k3s-io/cluster-api-k3s](https://github.com/k3s-io/cluster-api-k3s) (`KThreesControlPlane`, `KThreesConfigTemplate`). **The provider is immature** (checked 2026-10-21, v0.4.0 of May 2026): it implements only the CAPI v1beta1 contract and is built against CAPI v1.11/v1.12 (the app runs v1.14 with v1beta2); it is not in the clusterctl provider registry, so the CAPI Operator needs a fetch URL; upgrade support is listed as unfinished upstream (#35, #179, #83) and the control plane has no rollout strategy (#187). What would fit: servers join through the API port 6443 (one port, as Google Cloud's load balancer needs), embedded etcd, `files`, `preK3sCommands`/`postK3sCommands`, kubelet arguments, node name and external cloud provider. To decide with it: Flannel (built in) or Calico, and switching off Traefik and ServiceLB. Start only after a spike that measures upgrade, control plane replacement and rebuild live, as for k0smotron (ADR-0013). Rechecked 2026-11-02: still v0.4.0 with the v1beta1 contract only (CAPI plans to drop v1beta1 providers in v1.16, which would block the app's CAPI upgrades); deferred until a release with the v1beta2 contract.
+- **FP-35: Open Service Broker for Cloud Foundry** (outlook; a separate project, not part of this app). A stateless broker that uses only the REST API of the app with a token of a technical user (FP-22): the catalog lists the cluster blueprints (FP-34, one plan per blueprint, plan schemas from FP34-F-03); provisioning creates a cluster from a blueprint asynchronously (`last_operation` reads the cluster status), the instance ID becomes a cluster label (FP34-F-10); deprovisioning deletes the cluster with cleanup; a binding returns the cluster's admin kubeconfig (FP6-F-04; every developer of the space sees it, unbinding revokes nothing, the credential ends with the cluster). One instance is one cluster; the first version offers no updates (`plan_updateable: false`, no `maintenance_info`). The broker gets its own CLAUDE.md and requirements as a handover once FP-34 is done.
 - **k3k as CAPI provider** (outlook, related to FP-24): a Cluster API provider for k3k, Rancher's virtual clusters (k3s control planes as pods in a host cluster), is expected (as of 2026-10-21; no public release yet); when it is published, evaluate it for hosted or virtual control planes (FP-24) and for k3s workers (FP-27).
 - **FP-28: Floating IP per node for outbound traffic** (experimental outlook; only as an extension, not in the core; **less suitable fallback** where FP-29 is not possible). Some OpenStack setups give instances no shared SNAT: each instance needs its own floating IP to reach anything outside, including an HTTP proxy (FP-16), and outbound traffic is attributed by that address. This is environment-specific, so it does not belong in the generic app; if built, then as an optional extension of the OpenStack infrastructure plugin that can be enabled per installation. Findings so far (2026-10-21):
   - CAPO supports it upstream: an `OpenStackFloatingIPPool` (v1alpha1, `floatingIPNetwork`, `preAllocatedFloatingIPs`, `maxIPs`, `reclaimPolicy`, `identityRef`) per cluster, referenced by `floatingIPPoolRef` in the machine templates; addresses are claimed through CAPI IPAM. Pre-allocated addresses give a cluster a fixed, known set even when nodes are replaced. The API load balancer (Octavia) stays as it is.
