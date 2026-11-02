@@ -250,11 +250,12 @@ export class ClustersService {
     return toSummary(cluster);
   }
 
-  async list(connection: string): Promise<ClusterSummary[]> {
+  /** FP34-F-10: optionally only the clusters matching a label selector. */
+  async list(connection: string, labelSelector?: string): Promise<ClusterSummary[]> {
     const kc = await this.clients.forConnection(connection);
     return this.kube('List clusters', async () => {
       const api = kc.makeApiClient(CustomObjectsApi);
-      const clusters = await listAll(api, 'clusters');
+      const clusters = await listAll(api, 'clusters', CAPI, labelSelector);
       if (clusters.length === 0) return [];
       const [mds, machines] = await Promise.all([
         listAll(api, 'machinedeployments'),
@@ -1322,9 +1323,14 @@ async function listAll(
   api: CustomObjectsApi,
   plural: string,
   def: { group: string; version: string } = CAPI,
+  labelSelector?: string,
 ): Promise<K8sObj[]> {
   try {
-    const res = (await api.listClusterCustomObject({ ...def, plural })) as { items: K8sObj[] };
+    const res = (await api.listClusterCustomObject({
+      ...def,
+      plural,
+      ...(labelSelector ? { labelSelector } : {}),
+    })) as { items: K8sObj[] };
     return res.items;
   } catch (err) {
     if (isNotFound(err)) return []; // CRD not installed yet

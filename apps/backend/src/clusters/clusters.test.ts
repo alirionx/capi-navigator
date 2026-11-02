@@ -390,6 +390,8 @@ describe('status mapping (US-07)', () => {
 
 const k8s = vi.hoisted(() => ({
   applied: [] as { kinds: string[]; dryRun: boolean; force?: boolean }[],
+  /** Label selectors of cluster list requests (FP34-F-10). */
+  clusterListSelectors: [] as (string | undefined)[],
   namespaces: new Set<string>(),
   existingCluster: false,
   /** Stored spec annotation of the existing cluster (FP-6 changes). */
@@ -452,7 +454,10 @@ const fakeKc = {
       }
       throw notFound();
     },
-    listClusterCustomObject: async () => ({ items: [] }),
+    listClusterCustomObject: async ({ labelSelector }: { labelSelector?: string }) => {
+      k8s.clusterListSelectors.push(labelSelector);
+      return { items: [] };
+    },
     // Live MachineDeployments (from the simulated live state) and machines (FP-7 pipeline).
     listNamespacedCustomObject: async ({
       plural,
@@ -771,6 +776,20 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
       .send({ spec: OS_SPEC })
       .expect(409);
     expect(dup.body.message).toMatch(/already exists/);
+  });
+
+  it('filters the cluster list by a label selector (FP34-F-10)', async () => {
+    k8s.clusterListSelectors.length = 0;
+    await http()
+      .get(`${base}?labelSelector=${encodeURIComponent('example.com/instance-id=abc')}`)
+      .set('Cookie', viewerCookie)
+      .expect(200);
+    await http().get(base).set('Cookie', viewerCookie).expect(200);
+    expect(k8s.clusterListSelectors).toEqual(['example.com/instance-id=abc', undefined]);
+    await http()
+      .get(`${base}?labelSelector=${encodeURIComponent('a=b;rm')}`)
+      .set('Cookie', viewerCookie)
+      .expect(400);
   });
 
   it('validates the spec with the shared schema and enforces roles', async () => {

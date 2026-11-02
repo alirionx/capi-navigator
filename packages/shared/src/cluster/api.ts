@@ -115,6 +115,15 @@ export const ClusterSummarySchema = z.object({
 export type ClusterSummary = z.infer<typeof ClusterSummarySchema>;
 export const ClusterListSchema = z.array(ClusterSummarySchema);
 
+/** FP34-F-10: filter of the cluster list, a Kubernetes label selector. */
+export const ClusterListQuerySchema = z.object({
+  labelSelector: z
+    .string()
+    .max(500)
+    .regex(/^[A-Za-z0-9._/=!, ()-]+$/, 'A label selector like "key=value,other!=x"')
+    .optional(),
+});
+
 export const MachineStatusSchema = z.object({
   name: z.string(),
   role: z.enum(['control-plane', 'worker']),

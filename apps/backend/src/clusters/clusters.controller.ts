@@ -7,6 +7,7 @@ import {
   Injectable,
   Param,
   Post,
+  Query,
   Res,
   Sse,
   type MessageEvent,
@@ -31,6 +32,7 @@ import {
   BastionRequestSchema,
   setBastion,
   ClusterCreateRequestSchema,
+  ClusterListQuerySchema,
   DeleteRequestSchema,
   type DeletePreview,
   type DeletionStatus,
@@ -116,10 +118,18 @@ export class ClustersController {
   ) {}
 
   @Requires('view')
-  @Api({ summary: 'List workload clusters with status', response: z.array(ClusterSummarySchema) })
+  @Api({
+    summary: 'List workload clusters with status',
+    description:
+      'Optionally only the clusters matching a Kubernetes label selector, e.g. "example.com/instance-id=abc" (FP34-F-10).',
+    response: z.array(ClusterSummarySchema),
+  })
   @Get()
-  list(@Param('connection') connection: string): Promise<ClusterSummary[]> {
-    return this.clusters.list(connection);
+  list(
+    @Param('connection') connection: string,
+    @Query(new ZodValidationPipe(ClusterListQuerySchema)) query: { labelSelector?: string },
+  ): Promise<ClusterSummary[]> {
+    return this.clusters.list(connection, query.labelSelector);
   }
 
   /** Live list (FP6-F-01); registered before ':namespace/:name' so "events" is not a namespace. */

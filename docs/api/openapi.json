@@ -1775,7 +1775,7 @@
           "Clusters"
         ],
         "summary": "List workload clusters with status",
-        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "description": "Optionally only the clusters matching a Kubernetes label selector, e.g. \"example.com/instance-id=abc\" (FP34-F-10).\n\nRequires permission `view`. This permission needs an unlimited role assignment.",
         "parameters": [
           {
             "name": "connection",
@@ -12389,6 +12389,16 @@
         "required": [
           "spec"
         ]
+      },
+      "ClusterListQueryInput": {
+        "type": "object",
+        "properties": {
+          "labelSelector": {
+            "type": "string",
+            "maxLength": 500,
+            "pattern": "^[A-Za-z0-9._/=!, ()-]+$"
+          }
+        }
       },
       "ClusterSpecInput": {
         "type": "object",
