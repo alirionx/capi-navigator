@@ -1,0 +1,1387 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hosted control planes (FP-24) > AWS, 1 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: aws
+    capi-navigator.io/csi: aws
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":1},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws
+  sshKeyName: ""
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
+    additionalControlPlaneIngressRules:
+      - description: Kubelet API
+        fromPort: 10250
+        toPort: 10250
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: disabled
+  bastion:
+    enabled: false
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 1
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: tenant-default-5bb545f4
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: small
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      uncompressedUserData: false
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-82d9f2d0
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: tenant-default-5bb545f4
+"
+`;
+
+exports[`hosted control planes (FP-24) > AWS, 3 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: aws
+    capi-navigator.io/csi: aws
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":3},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws
+  sshKeyName: ""
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
+    additionalControlPlaneIngressRules:
+      - description: Kubelet API
+        fromPort: 10250
+        toPort: 10250
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: disabled
+  bastion:
+    enabled: false
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 3
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: tenant-default-5bb545f4
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: small
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      uncompressedUserData: false
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-82d9f2d0
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: tenant-default-5bb545f4
+"
+`;
+
+exports[`hosted control planes (FP-24) > OpenStack, 1 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":1},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    enableFloatingIP: false
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 1
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: tenant-default-48c486ad
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: small
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-82d9f2d0
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: tenant-default-48c486ad
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`hosted control planes (FP-24) > OpenStack, 3 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":3},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    enableFloatingIP: false
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 3
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: tenant-default-48c486ad
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: small
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-82d9f2d0
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: tenant-default-48c486ad
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`hosted control planes (FP-24) > Proxmox VE, 1 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.78","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7211","memoryAdjustment":0,"network":{"addresses":["192.168.10.81-192.168.10.85"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.86-192.168.10.89"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":1},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.86-192.168.10.89
+spec:
+  externalManagedControlPlane: true
+  ipv4Config:
+    addresses:
+      - 192.168.10.81-192.168.10.85
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: tenant-proxmox-credentials
+    namespace: team-a
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 1
+  externalAddress: 192.168.10.78
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+    - target:
+        kind: Service
+        component: control-plane
+      patch:
+        type: merge
+        content: '{"metadata":{"annotations":{"kube-vip.io/loadbalancerIPs":"192.168.10.78"}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: tenant-default-b02f4e7a
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7211
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 2
+      memoryMiB: 4096
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-96e45858
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+      preK0sCommands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-96e45858
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: tenant-default-b02f4e7a
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-proxmox-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`hosted control planes (FP-24) > Proxmox VE, 3 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"192.168.10.78","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7211","memoryAdjustment":0,"network":{"addresses":["192.168.10.81-192.168.10.85"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.86-192.168.10.89"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":3},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.86-192.168.10.89
+spec:
+  externalManagedControlPlane: true
+  ipv4Config:
+    addresses:
+      - 192.168.10.81-192.168.10.85
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: tenant-proxmox-credentials
+    namespace: team-a
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 3
+  externalAddress: 192.168.10.78
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+    - target:
+        kind: Service
+        component: control-plane
+      patch:
+        type: merge
+        content: '{"metadata":{"annotations":{"kube-vip.io/loadbalancerIPs":"192.168.10.78"}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: tenant-default-b02f4e7a
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7211
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 2
+      memoryMiB: 4096
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-96e45858
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+      preK0sCommands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-96e45858
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: tenant-default-b02f4e7a
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-proxmox-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;

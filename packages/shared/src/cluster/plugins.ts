@@ -126,6 +126,15 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
     /** Health check by HTTPS /readyz without credentials: the API server must allow anonymous. */
     anonymousHealthCheck: boolean;
   };
+  /**
+   * FP-24, ADR-0034: the infrastructure can run workers of hosted control planes. `infraCluster`
+   * then leaves out the API load balancer and waits for the endpoint k0smotron writes; `endpoint`
+   * gives k0smotron a fixed address where the host's load balancer cannot announce one by itself
+   * (kube-vip on Proxmox VE). Unset: no hosted control planes (Google Cloud).
+   */
+  hosted?: {
+    endpoint?(infra: T): { externalAddress: string; serviceAnnotations: Record<string, string> };
+  };
   /** Plurals for reading and watching the provider's objects (FP-6). */
   resources: {
     infraClusterPlural: string;
@@ -195,6 +204,18 @@ export interface BootstrapFlavorPlugin {
     replacementFixedIn?: { provider: string; version: string };
   };
   controlPlaneRef(spec: ClusterSpec): ObjectRef;
+  /**
+   * FP-24, ADR-0034: hosted control planes, as pods in a host cluster (`topology.mode` "hosted").
+   * Unset: the distribution has none.
+   */
+  hosted?: {
+    controlPlaneResource: { group: string; version: string; kind: string; plural: string };
+    controlPlane(args: {
+      spec: ClusterSpec;
+      infra: InfraTransformPlugin;
+      labels: Record<string, string>;
+    }): ManifestObject;
+  };
   controlPlane(args: {
     spec: ClusterSpec;
     infra: InfraTransformPlugin;

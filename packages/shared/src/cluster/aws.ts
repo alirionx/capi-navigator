@@ -116,6 +116,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
   },
 
   infraCluster(spec, infra, _ctx, labels, network): ManifestObject {
+    const hosted = spec.topology.mode === 'hosted';
     const fromNodes = {
       sourceSecurityGroupRoles: ['node', 'controlplane', 'apiserver-lb', 'lb'],
     };
@@ -163,22 +164,26 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
         }),
         // NLB for the API server and the distribution's ports behind it. CAPA copies NLB ingress
         // rules into the control plane security group, so each port appears only once.
-        controlPlaneLoadBalancer: compact({
-          loadBalancerType: 'nlb',
-          ingressRules: [
-            tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] }),
-            ...viaLb.map((p) => tcp(p.port, p.description, fromNodes)),
-            // The NLB is internet-facing: nodes in private subnets reach it through the NAT
-            // gateways, so the security group roles above do not match (k0s Konnectivity agents
-            // never connected). CAPA adds the NAT addresses itself only for the API port.
-            ...viaLb.map((p) =>
-              tcp(p.port, `${p.description} (NAT gateways)`, { natGatewaysIPsSource: true }),
-            ),
-          ],
-          additionalListeners: viaLb.length
-            ? viaLb.map((p) => ({ port: p.port, protocol: 'TCP' }))
-            : undefined,
-        }),
+        // FP24-F-05: hosted control planes have their endpoint in the host; CAPA waits for the
+        // one k0smotron writes (checkForExternalControlPlaneLoadBalancer, CAPA v2.13.1).
+        controlPlaneLoadBalancer: hosted
+          ? { loadBalancerType: 'disabled' }
+          : compact({
+              loadBalancerType: 'nlb',
+              ingressRules: [
+                tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] }),
+                ...viaLb.map((p) => tcp(p.port, p.description, fromNodes)),
+                // The NLB is internet-facing: nodes in private subnets reach it through the NAT
+                // gateways, so the security group roles above do not match (k0s Konnectivity agents
+                // never connected). CAPA adds the NAT addresses itself only for the API port.
+                ...viaLb.map((p) =>
+                  tcp(p.port, `${p.description} (NAT gateways)`, { natGatewaysIPsSource: true }),
+                ),
+              ],
+              additionalListeners: viaLb.length
+                ? viaLb.map((p) => ({ port: p.port, protocol: 'TCP' }))
+                : undefined,
+            }),
         // FP5-F-20: CAPA restricts SSH to the bastion to the allowed networks and lets the
         // nodes accept SSH from the bastion.
         bastion: infra.bastion?.enabled
@@ -193,12 +198,14 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     };
   },
 
-  machineTemplateSpec(_spec, infra, group: MachineGroup, role) {
+  machineTemplateSpec(spec, infra, group: MachineGroup, role) {
+    // FP24-F-05: without control plane nodes, CCM and EBS CSI controller run on the workers.
+    const cpProfile = role === 'control-plane' || spec.topology.mode === 'hosted';
     return compact({
       ami: { id: group.image ?? infra.image },
       instanceType: group.machineSize,
       // IAM instance profiles from clusterawsadm (FP4-F-09); also used by CCM and EBS CSI.
-      iamInstanceProfile: `${role === 'control-plane' ? 'control-plane' : 'nodes'}${CAPA_IAM.suffix}`,
+      iamInstanceProfile: `${cpProfile ? 'control-plane' : 'nodes'}${CAPA_IAM.suffix}`,
       sshKeyName: infra.sshKeyName ?? '',
       // FP5-F-19: EBS root volume.
       rootVolume: { size: group.rootVolumeSizeGB ?? 50, type: group.rootVolumeType ?? 'gp3' },
@@ -216,6 +223,16 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       },
     });
   },
+
+  // FP24-F-05, ADR-0034: the endpoint comes from k0smotron.
+  hosted: {},
+
+  warnings: (spec) =>
+    spec.topology.mode === 'hosted'
+      ? [
+          'AWS: the workers of a hosted control plane get the control plane instance profile, because the CCM and the EBS CSI controller run on them; every pod on these nodes can use its rights to load balancers, volumes and instances (IMDS hop limit 2).',
+        ]
+      : [],
 
   nodeIdentity: () => ({
     providerId: 'aws:///{{ v1.availability_zone }}/{{ v1.instance_id }}',

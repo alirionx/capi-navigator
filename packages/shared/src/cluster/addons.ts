@@ -34,9 +34,21 @@ export interface AddonPreset {
   valuesTemplate: string;
 }
 
+/** Tenants of hosted control planes have no control plane nodes (FP24-F-07, ADR-0034). */
+const HOSTED = 'eq .ControlPlane.kind "K0smotronControlPlane"';
 /** Value of the control plane node label per distribution (CAAPH template, FP10-F-06). */
-const CP_LABEL_VALUE = `'{{ if eq .ControlPlane.kind "KubeadmControlPlane" }}{{ else }}true{{ end }}'`;
-const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: ${CP_LABEL_VALUE}\n`;
+const CP_LABEL = `{{ if eq .ControlPlane.kind "KubeadmControlPlane" }}''{{ else }}'true'{{ end }}`;
+/**
+ * For charts that select control plane nodes by default: `null` removes their key for hosted
+ * tenants, so the pods run on the workers.
+ */
+const CP_SELECTOR = `nodeSelector:\n  node-role.kubernetes.io/control-plane: {{ if ${HOSTED} }}null{{ else }}${CP_LABEL}{{ end }}\n`;
+/**
+ * For charts with an empty default: an empty map for hosted tenants (a `null` value is rendered
+ * as "" there and matches no node, seen live with the Proxmox CCM).
+ */
+const cpSelectorOrNone = (indent: string) =>
+  `${indent}nodeSelector:{{ if ${HOSTED} }} {}{{ else }}\n${indent}  node-role.kubernetes.io/control-plane: ${CP_LABEL}{{ end }}\n`;
 
 /** Cluster label with the storage the Proxmox CSI preset uses for its StorageClass (FP31-F-11). */
 export const PROXMOX_STORAGE_LABEL = 'capi-navigator.io/proxmox-storage';
@@ -148,7 +160,7 @@ export const ADDON_PRESETS: AddonPreset[] = [
     valuesTemplate: [
       // The controller runs on control plane nodes, whose instance profile may manage volumes.
       // The region comes from the AWSCluster instead of an IMDS lookup.
-      `controller:\n  region: {{ .InfraCluster.spec.region }}\n  nodeSelector:\n    node-role.kubernetes.io/control-plane: ${CP_LABEL_VALUE}\n`,
+      `controller:\n  region: {{ .InfraCluster.spec.region }}\n${cpSelectorOrNone('  ')}`,
       '  tolerations:\n    - key: node-role.kubernetes.io/control-plane\n      operator: Exists\n      effect: NoSchedule\n',
       'storageClasses:\n  - name: ebs-gp3\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
@@ -167,7 +179,7 @@ export const ADDON_PRESETS: AddonPreset[] = [
       // As DaemonSet on the control plane nodes with host networking: the CCM removes the
       // "uninitialized" taint before the pod network runs (as for AWS).
       'useDaemonSet: true\n',
-      CP_SELECTOR,
+      cpSelectorOrNone(''),
       'tolerations:\n  - key: node-role.kubernetes.io/control-plane\n    operator: Exists\n    effect: NoSchedule\n',
       '  - key: node.cloudprovider.kubernetes.io/uninitialized\n    operator: Exists\n    effect: NoSchedule\n',
       PROXMOX_CA_VOLUME,

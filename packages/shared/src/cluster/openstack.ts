@@ -131,6 +131,7 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
   },
 
   infraCluster(spec, infra, ctx, labels, network): ManifestObject {
+    const hosted = spec.topology.mode === 'hosted';
     const lbPorts = network.controlPlanePorts.filter((p) => p.viaLoadBalancer).map((p) => p.port);
     return {
       apiVersion: OPENSTACK_API_VERSION,
@@ -167,14 +168,19 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         },
         // Node traffic needs no rules (allowAllInClusterTraffic); the distribution's ports behind
         // the API load balancer become listeners (ADR-0012).
-        apiServer: infra.apiServerLoadBalancer
-          ? {
-              managedLoadBalancer: compact({
-                enabled: true,
-                additionalPorts: lbPorts.length ? lbPorts : undefined,
-              }),
-            }
-          : { enableFloatingIP: true },
+        // FP24-F-05: a hosted control plane's endpoint is in the host; without load balancer and
+        // floating IP, CAPO waits for the one k0smotron writes (reconcileControlPlaneEndpoint,
+        // CAPO v0.15.1).
+        apiServer: hosted
+          ? { enableFloatingIP: false }
+          : infra.apiServerLoadBalancer
+            ? {
+                managedLoadBalancer: compact({
+                  enabled: true,
+                  additionalPorts: lbPorts.length ? lbPorts : undefined,
+                }),
+              }
+            : { enableFloatingIP: true },
         controlPlaneAvailabilityZones: infra.failureDomain ? [infra.failureDomain] : undefined,
         // FP5-F-20: CAPO opens SSH to the bastion to everyone and SSH to the nodes from the
         // bastion. Disabling keeps the spec, as CAPO requires (enabled: false, then removal).
@@ -210,6 +216,9 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
   },
 
   failureDomain: (infra) => infra.failureDomain,
+
+  // FP24-F-05, ADR-0034: the endpoint comes from k0smotron.
+  hosted: {},
 
   resources: {
     infraClusterPlural: 'openstackclusters',

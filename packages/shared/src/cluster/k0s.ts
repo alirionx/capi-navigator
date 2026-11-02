@@ -143,6 +143,102 @@ function clusterConfig(spec: ClusterSpec, vip?: string) {
   };
 }
 
+/** FP-24, ADR-0034: requests per replica, no limits (idle use measured at about 55m/420Mi and 15m/45Mi). */
+export const HOSTED_CONTROLLER_REQUESTS = { cpu: '100m', memory: '512Mi' };
+export const HOSTED_ETCD_REQUESTS = { cpu: '50m', memory: '128Mi' };
+export const HOSTED_CONTROL_PLANE_KIND = 'K0smotronControlPlane';
+
+/**
+ * One pod of a component per host node (ADR-0034): k0smotron sets only preferred anti-affinity, and
+ * two of three etcd pods shared a node in the spike. Tainted (cordoned, control plane) nodes do not
+ * count as places.
+ */
+function spreadPerNode(cluster: string, component: 'cluster' | 'etcd') {
+  return {
+    maxSkew: 1,
+    topologyKey: 'kubernetes.io/hostname',
+    whenUnsatisfiable: 'DoNotSchedule',
+    nodeTaintsPolicy: 'Honor',
+    labelSelector: { matchLabels: { app: 'k0smotron', cluster, component } },
+  };
+}
+
+/**
+ * FP24-F-04: the control plane as k0smotron pods in the host cluster (k0smotron v2.3.1,
+ * controlplane.cluster.x-k8s.io/v1beta2 K0smotronControlPlane; field names verified against the
+ * CRD, `patches` against the source: matched by kind and the app.kubernetes.io/component label).
+ */
+function hostedControlPlane(
+  spec: ClusterSpec,
+  infra: InfraTransformPlugin,
+  labels: Record<string, string>,
+) {
+  const hosted = spec.topology.hosted!;
+  // FP24-F-06: a fixed address where the host's load balancer needs one (Proxmox VE).
+  const endpoint = infra.hosted?.endpoint?.(spec.infrastructure as never);
+  return {
+    apiVersion: K0S_CONTROL_PLANE_API,
+    kind: HOSTED_CONTROL_PLANE_KIND,
+    metadata: { name: `${spec.name}-control-plane`, namespace: spec.namespace, labels },
+    spec: compact({
+      version: spec.kubernetes.version,
+      replicas: spec.topology.controlPlane.replicas,
+      externalAddress: endpoint?.externalAddress,
+      // ADR-0034: the host's Cluster API admin kubeconfig, in the tenant's namespace.
+      remoteHostCluster: {
+        kubeconfigRef: {
+          name: `${hosted.host}-kubeconfig`,
+          namespace: spec.namespace,
+          key: 'value',
+        },
+      },
+      service: { type: 'LoadBalancer', apiPort: 6443, konnectivityPort: 8132 },
+      storage: {
+        type: 'etcd',
+        etcd: {
+          autoDeletePVCs: true,
+          persistence: { size: `${hosted.etcdVolumeGiB}Gi` },
+          resources: { requests: HOSTED_ETCD_REQUESTS },
+        },
+      },
+      resources: { requests: HOSTED_CONTROLLER_REQUESTS },
+      controlPlaneFlags: spec.addons.cloudControllerManager
+        ? ['--enable-cloud-provider=true']
+        : undefined,
+      topologySpreadConstraints: [spreadPerNode(spec.name, 'cluster')],
+      patches: [
+        {
+          target: { kind: 'StatefulSet', component: 'etcd' },
+          patch: {
+            type: 'strategic',
+            content: JSON.stringify({
+              spec: {
+                template: {
+                  spec: { topologySpreadConstraints: [spreadPerNode(spec.name, 'etcd')] },
+                },
+              },
+            }),
+          },
+        },
+        ...(endpoint
+          ? [
+              {
+                target: { kind: 'Service', component: 'control-plane' },
+                patch: {
+                  type: 'merge',
+                  content: JSON.stringify({
+                    metadata: { annotations: endpoint.serviceAnnotations },
+                  }),
+                },
+              },
+            ]
+          : []),
+      ],
+      k0sConfig: clusterConfig(spec),
+    }),
+  };
+}
+
 const sortedLabels = (labels: Record<string, string>) =>
   Object.entries(labels)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -221,9 +317,19 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
 
   controlPlaneRef: (spec) => ({
     apiGroup: 'controlplane.cluster.x-k8s.io',
-    kind: 'K0sControlPlane',
+    kind: spec.topology.mode === 'hosted' ? HOSTED_CONTROL_PLANE_KIND : 'K0sControlPlane',
     name: `${spec.name}-control-plane`,
   }),
+
+  hosted: {
+    controlPlaneResource: {
+      group: 'controlplane.cluster.x-k8s.io',
+      version: 'v1beta2',
+      kind: HOSTED_CONTROL_PLANE_KIND,
+      plural: 'k0smotroncontrolplanes',
+    },
+    controlPlane: ({ spec, infra, labels }) => hostedControlPlane(spec, infra, labels),
+  },
 
   controlPlane({ spec, infra, machineTemplate, labels }) {
     const cp = spec.topology.controlPlane;

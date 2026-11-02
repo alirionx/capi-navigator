@@ -7555,7 +7555,8 @@
                 "type": "string",
                 "enum": [
                   "standard",
-                  "all-in-one"
+                  "all-in-one",
+                  "hosted"
                 ]
               },
               "controlPlane": {
@@ -7568,6 +7569,9 @@
                 "items": {
                   "$ref": "#/components/schemas/WorkerPool"
                 }
+              },
+              "hosted": {
+                "$ref": "#/components/schemas/HostedControlPlane"
               }
             },
             "required": [
@@ -9174,6 +9178,28 @@
         },
         "required": [
           "reachable"
+        ],
+        "additionalProperties": false
+      },
+      "HostedControlPlane": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "etcdVolumeGiB": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "host",
+          "etcdVolumeGiB"
         ],
         "additionalProperties": false
       },
@@ -11403,7 +11429,8 @@
                 "type": "string",
                 "enum": [
                   "standard",
-                  "all-in-one"
+                  "all-in-one",
+                  "hosted"
                 ]
               },
               "controlPlane": {
@@ -11416,6 +11443,9 @@
                 "items": {
                   "$ref": "#/components/schemas/WorkerPoolInput"
                 }
+              },
+              "hosted": {
+                "$ref": "#/components/schemas/HostedControlPlaneInput"
               }
             },
             "required": [
@@ -12055,6 +12085,26 @@
         "type": "string",
         "minLength": 1,
         "maxLength": 65536
+      },
+      "HostedControlPlaneInput": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "etcdVolumeGiB": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "host"
+        ]
       },
       "InternalRegistryInput": {
         "type": "object",

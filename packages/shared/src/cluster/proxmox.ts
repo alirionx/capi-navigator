@@ -2,7 +2,7 @@ import { PROXMOX_CREDENTIAL_ANNOTATION } from '../credentials.js';
 import { PROXMOX_LB_ADDRESSES_ANNOTATION, PROXMOX_STORAGE_LABEL } from './addons.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
-import type { MachineGroup, ProxmoxInfra } from './spec.js';
+import { HOSTED_ON_LABEL, type MachineGroup, type ProxmoxInfra } from './spec.js';
 import { ipv4RangesCover, ipv4RangesOverlap, ipv4StartEndRanges } from './cidr.js';
 import { airGapDnsWarnings } from './air-gap.js';
 import { compact } from './util.js';
@@ -230,6 +230,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
     `ip -4 -o route get ${infra.network.gateway} | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p'`,
 
   infraCluster(spec, infra, _ctx, labels) {
+    const hosted = spec.topology.mode === 'hosted';
     return {
       apiVersion: PROXMOX_API_VERSION,
       kind: 'ProxmoxCluster',
@@ -240,6 +241,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         annotations: {
           // Clusters reference a copy of the Secret; this names the stored credential (FP31-F-09).
           [PROXMOX_CREDENTIAL_ANNOTATION]: infra.credentialRef,
+          // FP24-F-08: the tenant's endpoint is an address of its host's LoadBalancer range.
+          ...(hosted ? { [HOSTED_ON_LABEL]: spec.topology.hosted!.host } : {}),
           // FP32-F-04: read by the kube-vip-cloud-provider preset and other clusters' checks.
           ...(infra.network.loadBalancerAddresses?.length
             ? {
@@ -251,7 +254,10 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         },
       },
       spec: {
-        controlPlaneEndpoint: { host: infra.apiEndpoint, port: 6443 },
+        // FP24-F-05: CAPMOX v0.9.1 waits for the endpoint k0smotron writes and skips its checks.
+        ...(hosted
+          ? { externalManagedControlPlane: true }
+          : { controlPlaneEndpoint: { host: infra.apiEndpoint, port: 6443 } }),
         // CAPMOX creates the InClusterIPPool from this (FP31-F-06).
         ipv4Config: {
           addresses: infra.network.addresses,
@@ -295,9 +301,21 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
   // FP-29: the nodes resolve the internal registry with these servers.
   warnings: (spec, infra) => airGapDnsWarnings(spec, infra.network.dnsNameservers),
 
+  // FP24-F-06: kube-vip announces a Service only once it has endpoints, k0smotron creates the pods
+  // only once the Service has an address; a fixed one (the tenant's apiEndpoint) breaks the cycle.
+  hosted: {
+    endpoint: (infra) => ({
+      externalAddress: infra.apiEndpoint,
+      serviceAnnotations: { 'kube-vip.io/loadbalancerIPs': infra.apiEndpoint },
+    }),
+  },
+
   validate(spec, _infra, ctx) {
     const sizes = ctx.credential.machineSizes ?? [];
-    const groups = [spec.topology.controlPlane, ...spec.topology.workerPools];
+    const groups =
+      spec.topology.mode === 'hosted'
+        ? spec.topology.workerPools
+        : [spec.topology.controlPlane, ...spec.topology.workerPools];
     const unknown = [...new Set(groups.map((g) => g.machineSize))].filter(
       (name) => !sizes.some((s) => s.name === name),
     );
@@ -319,18 +337,24 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       };
       const annotations = ((o.metadata ?? {}) as { annotations?: Record<string, string> })
         .annotations;
-      const theirs = [
-        ...(s.ipv4Config?.addresses ?? []),
-        s.controlPlaneEndpoint?.host ?? '',
-        // FP32-F-02: their LoadBalancer addresses.
-        ...(annotations?.[PROXMOX_LB_ADDRESSES_ANNOTATION]?.split(',') ?? []),
-      ].filter(Boolean);
-      const mine = [
-        ...infra.network.addresses,
-        infra.apiEndpoint,
-        ...(infra.network.loadBalancerAddresses ?? []),
-      ];
-      const clash = mine.filter((m) => theirs.some((t) => ipv4RangesOverlap(m, t)));
+      // FP32-F-02: their LoadBalancer addresses.
+      const theirLb = annotations?.[PROXMOX_LB_ADDRESSES_ANNOTATION]?.split(',') ?? [];
+      const theirEndpoint = s.controlPlaneEndpoint?.host ?? '';
+      const theirs = [...(s.ipv4Config?.addresses ?? []), theirEndpoint, ...theirLb].filter(
+        Boolean,
+      );
+      const myLb = infra.network.loadBalancerAddresses ?? [];
+      const mine = [...infra.network.addresses, infra.apiEndpoint, ...myLb];
+      // FP24-F-08: a hosted tenant's endpoint lies in its host's LoadBalancer range, by design.
+      const sameNs = meta.namespace === spec.namespace;
+      const myHost = sameNs && spec.topology.hosted?.host === meta.name;
+      const myTenant = sameNs && annotations?.[HOSTED_ON_LABEL] === spec.name;
+      const intended = (m: string, t: string) =>
+        (myHost && m === infra.apiEndpoint && theirLb.includes(t)) ||
+        (myTenant && t === theirEndpoint && myLb.includes(m));
+      const clash = mine.filter((m) =>
+        theirs.some((t) => ipv4RangesOverlap(m, t) && !intended(m, t)),
+      );
       if (clash.length) {
         out.push(
           `${clash.join(', ')} overlap${clash.length === 1 ? 's' : ''} with the addresses of cluster ${meta.namespace}/${meta.name}; choose addresses no other cluster uses.`,

@@ -13,7 +13,12 @@ import type {
 import { k0sPlugin } from './k0s.js';
 import { kubeadmPlugin } from './kubeadm.js';
 import { rke2Plugin } from './rke2.js';
-import { CLUSTER_SPEC_ANNOTATION, type ClusterSpec, type Infrastructure } from './spec.js';
+import {
+  CLUSTER_SPEC_ANNOTATION,
+  HOSTED_ON_LABEL,
+  type ClusterSpec,
+  type Infrastructure,
+} from './spec.js';
 import { shortHash, stableStringify } from './util.js';
 
 export type { TransformContext } from './plugins.js';
@@ -49,6 +54,10 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   // FP29-F-11: only distributions that install from the internal registry.
   if (spec.airGapped && !flavor.airGap)
     throw new Error(`${flavor.displayName} cannot be installed air-gapped`);
+  // FP-24: hosted control planes need both the distribution and the infrastructure to offer them.
+  const hosted = spec.topology.mode === 'hosted';
+  if (hosted && (!flavor.hosted || !infra.hosted))
+    throw new Error(`Hosted control planes are not available for ${flavor.displayName} here`);
 
   const labels = { [MANAGED_BY_LABEL]: MANAGED_BY_VALUE, [CLUSTER_NAME_LABEL]: spec.name };
   const infraRef = (name: string): ObjectRef => ({
@@ -70,6 +79,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
         ...infra.addonLabels(spec),
         ...(spec.addons.rebootDaemon ? Object.fromEntries([REBOOT_DAEMON_LABEL]) : {}),
         ...(flavor.needsCni && spec.addons.cni !== 'none' ? Object.fromEntries([CNI_LABEL]) : {}),
+        ...(hosted ? { [HOSTED_ON_LABEL]: spec.topology.hosted!.host } : {}),
         ...labels,
       },
       annotations: { [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec) },
@@ -77,7 +87,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
     spec: {
       clusterNetwork: {
         // ADR-0022: the port the API load balancer listens on, where the provider takes it.
-        ...(infra.apiLoadBalancer ? { apiServerPort: infra.apiLoadBalancer.port } : {}),
+        ...(infra.apiLoadBalancer && !hosted ? { apiServerPort: infra.apiLoadBalancer.port } : {}),
         pods: { cidrBlocks: [spec.kubernetes.podCidr] },
         services: { cidrBlocks: [spec.kubernetes.serviceCidr] },
       },
@@ -93,27 +103,31 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
   // Infrastructure cluster
   objects.push(infra.infraCluster(spec, spec.infrastructure, ctx, labels, flavor.network));
 
-  // Control plane
-  const cpTemplateSpec = infra.machineTemplateSpec(
-    spec,
-    spec.infrastructure,
-    spec.topology.controlPlane,
-    'control-plane',
-    ctx,
-  );
-  // A rebuild (FP7-F-11) changes the template name: control plane providers have no rolloutAfter.
-  const cpRebuild =
-    spec.topology.controlPlane.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt;
-  const cpTemplateName = `${spec.name}-cp-${shortHash(
-    cpRebuild ? { spec: cpTemplateSpec, rebuild: cpRebuild } : cpTemplateSpec,
-  )}`;
-  objects.push(machineTemplate(infra, spec, cpTemplateName, cpTemplateSpec, labels));
-  objects.push(
-    flavor.controlPlane({ spec, infra, machineTemplate: infraRef(cpTemplateName), labels }),
-  );
+  // Control plane: pods in the host (FP-24), or machines from a template.
+  if (hosted) {
+    objects.push(flavor.hosted!.controlPlane({ spec, infra, labels }));
+  } else {
+    const cpTemplateSpec = infra.machineTemplateSpec(
+      spec,
+      spec.infrastructure,
+      spec.topology.controlPlane,
+      'control-plane',
+      ctx,
+    );
+    // A rebuild (FP7-F-11) changes the template name: control plane providers have no rolloutAfter.
+    const cpRebuild =
+      spec.topology.controlPlane.rebuildRequestedAt ?? spec.rollout.rebuildRequestedAt;
+    const cpTemplateName = `${spec.name}-cp-${shortHash(
+      cpRebuild ? { spec: cpTemplateSpec, rebuild: cpRebuild } : cpTemplateSpec,
+    )}`;
+    objects.push(machineTemplate(infra, spec, cpTemplateName, cpTemplateSpec, labels));
+    objects.push(
+      flavor.controlPlane({ spec, infra, machineTemplate: infraRef(cpTemplateName), labels }),
+    );
+  }
 
   // Worker pools (FP5-F-12), none for all-in-one.
-  if (spec.topology.mode === 'standard') {
+  if (spec.topology.mode !== 'all-in-one') {
     for (const pool of spec.topology.workerPools) {
       // FP29-F-16: during an upgrade with a new image the workers keep theirs until they follow.
       const workerImage = spec.kubernetes.workerImage;

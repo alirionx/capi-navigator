@@ -317,6 +317,22 @@ export const ProxmoxInfraSchema = z.object({
 });
 export type ProxmoxInfra = z.infer<typeof ProxmoxInfraSchema>;
 
+/**
+ * FP-24, ADR-0034: the control plane runs as k0smotron pods in a host cluster of the app, in the
+ * same namespace; only the workers are machines.
+ */
+export const HostedControlPlaneSchema = z.object({
+  /** Name of the host cluster, a cluster of the app marked as host (FP24-F-01). */
+  host: dnsLabel(40, 'Host cluster'),
+  /** etcd volume per control plane replica, in GiB. */
+  etcdVolumeGiB: z.int().min(1).max(100).default(1),
+});
+export type HostedControlPlane = z.infer<typeof HostedControlPlaneSchema>;
+/** FP24-F-01: marks a cluster as host for hosted control planes (value "true"). */
+export const HOST_LABEL = 'capi-navigator.io/hcp-host';
+/** FP-24: on a tenant's Cluster (label) and infrastructure cluster (annotation): its host. */
+export const HOSTED_ON_LABEL = 'capi-navigator.io/hosted-on';
+
 export const InfrastructureSchema = z.discriminatedUnion('provider', [
   OpenStackInfraSchema,
   AwsInfraSchema,
@@ -406,9 +422,12 @@ export const ClusterSpecSchema = z
       serviceCidr: CidrSchema.default('10.43.0.0/16'),
     }),
     topology: z.object({
-      mode: z.enum(['standard', 'all-in-one']).default('standard'),
+      /** FP-24: "hosted" runs the control plane as pods in a host cluster (k0s only). */
+      mode: z.enum(['standard', 'all-in-one', 'hosted']).default('standard'),
+      /** Hosted mode: machineSize and image are unused, replicas is 1 or 3. */
       controlPlane: ControlPlaneSchema,
       workerPools: z.array(WorkerPoolSchema).max(10).default([]),
+      hosted: HostedControlPlaneSchema.optional(),
     }),
     rollout: z
       .object({
@@ -470,6 +489,27 @@ export const ClusterSpecSchema = z
     } else if (workerPools.length === 0) {
       issue(['topology', 'workerPools'], 'Add at least one worker pool');
     }
+    // FP24-F-02, FP24-F-03, ADR-0034.
+    if (mode === 'hosted') {
+      if (!spec.topology.hosted) issue(['topology', 'hosted', 'host'], 'Choose a host cluster');
+      if (spec.kubernetes.flavor !== 'k0s')
+        issue(['kubernetes', 'flavor'], 'Hosted control planes need k0s');
+      if (controlPlane.replicas === 5)
+        issue(
+          ['topology', 'controlPlane', 'replicas'],
+          'Hosted control planes have 1 or 3 replicas',
+        );
+      if (spec.infrastructure.provider === 'gcp')
+        issue(
+          ['topology', 'mode'],
+          'Google Cloud cannot run workers of hosted control planes: CAPG always creates its own API load balancer',
+        );
+      if (spec.airGapped) issue(['topology', 'mode'], 'Hosted control planes cannot be air-gapped');
+      if (spec.topology.hosted?.host === spec.name)
+        issue(['topology', 'hosted', 'host'], 'A cluster cannot host itself');
+    } else if (spec.topology.hosted) {
+      issue(['topology', 'hosted'], 'Only hosted control planes have a host');
+    }
     const seen = new Set<string>();
     workerPools.forEach((p, i) => {
       if (seen.has(p.name))
@@ -508,10 +548,14 @@ export const ClusterSpecSchema = z
       }
     }
 
-    // Per-group image overrides must match the provider's ID format.
-    const groups = [spec.topology.controlPlane, ...workerPools];
+    // Per-group image overrides must match the provider's ID format; a hosted control plane has none.
+    const groups = mode === 'hosted' ? workerPools : [spec.topology.controlPlane, ...workerPools];
     const groupPath = (i: number, field: string) =>
-      i === 0 ? ['topology', 'controlPlane', field] : ['topology', 'workerPools', i - 1, field];
+      mode === 'hosted'
+        ? ['topology', 'workerPools', i, field]
+        : i === 0
+          ? ['topology', 'controlPlane', field]
+          : ['topology', 'workerPools', i - 1, field];
     /** Why an image ID does not fit the provider's format, if it does not. */
     const imageProblem = (image: string): string | undefined => {
       const [ok, message] =
@@ -624,6 +668,7 @@ export const ClusterSpecSchema = z
     if (
       spec.infrastructure.provider === 'openstack' &&
       !spec.infrastructure.apiServerLoadBalancer &&
+      mode !== 'hosted' &&
       controlPlane.replicas > 1
     ) {
       issue(
