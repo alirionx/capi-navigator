@@ -43,7 +43,12 @@ watch(open, async (o) => {
 });
 
 const canDelete = computed(
-  () => !!preview.value?.managed && confirmName.value === props.name && !busy.value,
+  () =>
+    !!preview.value?.managed &&
+    // FP24-F-09: e.g. a host whose tenants still run.
+    preview.value.blockers.length === 0 &&
+    confirmName.value === props.name &&
+    !busy.value,
 );
 const nothingInside = computed(
   () =>
@@ -79,6 +84,15 @@ async function confirm(): Promise<void> {
       <v-card-text>
         <v-progress-linear v-if="loading" indeterminate class="mb-3" />
         <template v-if="preview">
+          <v-alert
+            v-for="b in preview.blockers"
+            :key="b"
+            type="error"
+            variant="tonal"
+            class="mb-3"
+            data-testid="delete-blocker"
+            >{{ b }}</v-alert
+          >
           <v-alert v-if="!preview.managed" type="info" variant="tonal" class="mb-3">{{
             t('changes.externalReadOnly')
           }}</v-alert>

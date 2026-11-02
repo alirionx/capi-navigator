@@ -312,6 +312,30 @@ export const en = {
       rollout: 'Rollout settings of {group}',
       upgrade: 'Upgrade Kubernetes',
       infrastructure: 'Infrastructure settings',
+      hostOn: 'Host hosted control planes',
+      hostOff: 'Stop hosting control planes',
+    },
+    host: 'Host for hosted control planes (experimental)',
+    hostOn: 'This cluster hosts the control planes of other k0s clusters.',
+    hostOff: 'Not a host.',
+    hostEnable: 'Make host',
+    hostDisable: 'Stop hosting',
+    hostOnExplain:
+      'Sets the label capi-navigator.io/hcp-host on the Cluster; nothing in the cluster changes. k0s clusters on the same infrastructure and credential can then run their control planes here. The preview checks the CCM (or LoadBalancer addresses on Proxmox VE) and the CSI driver.',
+    hostOffExplain:
+      'Removes the host label. Only possible while no hosted control plane runs here; delete those clusters first.',
+    hosted: {
+      title: 'Hosted control plane',
+      subtitle: 'k0smotron pods in host {host}',
+      service: 'API Service',
+      pods: 'Pods',
+      volumes: 'etcd volumes',
+      none: 'none yet',
+      openHost: 'Open host',
+      tenants: 'Hosted control planes',
+      tenantsSubtitle: '{n} tenants · {cpu} CPU and {memory} requested · {nodes} schedulable nodes',
+      noTenants: 'No hosted control plane runs here yet.',
+      requests: '{cpu} CPU · {memory}',
     },
   },
   kubeconfig: {
@@ -797,9 +821,36 @@ export const en = {
     labels: 'Cluster labels',
     labelsHint: 'key=value, e.g. env=prod. Used to assign Helm add-ons later. Default: none.',
     modeHint:
-      'Standard: control plane plus worker pools. All-in-one: 1, 3 or 5 control plane nodes that also run the workloads.',
+      'Standard: control plane plus worker pools. All-in-one: 1, 3 or 5 control plane nodes that also run the workloads. Hosted (experimental, k0s): the control plane runs as pods in a host cluster of the app, only the workers are machines.',
     modeStandard: 'Standard',
     modeAio: 'All-in-one',
+    modeHosted: 'Hosted control plane (experimental)',
+    hostedUnavailable:
+      'Hosted control planes need k0s on OpenStack, Proxmox VE or AWS, with internet access; Google Cloud cannot run their workers, because CAPG always creates its own API load balancer.',
+    hostedTitle: 'Experimental: hosted control plane',
+    hostedTradeoffs:
+      'k0smotron runs the control plane as pods in the host: no control plane machines, upgrades as a pod rollout. The API pauses briefly while host nodes are replaced, the replicas stay as created, and the host must be deleted after its tenants.',
+    hostedAwsProfile:
+      'AWS: the workers get the control plane instance profile, because the CCM and the EBS CSI controller run on them; every pod on these nodes can use its rights to load balancers, volumes and instances.',
+    host: 'Host cluster',
+    hostHint:
+      'A cluster of the app in this namespace, marked as host, on the same infrastructure and credential. Maps to K0smotronControlPlane.spec.remoteHostCluster (the host kubeconfig Secret). Default: the first host.',
+    noHosts: 'No host on this infrastructure and credential',
+    noHostsHint:
+      'Mark a cluster as host first: in its Configuration tab, or when creating it (Topology step).',
+    hostedReplicas: 'Replicas',
+    hostedReplicasHint:
+      '1 or 3, fixed after creation: k0smotron splits etcd when scaling. Three replicas need three worker nodes in the host. Maps to {cp}.spec.replicas. Default: 1.',
+    etcdVolume: 'etcd volume (GiB)',
+    etcdVolumeHint:
+      'One volume per replica from the default StorageClass of the host. Maps to {cp}.spec.storage.etcd.persistence.size. Default: 1.',
+    hostCapacity:
+      'With this cluster, the control planes of {count} + 1 tenants request {cpu} CPU and {memory} in the host, of {allocCpu} CPU and {allocMemory} allocatable on its workers.',
+    hostedAddress:
+      'The API address ({address}, Infrastructure step) must be a free LoadBalancer address of the host. Free: {free}.',
+    controlPlaneHost: 'Host for hosted control planes (experimental)',
+    controlPlaneHostHint:
+      'k0smotron runs the control planes of other k0s clusters here as pods. Needs the CCM (on Proxmox VE LoadBalancer addresses) and the CSI driver; three or more workers recommended. Sets the label capi-navigator.io/hcp-host on the Cluster. Default: off.',
     controlPlane: 'Control plane',
     cpNodes: 'Control plane nodes',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',

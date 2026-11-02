@@ -134,6 +134,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    */
   hosted?: {
     endpoint?(infra: T): { externalAddress: string; serviceAnnotations: Record<string, string> };
+    /** i18n key of a notice the wizard shows for hosted control planes on this infrastructure. */
+    wizardNotice?: string;
   };
   /** Plurals for reading and watching the provider's objects (FP-6). */
   resources: {

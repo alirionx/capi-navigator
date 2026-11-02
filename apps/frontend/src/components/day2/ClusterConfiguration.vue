@@ -123,12 +123,17 @@ const groups = computed(() => {
   const s = spec.value;
   if (!s) return [];
   return [
-    {
-      id: CONTROL_PLANE_GROUP,
-      title: t('day2.controlPlane'),
-      group: s.topology.controlPlane as Group,
-      pool: false,
-    },
+    // FP24-F-10: a hosted control plane runs as pods in its host and has no machines.
+    ...(s.topology.mode === 'hosted'
+      ? []
+      : [
+          {
+            id: CONTROL_PLANE_GROUP,
+            title: t('day2.controlPlane'),
+            group: s.topology.controlPlane as Group,
+            pool: false,
+          },
+        ]),
     ...s.topology.workerPools.map((p) => ({
       id: p.name,
       title: t('wizard.poolTitle', { name: p.name }),
@@ -144,6 +149,7 @@ const machinesOf = (id: string) =>
 const rolloutRunning = computed(
   () =>
     (props.status.controlPlane &&
+      spec.value?.topology.mode !== 'hosted' &&
       props.status.machines.filter((m) => m.role === 'control-plane').length !==
         props.status.controlPlane.replicas) ||
     props.status.machineDeployments.some((md) => md.upToDate < md.replicas),
@@ -161,7 +167,8 @@ type Mode =
   | 'rebuild'
   | 'rollout'
   | 'upgrade'
-  | 'infrastructure';
+  | 'infrastructure'
+  | 'controlPlaneHost';
 const open = ref(false);
 const mode = ref<Mode>('scale');
 const target = ref('');
@@ -258,6 +265,9 @@ function start(m: Mode, groupId = '', g?: Group): void {
     case 'infrastructure':
       form.value = { ...emptyForm(), infra: { ...storedInfra.value } };
       break;
+    case 'controlPlaneHost':
+      form.value = emptyForm();
+      break;
   }
   if (m === 'machine' || m === 'addPool') void loadLists();
   open.value = true;
@@ -337,6 +347,8 @@ const change = computed<SpecChangeInput | null>(() => {
       };
     case 'infrastructure':
       return { type: 'infrastructure', values: day2Request(infraForm.value!, f.infra) };
+    case 'controlPlaneHost':
+      return { type: 'controlPlaneHost', enabled: !spec.value?.controlPlaneHost };
   }
   return null;
 });
@@ -369,7 +381,11 @@ const valid = computed(() => {
   }
 });
 
-const title = computed(() => t(`day2.title.${mode.value}`, { group: target.value }));
+const title = computed(() =>
+  mode.value === 'controlPlaneHost'
+    ? t(spec.value?.controlPlaneHost ? 'day2.title.hostOff' : 'day2.title.hostOn')
+    : t(`day2.title.${mode.value}`, { group: target.value }),
+);
 const preview = () =>
   clusters.changePreview(props.connection, props.namespace, props.name, change.value!);
 const apply = async (takeOver: boolean) => {
@@ -489,6 +505,30 @@ const infraNotes = computed(() =>
             </tbody>
           </v-table>
         </v-card-text>
+      </v-card>
+
+      <!-- FP24-F-01: host for hosted control planes -->
+      <v-card
+        v-if="spec.topology.mode !== 'hosted' && !!infraPlugin?.hosted"
+        border
+        class="mb-4"
+        data-testid="day2-host"
+      >
+        <v-card-item
+          :title="t('day2.host')"
+          :subtitle="spec.controlPlaneHost ? t('day2.hostOn') : t('day2.hostOff')"
+        >
+          <template #append>
+            <FieldHelp :text="t('wizard.controlPlaneHostHint')" class="mr-2" />
+            <v-btn
+              variant="tonal"
+              :prepend-icon="spec.controlPlaneHost ? 'mdi-close' : 'mdi-server-network'"
+              data-testid="day2-host-toggle"
+              @click="start('controlPlaneHost')"
+              >{{ spec.controlPlaneHost ? t('day2.hostDisable') : t('day2.hostEnable') }}</v-btn
+            >
+          </template>
+        </v-card-item>
       </v-card>
 
       <!-- Drift (FP7-F-19) -->
@@ -662,7 +702,7 @@ const infraNotes = computed(() =>
         </v-col>
       </v-row>
       <v-btn
-        v-if="spec.topology.mode === 'standard'"
+        v-if="spec.topology.mode !== 'all-in-one'"
         class="mt-4"
         variant="tonal"
         prepend-icon="mdi-plus"
@@ -674,6 +714,9 @@ const infraNotes = computed(() =>
       <ChangeDialog v-model="open" :title="title" :valid="valid" :preview="preview" :apply="apply">
         <v-alert v-if="mode === 'reapply'" type="info" variant="tonal">{{
           t('day2.reapplyExplain')
+        }}</v-alert>
+        <v-alert v-else-if="mode === 'controlPlaneHost'" type="info" variant="tonal">{{
+          spec.controlPlaneHost ? t('day2.hostOffExplain') : t('day2.hostOnExplain')
         }}</v-alert>
         <template v-else-if="mode === 'cpScale'">
           <div class="text-body-medium text-medium-emphasis mb-2">

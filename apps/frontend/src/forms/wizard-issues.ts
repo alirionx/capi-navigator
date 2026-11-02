@@ -14,7 +14,7 @@ export interface StepIssue {
 export const STEP_OF: [RegExp, number][] = [
   [/^(name|namespace|labels|kubernetes\.(version|flavor)|infrastructure\.credentialRef)/, 1],
   [/customization/, 5],
-  [/^topology/, 2],
+  [/^(topology|controlPlaneHost)/, 2],
   [/^infrastructure/, 3],
   [/^addons/, 4],
   [/^(kubernetes\.(podCidr|serviceCidr)|sshPublicKeys|rollout)/, 6],
@@ -36,6 +36,9 @@ const LABELS: [RegExp, string][] = [
   [/^infrastructure\.image$/, 'wizard.image'],
   [/^topology\.workerPools\.\d+\.name$/, 'wizard.poolName'],
   [/^topology\.workerPools\.\d+\.replicas$/, 'wizard.replicas'],
+  [/^topology\.hosted\.host$/, 'wizard.host'],
+  [/^topology\.hosted\.etcdVolumeGiB$/, 'wizard.etcdVolume'],
+  [/^controlPlaneHost$/, 'wizard.controlPlaneHost'],
   [/rootVolumeSizeGB$/, 'wizard.rootVolume'],
   [/^sshPublicKeys/, 'wizard.sshPublicKeys'],
 ];

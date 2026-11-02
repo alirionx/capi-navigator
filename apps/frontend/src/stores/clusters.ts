@@ -10,6 +10,8 @@ import {
   ClusterSummarySchema,
   DeletePreviewSchema,
   DeletionStatusSchema,
+  HostViewSchema,
+  TenantViewSchema,
   type DeleteRequest,
   type BastionRequest,
   type SpecChangeInput,
@@ -100,6 +102,11 @@ export const useClustersStore = defineStore('clusters', () => {
   /** FP29-F-17: what the internal registry must hold for an air-gapped cluster. */
   const registryContents = (c: string, ns: string, n: string) =>
     api('GET', `${clusterPath(c, ns, n)}/registry-contents`, RegistryContentsSchema);
+  /** FP24-F-11, FP24-F-12: tenants and capacity of a host; where a hosted control plane runs. */
+  const hostedTenants = (c: string, ns: string, n: string) =>
+    api('GET', `${clusterPath(c, ns, n)}/hosted-tenants`, HostViewSchema);
+  const hostedControlPlane = (c: string, ns: string, n: string) =>
+    api('GET', `${clusterPath(c, ns, n)}/hosted-control-plane`, TenantViewSchema);
   const changePreview = (c: string, ns: string, n: string, change: SpecChangeInput) =>
     api('POST', `${clusterPath(c, ns, n)}/changes/preview`, ClusterChangePreviewSchema, { change });
   const applyChange = (
@@ -171,6 +178,8 @@ export const useClustersStore = defineStore('clusters', () => {
     setBastion,
     getSpec,
     registryContents,
+    hostedTenants,
+    hostedControlPlane,
     changePreview,
     applyChange,
     watch,

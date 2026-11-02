@@ -7,7 +7,10 @@ import {
   ClusterSpecSchema,
   distributionCatalog,
   FLAVOR_PLUGINS,
+  HOST_LABEL,
   INFRA_PLUGINS,
+  tenantRequests,
+  type HostView,
   infraFromValues,
   MANIFEST_ADDONS,
   initialInfraValues,
@@ -79,7 +82,12 @@ const draft = reactive({
   /** The first provider of the plugins (OpenStack). */
   provider: Object.keys(INFRA_PLUGINS)[0] as Infrastructure['provider'],
   credential: '',
-  mode: 'standard' as 'standard' | 'all-in-one',
+  mode: 'standard' as 'standard' | 'all-in-one' | 'hosted',
+  /** FP-24: host cluster and etcd volume of a hosted control plane. */
+  hostedHost: '',
+  hostedEtcdGiB: 1,
+  /** FP24-F-01: this cluster hosts the control planes of others. */
+  controlPlaneHost: false,
   /** FP5-F-19: mirror the control plane root disk to all worker pools. */
   sameRootDisk: false,
   cp: {
@@ -159,13 +167,105 @@ const capiImageWarnings = computed(() => {
   const chosen = [
     infraValues.value.image,
     draft.cp.image,
-    ...(draft.mode === 'standard' ? draft.pools.map((p) => p.image) : []),
+    ...(draft.mode !== 'all-in-one' ? draft.pools.map((p) => p.image) : []),
   ].filter((v): v is string => !!v);
   return [...new Set(chosen)]
     .map((id) => images.value.find((o) => o.value === id)?.label ?? id)
     .filter((name) => !imageNameMatchesVersion(name, draft.version));
 });
-const cpKind = computed(() => FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? '');
+const cpKind = computed(() =>
+  draft.mode === 'hosted'
+    ? (FLAVOR_PLUGINS[draft.flavor]?.hosted?.controlPlaneResource.kind ?? '')
+    : (FLAVOR_PLUGINS[draft.flavor]?.controlPlaneResource.kind ?? ''),
+);
+
+// ---- FP-24: hosted control planes ----
+/** k0s on an infrastructure that runs workers of hosted control planes, not air-gapped. */
+const hostedAvailable = computed(
+  () => !!flavorPlugin.value?.hosted && !!INFRA_PLUGINS[draft.provider].hosted && !airGapped.value,
+);
+/** FP24-F-06: the tenant needs a fixed address from the host (kube-vip on Proxmox VE). */
+const fixedAddress = computed(() => !!INFRA_PLUGINS[draft.provider].hosted?.endpoint);
+const hostedNotice = computed(() => INFRA_PLUGINS[draft.provider].hosted?.wizardNotice);
+watch(hostedAvailable, (ok) => {
+  if (!ok && draft.mode === 'hosted') draft.mode = 'standard';
+});
+watch(
+  () => draft.mode,
+  (mode) => {
+    if (mode === 'hosted' && draft.cp.replicas === 5) draft.cp.replicas = 3;
+  },
+);
+/** Hosts in the namespace on the same infrastructure and credential (FP24-F-03). */
+const hosts = computed(() =>
+  clusters.clusters.filter(
+    (c) =>
+      c.labels[HOST_LABEL] === 'true' &&
+      c.namespace === draft.namespace &&
+      c.provider === draft.provider &&
+      c.credential === draft.credential,
+  ),
+);
+watch(
+  () => [connections.activeName, draft.mode] as const,
+  ([name, mode]) => {
+    if (name && mode === 'hosted') void clusters.load(name).catch(() => undefined);
+  },
+  { immediate: true },
+);
+watch(hosts, (list) => {
+  if (!list.some((h) => h.name === draft.hostedHost)) draft.hostedHost = list[0]?.name ?? '';
+});
+const hostView = ref<HostView | null>(null);
+const hostViewError = ref<unknown>(null);
+watch(
+  () => [draft.mode, draft.hostedHost, draft.namespace] as const,
+  async ([mode, host, ns]) => {
+    hostView.value = null;
+    hostViewError.value = null;
+    if (mode !== 'hosted' || !host || !connections.activeName) return;
+    try {
+      const view = await clusters.hostedTenants(connections.activeName, ns, host);
+      if (draft.hostedHost !== host) return;
+      hostView.value = view;
+      // FP24-F-06: propose the first free LoadBalancer address of the host on Proxmox VE.
+      const free = view.freeAddresses ?? [];
+      const current = String(infraValues.value.apiEndpoint ?? '');
+      if (fixedAddress.value && free.length && !free.includes(current)) {
+        infraValues.value.apiEndpoint = free[0]!;
+      }
+    } catch (err) {
+      hostViewError.value = err;
+    }
+  },
+);
+/** FP24-F-12: what the host's tenants request, with this one, against its capacity. */
+const hostCapacity = computed(() => {
+  const v = hostView.value;
+  if (!v) return null;
+  const mine = tenantRequests(draft.cp.replicas);
+  const cpu = v.tenants.reduce((s, x) => s + x.cpuMillis, 0) + mine.cpuMillis;
+  const memory = v.tenants.reduce((s, x) => s + x.memoryMiB, 0) + mine.memoryMiB;
+  const fmtCpu = (m: number) => `${(m / 1000).toFixed(2)}`;
+  const fmtMem = (m: number) => `${(m / 1024).toFixed(1)} GiB`;
+  return {
+    text: t('wizard.hostCapacity', {
+      count: v.tenants.length,
+      cpu: fmtCpu(cpu),
+      memory: fmtMem(memory),
+      ...(v.allocatable
+        ? {
+            allocCpu: fmtCpu(v.allocatable.cpuMillis),
+            allocMemory: fmtMem(v.allocatable.memoryMiB),
+          }
+        : { allocCpu: '?', allocMemory: '?' }),
+    }),
+    tight:
+      !!v.allocatable &&
+      (cpu > v.allocatable.cpuMillis * 0.8 || memory > v.allocatable.memoryMiB * 0.8),
+  };
+});
+
 watch(
   () => draft.flavor,
   (f) => (draft.version = defaultVersion(f)),
@@ -348,9 +448,16 @@ const spec = computed<ClusterSpecInput>(() => ({
   },
   topology: {
     mode: draft.mode,
-    controlPlane: { ...group(draft.cp), replicas: draft.cp.replicas },
+    // FP-24: a hosted control plane has no machines; its size is unused.
+    controlPlane:
+      draft.mode === 'hosted'
+        ? { machineSize: 'hosted', replicas: draft.cp.replicas }
+        : { ...group(draft.cp), replicas: draft.cp.replicas },
+    ...(draft.mode === 'hosted'
+      ? { hosted: { host: draft.hostedHost, etcdVolumeGiB: Number(draft.hostedEtcdGiB) } }
+      : {}),
     workerPools:
-      draft.mode === 'standard'
+      draft.mode !== 'all-in-one'
         ? draft.pools.map((p) => ({
             ...group(p),
             name: p.name.trim(),
@@ -360,6 +467,7 @@ const spec = computed<ClusterSpecInput>(() => ({
         : [],
   },
   rollout: { maxSurge: Number(draft.maxSurge), maxUnavailable: Number(draft.maxUnavailable) },
+  ...(draft.controlPlaneHost && draft.mode !== 'hosted' ? { controlPlaneHost: true } : {}),
   addons: {
     cloudControllerManager: draft.addons.ccm,
     csiDriver: draft.addons.csi,
@@ -684,9 +792,123 @@ const canPreview = computed(() => issues.value.length === 0);
         <v-radio-group v-model="draft.mode" inline>
           <v-radio :label="t('wizard.modeStandard')" value="standard" />
           <v-radio :label="t('wizard.modeAio')" value="all-in-one" data-testid="mode-aio" />
+          <v-radio
+            :label="t('wizard.modeHosted')"
+            value="hosted"
+            :disabled="!hostedAvailable"
+            data-testid="mode-hosted"
+          />
           <FieldHelp :text="t('wizard.modeHint')" class="align-self-center" />
         </v-radio-group>
-        <v-card border class="mt-4 pa-4">
+        <div
+          v-if="!hostedAvailable"
+          class="text-body-small text-medium-emphasis"
+          data-testid="hosted-unavailable"
+        >
+          {{ t('wizard.hostedUnavailable') }}
+        </div>
+        <v-switch
+          v-if="draft.mode !== 'hosted'"
+          v-model="draft.controlPlaneHost"
+          color="primary"
+          density="compact"
+          class="mt-2"
+          data-testid="wizard-control-plane-host"
+        >
+          <template #label>
+            {{ t('wizard.controlPlaneHost') }}
+            <FieldHelp :text="t('wizard.controlPlaneHostHint')" />
+          </template>
+        </v-switch>
+        <!-- FP-24: the control plane as pods in a host -->
+        <v-card v-if="draft.mode === 'hosted'" border class="mt-4 pa-4" data-testid="hosted-card">
+          <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
+            <div class="font-weight-medium">{{ t('wizard.hostedTitle') }}</div>
+            <div class="text-body-medium">{{ t('wizard.hostedTradeoffs') }}</div>
+            <div v-if="hostedNotice" class="text-body-medium mt-1">
+              {{ t(hostedNotice) }}
+            </div>
+          </v-alert>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="draft.hostedHost"
+                :items="hosts.map((h) => h.name)"
+                :label="t('wizard.host')"
+                :no-data-text="t('wizard.noHosts')"
+                data-testid="hosted-host"
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.hostHint')" />
+                </template>
+              </v-select>
+            </v-col>
+            <v-col cols="6" md="3" class="d-flex align-center">
+              <span class="text-body-medium text-medium-emphasis mr-1">{{
+                t('wizard.hostedReplicas')
+              }}</span>
+              <FieldHelp :text="t('wizard.hostedReplicasHint', { cp: cpKind })" class="mr-3" />
+              <v-btn-toggle
+                v-model="draft.cp.replicas"
+                mandatory
+                density="compact"
+                variant="outlined"
+                :aria-label="t('wizard.hostedReplicas')"
+              >
+                <v-btn :value="1">1</v-btn>
+                <v-btn :value="3">3</v-btn>
+              </v-btn-toggle>
+            </v-col>
+            <v-col cols="6" md="3">
+              <v-text-field
+                v-model.number="draft.hostedEtcdGiB"
+                type="number"
+                min="1"
+                max="100"
+                :label="t('wizard.etcdVolume')"
+                data-testid="hosted-etcd"
+              >
+                <template #append-inner>
+                  <FieldHelp :text="t('wizard.etcdVolumeHint', { cp: cpKind })" />
+                </template>
+              </v-text-field>
+            </v-col>
+          </v-row>
+          <div v-if="hosts.length === 0" class="text-body-medium text-medium-emphasis">
+            {{ t('wizard.noHostsHint') }}
+          </div>
+          <v-alert
+            v-if="hostCapacity"
+            :type="hostCapacity.tight ? 'warning' : 'info'"
+            variant="tonal"
+            density="compact"
+            class="text-body-medium"
+            data-testid="hosted-capacity"
+          >
+            {{ hostCapacity.text }}
+          </v-alert>
+          <div
+            v-for="w in hostView?.warnings ?? []"
+            :key="w"
+            class="text-body-small text-medium-emphasis mt-1"
+          >
+            {{ w }}
+          </div>
+          <div
+            v-if="fixedAddress && hostView?.freeAddresses"
+            class="text-body-medium mt-2"
+            data-testid="hosted-addresses"
+          >
+            {{
+              t('wizard.hostedAddress', {
+                address: String(infraValues.apiEndpoint ?? ''),
+                free: hostView.freeAddresses.join(', ') || '–',
+              })
+            }}
+          </div>
+          <ErrorAlert v-if="hostViewError" :error="hostViewError" class="mt-2" />
+        </v-card>
+        <v-card v-else border class="mt-4 pa-4">
           <div class="d-flex align-center mb-2">
             <div class="text-body-large">{{ t('wizard.controlPlane') }}</div>
             <v-spacer />
@@ -727,7 +949,7 @@ const canPreview = computed(() => issues.value.length === 0);
             </template>
           </v-switch>
         </v-card>
-        <template v-if="draft.mode === 'standard'">
+        <template v-if="draft.mode !== 'all-in-one'">
           <v-card v-for="(pool, i) in draft.pools" :key="i" border class="mt-4 pa-4">
             <div class="d-flex flex-wrap ga-3 align-start mb-2">
               <v-text-field
@@ -891,12 +1113,12 @@ const canPreview = computed(() => issues.value.length === 0);
           t('wizard.customWarning')
         }}</v-alert>
         <v-expansion-panels variant="accordion">
-          <v-expansion-panel :title="t('wizard.controlPlane')">
+          <v-expansion-panel v-if="draft.mode !== 'hosted'" :title="t('wizard.controlPlane')">
             <v-expansion-panel-text
               ><CustomizationEditor v-model="draft.cp.customization" :flavor="draft.flavor"
             /></v-expansion-panel-text>
           </v-expansion-panel>
-          <template v-if="draft.mode === 'standard'">
+          <template v-if="draft.mode !== 'all-in-one'">
             <v-expansion-panel
               v-for="(pool, i) in draft.pools"
               :key="i"

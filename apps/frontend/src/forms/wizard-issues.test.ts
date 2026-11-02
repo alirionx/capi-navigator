@@ -54,6 +54,25 @@ describe('cluster wizard issues (FP5-F-02)', () => {
     ]);
   });
 
+  it('shows the problems of hosted control planes and hosts in the topology step (FP-24)', () => {
+    const r = ClusterSpecSchema.safeParse({
+      ...empty,
+      name: 'tenant',
+      kubernetes: { flavor: 'k0s', version: 'v1.35.9+k0s.0' },
+      topology: { ...empty.topology, mode: 'hosted' },
+      controlPlaneHost: true,
+    });
+    const mapped = r.success ? [] : stepIssues(r.error.issues);
+    expect(mapped.find((i) => i.path === 'topology.hosted.host')).toMatchObject({
+      step: 2,
+      labelKey: 'wizard.host',
+    });
+    expect(mapped.find((i) => i.path === 'controlPlaneHost')).toMatchObject({
+      step: 2,
+      labelKey: 'wizard.controlPlaneHost',
+    });
+  });
+
   it('takes the labels of infrastructure fields from the provider form (FP25-F-05)', () => {
     const issue = { path: ['infrastructure', 'image'], message: 'Required' };
     expect(stepIssues([issue], INFRA_PLUGINS.aws.form)[0]?.labelKey).toBe('wizard.ami');

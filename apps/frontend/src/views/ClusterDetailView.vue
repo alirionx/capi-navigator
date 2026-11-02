@@ -12,6 +12,8 @@ import {
   AIR_GAPPED_FACT,
   bastionComplete,
   bastionRequest as bastionPart,
+  HOST_LABEL,
+  HOSTED_ON_LABEL,
   INFRA_PLUGINS,
   isReservedLabel,
 } from '@capi-navigator/shared';
@@ -29,6 +31,7 @@ import RegistryContents from '../components/RegistryContents.vue';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
+import HostedPanel from '../components/HostedPanel.vue';
 import ClusterAddons from '../components/addons/ClusterAddons.vue';
 import ClusterResources from '../components/ClusterResources.vue';
 import ClusterConfiguration from '../components/day2/ClusterConfiguration.vue';
@@ -195,6 +198,13 @@ watch(
 onBeforeUnmount(() => store.unwatch());
 
 const s = computed(() => store.status);
+/** FP-24: the cluster is a hosted tenant or a host, from its labels. */
+const hostedRole = computed<'tenant' | 'host' | undefined>(() => {
+  const labels = s.value?.summary.labels ?? {};
+  if (labels[HOSTED_ON_LABEL]) return 'tenant';
+  if (labels[HOST_LABEL] === 'true') return 'host';
+  return undefined;
+});
 /** UX-08: credentials and region or node the cluster runs on. */
 const location = computed(() =>
   s.value ? infraLocation(s.value.summary, credentials.credentials) : undefined,
@@ -572,6 +582,15 @@ const machineHeaders = computed(() => [
               </template>
             </v-card-text>
           </v-card>
+
+          <!-- FP24-F-11: hosted control plane in its host, or the tenants of a host -->
+          <HostedPanel
+            v-if="connections.activeName && hostedRole"
+            :connection="connections.activeName"
+            :namespace="props.namespace"
+            :name="props.name"
+            :role="hostedRole"
+          />
 
           <v-alert
             v-for="c in failing(s.conditions)"

@@ -225,7 +225,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
   },
 
   // FP24-F-05, ADR-0034: the endpoint comes from k0smotron.
-  hosted: {},
+  hosted: { wizardNotice: 'wizard.hostedAwsProfile' },
 
   warnings: (spec) =>
     spec.topology.mode === 'hosted'
