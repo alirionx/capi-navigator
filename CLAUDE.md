@@ -38,7 +38,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-7 | Live YAML view (read-only) and day-2 operations | done |
 | FP-8 | Helm add-ons via CAAPH | done |
 | FP-9 | k0s as second Kubernetes distribution | done (control plane replacement one node at a time since k0smotron v2.3.1, ADR-0013) |
-| FP-10 | kubeadm on stock images (experimental) | done |
+| FP-10 | kubeadm on stock images | done (no longer experimental since ADR-0033; HA verified on Proxmox VE) |
 | FP-19 | Role management: custom roles, scoped role assignments (optional) | done |
 | FP-20 | Version maintenance: versions.yaml and update report (optional) | done |
 | FP-22 | API tokens for technical users (optional) | done |

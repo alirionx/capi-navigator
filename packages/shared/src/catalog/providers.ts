@@ -100,7 +100,7 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     kind: 'BootstrapProvider',
     name: 'kubeadm',
     displayName: 'kubeadm bootstrap',
-    description: 'Generates kubeadm cloud-init for nodes (FP-10, experimental).',
+    description: 'Generates kubeadm cloud-init for nodes (FP-10).',
     recommendedVersion: VERSIONS.providers['cluster-api'].version,
     defaultNamespace: 'capi-kubeadm-bootstrap-system',
     repository: 'kubernetes-sigs/cluster-api',

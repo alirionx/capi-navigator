@@ -18,7 +18,7 @@ import { KUBEADM_INSTALL_TEMPLATE } from './templates/kubeadm-install.generated.
 
 /**
  * Upstream Kubernetes with kubeadm (Cluster API v1.14.3 kubeadm bootstrap and control plane,
- * v1beta2) on stock cloud images, experimental (FP-10). Field names verified against the CRDs of
+ * v1beta2) on stock cloud images or Cluster API images (FP-10). Field names verified against the CRDs of
  * v1.14.3. Containerd and runc come as official release binaries (independent of the distribution,
  * ADR-0014); kubelet, kubeadm and kubectl of exactly the chosen version from pkgs.k8s.io (apt or
  * dnf), held against automatic updates. Kubeadm's cloud-init is a Jinja template, so the node
@@ -190,7 +190,6 @@ function bootstrapFields(
 export const kubeadmPlugin: BootstrapFlavorPlugin = {
   flavor: 'kubeadm',
   displayName: 'kubeadm',
-  experimental: true,
   needsCni: true,
   installsPackages: true,
   // ADR-0032: air-gapped on a Cluster API image, no artifact to pin.

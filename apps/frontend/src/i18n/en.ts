@@ -758,8 +758,7 @@ export const en = {
     distribution: 'Kubernetes distribution',
     distributionHint:
       'Installed via cloud-init on stock images; its bootstrap and control plane providers must be installed. Default: RKE2.',
-    kubeadmExperimental: 'kubeadm (experimental)',
-    experimentalTitle: 'Experimental',
+    installAtBootTitle: 'Installed at first boot',
     airGapped: 'Air-gapped: nodes without internet access, everything from {registry}',
     airGapUnavailable:
       '{flavor} cannot be installed air-gapped; choose another distribution for a cluster without internet access.',
@@ -776,7 +775,7 @@ export const en = {
       rke2: 'RKE2 on RHEL 10 and derivatives: kernel-modules-extra.',
     },
     kubeadmTradeoffs:
-      'Upstream Kubernetes installed at first boot: nodes take a few minutes longer to start, need access to pkgs.k8s.io and GitHub releases (or mirrors), and this path is not covered by official Cluster API support. Ubuntu, Debian and Rocky/Alma images; on a Cluster API image of the selected version nothing is installed.',
+      'On a stock Ubuntu, Debian or Rocky/Alma image, kubeadm, kubelet and containerd are installed at first boot: nodes take a few minutes longer to start and need access to pkgs.k8s.io and GitHub releases (or mirrors); Cluster API itself supports only images with everything preinstalled. On a Cluster API image of the selected version nothing is installed: recommended for production and required for air-gapped clusters.',
     cni: 'Calico CNI',
     cniHint:
       'kubeadm ships no network plugin: Calico with VXLAN, as with RKE2 and k0s, from the official manifest via a ClusterResourceSet. Turn off only to install your own CNI. Default: on.',

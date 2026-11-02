@@ -349,7 +349,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-7 | Live YAML view and day-2 operations | FP-6 |
 | FP-8 | Helm add-ons via CAAPH | FP-7 |
 | FP-9 | k0s as second Kubernetes distribution | FP-7 |
-| FP-10 | Vanilla Kubernetes with kubeadm on stock images (experimental) | FP-8 |
+| FP-10 | Vanilla Kubernetes with kubeadm on stock images | FP-8 |
 | FP-19 | Role management: custom roles and scoped role assignments (optional) | FP-1 |
 | FP-20 | Version maintenance: versions.yaml and update report (optional) | FP-10 |
 | FP-22 | API tokens for technical users (optional) | FP-19, FP-23 |
@@ -491,7 +491,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 
 **Wizard (Vuetify stepper)**
 
-1. **Basics:** name, namespace, labels, Kubernetes distribution (RKE2; k0s from FP-9; kubeadm, experimental, from FP-10) and version.
+1. **Basics:** name, namespace, labels, Kubernetes distribution (RKE2; k0s from FP-9; kubeadm from FP-10) and version.
 2. **Topology:** standard (control plane with 1, 3 or 5 nodes + one or more worker pools) or all-in-one (1, 3 or 5 nodes since FP-26); per group: replicas, machine size, optional image override.
 3. **Infrastructure:** provider (OpenStack or AWS) and credentials; OpenStack: image, external network, node CIDR, DNS servers, API load balancer yes/no, availability zone, SSH key; AWS: region, availability zones, VPC CIDR, AMI (default: Ubuntu 24.04), API load balancer yes/no, key pair.
 4. **Add-ons:** cloud controller manager and CSI driver of the selected provider (OpenStack CCM and Cinder CSI, or AWS cloud controller manager and EBS CSI driver), both preselected and individually deselectable; shows chart version and lets the user override values.
@@ -655,9 +655,9 @@ Verified on 2026-10-18 with podinfo 6.15.0 instead of ingress-nginx (retired in 
 
 Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11+k0s.1 → v1.35.8+k0s.1, Ubuntu 22.04 → 24.04 for workers). Deviations: ADR-0012 (distributions declare their network needs), ADR-0013 (control plane replacement; in-place upgrades until 2026-10-28).
 
-### FP-10: Vanilla Kubernetes with kubeadm on stock images (experimental)
+### FP-10: Vanilla Kubernetes with kubeadm on stock images
 
-**Goal:** offer upstream Kubernetes via the official kubeadm providers without prebuilt images. Containerd, kubelet and kubeadm are installed at first boot on an official Ubuntu cloud image via `preKubeadmCommands`. This is not an officially supported CAPI path, so the app marks it as experimental.
+**Goal:** offer upstream Kubernetes via the official kubeadm providers without prebuilt images. Containerd, kubelet and kubeadm are installed at first boot on an official Ubuntu cloud image via `preKubeadmCommands`. This is not an officially supported CAPI path, so the app first marked it as experimental; since ADR-0033 kubeadm is supported like RKE2 and k0s, and the wizard explains the trade-offs of installing at first boot.
 
 - **FP10-F-01** MUST implement the `BootstrapFlavorPlugin` for kubeadm, generating `KubeadmControlPlane` and `KubeadmConfigTemplate` (providers already in the catalog from FP-3).
 - **FP10-F-02** MUST generate an install script in `preKubeadmCommands` that prepares the node (kernel modules, sysctl, swap off), installs containerd, and installs kubelet and kubeadm of exactly the selected version from the official package repository `pkgs.k8s.io`, holding the packages against automatic updates. On a Cluster API image that already contains kubeadm of exactly the selected version, the script installs nothing and leaves containerd and its configuration alone; with Kubernetes packages of another version it changes only kubelet, kubeadm and kubectl to the selected version. A failed installation stops the node's bootstrap, so `kubeadm init` or `join` never runs on a half-installed node (ADR-0032).
@@ -666,7 +666,7 @@ Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11
 - **FP10-F-05** MUST map node customization to `files`, `preKubeadmCommands` (after the install script) and `postKubeadmCommands`.
 - **FP10-F-06** MUST support CCM and CSI (kubelet configured for an external cloud provider).
 - **FP10-F-07** MUST support all day-2 operations from FP-7. A version upgrade works by template rotation: new machines run the install script with the new version.
-- **FP10-F-08** MUST label kubeadm as “experimental” in the wizard and explain the trade-offs: longer node start, dependency on reachable package repositories, not covered by official CAPI support.
+- **FP10-F-08** MUST explain in the wizard, before creation, the trade-offs of installing at first boot: longer node start, dependency on reachable package repositories, not covered by official CAPI support; and recommend a Cluster API image of the selected version for production and air-gapped clusters (ADR-0033; until 2026-11-02 kubeadm was labelled experimental).
 - **FP10-F-09** SHOULD allow a custom package mirror URL for environments without direct internet access.
 
 **Acceptance criteria**
@@ -674,9 +674,11 @@ Verified on 2026-10-18 on Infomaniak (3 control plane nodes + 1 worker, v1.34.11
 - [x] Snapshot tests cover the kubeadm flavor including the generated install script.
 - [x] A kubeadm standard cluster is created on Infomaniak Public Cloud from an unmodified Ubuntu cloud image, with CNI, CCM and CSI working.
 - [x] Upgrading by one minor version replaces all nodes, and the new nodes run the new kubelet version.
-- [x] The wizard shows the experimental label and the trade-offs before creation.
+- [x] The wizard shows the trade-offs of installing at first boot before creation (until ADR-0033 with an experimental label).
 
 Verified on 2026-10-18 on Infomaniak with `fp10-kubeadm-c` (1 control plane, 1 worker): created from stock Ubuntu 24.04 with kubeadm v1.34.12; Calico, OpenStack CCM (load balancer with public IP) and Cinder CSI (volume bound and mounted) working; pod traffic across nodes by pod IP and service name. Upgrade to v1.35.9 replaced both nodes (control plane first) without API downtime; changing the image of control plane and workers to Debian 13 created new templates and left existing ones unchanged; then deleted with cleanup. Refinements (ADR-0014): containerd and runc come as checksum-verified release binaries, so Debian and Rocky/Alma images work as well (FP10-F-03); Calico is delivered by a `ClusterResourceSet` instead of CAAPH, because its CRD chart exceeds the 1 MiB Helm release limit (FP10-F-04).
+
+Highly available control plane verified on 2026-11-02 on Proxmox VE (ADR-0033): three control plane nodes and one worker from the stock Debian 13 template with v1.35.9, all Ready after 271 s; the upgrade to v1.36.6 through the app replaced the control plane one node at a time and then the worker (476 s), with three etcd members afterwards; 5 of 157 API probes failed, right after the node holding the kube-vip address was deleted. kubeadm is no longer experimental (ADR-0033).
 
 ### FP-17: Node shell (implemented ahead of FP-7)
 
@@ -947,7 +949,7 @@ Order of work: credentials first (so real credentials can be stored early), then
 
 **Goal:** workload clusters on Proxmox VE with the Cluster API provider [CAPMOX](https://github.com/ionos-cloud/cluster-api-provider-proxmox) (IONOS, Apache-2.0), for on-premises and homelab environments, managed like those on the clouds. Proxmox has no load balancer, no flavors and no address management of its own; the app adds them in a way that stays upstream: kube-vip for the API endpoint, sizes kept per credential, node addresses from the in-cluster IPAM provider (ADR-0027).
 
-Order of work: provider catalog and credentials, then the transformation with kube-vip for RKE2 (priority) and k0s, then CCM and CSI, live tests, kubeadm last (experimental).
+Order of work: provider catalog and credentials, then the transformation with kube-vip for RKE2 (priority) and k0s, then CCM and CSI, live tests, kubeadm last.
 
 Spike findings (2026-10-23, RKE2 and k0s all-in-one on Proxmox VE 9.2, CAPI v1.14.3), which these requirements build on:
 
@@ -975,7 +977,7 @@ Requirements:
 - **FP31-F-09** MUST give every cluster its own copy of the credentials Secret (CAPMOX owns and deletes it with the cluster); the stored credential is never referenced directly.
 - **FP31-F-10** MUST set the provider ID and install qemu-guest-agent on first boot through the plugin hooks (`nodeIdentity`, `nodePreparation`), so stock cloud images without a cloud-init drive work as templates.
 - **FP31-F-11** MUST roll out the Proxmox CCM (`features.provider: capmox`) and the Proxmox CSI plugin as presets, with their Proxmox credentials delivered into the workload cluster as a Secret by ClusterResourceSet (as ADR-0004), never in Helm values; the CSI StorageClass uses the storage chosen in the wizard.
-- **FP31-F-12** MUST support RKE2 and k0s in both topologies; kubeadm (experimental) SHOULD follow with the static pod variant.
+- **FP31-F-12** MUST support RKE2 and k0s in both topologies; kubeadm SHOULD follow with the static pod variant.
 - **FP31-F-13** MUST document the Proxmox setup (token and privileges, template without cloud-init drive, guest agent, IP range and VIP, memory scheduling, CA) and list Proxmox VE in the README, the architecture overview and the provider tables.
 
 **Acceptance criteria**
@@ -1228,7 +1230,7 @@ These requirements apply to all feature packs and are checked in every pack.
 | Backend access to clusters | Via kubeconfig or service account token (FP-2). |
 | Test and target cloud | [Infomaniak Public Cloud](https://www.infomaniak.com/en/support/faq/2601/getting-started-public-cloud): largely vanilla OpenStack with [Octavia load balancers](https://www.infomaniak.com/public-cloud), access via `clouds.yaml`. |
 | AWS | Second target cloud from FP-4/FP-5 (CAPA). Credentials as `AWSClusterStaticIdentity` of a dedicated IAM user; the app checks the CAPA IAM prerequisites and shows the `clusterawsadm` command, but never creates IAM resources itself. Real AWS resources in tests only after explicit confirmation. |
-| Kubernetes distributions | RKE2 (FP-5), k0s (FP-9) and kubeadm (FP-10, experimental, packages installed via preKubeadmCommands), all via cloud-init on official cloud images. |
+| Kubernetes distributions | RKE2 (FP-5), k0s (FP-9) and kubeadm (FP-10, packages installed via preKubeadmCommands or a Cluster API image, ADR-0032/0033), all via cloud-init on official cloud images. |
 | OS patching | None in place. Nodes are rebuilt from new cloud images via rolling update (FP-7). |
 | ORC | Required; detected and installed in FP-3 before CAPO. |
 | CCM and CSI | Rolled out with each cluster by default and deselectable in the wizard (FP-5). |

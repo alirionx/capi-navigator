@@ -528,7 +528,7 @@ const canPreview = computed(() => issues.value.length === 0);
               :items="[
                 { title: 'RKE2', value: 'rke2' },
                 { title: 'k0s', value: 'k0s' },
-                { title: t('wizard.kubeadmExperimental'), value: 'kubeadm' },
+                { title: 'kubeadm', value: 'kubeadm' },
               ]"
               data-testid="wizard-flavor"
               :label="t('wizard.distribution')"
@@ -537,16 +537,16 @@ const canPreview = computed(() => issues.value.length === 0);
                 <FieldHelp :text="t('wizard.distributionHint')" />
               </template>
             </v-select>
-            <!-- FP10-F-08: experimental, with its trade-offs before creation -->
+            <!-- FP10-F-08: the trade-offs of installing at first boot, before creation (ADR-0033) -->
             <v-alert
-              v-if="flavorPlugin?.experimental"
-              type="warning"
+              v-if="flavorPlugin?.installsPackages"
+              type="info"
               variant="tonal"
               density="compact"
               class="mt-3"
-              data-testid="wizard-experimental"
+              data-testid="wizard-install-at-boot"
             >
-              <div class="font-weight-medium">{{ t('wizard.experimentalTitle') }}</div>
+              <div class="font-weight-medium">{{ t('wizard.installAtBootTitle') }}</div>
               <div class="text-body-medium">{{ t('wizard.kubeadmTradeoffs') }}</div>
             </v-alert>
           </v-col>

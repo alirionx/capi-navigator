@@ -41,7 +41,8 @@ while RKE2 and k0s set `"true"`.
 ## Consequences
 
 - Nodes need outbound access to `pkgs.k8s.io` and GitHub releases (or the mirrors); node start takes
-  a few minutes longer than with RKE2 or k0s. The wizard marks the flavor experimental (FP10-F-08).
+  a few minutes longer than with RKE2 or k0s. The wizard marks the flavor experimental (FP10-F-08);
+  since [ADR-0033](0033-kubeadm-no-longer-experimental.md) it explains these trade-offs instead.
 - Runtime updates follow the app's pinned versions (FP-20 version maintenance), not the image.
 - Existing CCM/CSI presets show as outdated after this change; rolling them out changes nothing for
   RKE2 and k0s clusters.

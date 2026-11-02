@@ -164,10 +164,11 @@ export interface BootstrapFlavorPlugin {
   network: FlavorNetwork;
   /** The distribution ships no CNI; a CNI preset is rolled out unless switched off (FP10-F-04). */
   needsCni?: boolean;
-  /** Installs Kubernetes from packages and release binaries at first boot; mirrors apply (FP10-F-09). */
+  /**
+   * Installs Kubernetes from packages and release binaries at first boot; mirrors apply (FP10-F-09).
+   * The wizard explains the trade-offs (FP10-F-08).
+   */
   installsPackages?: boolean;
-  /** Marked as experimental in the wizard, with its trade-offs (FP10-F-08). */
-  experimental?: boolean;
   /**
    * Installation without internet from the internal registry (FP-29 part B). `artifact`: the
    * binaries of a version, pinned in the spec (RKE2, k0s); without it the image brings them (a
