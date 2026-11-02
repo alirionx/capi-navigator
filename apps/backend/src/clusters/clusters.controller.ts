@@ -45,15 +45,23 @@ import {
   type ClusterPreview,
   type ClusterStatus,
   type ClusterSummary,
+  allows,
 } from '@capi-navigator/shared';
 import type { Response } from 'express';
 import { interval, map, merge, type Observable } from 'rxjs';
-import { Audit, Requires } from '../auth/decorators.js';
+import { Audit, CurrentUser, Requires } from '../auth/decorators.js';
+import type { Principal } from '../auth/principal.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { LiveChannels } from '../kube/live-channels.js';
 import { ClusterDeletionService } from './cluster-deletion.service.js';
-import { ClustersService, listWatchPaths, namespaceWatchPaths } from './clusters.service.js';
+import {
+  ClustersService,
+  listWatchPaths,
+  namespaceWatchPaths,
+  type ChangeOptions,
+} from './clusters.service.js';
+import { StoreService } from '../store/store.service.js';
 import { Api, liveEvents } from '../openapi/api.decorator.js';
 import { z } from 'zod';
 
@@ -115,6 +123,7 @@ export class ClustersController {
     private readonly events: ClusterEventsService,
     private readonly listEvents: ClusterListEventsService,
     private readonly deletion: ClusterDeletionService,
+    private readonly store: StoreService,
   ) {}
 
   @Requires('view')
@@ -269,6 +278,7 @@ export class ClustersController {
     @Param('namespace') namespace: string,
     @Param('name') name: string,
     @Body(new ZodValidationPipe(ChangeRequestSchema)) body: ChangeBody,
+    @CurrentUser() principal: Principal,
   ): Promise<ClusterChangePreview> {
     const now = new Date();
     return this.clusters.changePreview(
@@ -276,7 +286,7 @@ export class ClustersController {
       namespace,
       name,
       (s) => applySpecChange(s, body.change, now),
-      { upgrade: body.change.type === 'upgrade', all: body.change.type === 'reapply' },
+      this.changeOptions(body.change.type, principal),
     );
   }
 
@@ -300,6 +310,7 @@ export class ClustersController {
     @Param('namespace') namespace: string,
     @Param('name') name: string,
     @Body(new ZodValidationPipe(ChangeRequestSchema)) body: ChangeBody,
+    @CurrentUser() principal: Principal,
   ): Promise<ClusterChangePreview> {
     const now = new Date();
     return this.clusters.applyChange(
@@ -308,8 +319,19 @@ export class ClustersController {
       name,
       (s) => applySpecChange(s, body.change, now),
       body.takeOver,
-      { upgrade: body.change.type === 'upgrade', all: body.change.type === 'reapply' },
+      this.changeOptions(body.change.type, principal),
     );
+  }
+
+  /** FP34-F-07: admins with blueprints.manage may upgrade or reapply blueprint clusters. */
+  private changeOptions(type: ChangeBody['change']['type'], principal: Principal): ChangeOptions {
+    return {
+      upgrade: type === 'upgrade',
+      all: type === 'reapply',
+      blueprintMaintenance:
+        (type === 'upgrade' || type === 'reapply') &&
+        allows(principal.bindings, this.store.rolePermissions, 'blueprints.manage'),
+    };
   }
 
   @Requires('clusters.change')

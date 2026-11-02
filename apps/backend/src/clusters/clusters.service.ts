@@ -93,6 +93,11 @@ export interface ChangeOptions {
    * from a newer app version (the explicit update action of ADR-0025).
    */
   all?: boolean;
+  /**
+   * FP34-F-07: an upgrade or reapply by a user with `blueprints.manage`; every other change of a
+   * cluster created from a blueprint is refused.
+   */
+  blueprintMaintenance?: boolean;
 }
 import {
   CLUSTER_NAME_LABEL,
@@ -580,6 +585,14 @@ export class ClustersService {
     opts: ChangeOptions,
   ) {
     const current = await this.storedSpec(connection, namespace, name);
+    // FP34-F-07: blueprint clusters stay bound; the workers following an upgrade are part of it.
+    if (current.blueprint && !opts.finishUpgrade && !opts.blueprintMaintenance) {
+      throw new ConflictException({
+        statusCode: 409,
+        message: `Cluster ${namespace}/${name} was created from blueprint ${current.blueprint} and stays bound to it`,
+        hint: 'Only a Kubernetes upgrade (or reapply) by an admin with blueprints.manage is possible. For other changes create a new cluster from the blueprint.',
+      });
+    }
     let next: ClusterSpec;
     try {
       next = mutate(current);

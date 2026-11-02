@@ -501,6 +501,7 @@ const fakeKc = {
 describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
   let app: NestExpressApplication;
   let operatorCookie: string;
+  let adminCookie: string;
   let viewerCookie: string;
   const CSRF = { 'x-capi-navigator': '1' };
   const base = '/api/connections/kind/clusters';
@@ -566,6 +567,7 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
     configureApp(app, config);
     await app.init();
     const admin = await activate('admin', 'Admin-Pw-1');
+    adminCookie = admin;
     for (const [u, role] of [
       ['otto', 'operator'],
       ['vera', 'viewer'],
@@ -1202,6 +1204,37 @@ describe('clusters API (FP5-F-05, FP5-F-08, FP5-F-18)', () => {
 
     k8s.live.clear();
     k8s.machines = [];
+    k8s.storedSpec = undefined;
+    k8s.existingCluster = false;
+  });
+
+  it('keeps blueprint clusters bound: only admins upgrade or reapply them (FP34-F-07)', async () => {
+    const spec = ClusterSpecSchema.parse({
+      ...OS_SPEC,
+      blueprint: 'small',
+      addons: { cloudControllerManager: false, csiDriver: false },
+    });
+    k8s.existingCluster = true;
+    k8s.storedSpec = JSON.stringify(spec);
+    for (const o of transform(spec, { credential: { cloudName: 'infomaniak' } })) {
+      k8s.live.set(`${o.kind}/${o.metadata.name}`, o);
+    }
+    const base = '/api/connections/home/clusters/team-a/demo';
+    const post = (path: string, cookie: string, body: object) =>
+      http().post(`${base}/${path}`).set(CSRF).set('Cookie', cookie).send(body);
+    const upgrade = { change: { type: 'upgrade', version: 'v1.36.5+rke2r1' } };
+
+    const refused = await post('changes/preview', operatorCookie, upgrade).expect(409);
+    expect(refused.body.message).toMatch(/created from blueprint small/);
+    await post('changes/preview', adminCookie, {
+      change: { type: 'scale', pool: 'default', replicas: 3 },
+    }).expect(409);
+    await post('scale/preview', adminCookie, { pool: 'default', replicas: 3 }).expect(409);
+    await post('labels/preview', adminCookie, { labels: { team: 'x' } }).expect(409);
+    await post('changes/preview', adminCookie, upgrade).expect(200);
+    await post('changes/preview', adminCookie, { change: { type: 'reapply' } }).expect(200);
+
+    k8s.live.clear();
     k8s.storedSpec = undefined;
     k8s.existingCluster = false;
   });
