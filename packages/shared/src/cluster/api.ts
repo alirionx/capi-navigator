@@ -265,5 +265,7 @@ export const DeletePreviewSchema = z.object({
   retainedVolumes: z.array(z.string()),
   objects: z.array(z.object({ kind: z.string(), name: z.string() })),
   warnings: z.array(z.string()),
+  /** Why the cluster cannot be deleted now, e.g. a host with tenants (FP24-F-09). */
+  blockers: z.array(z.string()),
 });
 export type DeletePreview = z.infer<typeof DeletePreviewSchema>;

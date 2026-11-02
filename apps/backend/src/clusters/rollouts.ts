@@ -1,4 +1,11 @@
-import { stableStringify, type RolloutPlan } from '@capi-navigator/shared';
+import { FLAVOR_PLUGINS, stableStringify, type RolloutPlan } from '@capi-navigator/shared';
+
+/** Control plane kinds that run as pods in a host (FP-24), from the distribution plugins. */
+const HOSTED_KINDS = new Set(
+  Object.values(FLAVOR_PLUGINS).flatMap((p) =>
+    p?.hosted ? [p.hosted.controlPlaneResource.kind] : [],
+  ),
+);
 
 /** One object of a change: its live and its dry-run (after apply) state, both normalized. */
 export interface PlannedObject {
@@ -84,7 +91,10 @@ export function analyzeRollouts(args: {
           name: o.name,
           group: 'control plane',
           machines: machinesOf((m) => CP_LABEL in (m.metadata.labels ?? {})),
-          strategy: 'one node at a time (maxSurge 1)',
+          // FP24-F-10: a hosted control plane rolls its pods in the host (StatefulSet).
+          strategy: HOSTED_KINDS.has(o.kind)
+            ? 'pods in the host, one at a time'
+            : 'one node at a time (maxSurge 1)',
           action: 'replace',
         });
       }

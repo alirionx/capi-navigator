@@ -462,6 +462,11 @@ export const ClusterSpecSchema = z
       .max(20)
       .default([]),
     infrastructure: InfrastructureSchema,
+    /**
+     * FP24-F-01: the cluster hosts the control planes of other clusters (label HOST_LABEL); it
+     * needs a LoadBalancer (CCM, on Proxmox VE LoadBalancer addresses) and a CSI driver.
+     */
+    controlPlaneHost: z.boolean().optional(),
     /** FP-29: nodes pull images and binaries from an internal registry only. */
     airGapped: AirGappedSchema.optional(),
   })
@@ -509,6 +514,26 @@ export const ClusterSpecSchema = z
         issue(['topology', 'hosted', 'host'], 'A cluster cannot host itself');
     } else if (spec.topology.hosted) {
       issue(['topology', 'hosted'], 'Only hosted control planes have a host');
+    }
+    // FP24-F-01: a host gives its tenants a LoadBalancer and volumes for etcd.
+    if (spec.controlPlaneHost) {
+      const infra = spec.infrastructure;
+      if (mode === 'hosted')
+        issue(['controlPlaneHost'], 'A cluster with a hosted control plane cannot be a host');
+      if (infra.provider === 'gcp')
+        issue(['controlPlaneHost'], 'Google Cloud cannot run workers of hosted control planes');
+      if (!spec.addons.csiDriver)
+        issue(['addons', 'csiDriver'], 'A host needs the CSI driver for the etcd volumes');
+      if (infra.provider === 'proxmox' && !infra.network.loadBalancerAddresses?.length)
+        issue(
+          ['infrastructure', 'network', 'loadBalancerAddresses'],
+          'A host needs LoadBalancer addresses for the control planes of its tenants',
+        );
+      else if (infra.provider !== 'proxmox' && !spec.addons.cloudControllerManager)
+        issue(
+          ['addons', 'cloudControllerManager'],
+          'A host needs the cloud controller manager for LoadBalancer Services',
+        );
     }
     const seen = new Set<string>();
     workerPools.forEach((p, i) => {

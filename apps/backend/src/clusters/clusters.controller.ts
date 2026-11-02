@@ -21,6 +21,10 @@ import {
   type RegistryContentsView,
   ClusterSummarySchema,
   DeletePreviewSchema,
+  HostViewSchema,
+  TenantViewSchema,
+  type HostView,
+  type TenantView,
   DeletionStatusSchema,
   applySpecChange,
   ChangeRequestSchema,
@@ -193,6 +197,36 @@ export class ClustersController {
     @Param('name') name: string,
   ): Promise<RegistryContentsView> {
     return this.clusters.registryContents(connection, namespace, name);
+  }
+
+  /** FP24-F-11, FP24-F-12: tenants of a host and its capacity; free addresses on Proxmox VE. */
+  @Requires('view')
+  @Api({
+    summary: 'Tenants of a host for hosted control planes, their requests and the host capacity',
+    response: HostViewSchema,
+  })
+  @Get(':namespace/:name/hosted-tenants')
+  hostedTenants(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<HostView> {
+    return this.clusters.hostView(connection, namespace, name);
+  }
+
+  /** FP24-F-11: pods, Service and volumes of a hosted control plane in its host. */
+  @Requires('view')
+  @Api({
+    summary: 'Where a hosted control plane runs: pods, Service and volumes in the host',
+    response: TenantViewSchema,
+  })
+  @Get(':namespace/:name/hosted-control-plane')
+  hostedControlPlane(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+  ): Promise<TenantView> {
+    return this.clusters.tenantView(connection, namespace, name);
   }
 
   // ---- spec changes: preview first, then apply (hard rule 6) ----

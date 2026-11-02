@@ -107,7 +107,9 @@ describe('cluster deletion (FP6-F-06)', () => {
     DELETION_TIMING.timeoutMs = 600_000;
   });
 
-  function service(opts: { managed?: boolean; workload?: WorkloadApi | null } = {}) {
+  function service(
+    opts: { managed?: boolean; workload?: WorkloadApi | null; tenants?: string[] } = {},
+  ) {
     const events: string[] = [];
     const svc = new ClusterDeletionService(
       { forConnection: async () => ({}) } as never,
@@ -134,6 +136,10 @@ describe('cluster deletion (FP6-F-06)', () => {
     internals.skipDrain = async () => {
       events.push('skip-drain');
     };
+    internals.hostBlockers = async () =>
+      opts.tenants?.length
+        ? [`team-a/demo hosts the control planes of ${opts.tenants.join(', ')}`]
+        : [];
     svc.workloadApiFor = () => opts.workload ?? fakeWorkload().api;
     return { svc, events };
   }
@@ -147,6 +153,14 @@ describe('cluster deletion (FP6-F-06)', () => {
     await expect(
       external.delete('home', 'team-a', 'demo', { confirmName: 'demo', cleanup: true }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('refuses to delete a host while tenants use it (FP24-F-09)', async () => {
+    const { svc, events } = service({ tenants: ['tenant'] });
+    await expect(
+      svc.delete('home', 'team-a', 'demo', { confirmName: 'demo', cleanup: true }),
+    ).rejects.toThrow('hosts the control planes of tenant');
+    expect(events).toEqual([]);
   });
 
   it('cleans up first and deletes once the cloud resources are released', async () => {

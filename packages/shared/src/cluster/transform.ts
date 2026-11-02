@@ -15,6 +15,7 @@ import { kubeadmPlugin } from './kubeadm.js';
 import { rke2Plugin } from './rke2.js';
 import {
   CLUSTER_SPEC_ANNOTATION,
+  HOST_LABEL,
   HOSTED_ON_LABEL,
   type ClusterSpec,
   type Infrastructure,
@@ -80,6 +81,7 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
         ...(spec.addons.rebootDaemon ? Object.fromEntries([REBOOT_DAEMON_LABEL]) : {}),
         ...(flavor.needsCni && spec.addons.cni !== 'none' ? Object.fromEntries([CNI_LABEL]) : {}),
         ...(hosted ? { [HOSTED_ON_LABEL]: spec.topology.hosted!.host } : {}),
+        ...(spec.controlPlaneHost ? { [HOST_LABEL]: 'true' } : {}),
         ...labels,
       },
       annotations: { [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec) },

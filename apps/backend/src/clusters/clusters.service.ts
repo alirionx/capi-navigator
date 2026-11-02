@@ -45,6 +45,10 @@ import {
   type ClusterStatus,
   type ClusterSummary,
   type ManifestObject,
+  hostedTenantProblems,
+  schedulableHostNodes,
+  type HostView,
+  type TenantView,
 } from '@capi-navigator/shared';
 import { pinArtifacts } from './air-gap-artifacts.js';
 import { stringify } from 'yaml';
@@ -70,6 +74,14 @@ import { calicoManifest, shippedManifest } from './cni-manifest.js';
 import { OperatorService } from '../operator/operator.service.js';
 import { ImageNameCache } from './image-names.js';
 import { analyzeRollouts, type PlannedObject } from './rollouts.js';
+import {
+  clusterKubeconfig,
+  hostFacts,
+  hostServiceAddresses,
+  readHostView,
+  readTenantView,
+  tenantsOf,
+} from './hosting.js';
 
 /** Extra checks of a change (FP7-F-09). */
 export interface ChangeOptions {
@@ -95,7 +107,7 @@ const CAPI = { group: 'cluster.x-k8s.io', version: 'v1beta2' };
 
 /** Control plane resources of all distributions (hard rule 10: from the plugins). */
 export const CONTROL_PLANE_RESOURCES = Object.values(FLAVOR_PLUGINS).flatMap((p) =>
-  p ? [p.controlPlaneResource] : [],
+  p ? [p.controlPlaneResource, ...(p.hosted ? [p.hosted.controlPlaneResource] : [])] : [],
 );
 
 /** Plurals and versions of referenced control plane and infrastructure kinds. */
@@ -450,6 +462,26 @@ export class ClustersService {
     return Buffer.from(value, 'base64').toString('utf8');
   }
 
+  /** FP24-F-11, FP24-F-12: the tenants of a host, their requests and the host's capacity. */
+  async hostView(connection: string, namespace: string, name: string): Promise<HostView> {
+    const spec = await this.storedSpec(connection, namespace, name);
+    if (!spec.controlPlaneHost) {
+      throw new NotFoundException(`Cluster ${namespace}/${name} is not a host`);
+    }
+    const kc = await this.clients.forConnection(connection);
+    return this.kube('Read the host', () => readHostView(kc, spec));
+  }
+
+  /** FP24-F-11: where the hosted control plane of a tenant runs. */
+  async tenantView(connection: string, namespace: string, name: string): Promise<TenantView> {
+    const spec = await this.storedSpec(connection, namespace, name);
+    if (spec.topology.mode !== 'hosted') {
+      throw new NotFoundException(`Cluster ${namespace}/${name} has no hosted control plane`);
+    }
+    const kc = await this.clients.forConnection(connection);
+    return this.kube('Read the hosted control plane', () => readTenantView(kc, spec));
+  }
+
   // ---- spec changes (FP6-F-05, FP6-F-07; hard rules 4 and 6) ----
 
   /** The stored spec of a cluster created by the app; external clusters are read-only. */
@@ -676,6 +708,17 @@ export class ClustersService {
       workerVersionPending: !!next.kubernetes.workerVersion && !current.kubernetes.workerVersion,
     });
     const blockers = [...plan.blockers];
+    // FP24-F-01: a host stops hosting only without tenants.
+    if (current.controlPlaneHost && !next.controlPlaneHost) {
+      const tenants = await this.kube('List the tenants of the host', () =>
+        tenantsOf(plan.kc, namespace, name),
+      );
+      if (tenants.length) {
+        blockers.push(
+          `${namespace}/${name} hosts the control planes of ${tenants.map((t) => t.metadata.name).join(', ')}; delete them first.`,
+        );
+      }
+    }
     const replaces = rollouts.some((r) => r.action === 'replace');
     // FP7-F-17: one rollout at a time.
     if ((replaces || opts.upgrade) && running.length > 0) {
@@ -911,6 +954,44 @@ export class ClustersService {
         .then((r) => (r as { items: Record<string, unknown>[] }).items)
         .catch(() => []);
       blockers.push(...infraPlugin.addressConflicts(spec, infra, others));
+    }
+    // FP-24: a hosted control plane needs a fitting host (FP24-F-03, FP24-F-06).
+    if (spec.topology.mode === 'hosted' && spec.topology.hosted) {
+      const host = spec.topology.hosted.host;
+      const facts = await this.kube('Read the host cluster', () =>
+        hostFacts(kc, spec.namespace, host),
+      );
+      blockers.push(...hostedTenantProblems(spec, facts));
+      warnings.push(
+        `Hosted control planes are experimental: the control plane runs as pods in ${spec.namespace}/${host}, its API pauses briefly while host nodes are replaced (ADR-0034).`,
+      );
+      const kubeconfig =
+        infra.provider === 'proxmox' && facts?.kubeconfig
+          ? await clusterKubeconfig(kc, spec.namespace, host)
+          : undefined;
+      if (kubeconfig && infra.provider === 'proxmox') {
+        try {
+          const used = await hostServiceAddresses(kubeconfig, {
+            namespace: spec.namespace,
+            tenant: spec.name,
+          });
+          if (used.includes(infra.apiEndpoint)) {
+            blockers.push(
+              `The API address ${infra.apiEndpoint} is used by a LoadBalancer Service in the host; choose a free one.`,
+            );
+          }
+        } catch {
+          warnings.push(
+            `The host ${spec.namespace}/${host} does not answer: whether ${infra.apiEndpoint} is free there was not checked.`,
+          );
+        }
+      }
+    }
+    // FP24-F-01: a host carries the control planes of its tenants on its workers.
+    if (spec.controlPlaneHost && schedulableHostNodes(spec) < 3) {
+      warnings.push(
+        'Hosts should have at least three worker nodes: a hosted control plane with three replicas needs one node per replica.',
+      );
     }
     // Without its artifacts an air-gapped cluster cannot be generated; the blockers say why.
     const generated = pinned.ready ? transform(spec, transformContext) : [];

@@ -49,6 +49,8 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'PUT /api/connections/:connection/addons/manifests/:namespace/:name': 'operator',
     // FP29-F-17: what the internal registry must hold, nothing secret in it.
     'GET /api/connections/:connection/clusters/:namespace/:name/registry-contents': 'viewer',
+    'GET /api/connections/:connection/clusters/:namespace/:name/hosted-tenants': 'viewer',
+    'GET /api/connections/:connection/clusters/:namespace/:name/hosted-control-plane': 'viewer',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

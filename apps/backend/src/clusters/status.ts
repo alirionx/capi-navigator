@@ -38,7 +38,10 @@ export function infraPluginFor(infraKind: string | undefined) {
 
 /** Distribution of a cluster, by the kind of its control plane (also for external clusters). */
 export function flavorFor(cpKind: string | undefined): string | undefined {
-  return Object.values(FLAVOR_PLUGINS).find((p) => p?.controlPlaneResource.kind === cpKind)?.flavor;
+  return Object.values(FLAVOR_PLUGINS).find(
+    (p) =>
+      p?.controlPlaneResource.kind === cpKind || p?.hosted?.controlPlaneResource.kind === cpKind,
+  )?.flavor;
 }
 
 export function conditions(obj: K8sObj | undefined): Condition[] {

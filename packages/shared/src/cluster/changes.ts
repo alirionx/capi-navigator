@@ -254,6 +254,8 @@ export const SpecChangeSchema = z.discriminatedUnion('type', [
   }),
   /** FP7-F-19: no change; regenerate and compare, apply to take changes made outside back. */
   z.object({ type: z.literal('reapply') }),
+  /** FP24-F-01: host the control planes of other clusters, or stop (only without tenants). */
+  z.object({ type: z.literal('controlPlaneHost'), enabled: z.boolean() }),
 ]);
 export type SpecChange = z.infer<typeof SpecChangeSchema>;
 export type SpecChangeInput = z.input<typeof SpecChangeSchema>;
@@ -321,7 +323,29 @@ export function setInfrastructure(
 /** Applies one day-2 change to the stored spec; returns a new, validated spec. */
 export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date): ClusterSpec {
   let next: ClusterSpec;
+  // FP24-F-10: a hosted control plane has no machines and keeps its replicas (ADR-0034).
+  if (spec.topology.mode === 'hosted') {
+    if (change.type === 'scaleControlPlane') {
+      throw new SpecChangeError(
+        'A hosted control plane keeps the replicas it was created with: scaling makes k0smotron split etcd (ADR-0034)',
+      );
+    }
+    if (
+      (change.type === 'machine' || change.type === 'customization' || change.type === 'rebuild') &&
+      change.group === CONTROL_PLANE_GROUP
+    ) {
+      throw new SpecChangeError(
+        'A hosted control plane runs as pods in its host and has no machines',
+      );
+    }
+  }
   switch (change.type) {
+    case 'controlPlaneHost': {
+      const out: Record<string, unknown> = { ...spec };
+      delete out.controlPlaneHost;
+      if (change.enabled) out.controlPlaneHost = true;
+      return ClusterSpecSchema.parse(out);
+    }
     case 'reapply':
       return spec;
     case 'scale':
@@ -416,7 +440,8 @@ export function applySpecChange(spec: ClusterSpec, change: SpecChange, now: Date
           );
         }
       }
-      const hasWorkers = spec.topology.mode === 'standard' && spec.topology.workerPools.length > 0;
+      const hasWorkers =
+        spec.topology.mode !== 'all-in-one' && spec.topology.workerPools.length > 0;
       next = {
         ...spec,
         ...(change.image

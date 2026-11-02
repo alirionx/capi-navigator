@@ -17,6 +17,7 @@ import {
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { ClustersService } from './clusters.service.js';
+import { tenantsOf } from './hosting.js';
 import { CLUSTER_NAME_LABEL } from './status.js';
 import {
   inventory,
@@ -94,6 +95,7 @@ export class ClusterDeletionService {
       ...inv,
       objects: [{ kind: 'Cluster', name }, ...helpers.map((h) => ({ kind: h.kind, name: h.name }))],
       warnings,
+      blockers: await this.hostBlockers(kc, namespace, name),
     };
   }
 
@@ -117,6 +119,10 @@ export class ClusterDeletionService {
         hint: 'External clusters are read-only; delete them with kubectl or clusterctl.',
       });
     }
+    const blockers = await this.hostBlockers(kc, namespace, name);
+    if (blockers.length) {
+      throw new ConflictException({ message: blockers[0], hint: 'Delete the tenants first.' });
+    }
     const api = req.cleanup ? await this.workload(connection, namespace, name) : undefined;
     let cleanup = false;
     if (api) {
@@ -135,6 +141,19 @@ export class ClusterDeletionService {
     if (cleanup) void this.finishAfterCleanup(connection, namespace, name, api!, status.startedAt);
     else await this.deleteObjects(kc, namespace, name);
     return status;
+  }
+
+  /**
+   * FP24-F-09: a host is deleted only after its tenants; otherwise their control planes would
+   * vanish and the host's deletion could hang on their load balancers (ADR-0034).
+   */
+  private async hostBlockers(kc: KubeConfig, namespace: string, name: string): Promise<string[]> {
+    const tenants = await tenantsOf(kc, namespace, name);
+    return tenants.length
+      ? [
+          `${namespace}/${name} hosts the control planes of ${tenants.map((t) => t.metadata.name).join(', ')}; delete these clusters first.`,
+        ]
+      : [];
   }
 
   /** Waits until the cloud resources are released, then deletes; on timeout it stops and reports. */

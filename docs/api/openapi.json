@@ -2227,6 +2227,128 @@
         ]
       }
     },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/hosted-control-plane": {
+      "get": {
+        "operationId": "Clusters_hostedControlPlane",
+        "tags": [
+          "Clusters"
+        ],
+        "summary": "Where a hosted control plane runs: pods, Service and volumes in the host",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/hosted-tenants": {
+      "get": {
+        "operationId": "Clusters_hostedTenants",
+        "tags": [
+          "Clusters"
+        ],
+        "summary": "Tenants of a host for hosted control planes, their requests and the host capacity",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HostView"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
     "/api/connections/{connection}/clusters/{namespace}/{name}/kubeconfig": {
       "get": {
         "operationId": "Clusters_kubeconfig",
@@ -7654,6 +7776,9 @@
           "infrastructure": {
             "$ref": "#/components/schemas/Infrastructure"
           },
+          "controlPlaneHost": {
+            "type": "boolean"
+          },
           "airGapped": {
             "$ref": "#/components/schemas/AirGapped"
           }
@@ -8803,6 +8928,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -8813,7 +8944,8 @@
           "volumes",
           "retainedVolumes",
           "objects",
-          "warnings"
+          "warnings",
+          "blockers"
         ],
         "additionalProperties": false
       },
@@ -9178,6 +9310,91 @@
         },
         "required": [
           "reachable"
+        ],
+        "additionalProperties": false
+      },
+      "HostView": {
+        "type": "object",
+        "properties": {
+          "tenants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "replicas": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "cpuMillis": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "memoryMiB": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "namespace",
+                "name",
+                "replicas",
+                "cpuMillis",
+                "memoryMiB"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "allocatable": {
+            "type": "object",
+            "properties": {
+              "cpuMillis": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "memoryMiB": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "cpuMillis",
+              "memoryMiB"
+            ],
+            "additionalProperties": false
+          },
+          "schedulableNodes": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "freeAddresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tenants",
+          "schedulableNodes",
+          "warnings"
         ],
         "additionalProperties": false
       },
@@ -10853,6 +11070,120 @@
         ],
         "additionalProperties": false
       },
+      "TenantView": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "object",
+            "properties": {
+              "namespace": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "namespace",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "service": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "ports": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "required": [
+              "name",
+              "ports"
+            ],
+            "additionalProperties": false
+          },
+          "pods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "component": {
+                  "type": "string",
+                  "enum": [
+                    "controller",
+                    "etcd"
+                  ]
+                },
+                "node": {
+                  "type": "string"
+                },
+                "phase": {
+                  "type": "string"
+                },
+                "ready": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "component",
+                "phase",
+                "ready"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "volumes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "string"
+                },
+                "phase": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "phase"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "host",
+          "pods",
+          "volumes",
+          "warnings"
+        ],
+        "additionalProperties": false
+      },
       "TokenInfo": {
         "type": "object",
         "properties": {
@@ -11514,6 +11845,9 @@
           },
           "infrastructure": {
             "$ref": "#/components/schemas/Infrastructure"
+          },
+          "controlPlaneHost": {
+            "type": "boolean"
           },
           "airGapped": {
             "$ref": "#/components/schemas/AirGappedInput"
@@ -13297,6 +13631,22 @@
             },
             "required": [
               "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "controlPlaneHost"
+              },
+              "enabled": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "type",
+              "enabled"
             ]
           }
         ]
