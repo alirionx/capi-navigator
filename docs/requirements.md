@@ -1167,11 +1167,13 @@ Requirements (part B; kubeadm on Cluster API images, ADR-0032):
 
 **Acceptance criteria**
 
-- [ ] Snapshot tests cover hosted k0s tenants on OpenStack, Proxmox VE and AWS with one and three replicas.
+- [x] Snapshot tests cover hosted k0s tenants on OpenStack, Proxmox VE and AWS with one and three replicas.
 - [ ] On OpenStack, Proxmox VE and AWS a cluster is marked as host in the app and a tenant with three replicas is created through the wizard: workers Ready, CCM and CSI running in the tenant, a LoadBalancer Service and a volume work, `kubectl logs` and `exec` work.
 - [ ] A tenant is upgraded by one minor version through the app, with single failed API probes at most.
 - [ ] A host is upgraded through the app; the tenant's etcd stays one cluster, its API pauses only during load balancer failover.
 - [ ] Deleting a host with a tenant is refused; deleting the tenant leaves nothing behind in the host and on the infrastructure.
+
+Live acceptance on Proxmox VE 9.2 (2026-11-02, through the app's API as the wizard calls it; OpenStack and AWS pending): host `acc-host` (k0s, one control plane node and three workers) created as host, Available after 223 s; its host view showed three schedulable nodes, 6 CPU and 11.2 GiB allocatable and the free addresses .78 to .80. Tenant `acc-tenant` with three replicas and the proposed address .78 Available after 201 s; controllers and etcd on three host nodes with the fixed requests, one etcd cluster, Proxmox CCM and CSI from the regular presets on the workers, a volume and a LoadBalancer Service (kube-vip) working. Tenant upgrade v1.35.9 → v1.36.5: 1 of 658 probes failed; the workers did not follow at first (the rollout controller looked for a K0sControlPlane, fixed), then 0 of 63. Host upgrade through the app: 0 of 131 probes failed, etcd stayed one cluster. Deleting and unmarking the host were refused while the tenant existed; scaling the tenant's control plane was refused. Deleting the tenant took 35 s and left nothing in the host, deleting the host 36 s; nothing was left on Proxmox VE.
 
 Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control plane node and two or three workers, created through the app; tenants as YAML):
 
