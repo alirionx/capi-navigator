@@ -195,6 +195,16 @@ spec:
           - controlplane
           - apiserver-lb
           - lb
+      - description: k0s Konnectivity (NAT gateways)
+        fromPort: 8132
+        toPort: 8132
+        protocol: tcp
+        natGatewaysIPsSource: true
+      - description: k0s controller join API (NAT gateways)
+        fromPort: 9443
+        toPort: 9443
+        protocol: tcp
+        natGatewaysIPsSource: true
     additionalListeners:
       - port: 8132
         protocol: TCP

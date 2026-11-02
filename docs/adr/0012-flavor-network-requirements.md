@@ -25,7 +25,11 @@ as soon as a second distribution exists.
     `cniIngressRules`. CAPA puts CNI rules into the node and control plane security groups and
     already allows the kubelet port (tcp/10250) in the node group; AWS rejects a permission given
     twice, so the kubelet port goes to `additionalControlPlaneIngressRules` instead (found live
-    on 2026-10-20 with kubeadm on AWS).
+    on 2026-10-20 with kubeadm on AWS). The NLB is internet-facing, so nodes in private subnets
+    reach it through the NAT gateways and rules from security group roles do not match; each
+    port behind the load balancer therefore also gets a rule with `natGatewaysIPsSource` (CAPA
+    adds the NAT addresses itself only for the API port). Found live on 2026-11-01 with k0s on
+    AWS: the Konnectivity agents never connected, so `kubectl logs/exec` failed.
 - RKE2 declares 9345 (direct) and its Calico rules; the generated manifests stay byte-identical
   (existing snapshots unchanged). k0s declares 8132 and 9443 (via load balancer), Calico VXLAN
   (UDP 4789) and the kubelet port.

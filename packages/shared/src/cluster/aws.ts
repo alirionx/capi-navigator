@@ -168,6 +168,12 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
           ingressRules: [
             tcp(6443, 'Kubernetes API', { cidrBlocks: ['0.0.0.0/0'] }),
             ...viaLb.map((p) => tcp(p.port, p.description, fromNodes)),
+            // The NLB is internet-facing: nodes in private subnets reach it through the NAT
+            // gateways, so the security group roles above do not match (k0s Konnectivity agents
+            // never connected). CAPA adds the NAT addresses itself only for the API port.
+            ...viaLb.map((p) =>
+              tcp(p.port, `${p.description} (NAT gateways)`, { natGatewaysIPsSource: true }),
+            ),
           ],
           additionalListeners: viaLb.length
             ? viaLb.map((p) => ({ port: p.port, protocol: 'TCP' }))

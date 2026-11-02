@@ -437,6 +437,27 @@ describe('k0s flavor (FP-9)', () => {
   it('AWS standard', () => {
     expect(render(k0s(aws()))).toMatchSnapshot();
   });
+  it('lets the nodes reach k0s ports behind the NLB through the NAT gateways (FP9-F-04, ADR-0012)', () => {
+    // Seen live: the NLB is internet-facing, so nodes come from the NAT gateway addresses and
+    // rules from security group roles never match; the Konnectivity agents stayed unready.
+    const rulesOf = (spec: ClusterSpecInput) =>
+      (
+        transform(ClusterSpecSchema.parse(spec), ctx).find((o) => o.kind === 'AWSCluster')!
+          .spec as {
+          controlPlaneLoadBalancer: {
+            ingressRules: { fromPort: number; natGatewaysIPsSource?: boolean }[];
+          };
+        }
+      ).controlPlaneLoadBalancer.ingressRules;
+    const natPorts = (spec: ClusterSpecInput) =>
+      rulesOf(spec)
+        .filter((r) => r.natGatewaysIPsSource)
+        .map((r) => r.fromPort);
+    expect(natPorts(k0s(aws()))).toEqual([8132, 9443]);
+    // The API port is open to all; RKE2 reaches its supervisor port directly.
+    expect(natPorts(aws())).toEqual([]);
+  });
+
   it('node customization and SSH keys (FP9-F-03)', () => {
     const spec = k0s(
       openstack({ sshPublicKeys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExample admin@example'] }),
