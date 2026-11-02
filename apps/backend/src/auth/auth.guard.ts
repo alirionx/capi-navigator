@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   HttpException,
+  NotFoundException,
   Inject,
   Injectable,
   Logger,
@@ -9,7 +10,7 @@ import {
   type ExecutionContext,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { allows, type PermissionScope } from '@capi-navigator/shared';
+import { allows, blueprintScope, type PermissionScope } from '@capi-navigator/shared';
 import type { Request } from 'express';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { StoreService } from '../store/store.service.js';
@@ -149,7 +150,9 @@ export class AuthGuard implements CanActivate {
         hint: 'Use the app with a signed-in user for this.',
       });
     }
-    const scope = requestScope(req, rule);
+    const scope = rule.scopeFromBlueprint
+      ? this.blueprintScope(req, rule.scopeFromBlueprint)
+      : requestScope(req, rule);
     if (!rule.anyOf.some((p) => allows(principal.bindings, this.store.rolePermissions, p, scope))) {
       const where = scope.namespace ? ` in namespace ${scope.namespace}` : '';
       throw new ForbiddenException({
@@ -159,5 +162,13 @@ export class AuthGuard implements CanActivate {
       });
     }
     return true;
+  }
+
+  /** FP34-F-05: the scope of creating from a blueprint is the blueprint's connection and namespace. */
+  private blueprintScope(req: Request, param: string): PermissionScope {
+    const name = (req.params as Record<string, string | undefined>)[param] ?? '';
+    const blueprint = this.store.blueprintCache.get(name);
+    if (!blueprint) throw new NotFoundException(`Blueprint ${name} not found`);
+    return blueprintScope(blueprint.spec);
   }
 }

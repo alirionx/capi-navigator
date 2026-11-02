@@ -94,6 +94,8 @@ export const ClusterSummarySchema = z.object({
   location: z.string().optional(),
   /** Host of the internal registry when the nodes run without internet (FP-29, UX-05). */
   airGappedRegistry: z.string().optional(),
+  /** Cluster blueprint the cluster was created from and stays bound to (FP34-F-06). */
+  blueprint: z.string().optional(),
   /** Deletion in progress through the app (FP6-F-06). */
   deletion: DeletionStatusSchema.optional(),
   /** The cluster's machines in brief, for the shape of every cluster on the home page (UX-02). */

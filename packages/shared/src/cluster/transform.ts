@@ -13,6 +13,7 @@ import type {
 import { k0sPlugin } from './k0s.js';
 import { kubeadmPlugin } from './kubeadm.js';
 import { rke2Plugin } from './rke2.js';
+import { BLUEPRINT_ANNOTATION } from './blueprint.js';
 import {
   CLUSTER_SPEC_ANNOTATION,
   HOST_LABEL,
@@ -94,7 +95,10 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
         ...(spec.controlPlaneHost ? { [HOST_LABEL]: 'true' } : {}),
         ...labels,
       },
-      annotations: { [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec) },
+      annotations: {
+        ...(spec.blueprint ? { [BLUEPRINT_ANNOTATION]: spec.blueprint } : {}),
+        [CLUSTER_SPEC_ANNOTATION]: stableStringify(spec),
+      },
     },
     spec: {
       clusterNetwork: {

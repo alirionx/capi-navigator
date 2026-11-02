@@ -83,6 +83,35 @@ export class CustomResourceClient<TSchema extends z.ZodType> {
     )) as NavigatorResource<z.infer<TSchema>>;
   }
 
+  /**
+   * Replaces `spec` as a whole, so fields left out disappear (a merge patch would keep them);
+   * guarded by the resourceVersion of `current`.
+   */
+  async replaceSpec(
+    current: NavigatorResource<unknown>,
+    spec: z.infer<TSchema>,
+  ): Promise<NavigatorResource<z.infer<TSchema>>> {
+    const { name, labels, annotations, resourceVersion } = current.metadata;
+    const body = {
+      apiVersion: NAVIGATOR_API_VERSION,
+      kind: this.def.kind,
+      metadata: {
+        name,
+        namespace: this.namespace,
+        ...(labels ? { labels } : {}),
+        ...(annotations ? { annotations } : {}),
+        ...(resourceVersion ? { resourceVersion } : {}),
+      },
+      spec: this.def.spec.parse(spec),
+    };
+    return (await this.api.replaceNamespacedCustomObject({
+      ...this.coords,
+      name,
+      body,
+      fieldManager: FIELD_MANAGER,
+    })) as NavigatorResource<z.infer<TSchema>>;
+  }
+
   /** JSON merge patch of the status subresource. */
   async patchStatus(name: string, status: unknown): Promise<NavigatorResource<z.infer<TSchema>>> {
     return (await this.api.patchNamespacedCustomObjectStatus(

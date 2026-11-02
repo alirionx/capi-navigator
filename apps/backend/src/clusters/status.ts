@@ -1,4 +1,5 @@
 import {
+  BLUEPRINT_ANNOTATION,
   CLUSTER_SPEC_ANNOTATION,
   DELETION_ANNOTATION,
   DeletionStatusSchema,
@@ -71,6 +72,7 @@ export function toSummary(
   const infraKind = (spec.infrastructureRef as { kind?: string } | undefined)?.kind ?? '';
   const cpKind = (spec.controlPlaneRef as { kind?: string } | undefined)?.kind;
   const stored = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
+  const blueprint = cluster.metadata.annotations?.[BLUEPRINT_ANNOTATION];
   let flavor: string | undefined;
   let airGappedRegistry: string | undefined;
   let credential: string | undefined;
@@ -133,6 +135,7 @@ export function toSummary(
     ...(credential ? { credential } : {}),
     ...(location ? { location } : {}),
     ...(airGappedRegistry ? { airGappedRegistry } : {}),
+    ...(blueprint ? { blueprint } : {}),
     ...deletionOf(cluster),
     ...(machines ? { machines: machines.map(briefMachine).sort(byRoleAndName) } : {}),
   };

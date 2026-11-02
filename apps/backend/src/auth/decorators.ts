@@ -22,6 +22,11 @@ export interface PermissionRule {
    * (e.g. "spec.namespace"); otherwise the route parameter `namespace` is used.
    */
   namespaceFromBody?: string;
+  /**
+   * Route parameter naming a cluster blueprint; connection and namespace come from the blueprint
+   * (FP34-F-05).
+   */
+  scopeFromBlueprint?: string;
 }
 
 /**
@@ -31,7 +36,7 @@ export interface PermissionRule {
  */
 export const Requires = (
   permission: Permission | Permission[],
-  opts: { namespaceFromBody?: string } = {},
+  opts: { namespaceFromBody?: string; scopeFromBlueprint?: string } = {},
 ) =>
   SetMetadata(PERMISSION_KEY, {
     anyOf: Array.isArray(permission) ? permission : [permission],

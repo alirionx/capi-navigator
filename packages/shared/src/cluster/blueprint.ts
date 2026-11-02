@@ -78,6 +78,19 @@ export const ClusterBlueprintStorageSchema = z.object({
   ...blueprintFields,
   cluster: z.looseObject({}).meta({ 'x-kubernetes-preserve-unknown-fields': true }),
 });
+export type ClusterBlueprintStorage = z.infer<typeof ClusterBlueprintStorageSchema>;
+
+/** Connection and namespace of a stored blueprint: the scope of creating from it (FP34-F-05). */
+export function blueprintScope(spec: ClusterBlueprintStorage): {
+  connection: string;
+  namespace: string;
+} {
+  const namespace = (spec.cluster as { namespace?: unknown }).namespace;
+  return {
+    connection: spec.connection,
+    namespace: typeof namespace === 'string' ? namespace : 'default',
+  };
+}
 
 interface ParameterIssue {
   path: (string | number)[];
@@ -237,7 +250,7 @@ export type BlueprintClusterRequest = z.input<typeof BlueprintClusterRequestSche
  * requested name, parameters and additional labels, checked like every cluster spec. Additional
  * labels may not change the blueprint's labels.
  */
-export function blueprintToSpecSchema(bp: ClusterBlueprintSpec) {
+export function blueprintToSpecSchema(blueprintName: string, bp: ClusterBlueprintSpec) {
   const baseLabels = bp.cluster.labels ?? {};
   return z
     .object({
@@ -263,6 +276,7 @@ export function blueprintToSpecSchema(bp: ClusterBlueprintSpec) {
       };
       const spec = structuredClone(bp.cluster);
       spec.name = req.name;
+      spec.blueprint = blueprintName;
       if (req.labels && Object.keys(req.labels).length > 0) {
         spec.labels = { ...req.labels, ...baseLabels };
       }
@@ -276,3 +290,28 @@ export function blueprintToSpecSchema(bp: ClusterBlueprintSpec) {
     })
     .pipe(ClusterSpecSchema);
 }
+
+/** Name of a blueprint: a DNS label, also the name of its `ClusterBlueprint` resource. */
+export const BlueprintNameSchema = z
+  .string()
+  .min(2, 'At least 2 characters')
+  .max(63, 'At most 63 characters')
+  .regex(
+    /^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/,
+    'Lowercase letters, digits and "-" only; must start and end with a letter or digit',
+  );
+
+/** FP34-F-04: saving (and previewing) a blueprint. */
+export const BlueprintSaveRequestSchema = z.object({
+  name: BlueprintNameSchema,
+  spec: ClusterBlueprintSpecSchema,
+});
+export type BlueprintSaveRequest = z.input<typeof BlueprintSaveRequestSchema>;
+
+/** A blueprint as the API returns it, with the JSON Schema of its parameters (FP34-F-03). */
+export const ClusterBlueprintSchema = z.object({
+  name: z.string(),
+  spec: ClusterBlueprintSpecSchema,
+  parametersSchema: z.record(z.string(), z.unknown()),
+});
+export type ClusterBlueprint = z.infer<typeof ClusterBlueprintSchema>;

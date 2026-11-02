@@ -469,6 +469,11 @@ export const ClusterSpecSchema = z
     controlPlaneHost: z.boolean().optional(),
     /** FP-29: nodes pull images and binaries from an internal registry only. */
     airGapped: AirGappedSchema.optional(),
+    /**
+     * FP34-F-06: the cluster blueprint the cluster was created from; binds it to the blueprint
+     * (FP34-F-07) and is written to the Cluster as annotation.
+     */
+    blueprint: dnsLabel(63, 'Blueprint name').optional(),
   })
   .superRefine((spec, ctx) => {
     const issue = (path: (string | number)[], message: string) =>

@@ -11,6 +11,7 @@ import {
   ADDON_PRESETS_CONFIGMAP_KEY,
   AddonPresetOverridesSchema,
   AuditEventCrd,
+  ClusterBlueprintCrd,
   HelmRepositoryCrd,
   ManagementClusterCrd,
   NavigatorAuthSettingsCrd,
@@ -27,6 +28,7 @@ import {
   type NavigatorTokenSpecSchema,
   type AddonPresetOverrides,
   type AuditEventSpecSchema,
+  type ClusterBlueprintStorageSchema,
   type HelmRepositorySpecSchema,
   type ManagementClusterSpecSchema,
   type NavigatorUserSpecSchema,
@@ -63,6 +65,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly groupCache: ResourceCache<typeof NavigatorGroupSpecSchema>;
   readonly authSettings: CustomResourceClient<typeof NavigatorAuthSettingsSpecSchema>;
   readonly authSettingsCache: ResourceCache<typeof NavigatorAuthSettingsSpecSchema>;
+  readonly blueprints: CustomResourceClient<typeof ClusterBlueprintStorageSchema>;
+  readonly blueprintCache: ResourceCache<typeof ClusterBlueprintStorageSchema>;
   readonly secrets: SecretStore;
   private readonly core: CoreV1Api;
 
@@ -84,6 +88,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.groupCache = new ResourceCache(kc, this.groups);
     this.authSettings = new CustomResourceClient(kc, ns, NavigatorAuthSettingsCrd);
     this.authSettingsCache = new ResourceCache(kc, this.authSettings);
+    this.blueprints = new CustomResourceClient(kc, ns, ClusterBlueprintCrd);
+    this.blueprintCache = new ResourceCache(kc, this.blueprints);
     this.secrets = new SecretStore(kc, ns);
     this.core = kc.makeApiClient(CoreV1Api);
   }
@@ -159,7 +165,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       this.roleCache.isSynced &&
       this.tokenCache.isSynced &&
       this.groupCache.isSynced &&
-      this.authSettingsCache.isSynced
+      this.authSettingsCache.isSynced &&
+      this.blueprintCache.isSynced
     );
   }
 
@@ -174,6 +181,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
         this.tokenCache.start(),
         this.groupCache.start(),
         this.authSettingsCache.start(),
+        this.blueprintCache.start(),
       ]);
       this.logger.log(`Caches synced (namespace ${this.namespace})`);
     } catch (err) {
@@ -209,6 +217,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       this.tokenCache.stop(),
       this.groupCache.stop(),
       this.authSettingsCache.stop(),
+      this.blueprintCache.stop(),
     ]);
   }
 }

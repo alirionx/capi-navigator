@@ -491,6 +491,396 @@
         "x-permission": "public"
       }
     },
+    "/api/blueprints": {
+      "get": {
+        "operationId": "Blueprints_list",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "List cluster blueprints with the JSON Schema of their parameters",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClusterBlueprint"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      },
+      "post": {
+        "operationId": "Blueprints_create",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Save a new cluster blueprint",
+        "description": "Refused while the check of the base spec fails (FP34-F-04).\n\nRequires permission `blueprints.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlueprintSaveRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterBlueprint"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "blueprints.manage"
+        ]
+      }
+    },
+    "/api/blueprints/{blueprint}/clusters": {
+      "post": {
+        "operationId": "Blueprints_createCluster",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Create a cluster from a blueprint",
+        "description": "Builds the cluster spec from the blueprint, the parameters and additional labels, and applies it without a preview (ADR-0035). Needs clusters.create in the blueprint namespace.\n\nRequires permission `clusters.create`. Checked in the connection of the route (any namespace).",
+        "parameters": [
+          {
+            "name": "blueprint",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlueprintClusterRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.create"
+        ]
+      }
+    },
+    "/api/blueprints/{name}": {
+      "delete": {
+        "operationId": "Blueprints_delete",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Delete a cluster blueprint",
+        "description": "Refused while clusters created from it exist (FP34-F-09).\n\nRequires permission `blueprints.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "blueprints.manage"
+        ]
+      },
+      "get": {
+        "operationId": "Blueprints_get",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Get a cluster blueprint",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterBlueprint"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      },
+      "put": {
+        "operationId": "Blueprints_update",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Change a cluster blueprint",
+        "description": "Applies only to clusters created afterwards (FP34-F-08).\n\nRequires permission `blueprints.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "spec": {
+                    "$ref": "#/components/schemas/ClusterBlueprintSpecInput"
+                  }
+                },
+                "required": [
+                  "spec"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterBlueprint"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "blueprints.manage"
+        ]
+      }
+    },
+    "/api/blueprints/{name}/clusters": {
+      "get": {
+        "operationId": "Blueprints_clusters",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Clusters created from a blueprint",
+        "description": "Requires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ClusterSummary"
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
+    "/api/blueprints/preview": {
+      "post": {
+        "operationId": "Blueprints_preview",
+        "tags": [
+          "Blueprints"
+        ],
+        "summary": "Preview a blueprint before saving",
+        "description": "Checks the base spec like a new cluster with the default parameters (dry run); nothing is changed.\n\nRequires permission `blueprints.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BlueprintSaveRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClusterPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "blueprints.manage"
+        ]
+      }
+    },
     "/api/connections": {
       "get": {
         "operationId": "Connections_list",
@@ -7271,6 +7661,86 @@
         ],
         "additionalProperties": false
       },
+      "BlueprintParameters": {
+        "type": "object",
+        "properties": {
+          "workerCounts": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                },
+                "min": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "pool",
+                "min",
+                "max"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "machineSizes": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                },
+                "choices": {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              },
+              "required": [
+                "pool",
+                "choices"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "kubernetesVersions": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
+            }
+          }
+        },
+        "required": [
+          "workerCounts",
+          "machineSizes"
+        ],
+        "additionalProperties": false
+      },
       "CaaphStatus": {
         "type": "object",
         "properties": {
@@ -7388,6 +7858,66 @@
         },
         "required": [
           "clouds"
+        ],
+        "additionalProperties": false
+      },
+      "ClusterBlueprint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ClusterBlueprintSpec"
+          },
+          "parametersSchema": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "name",
+          "spec",
+          "parametersSchema"
+        ],
+        "additionalProperties": false
+      },
+      "ClusterBlueprintSpec": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "description": {
+            "default": "",
+            "type": "string",
+            "maxLength": 500
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionName"
+          },
+          "parameters": {
+            "default": {
+              "workerCounts": [],
+              "machineSizes": []
+            },
+            "$ref": "#/components/schemas/BlueprintParameters"
+          },
+          "cluster": {
+            "$ref": "#/components/schemas/ClusterSpec"
+          }
+        },
+        "required": [
+          "displayName",
+          "description",
+          "connection",
+          "parameters",
+          "cluster"
         ],
         "additionalProperties": false
       },
@@ -7781,6 +8311,12 @@
           },
           "airGapped": {
             "$ref": "#/components/schemas/AirGapped"
+          },
+          "blueprint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
           }
         },
         "required": [
@@ -8051,6 +8587,9 @@
           "airGappedRegistry": {
             "type": "string"
           },
+          "blueprint": {
+            "type": "string"
+          },
           "deletion": {
             "$ref": "#/components/schemas/DeletionStatus"
           },
@@ -8189,6 +8728,12 @@
           "status"
         ],
         "additionalProperties": false
+      },
+      "ConnectionName": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 40,
+        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
       },
       "ControlPlane": {
         "type": "object",
@@ -11633,6 +12178,125 @@
           "bastion"
         ]
       },
+      "BlueprintClusterRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "parameters": {
+            "default": {},
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "labels": {
+            "$ref": "#/components/schemas/UserLabels"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "BlueprintNameInput": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 63,
+        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+      },
+      "BlueprintParametersInput": {
+        "type": "object",
+        "properties": {
+          "workerCounts": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                },
+                "min": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 100
+                }
+              },
+              "required": [
+                "pool",
+                "min",
+                "max"
+              ]
+            }
+          },
+          "machineSizes": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pool": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 12
+                },
+                "choices": {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              },
+              "required": [
+                "pool",
+                "choices"
+              ]
+            }
+          },
+          "kubernetesVersions": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^v\\d+\\.\\d+\\.\\d+(\\+[a-z0-9.]+)?$"
+            }
+          }
+        }
+      },
+      "BlueprintSaveRequestInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/BlueprintNameInput"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ClusterBlueprintSpecInput"
+          }
+        },
+        "required": [
+          "name",
+          "spec"
+        ]
+      },
       "ChangePasswordRequestInput": {
         "type": "object",
         "properties": {
@@ -11676,6 +12340,39 @@
         },
         "required": [
           "cloudsYaml"
+        ]
+      },
+      "ClusterBlueprintSpecInput": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "description": {
+            "default": "",
+            "type": "string",
+            "maxLength": 500
+          },
+          "connection": {
+            "$ref": "#/components/schemas/ConnectionName"
+          },
+          "parameters": {
+            "default": {
+              "workerCounts": [],
+              "machineSizes": []
+            },
+            "$ref": "#/components/schemas/BlueprintParametersInput"
+          },
+          "cluster": {
+            "$ref": "#/components/schemas/ClusterSpecInput"
+          }
+        },
+        "required": [
+          "displayName",
+          "connection",
+          "cluster"
         ]
       },
       "ClusterCreateRequestInput": {
@@ -11852,6 +12549,12 @@
           },
           "airGapped": {
             "$ref": "#/components/schemas/AirGappedInput"
+          },
+          "blueprint": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
           }
         },
         "required": [
@@ -11927,12 +12630,6 @@
           }
         ]
       },
-      "ConnectionNameInput": {
-        "type": "string",
-        "minLength": 2,
-        "maxLength": 40,
-        "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
-      },
       "ControlPlaneInput": {
         "type": "object",
         "properties": {
@@ -11987,7 +12684,7 @@
         "type": "object",
         "properties": {
           "name": {
-            "$ref": "#/components/schemas/ConnectionNameInput"
+            "$ref": "#/components/schemas/ConnectionName"
           },
           "displayName": {
             "type": "string",

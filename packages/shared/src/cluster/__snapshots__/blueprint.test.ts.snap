@@ -13,7 +13,8 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":1},"mode":"standard","workerPools":[{"machineSize":"t3.xlarge","name":"default","replicas":3}]}}'
+    capi-navigator.io/blueprint: small
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":1},"mode":"standard","workerPools":[{"machineSize":"t3.xlarge","name":"default","replicas":3}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -296,7 +297,8 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":3}]}}'
+    capi-navigator.io/blueprint: small
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":3}]}}'
 spec:
   clusterNetwork:
     apiServerPort: 6443
@@ -734,7 +736,8 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"addons":"base","osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk50-perf1","replicas":1},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":3}]}}'
+    capi-navigator.io/blueprint: small
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"addons":"base","osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk50-perf1","replicas":1},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":3}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -969,7 +972,8 @@ metadata:
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":3}]}}'
+    capi-navigator.io/blueprint: small
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":3}]}}'
 spec:
   clusterNetwork:
     pods:

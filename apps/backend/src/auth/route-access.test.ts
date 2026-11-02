@@ -51,6 +51,15 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'GET /api/connections/:connection/clusters/:namespace/:name/registry-contents': 'viewer',
     'GET /api/connections/:connection/clusters/:namespace/:name/hosted-tenants': 'viewer',
     'GET /api/connections/:connection/clusters/:namespace/:name/hosted-control-plane': 'viewer',
+    // FP-34: cluster blueprints; creating from one needs clusters.create like the wizard.
+    'GET /api/blueprints': 'viewer',
+    'POST /api/blueprints/preview': 'admin',
+    'POST /api/blueprints': 'admin',
+    'GET /api/blueprints/:name': 'viewer',
+    'PUT /api/blueprints/:name': 'admin',
+    'DELETE /api/blueprints/:name': 'admin',
+    'GET /api/blueprints/:name/clusters': 'viewer',
+    'POST /api/blueprints/:blueprint/clusters': 'operator',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

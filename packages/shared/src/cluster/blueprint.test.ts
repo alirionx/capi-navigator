@@ -120,7 +120,7 @@ describe('cluster blueprints (FP-34)', () => {
     for (const provider of Object.keys(SPECS)) {
       it(provider, () => {
         const bp = blueprint(provider);
-        const spec = blueprintToSpecSchema(bp).parse({
+        const spec = blueprintToSpecSchema('small', bp).parse({
           name: 'ordered',
           parameters: {
             workerPools: { default: { replicas: 3, machineSize: SPECS[provider]!.sizes[1] } },
@@ -139,12 +139,16 @@ describe('cluster blueprints (FP-34)', () => {
 
   it('keeps the base spec without parameters', () => {
     const bp = blueprint('openstack');
-    const spec = blueprintToSpecSchema(bp).parse({ name: 'plain' });
-    expect({ ...spec, name: 'example' }).toEqual(bp.cluster);
+    const spec = blueprintToSpecSchema('small', bp).parse({ name: 'plain' });
+    expect(spec.blueprint).toBe('small');
+    expect({ ...spec, name: 'example', blueprint: undefined }).toEqual({
+      ...bp.cluster,
+      blueprint: undefined,
+    });
   });
 
   it('merges additional labels without changing the blueprint labels (FP34-F-05)', () => {
-    const toSpec = blueprintToSpecSchema(blueprint('openstack'));
+    const toSpec = blueprintToSpecSchema('small', blueprint('openstack'));
     expect(toSpec.parse({ name: 'a', labels: { team: 'x', addons: 'base' } }).labels).toEqual({
       team: 'x',
       addons: 'base',
@@ -158,7 +162,7 @@ describe('cluster blueprints (FP-34)', () => {
   });
 
   it('refuses parameters outside the limits and unknown parameters (FP34-F-02)', () => {
-    const toSpec = blueprintToSpecSchema(blueprint('aws'));
+    const toSpec = blueprintToSpecSchema('small', blueprint('aws'));
     const bad = [
       { workerPools: { default: { replicas: 6 } } },
       { workerPools: { default: { replicas: 0 } } },
@@ -180,7 +184,7 @@ describe('cluster blueprints (FP-34)', () => {
       parameters: { kubernetesVersions: ['v1.35.9+rke2r1', 'v1.36.5+rke2r1'] },
     });
     expect(
-      blueprintToSpecSchema(bp).parse({
+      blueprintToSpecSchema('small', bp).parse({
         name: 'a',
         parameters: { kubernetesVersion: 'v1.36.5+rke2r1' },
       }).kubernetes.version,

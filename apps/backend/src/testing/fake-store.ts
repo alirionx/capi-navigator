@@ -1,5 +1,6 @@
 import type {
   AuditEventSpec,
+  ClusterBlueprintStorage,
   HelmRepositorySpec,
   ManagementClusterSpec,
   ManagementClusterStatus,
@@ -31,6 +32,7 @@ export function createFakeStore() {
   const tokens = new Map<string, NavigatorResource<NavigatorTokenSpec, { lastUsedAt?: string }>>();
   const groups = new Map<string, NavigatorResource<NavigatorGroupSpec>>();
   const authSettings = new Map<string, NavigatorResource<NavigatorAuthSettingsSpec>>();
+  const blueprints = new Map<string, NavigatorResource<ClusterBlueprintStorage>>();
 
   let presetOverrides: Record<string, { version?: string; valuesTemplate?: string }> = {};
 
@@ -206,6 +208,44 @@ export function createFakeStore() {
         return structuredClone(updated);
       },
     },
+    blueprints: {
+      create: async (meta: { name: string }, spec: ClusterBlueprintStorage) => {
+        if (blueprints.has(meta.name)) throw err(409);
+        const obj = {
+          apiVersion: 'navigator.capi-navigator.io/v1alpha1',
+          kind: 'ClusterBlueprint',
+          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          spec: structuredClone(spec),
+        };
+        blueprints.set(meta.name, obj);
+        return structuredClone(obj);
+      },
+      replaceSpec: async (
+        current: { metadata: { name: string; resourceVersion?: string } },
+        spec: ClusterBlueprintStorage,
+      ) => {
+        const stored = blueprints.get(current.metadata.name);
+        if (!stored) throw err(404);
+        if (current.metadata.resourceVersion !== stored.metadata.resourceVersion) throw err(409);
+        const updated = {
+          ...stored,
+          metadata: { ...stored.metadata, resourceVersion: String(rv++) },
+          spec: structuredClone(spec),
+        };
+        blueprints.set(current.metadata.name, updated);
+        return structuredClone(updated);
+      },
+      delete: async (name: string) => {
+        if (!blueprints.delete(name)) throw err(404);
+      },
+    },
+    blueprintCache: {
+      get: (name: string) => structuredClone(blueprints.get(name)),
+      list: () => [...blueprints.values()].map((b) => structuredClone(b)),
+      upsert: () => undefined,
+      remove: () => undefined,
+      isSynced: true,
+    },
     authSettingsCache: {
       get: (name: string) => structuredClone(authSettings.get(name)),
       list: () => [...authSettings.values()].map((a) => structuredClone(a)),
@@ -370,6 +410,7 @@ export function createFakeStore() {
     tokens,
     groups,
     authSettings,
+    blueprints,
   };
 }
 

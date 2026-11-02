@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { BlueprintsModule } from './blueprints/blueprints.module.js';
 import { ClustersModule } from './clusters/clusters.module.js';
 import { ConfigModule } from './config/config.module.js';
 import { ConnectionsModule } from './connections/connections.module.js';
@@ -26,6 +27,7 @@ import { StoreModule } from './store/store.module.js';
     OperatorModule,
     CredentialsModule,
     ClustersModule,
+    BlueprintsModule,
     NodeShellModule,
     DashboardModule,
     ResourcesModule,
