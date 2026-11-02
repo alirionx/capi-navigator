@@ -460,7 +460,8 @@ describe('k0s flavor (FP-9)', () => {
 
   it('lets the k0s ports behind the NLB through to the control plane nodes (FP9-F-04, ADR-0012)', () => {
     // Seen live: the NLB does not preserve client IPs and CAPA allows its security group on the
-    // control plane only for 6443, so the 8132 and 9443 targets failed their health checks.
+    // control plane only for 6443, so the 8132 and 9443 targets failed their health checks; a
+    // replacement controller joined the first one directly on 9443 and timed out.
     const fromLb = (spec: ClusterSpecInput) =>
       (
         transform(ClusterSpecSchema.parse(spec), ctx).find((o) => o.kind === 'AWSCluster')!
@@ -473,7 +474,7 @@ describe('k0s flavor (FP-9)', () => {
           };
         }
       ).network.additionalControlPlaneIngressRules
-        ?.filter((r) => r.sourceSecurityGroupRoles?.join() === 'apiserver-lb')
+        ?.filter((r) => r.sourceSecurityGroupRoles?.join() === 'apiserver-lb,controlplane')
         .map((r) => r.fromPort) ?? [];
     expect(fromLb(k0s(aws()))).toEqual([8132, 9443]);
     expect(fromLb(aws())).toEqual([]);

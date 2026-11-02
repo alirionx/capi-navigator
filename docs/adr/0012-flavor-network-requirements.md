@@ -33,8 +33,10 @@ as soon as a second distribution exists.
     NLB, the control plane nodes see the NLB (it does not preserve client IPs), and CAPA v2.13.1
     allows the NLB's security group on the control plane only for the API port (it leaves the
     rules of the `lb` group to the CCM), so each port behind the load balancer also gets an
-    `additionalControlPlaneIngressRules` entry from the `apiserver-lb` role. Found live on
-    2026-11-02: the 8132 and 9443 targets failed their health checks.
+    `additionalControlPlaneIngressRules` entry from the `apiserver-lb` and `controlplane` roles
+    (further k0s controllers join the first one directly on 9443, ADR-0022). Found live on
+    2026-11-02: the 8132 and 9443 targets failed their health checks, and a replacement
+    controller timed out joining the first one, so control plane upgrades never finished.
 - RKE2 declares 9345 (direct) and its Calico rules; the generated manifests stay byte-identical
   (existing snapshots unchanged). k0s declares 8132 and 9443 (via load balancer), Calico VXLAN
   (UDP 4789) and the kubelet port.

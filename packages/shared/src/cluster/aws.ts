@@ -128,12 +128,13 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       // The NLB does not preserve client IPs: the control plane nodes see the NLB, whose security
       // group CAPA allows only on the API port. Without this, the targets of the other ports fail
       // their health checks and k0s Konnectivity agents never connect (CAPA v2.13.1 leaves the
-      // rules of the "lb" group to the CCM).
+      // rules of the "lb" group to the CCM). Further k0s controllers also join the first one
+      // directly on its internal IP (ADR-0022), so the control plane nodes need the ports too.
       ...(hosted
         ? []
         : viaLb.map((p) =>
-            tcp(p.port, `${p.description} (load balancer)`, {
-              sourceSecurityGroupRoles: ['apiserver-lb'],
+            tcp(p.port, `${p.description} (load balancer and controllers)`, {
+              sourceSecurityGroupRoles: ['apiserver-lb', 'controlplane'],
             }),
           )),
       ...controlPlaneOnly.map((r) =>
