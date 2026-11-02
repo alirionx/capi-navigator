@@ -146,6 +146,38 @@ describe('rollout controller run (FP7-F-08, FP7-F-15, ADR-0010)', () => {
     );
   });
 
+  it('lets the workers of a hosted control plane follow (FP24-F-10)', async () => {
+    // Seen live: the controller looked for a K0sControlPlane and the workers never followed.
+    const hosted = ClusterSpecSchema.parse({
+      ...SPEC,
+      kubernetes: { flavor: 'k0s', version: 'v1.36.5+k0s.0', workerVersion: 'v1.35.9+k0s.0' },
+      topology: { ...SPEC.topology, mode: 'hosted', hosted: { host: 'host' } },
+    });
+    const k0smotron = FLAVOR_PLUGINS.k0s!.hosted!.controlPlaneResource;
+    const { applyChange, controller } = setup({
+      clusters: [cluster(hosted)],
+      byPlural: {
+        [k0smotron.plural]: [
+          controlPlane({
+            version: 'v1.36.5+k0s.0',
+            replicas: 1,
+            upToDateReplicas: 1,
+            readyReplicas: 1,
+          }),
+        ],
+      },
+    });
+    await controller.runOnce(NOW);
+    expect(applyChange).toHaveBeenCalledWith(
+      'home',
+      'team-a',
+      'demo',
+      expect.any(Function),
+      false,
+      { finishUpgrade: true },
+    );
+  });
+
   it('audits a failed worker upgrade and carries on with other clusters', async () => {
     const upgrading = {
       ...SPEC,

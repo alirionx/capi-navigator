@@ -16,7 +16,7 @@ export * from './air-gap.js';
 export * from './air-gap-images.js';
 export * from './cni.js';
 export * from './addons.js';
-export { transform, INFRA_PLUGINS, FLAVOR_PLUGINS } from './transform.js';
+export { transform, controlPlaneResourceOf, INFRA_PLUGINS, FLAVOR_PLUGINS } from './transform.js';
 export { groupVersion, shortHash, stableStringify } from './util.js';
 export * from './api.js';
 export * from './changes.js';

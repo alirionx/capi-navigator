@@ -10,6 +10,7 @@ import {
   groupVersion,
   CLUSTER_SPEC_ANNOTATION,
   ClusterSpecSchema,
+  controlPlaneResourceOf,
   FLAVOR_PLUGINS,
   INFRA_PLUGINS,
   MANAGED_BY_LABEL,
@@ -159,8 +160,9 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
     const custom = kc.makeApiClient(CustomObjectsApi);
     const { namespace, name } = spec;
     const flavor = FLAVOR_PLUGINS[spec.kubernetes.flavor];
-    if (!flavor) return;
-    const cpRes = flavor.controlPlaneResource;
+    // FP24-F-10: a hosted control plane is a K0smotronControlPlane.
+    const cpRes = controlPlaneResourceOf(spec);
+    if (!flavor || !cpRes) return;
     const cps = (await custom.listNamespacedCustomObject({
       group: cpRes.group,
       version: cpRes.version,

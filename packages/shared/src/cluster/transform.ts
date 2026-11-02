@@ -39,6 +39,16 @@ export const FLAVOR_PLUGINS: Partial<
   kubeadm: kubeadmPlugin,
 };
 
+/** The control plane resource of a cluster: pods in a host for hosted control planes (FP-24). */
+export function controlPlaneResourceOf(
+  spec: ClusterSpec,
+): BootstrapFlavorPlugin['controlPlaneResource'] | undefined {
+  const flavor = FLAVOR_PLUGINS[spec.kubernetes.flavor];
+  return spec.topology.mode === 'hosted'
+    ? flavor?.hosted?.controlPlaneResource
+    : flavor?.controlPlaneResource;
+}
+
 const CAPI_API = 'cluster.x-k8s.io/v1beta2';
 const CLUSTER_NAME_LABEL = 'cluster.x-k8s.io/cluster-name';
 

@@ -173,6 +173,8 @@ export class ResourcesService implements OnApplicationShutdown {
         p
           ? [
               { ...p.controlPlaneResource },
+              // FP-24: hosted control planes.
+              ...(p.hosted ? [{ ...p.hosted.controlPlaneResource }] : []),
               {
                 group: p.bootstrapResources.group,
                 version: p.bootstrapResources.version,
