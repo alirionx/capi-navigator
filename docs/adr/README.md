@@ -37,3 +37,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0031](0031-vuetify-4.md)                                   | Vuetify 4                                                                        | accepted |
 | [0032](0032-kubeadm-on-capi-images.md)                      | kubeadm on Cluster API images, online and air-gapped                             | accepted |
 | [0033](0033-kubeadm-no-longer-experimental.md)              | kubeadm is no longer experimental                                                | accepted |
+| [0034](0034-hosted-control-planes-with-k0smotron.md)        | Hosted control planes with k0smotron on an app-created host cluster              | accepted |
