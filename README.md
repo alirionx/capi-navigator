@@ -53,6 +53,8 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Credentials**: OpenStack `clouds.yaml` (application credential or password, custom CA), AWS
   access keys, Google Cloud service account keys and Proxmox VE API tokens (with CA and machine sizes), tested against the cloud (services, IAM prerequisites, paging quirks) and used for
   the selection lists of the wizard. Secrets are never sent to the browser.
+- **Hosted control planes** (experimental): k0s clusters whose control plane runs as pods in a host
+  cluster of the app, on OpenStack, AWS and Proxmox VE ([docs/hosted-control-planes.md](docs/hosted-control-planes.md)).
 - **Cluster wizard**: topology (standard, or all-in-one with 1, 3 or 5 nodes), machine sizes, images, root disks, worker
   pools with labels, add-ons, node customization (files, pre/post commands), bastion host, network
   ranges. Every field explains its default and the CAPI field it maps to.

@@ -32,6 +32,11 @@ stay manageable with `kubectl` and `clusterctl` after the app is removed.
 | **Management cluster** | Runs Cluster API and the providers; holds the CAPI resources of the workload clusters | Installs providers, stores cloud credentials, writes the CAPI resources of workload clusters and the add-ons                                                                           |
 | **Workload cluster**   | A cluster created through CAPI                                                        | Mostly nothing directly. The app reads it for the dashboard, opens node shells and cleans up before deletion, using the kubeconfig Secret that CAPI writes into the management cluster |
 
+A workload cluster can also be a **host for hosted control planes** (FP-24, experimental): k0smotron
+runs the control planes of other k0s clusters there as pods, reaching it with its Cluster API
+kubeconfig; the app only reads it ([hosted-control-planes.md](hosted-control-planes.md),
+[ADR-0034](adr/0034-hosted-control-planes-with-k0smotron.md)).
+
 The home cluster can also be a management cluster (connection "Home cluster",
 `homeClusterAsManagementCluster` in the Helm chart). In local development, the kind cluster is
 both.
@@ -316,6 +321,19 @@ cluster while CCM and CSI still run, waits until the cloud resources are gone, a
 the `Cluster`; CAPI cascades to machines and infrastructure. Progress is kept in an annotation on
 the `Cluster` ([cluster-deletion.service.ts](../apps/backend/src/clusters/cluster-deletion.service.ts),
 [ADR-0006](adr/0006-cluster-deletion-with-cleanup.md)).
+
+### Hosted control planes
+
+A tenant's spec has `topology.mode: hosted` and names its host. The k0s plugin generates a
+`K0smotronControlPlane` with `remoteHostCluster` instead of control plane machines, and the
+infrastructure plugin its infrastructure cluster without API load balancer; k0smotron creates the
+pods, the LoadBalancer Service and the etcd volumes in the host and writes the endpoint into the
+infrastructure cluster, which waits for it. Before applying, the backend checks the host
+([hosting.ts](../apps/backend/src/clusters/hosting.ts)): marked as host, available, same
+infrastructure and credential, a worker per replica, and on Proxmox VE a free LoadBalancer address
+as fixed tenant address (kube-vip announces a Service only once it has endpoints). Hosts with
+tenants cannot be deleted or unmarked. Details and limits:
+[hosted-control-planes.md](hosted-control-planes.md).
 
 ### OpenAPI description and Swagger UI
 
