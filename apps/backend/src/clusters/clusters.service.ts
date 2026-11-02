@@ -990,7 +990,7 @@ export class ClustersService {
     // FP24-F-01: a host carries the control planes of its tenants on its workers.
     if (spec.controlPlaneHost && schedulableHostNodes(spec) < 3) {
       warnings.push(
-        'Hosts should have at least three worker nodes: a hosted control plane with three replicas needs one node per replica.',
+        'Hosts should have at least three nodes that run workloads (workers, or all nodes of an all-in-one cluster): a hosted control plane with three replicas needs one node per replica; one replica runs on a single node.',
       );
     }
     // Without its artifacts an air-gapped cluster cannot be generated; the blockers say why.

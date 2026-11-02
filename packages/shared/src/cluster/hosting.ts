@@ -63,7 +63,7 @@ export function hostedTenantProblems(tenant: ClusterSpec, host: HostFacts | unde
   const replicas = tenant.topology.controlPlane.replicas;
   if (nodes < replicas) {
     problems.push(
-      `${replicas} control plane replicas need ${replicas} worker nodes in the host, one per replica; ${ref} has ${nodes}.`,
+      `${replicas} control plane replicas need ${replicas} nodes that run workloads in the host (workers, or all nodes of an all-in-one cluster), one per replica; ${ref} has ${nodes}. One replica runs on a single node.`,
     );
   }
   if (mine.provider === 'proxmox' && theirs.provider === 'proxmox') {

@@ -33,7 +33,9 @@ Tenants run on the infrastructure and credential of their host, in the host's na
 
 1. Create a cluster (any distribution) with the **CCM** and the **CSI driver**; on Proxmox VE give
    it **LoadBalancer addresses** (FP-32), from which the tenants get their API addresses. Three or
-   more workers: a tenant with three replicas puts one controller and one etcd pod on each.
+   more nodes that run workloads (workers, or an all-in-one cluster with three nodes): a tenant
+   with three replicas puts one controller and one etcd pod on each. A single node carries
+   tenants with one replica.
 2. Mark it as host: in the wizard (Topology → "Host for hosted control planes") or later in its
    Configuration tab. This sets the label `capi-navigator.io/hcp-host` on the `Cluster`; nothing
    inside the cluster changes.

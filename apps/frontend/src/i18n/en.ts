@@ -840,7 +840,7 @@ export const en = {
       'Mark a cluster as host first: in its Configuration tab, or when creating it (Topology step).',
     hostedReplicas: 'Replicas',
     hostedReplicasHint:
-      '1 or 3, fixed after creation: k0smotron splits etcd when scaling. Three replicas need three worker nodes in the host. Maps to {cp}.spec.replicas. Default: 1.',
+      '1 or 3, fixed after creation: k0smotron splits etcd when scaling. Three replicas need three nodes that run workloads in the host (workers, or the nodes of an all-in-one host); one replica runs on a single node. Maps to {cp}.spec.replicas. Default: 1.',
     etcdVolume: 'etcd volume (GiB)',
     etcdVolumeHint:
       'One volume per replica from the default StorageClass of the host. Maps to {cp}.spec.storage.etcd.persistence.size. Default: 1.',
@@ -850,7 +850,7 @@ export const en = {
       'The API address ({address}, Infrastructure step) must be a free LoadBalancer address of the host. Free: {free}.',
     controlPlaneHost: 'Host for hosted control planes (experimental)',
     controlPlaneHostHint:
-      'k0smotron runs the control planes of other k0s clusters here as pods. Needs the CCM (on Proxmox VE LoadBalancer addresses) and the CSI driver; three or more workers recommended. Sets the label capi-navigator.io/hcp-host on the Cluster. Default: off.',
+      'k0smotron runs the control planes of other k0s clusters here as pods. Needs the CCM (on Proxmox VE LoadBalancer addresses) and the CSI driver; three or more nodes that run workloads recommended (workers, or an all-in-one cluster with three nodes); a single node carries tenants with one replica. Sets the label capi-navigator.io/hcp-host on the Cluster. Default: off.',
     controlPlane: 'Control plane',
     cpNodes: 'Control plane nodes',
     cpHint: '1, 3 or 5 nodes (etcd quorum). Maps to {cp}.spec.replicas. Default: 1.',

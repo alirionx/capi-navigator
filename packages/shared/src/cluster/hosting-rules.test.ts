@@ -153,8 +153,27 @@ describe('tenants on their host (FP24-F-03, FP24-F-06)', () => {
 
   it('needs a host worker per replica (hard spread, ADR-0034)', () => {
     const small = facts({ spec: ClusterSpecSchema.parse(hostInput(2)) });
-    expect(hostedTenantProblems(tenant(3), small)[0]).toContain('need 3 worker nodes');
+    expect(hostedTenantProblems(tenant(3), small)[0]).toContain('need 3 nodes that run workloads');
     expect(hostedTenantProblems(tenant(1), small)).toEqual([]);
+  });
+
+  it('counts the nodes of an all-in-one host (user test 2026-11-02)', () => {
+    const aio = (replicas: number) =>
+      facts({
+        spec: ClusterSpecSchema.parse({
+          ...hostInput(),
+          topology: {
+            mode: 'all-in-one',
+            controlPlane: { replicas, machineSize: 'small' },
+            workerPools: [],
+          },
+        }),
+      });
+    expect(hostedTenantProblems(tenant(3), aio(1))[0]).toContain(
+      'One replica runs on a single node',
+    );
+    expect(hostedTenantProblems(tenant(1), aio(1))).toEqual([]);
+    expect(hostedTenantProblems(tenant(3), aio(3))).toEqual([]);
   });
 
   it('takes the Proxmox VE address from the host LoadBalancer range', () => {
