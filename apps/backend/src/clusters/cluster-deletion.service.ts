@@ -35,7 +35,12 @@ const DELETION_MANAGER = 'capi-navigator-deletion';
 const REACH_TIMEOUT_MS = 10_000;
 
 /** Timing of the cleanup; overridable in tests. */
-export const DELETION_TIMING = { pollMs: 10_000, timeoutMs: 10 * 60_000 };
+export const DELETION_TIMING = {
+  pollMs: 10_000,
+  timeoutMs: 10 * 60_000,
+  startMs: 60_000,
+  startRetryMs: 5_000,
+};
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   return Promise.race([
@@ -126,11 +131,21 @@ export class ClusterDeletionService {
     const api = req.cleanup ? await this.workload(connection, namespace, name) : undefined;
     let cleanup = false;
     if (api) {
-      try {
-        await withTimeout(startCleanup(api), 60_000);
-        cleanup = true;
-      } catch (err) {
-        this.logger.warn(`Cleanup of ${namespace}/${name} could not start: ${String(err)}`);
+      // A single failed request (e.g. a load balancer failover in front of the API) must not
+      // skip the cleanup and leave load balancers and floating IPs behind: retry for a while.
+      const deadline = Date.now() + DELETION_TIMING.startMs;
+      for (;;) {
+        try {
+          await withTimeout(startCleanup(api), Math.max(1, deadline - Date.now()));
+          cleanup = true;
+          break;
+        } catch (err) {
+          if (Date.now() + DELETION_TIMING.startRetryMs >= deadline) {
+            this.logger.warn(`Cleanup of ${namespace}/${name} could not start: ${String(err)}`);
+            break;
+          }
+          await new Promise((r) => setTimeout(r, DELETION_TIMING.startRetryMs));
+        }
       }
     }
     const status: DeletionStatus = cleanup

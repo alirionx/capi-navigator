@@ -105,6 +105,8 @@ describe('cluster deletion (FP6-F-06)', () => {
     vi.useRealTimers();
     DELETION_TIMING.pollMs = 10_000;
     DELETION_TIMING.timeoutMs = 600_000;
+    DELETION_TIMING.startMs = 60_000;
+    DELETION_TIMING.startRetryMs = 5_000;
   });
 
   function service(
@@ -172,6 +174,41 @@ describe('cluster deletion (FP6-F-06)', () => {
     });
     expect(status.phase).toBe('cleanup');
     await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
+  });
+
+  it('retries the start of the cleanup after a failed request', async () => {
+    DELETION_TIMING.pollMs = 5;
+    DELETION_TIMING.startRetryMs = 5;
+    const flaky = fakeWorkload();
+    const list = flaky.api.listNamespaces.bind(flaky.api);
+    let failures = 2;
+    flaky.api.listNamespaces = async () => {
+      if (failures-- > 0) throw new TypeError('fetch failed');
+      return list();
+    };
+    const { svc, events } = service({ workload: flaky.api });
+    const status = await svc.delete('home', 'team-a', 'demo', {
+      confirmName: 'demo',
+      cleanup: true,
+    });
+    expect(status.phase).toBe('cleanup');
+    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
+  });
+
+  it('deletes without cleanup when the workload cluster stays unreachable', async () => {
+    DELETION_TIMING.startMs = 30;
+    DELETION_TIMING.startRetryMs = 5;
+    const down = fakeWorkload();
+    down.api.listNamespaces = async () => {
+      throw new TypeError('fetch failed');
+    };
+    const { svc, events } = service({ workload: down.api });
+    const status = await svc.delete('home', 'team-a', 'demo', {
+      confirmName: 'demo',
+      cleanup: true,
+    });
+    expect(status.phase).toBe('deleting');
+    expect(events).toEqual(['phase:deleting', 'deleted']);
   });
 
   it('stops with cleanup-timeout while resources remain', async () => {
