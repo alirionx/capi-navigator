@@ -69,6 +69,7 @@ spec:
                       - connections.manage
                       - helmRepositories.manage
                       - managementNodes.shell
+                      - blueprints.manage
                       - users.manage
               required:
                 - displayName

@@ -20,6 +20,7 @@ export const PERMISSIONS = [
   'connections.manage',
   'helmRepositories.manage',
   'managementNodes.shell',
+  'blueprints.manage',
   'users.manage',
 ] as const;
 export const PermissionSchema = z.enum(PERMISSIONS);
@@ -62,7 +63,7 @@ export const PERMISSION_GROUPS: { group: string; permissions: Permission[] }[] =
       'managementNodes.shell',
     ],
   },
-  { group: 'Administration', permissions: ['users.manage'] },
+  { group: 'Administration', permissions: ['blueprints.manage', 'users.manage'] },
 ];
 
 /** Built-in roles: fixed, not changeable, exactly the access of FP-1 (FP19-F-01). */

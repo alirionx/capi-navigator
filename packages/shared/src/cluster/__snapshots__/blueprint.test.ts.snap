@@ -1,0 +1,1369 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`cluster blueprints (FP-34) > blueprint + parameters → cluster spec → YAML snapshots (FP34-F-05) > aws 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    osb.example.com/instance-id: b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f
+    capi-navigator.io/ccm: aws
+    capi-navigator.io/csi: aws
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"aws-dev","image":"ami-0e27250725fa51794","network":{"availabilityZoneCount":1,"vpcCidr":"10.0.0.0/16"},"provider":"aws","region":"eu-central-1"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"t3.large","replicas":1},"mode":"standard","workerPools":[{"machineSize":"t3.xlarge","name":"default","replicas":3}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0sControlPlane
+    name: ordered-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: AWSCluster
+    name: ordered
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSCluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  region: eu-central-1
+  identityRef:
+    kind: AWSClusterStaticIdentity
+    name: aws-dev
+  sshKeyName: ""
+  network:
+    vpc:
+      cidrBlock: 10.0.0.0/16
+      availabilityZoneUsageLimit: 1
+    cni:
+      cniIngressRules:
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
+    additionalControlPlaneIngressRules:
+      - description: k0s Konnectivity (load balancer and controllers)
+        fromPort: 8132
+        toPort: 8132
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - apiserver-lb
+          - controlplane
+      - description: k0s controller join API (load balancer and controllers)
+        fromPort: 9443
+        toPort: 9443
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - apiserver-lb
+          - controlplane
+      - description: Kubelet API
+        fromPort: 10250
+        toPort: 10250
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+  controlPlaneLoadBalancer:
+    loadBalancerType: nlb
+    ingressRules:
+      - description: Kubernetes API
+        fromPort: 6443
+        toPort: 6443
+        protocol: tcp
+        cidrBlocks:
+          - 0.0.0.0/0
+      - description: k0s Konnectivity
+        fromPort: 8132
+        toPort: 8132
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+      - description: k0s controller join API
+        fromPort: 9443
+        toPort: 9443
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - node
+          - controlplane
+          - apiserver-lb
+          - lb
+      - description: k0s Konnectivity (NAT gateways)
+        fromPort: 8132
+        toPort: 8132
+        protocol: tcp
+        natGatewaysIPsSource: true
+      - description: k0s controller join API (NAT gateways)
+        fromPort: 9443
+        toPort: 9443
+        protocol: tcp
+        natGatewaysIPsSource: true
+    additionalListeners:
+      - port: 8132
+        protocol: TCP
+      - port: 9443
+        protocol: TCP
+  bastion:
+    enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: ordered-cp-3ac94b45
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.large
+      iamInstanceProfile: control-plane.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      uncompressedUserData: false
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0sControlPlane
+metadata:
+  name: ordered-control-plane
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 1
+  updateStrategy: Recreate
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+      kind: AWSMachineTemplate
+      name: ordered-cp-3ac94b45
+      namespace: osb
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: ordered-cp-3ac94b45
+  k0sConfigSpec:
+    k0s:
+      apiVersion: k0s.k0sproject.io/v1beta1
+      kind: ClusterConfig
+      metadata:
+        name: k0s
+      spec:
+        api:
+          extraArgs:
+            anonymous-auth: "true"
+        network:
+          provider: calico
+          calico:
+            mode: vxlan
+          podCIDR: 10.42.0.0/16
+          serviceCIDR: 10.43.0.0/16
+        telemetry:
+          enabled: false
+    args:
+      - --enable-worker
+      - --labels=node.kubernetes.io/exclude-from-external-load-balancers=
+      - --enable-cloud-provider
+      - --kubelet-root-dir=/var/lib/kubelet
+    useSystemHostname: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSMachineTemplate
+metadata:
+  name: ordered-default-3103eab4
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      ami:
+        id: ami-0e27250725fa51794
+      instanceType: t3.xlarge
+      iamInstanceProfile: nodes.cluster-api-provider-aws.sigs.k8s.io
+      sshKeyName: ""
+      rootVolume:
+        size: 50
+        type: gp3
+      cloudInit:
+        insecureSkipSecretsManager: true
+      uncompressedUserData: false
+      instanceMetadataOptions:
+        httpEndpoint: enabled
+        httpTokens: required
+        httpPutResponseHopLimit: 2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: ordered-default-82d9f2d0
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: ordered-default
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterName: ordered
+  replicas: 3
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: ordered
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: ordered
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: ordered-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: AWSMachineTemplate
+        name: ordered-default-3103eab4
+"
+`;
+
+exports[`cluster blueprints (FP-34) > blueprint + parameters → cluster spec → YAML snapshots (FP34-F-05) > gcp 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    osb.example.com/instance-id: b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f
+    capi-navigator.io/ccm: gcp
+    capi-navigator.io/csi: gcp
+    capi-navigator.io/cni: calico
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"controlPlaneServiceAccount":"capi@demo-proj.iam.gserviceaccount.com","credentialRef":"gcp-dev","image":"projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015","network":{"nodeCidr":"10.6.0.0/24"},"project":"demo-proj","provider":"gcp","region":"europe-west6"},"kubernetes":{"flavor":"kubeadm","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"e2-standard-2","replicas":1},"mode":"standard","workerPools":[{"machineSize":"n2-standard-4","name":"default","replicas":3}]}}'
+spec:
+  clusterNetwork:
+    apiServerPort: 6443
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: KubeadmControlPlane
+    name: ordered-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: GCPCluster
+    name: ordered
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPCluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  project: demo-proj
+  region: europe-west6
+  credentialsRef:
+    name: capi-navigator-credential-gcp-dev
+    namespace: capg-system
+  network:
+    name: ordered
+    autoCreateSubnetworks: false
+    subnets:
+      - name: ordered-nodes
+        cidrBlock: 10.6.0.0/24
+        region: europe-west6
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: ordered-cp-4e1afc09
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      instanceType: e2-standard-2
+      subnet: ordered-nodes
+      image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+      serviceAccounts:
+        email: capi@demo-proj.iam.gserviceaccount.com
+        scopes:
+          - https://www.googleapis.com/auth/cloud-platform
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: ordered-control-plane
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  version: v1.35.9
+  replicas: 1
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: GCPMachineTemplate
+        name: ordered-cp-4e1afc09
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+  kubeadmConfigSpec:
+    format: cloud-config
+    files:
+      - path: /usr/local/bin/capi-navigator-install-kubernetes.sh
+        content: |
+          #!/bin/bash
+          # Generated by CAPI Navigator (FP10-F-02, ADR-0032): Kubernetes v1.35.9 with kubeadm on a stock
+          # image or a Cluster API image.
+          set -euo pipefail
+          K8S_VERSION="1.35.9"
+          PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
+          DOWNLOADS="https://github.com"
+          CONTAINERD_VERSION="2.4.2"
+          RUNC_VERSION="1.5.2"
+          case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
+
+          # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
+          # preparation are in the image already. Install nothing and leave containerd's configuration (its
+          # registry mirrors) alone.
+          PREINSTALLED=false
+          if command -v kubeadm >/dev/null; then
+            PREINSTALLED=true
+            if [ "$(kubeadm version -o short 2>/dev/null)" = "v\${K8S_VERSION}" ]; then
+              echo "kubeadm v\${K8S_VERSION} is preinstalled (Cluster API image), nothing to install"
+              exit 0
+            fi
+            echo "kubeadm $(kubeadm version -o short 2>/dev/null) is preinstalled: changing the Kubernetes packages to v\${K8S_VERSION}, keeping containerd"
+          fi
+
+          # Kernel modules, sysctl and swap as kubeadm expects them.
+          printf 'overlay\\nbr_netfilter\\n' > /etc/modules-load.d/kubernetes.conf
+          modprobe overlay
+          modprobe br_netfilter
+          printf 'net.bridge.bridge-nf-call-iptables = 1\\nnet.bridge.bridge-nf-call-ip6tables = 1\\nnet.ipv4.ip_forward = 1\\n' > /etc/sysctl.d/99-kubernetes.conf
+          sysctl --system >/dev/null
+          swapoff -a
+          sed -i '/[[:space:]]swap[[:space:]]/ s/^[^#]/#&/' /etc/fstab
+
+          if [ "$PREINSTALLED" = false ]; then
+          # containerd and runc: official release binaries with checksums (independent of the distribution).
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          ctr="containerd-\${CONTAINERD_VERSION}-linux-\${ARCH}.tar.gz"
+          curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}"
+          curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}.sha256sum"
+          sha256sum -c "\${ctr}.sha256sum"
+          tar -C /usr/local -xzf "\${ctr}"
+          curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.\${ARCH}"
+          curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.sha256sum"
+          grep " runc.\${ARCH}\\$" runc.sha256sum | sha256sum -c
+          install -m 0755 "runc.\${ARCH}" /usr/local/sbin/runc
+          cd /
+          rm -rf "$tmp"
+          cat > /etc/systemd/system/containerd.service <<'UNIT'
+          [Unit]
+          Description=containerd container runtime
+          After=network.target local-fs.target dbus.service
+
+          [Service]
+          ExecStartPre=-/sbin/modprobe overlay
+          ExecStart=/usr/local/bin/containerd
+          Type=notify
+          Delegate=yes
+          KillMode=process
+          Restart=always
+          RestartSec=5
+          LimitNPROC=infinity
+          LimitCORE=infinity
+          TasksMax=infinity
+          OOMScoreAdjust=-999
+
+          [Install]
+          WantedBy=multi-user.target
+          UNIT
+          mkdir -p /etc/containerd
+          /usr/local/bin/containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+          systemctl daemon-reload
+          systemctl enable --now containerd
+          fi
+
+          # kubelet, kubeadm and kubectl of exactly this version from pkgs.k8s.io, held against updates.
+          if command -v apt-get >/dev/null; then
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update -q
+            apt-get install -y -q ca-certificates curl gnupg conntrack socat
+            mkdir -p /etc/apt/keyrings
+            curl -fsSL "\${PKGS}/deb/Release.key" | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+            echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] \${PKGS}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+            apt-get update -q
+            # Read the whole list (no early exit): an early exit would break the pipe under pipefail.
+            pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 && !found { print $3; found = 1 }')
+            [ -n "$pkg" ] || { echo "kubeadm \${K8S_VERSION} not found in \${PKGS}" >&2; exit 1; }
+            # A Cluster API image holds its own version; the selected one replaces it.
+            apt-get install -y -q --allow-change-held-packages "kubelet=\${pkg}" "kubeadm=\${pkg}" "kubectl=\${pkg}"
+            apt-mark hold kubelet kubeadm kubectl
+          elif command -v dnf >/dev/null; then
+            setenforce 0 || true
+            sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config || true
+            cat > /etc/yum.repos.d/kubernetes.repo <<REPO
+          [kubernetes]
+          name=Kubernetes
+          baseurl=\${PKGS}/rpm/
+          enabled=1
+          gpgcheck=1
+          gpgkey=\${PKGS}/rpm/repodata/repomd.xml.key
+          exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+          REPO
+            dnf install -y conntrack-tools socat
+            dnf install -y --disableexcludes=kubernetes "kubelet-\${K8S_VERSION}" "kubeadm-\${K8S_VERSION}" "kubectl-\${K8S_VERSION}"
+          else
+            echo "Unsupported distribution: apt-get or dnf is required" >&2
+            exit 1
+          fi
+          systemctl enable kubelet
+
+          # kubeadm init or join runs only with kubeadm of exactly the selected version.
+          if [ "$(kubeadm version -o short)" != "v\${K8S_VERSION}" ]; then
+            echo "kubeadm $(kubeadm version -o short) is installed, v\${K8S_VERSION} expected" >&2
+            exit 1
+          fi
+        permissions: "0755"
+        owner: root:root
+    preKubeadmCommands:
+      - hostnamectl set-hostname "$(hostname -s)"
+      - /usr/local/bin/capi-navigator-install-kubernetes.sh || exit 1
+    initConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
+    joinConfiguration:
+      nodeRegistration:
+        name: "{{ v1.local_hostname }}"
+        kubeletExtraArgs:
+          - name: cloud-provider
+            value: external
+          - name: provider-id
+            value: gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: GCPMachineTemplate
+metadata:
+  name: ordered-default-5e40c509
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      instanceType: n2-standard-4
+      subnet: ordered-nodes
+      image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: KubeadmConfigTemplate
+metadata:
+  name: ordered-default-a3b88c7c
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      format: cloud-config
+      files:
+        - path: /usr/local/bin/capi-navigator-install-kubernetes.sh
+          content: |
+            #!/bin/bash
+            # Generated by CAPI Navigator (FP10-F-02, ADR-0032): Kubernetes v1.35.9 with kubeadm on a stock
+            # image or a Cluster API image.
+            set -euo pipefail
+            K8S_VERSION="1.35.9"
+            PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
+            DOWNLOADS="https://github.com"
+            CONTAINERD_VERSION="2.4.2"
+            RUNC_VERSION="1.5.2"
+            case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
+
+            # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
+            # preparation are in the image already. Install nothing and leave containerd's configuration (its
+            # registry mirrors) alone.
+            PREINSTALLED=false
+            if command -v kubeadm >/dev/null; then
+              PREINSTALLED=true
+              if [ "$(kubeadm version -o short 2>/dev/null)" = "v\${K8S_VERSION}" ]; then
+                echo "kubeadm v\${K8S_VERSION} is preinstalled (Cluster API image), nothing to install"
+                exit 0
+              fi
+              echo "kubeadm $(kubeadm version -o short 2>/dev/null) is preinstalled: changing the Kubernetes packages to v\${K8S_VERSION}, keeping containerd"
+            fi
+
+            # Kernel modules, sysctl and swap as kubeadm expects them.
+            printf 'overlay\\nbr_netfilter\\n' > /etc/modules-load.d/kubernetes.conf
+            modprobe overlay
+            modprobe br_netfilter
+            printf 'net.bridge.bridge-nf-call-iptables = 1\\nnet.bridge.bridge-nf-call-ip6tables = 1\\nnet.ipv4.ip_forward = 1\\n' > /etc/sysctl.d/99-kubernetes.conf
+            sysctl --system >/dev/null
+            swapoff -a
+            sed -i '/[[:space:]]swap[[:space:]]/ s/^[^#]/#&/' /etc/fstab
+
+            if [ "$PREINSTALLED" = false ]; then
+            # containerd and runc: official release binaries with checksums (independent of the distribution).
+            tmp=$(mktemp -d)
+            cd "$tmp"
+            ctr="containerd-\${CONTAINERD_VERSION}-linux-\${ARCH}.tar.gz"
+            curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}"
+            curl -fsSLO "\${DOWNLOADS}/containerd/containerd/releases/download/v\${CONTAINERD_VERSION}/\${ctr}.sha256sum"
+            sha256sum -c "\${ctr}.sha256sum"
+            tar -C /usr/local -xzf "\${ctr}"
+            curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.\${ARCH}"
+            curl -fsSLO "\${DOWNLOADS}/opencontainers/runc/releases/download/v\${RUNC_VERSION}/runc.sha256sum"
+            grep " runc.\${ARCH}\\$" runc.sha256sum | sha256sum -c
+            install -m 0755 "runc.\${ARCH}" /usr/local/sbin/runc
+            cd /
+            rm -rf "$tmp"
+            cat > /etc/systemd/system/containerd.service <<'UNIT'
+            [Unit]
+            Description=containerd container runtime
+            After=network.target local-fs.target dbus.service
+
+            [Service]
+            ExecStartPre=-/sbin/modprobe overlay
+            ExecStart=/usr/local/bin/containerd
+            Type=notify
+            Delegate=yes
+            KillMode=process
+            Restart=always
+            RestartSec=5
+            LimitNPROC=infinity
+            LimitCORE=infinity
+            TasksMax=infinity
+            OOMScoreAdjust=-999
+
+            [Install]
+            WantedBy=multi-user.target
+            UNIT
+            mkdir -p /etc/containerd
+            /usr/local/bin/containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+            systemctl daemon-reload
+            systemctl enable --now containerd
+            fi
+
+            # kubelet, kubeadm and kubectl of exactly this version from pkgs.k8s.io, held against updates.
+            if command -v apt-get >/dev/null; then
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -q
+              apt-get install -y -q ca-certificates curl gnupg conntrack socat
+              mkdir -p /etc/apt/keyrings
+              curl -fsSL "\${PKGS}/deb/Release.key" | gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes.gpg
+              echo "deb [signed-by=/etc/apt/keyrings/kubernetes.gpg] \${PKGS}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+              apt-get update -q
+              # Read the whole list (no early exit): an early exit would break the pipe under pipefail.
+              pkg=$(apt-cache madison kubeadm | awk -v v="\${K8S_VERSION}-" 'index($3, v) == 1 && !found { print $3; found = 1 }')
+              [ -n "$pkg" ] || { echo "kubeadm \${K8S_VERSION} not found in \${PKGS}" >&2; exit 1; }
+              # A Cluster API image holds its own version; the selected one replaces it.
+              apt-get install -y -q --allow-change-held-packages "kubelet=\${pkg}" "kubeadm=\${pkg}" "kubectl=\${pkg}"
+              apt-mark hold kubelet kubeadm kubectl
+            elif command -v dnf >/dev/null; then
+              setenforce 0 || true
+              sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config || true
+              cat > /etc/yum.repos.d/kubernetes.repo <<REPO
+            [kubernetes]
+            name=Kubernetes
+            baseurl=\${PKGS}/rpm/
+            enabled=1
+            gpgcheck=1
+            gpgkey=\${PKGS}/rpm/repodata/repomd.xml.key
+            exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
+            REPO
+              dnf install -y conntrack-tools socat
+              dnf install -y --disableexcludes=kubernetes "kubelet-\${K8S_VERSION}" "kubeadm-\${K8S_VERSION}" "kubectl-\${K8S_VERSION}"
+            else
+              echo "Unsupported distribution: apt-get or dnf is required" >&2
+              exit 1
+            fi
+            systemctl enable kubelet
+
+            # kubeadm init or join runs only with kubeadm of exactly the selected version.
+            if [ "$(kubeadm version -o short)" != "v\${K8S_VERSION}" ]; then
+              echo "kubeadm $(kubeadm version -o short) is installed, v\${K8S_VERSION} expected" >&2
+              exit 1
+            fi
+          permissions: "0755"
+          owner: root:root
+      preKubeadmCommands:
+        - hostnamectl set-hostname "$(hostname -s)"
+        - /usr/local/bin/capi-navigator-install-kubernetes.sh || exit 1
+      joinConfiguration:
+        nodeRegistration:
+          name: "{{ v1.local_hostname }}"
+          kubeletExtraArgs:
+            - name: cloud-provider
+              value: external
+            - name: provider-id
+              value: gce://demo-proj/{{ v1.availability_zone }}/{{ v1.local_hostname }}
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: ordered-default
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterName: ordered
+  replicas: 3
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: ordered
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: ordered
+      version: v1.35.9
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: KubeadmConfigTemplate
+          name: ordered-default-a3b88c7c
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: GCPMachineTemplate
+        name: ordered-default-5e40c509
+"
+`;
+
+exports[`cluster blueprints (FP-34) > blueprint + parameters → cluster spec → YAML snapshots (FP34-F-05) > openstack 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    addons: base
+    osb.example.com/instance-id: b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"addons":"base","osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"a2-ram4-disk50-perf1","replicas":1},"mode":"standard","workerPools":[{"machineSize":"a4-ram8-disk50-perf1","name":"default","replicas":3}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: ordered-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: ordered
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    managedLoadBalancer:
+      enabled: true
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: ordered-cp-7ca9edaa
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a2-ram4-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: ordered-control-plane
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 1
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: ordered-cp-7ca9edaa
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=openstack:///{{ v1.instance_id }}
+  preRKE2Commands:
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: ordered-default-38abfb98
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: a4-ram8-disk50-perf1
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: ordered-default-20cfa44b
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=openstack:///{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: ordered-default
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterName: ordered
+  replicas: 3
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: ordered
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: ordered
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: ordered-default-20cfa44b
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: ordered-default-38abfb98
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: ordered-skip-tigera-operator
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: ordered
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: ordered-cloud-config
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+  resources:
+    - kind: Secret
+      name: ordered-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`cluster blueprints (FP-34) > blueprint + parameters → cluster spec → YAML snapshots (FP34-F-05) > proxmox 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    osb.example.com/instance-id: b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":3}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: RKE2ControlPlane
+    name: ordered-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: ordered
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: ordered
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+  annotations:
+    capi-navigator.io/credential: homelab
+spec:
+  controlPlaneEndpoint:
+    host: 10.20.0.89
+    port: 6443
+  ipv4Config:
+    addresses:
+      - 10.20.0.71-10.20.0.88
+    prefix: 24
+    gateway: 10.20.0.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: ordered-proxmox-credentials
+    namespace: osb
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: ordered-cp-986480ec
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 4
+      memoryMiB: 8192
+      disks:
+        bootVolume:
+          disk: virtio0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: RKE2ControlPlane
+metadata:
+  name: ordered-control-plane
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  version: v1.35.9+rke2r1
+  replicas: 1
+  registrationMethod: internal-first
+  machineTemplate:
+    spec:
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: ordered-cp-986480ec
+  rolloutStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+  serverConfig:
+    cni: calico
+    cloudProviderName: external
+    disableComponents:
+      kubernetesComponents:
+        - cloudController
+    tlsSan:
+      - 10.20.0.89
+  agentConfig:
+    nodeName: "{{ v1.local_hostname }}"
+    nodeLabels:
+      - node.kubernetes.io/exclude-from-external-load-balancers=
+    nodeTaints:
+      - node-role.kubernetes.io/control-plane:NoSchedule
+    kubelet:
+      extraArgs:
+        - provider-id=proxmox://{{ v1.instance_id }}
+  preRKE2Commands:
+    - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+    - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+  gzipUserData: false
+  files:
+    - path: /var/lib/rancher/rke2/server/manifests/kube-vip.yaml
+      content: |
+        apiVersion: apps/v1
+        kind: DaemonSet
+        metadata:
+          name: kube-vip-ds
+          namespace: kube-system
+          labels:
+            app.kubernetes.io/name: kube-vip-ds
+        spec:
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: kube-vip-ds
+          template:
+            metadata:
+              labels:
+                app.kubernetes.io/name: kube-vip-ds
+            spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                      - matchExpressions:
+                          - key: node-role.kubernetes.io/control-plane
+                            operator: Exists
+              containers:
+                - name: kube-vip
+                  image: ghcr.io/kube-vip/kube-vip:v1.3.1
+                  imagePullPolicy: IfNotPresent
+                  args:
+                    - manager
+                  env:
+                    - name: vip_arp
+                      value: "true"
+                    - name: port
+                      value: "6443"
+                    - name: vip_nodename
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: spec.nodeName
+                    - name: vip_subnet
+                      value: "32"
+                    - name: dns_mode
+                      value: first
+                    - name: dhcp_mode
+                      value: ipv4
+                    - name: cp_enable
+                      value: "true"
+                    - name: cp_namespace
+                      value: kube-system
+                    - name: svc_enable
+                      value: "false"
+                    - name: vip_leaderelection
+                      value: "true"
+                    - name: vip_leasename
+                      value: plndr-cp-lock
+                    - name: vip_leaseduration
+                      value: "15"
+                    - name: vip_renewdeadline
+                      value: "10"
+                    - name: vip_retryperiod
+                      value: "2"
+                    - name: address
+                      value: 10.20.0.89
+                    - name: prometheus_server
+                      value: :2112
+                  securityContext:
+                    capabilities:
+                      add:
+                        - NET_ADMIN
+                        - NET_RAW
+                      drop:
+                        - ALL
+                  volumeMounts:
+                    - name: kubeconfig
+                      mountPath: /etc/kubernetes/admin.conf
+              hostNetwork: true
+              tolerations:
+                - effect: NoSchedule
+                  operator: Exists
+                - effect: NoExecute
+                  operator: Exists
+              hostAliases:
+                - ip: 127.0.0.1
+                  hostnames:
+                    - kubernetes
+              volumes:
+                - name: kubeconfig
+                  hostPath:
+                    path: /etc/rancher/rke2/rke2.yaml
+      permissions: "0644"
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: ordered-default-9fbf256c
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7112
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 8
+      memoryMiB: 16384
+      disks:
+        bootVolume:
+          disk: virtio0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: RKE2ConfigTemplate
+metadata:
+  name: ordered-default-f7c76fbf
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  template:
+    spec:
+      agentConfig:
+        nodeName: "{{ v1.local_hostname }}"
+        kubelet:
+          extraArgs:
+            - provider-id=proxmox://{{ v1.instance_id }}
+            - cloud-provider=external
+      preRKE2Commands:
+        - if command -v apt-get >/dev/null; then apt-get update -q && DEBIAN_FRONTEND=noninteractive apt-get install -y -q qemu-guest-agent; elif command -v dnf >/dev/null; then dnf install -y qemu-guest-agent; fi; systemctl enable --now qemu-guest-agent || true
+        - if grep -qE '^ID_LIKE=.*(rhel|fedora)' /etc/os-release && grep -qE '^VERSION_ID="?10' /etc/os-release; then dnf install -y kernel-modules-extra; fi
+      gzipUserData: false
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: ordered-default
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterName: ordered
+  replicas: 3
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: ordered
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: ordered
+      version: v1.35.9+rke2r1
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: RKE2ConfigTemplate
+          name: ordered-default-f7c76fbf
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: ordered-default-9fbf256c
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDrainRule
+metadata:
+  name: ordered-skip-tigera-operator
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  drain:
+    behavior: Skip
+  machines:
+    - clusterSelector:
+        matchLabels:
+          cluster.x-k8s.io/cluster-name: ordered
+  pods:
+    - selector:
+        matchLabels:
+          k8s-app: tigera-operator
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: tigera-operator
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: ordered-proxmox-cloud-config
+  namespace: osb
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: ordered
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: ordered
+  resources:
+    - kind: Secret
+      name: ordered-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`cluster blueprints (FP-34) > describes the parameters as JSON Schema draft-04 (FP34-F-03) 1`] = `
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "additionalProperties": false,
+  "properties": {
+    "kubernetesVersion": {
+      "default": "v1.35.9+rke2r1",
+      "description": "Kubernetes version",
+      "enum": [
+        "v1.35.9+rke2r1",
+        "v1.36.5+rke2r1",
+      ],
+      "type": "string",
+    },
+    "workerPools": {
+      "additionalProperties": false,
+      "default": {},
+      "description": "Worker pools",
+      "properties": {
+        "default": {
+          "additionalProperties": false,
+          "default": {},
+          "properties": {
+            "machineSize": {
+              "default": "a2-ram4-disk50-perf1",
+              "description": "Machine size of pool default",
+              "enum": [
+                "a2-ram4-disk50-perf1",
+                "a4-ram8-disk50-perf1",
+              ],
+              "type": "string",
+            },
+            "replicas": {
+              "default": 2,
+              "description": "Number of workers in pool default",
+              "maximum": 5,
+              "minimum": 1,
+              "type": "integer",
+            },
+          },
+          "type": "object",
+        },
+      },
+      "type": "object",
+    },
+  },
+  "type": "object",
+}
+`;

@@ -1516,6 +1516,8 @@ export const en = {
       'Connect and remove management clusters; set their outbound proxy and internal registry.',
     helmRepositories_manage: 'Manage Helm repositories.',
     managementNodes_shell: 'Open a root shell on management cluster nodes.',
+    blueprints_manage:
+      'Manage cluster blueprints and upgrade the Kubernetes version of clusters created from them.',
     users_manage: 'Manage users, roles and role assignments (effectively admin).',
   },
 };

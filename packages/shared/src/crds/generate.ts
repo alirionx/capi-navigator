@@ -65,6 +65,15 @@ export function buildCrd(def: CrdDefinition): Record<string, unknown> {
  * safe-integer bounds Zod adds to `z.int()`.
  */
 function toStructuralSchema(schema: JsonSchema): JsonSchema {
+  // Opaque objects (e.g. a cluster spec checked by the backend): no properties of their own.
+  if (schema['x-kubernetes-preserve-unknown-fields'] === true) {
+    const { description } = schema;
+    return {
+      type: 'object',
+      ...(description ? { description } : {}),
+      'x-kubernetes-preserve-unknown-fields': true,
+    };
+  }
   const out: JsonSchema = {};
   for (const [key, value] of Object.entries(schema)) {
     if (key === '$schema') continue;

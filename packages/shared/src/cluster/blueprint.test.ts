@@ -1,0 +1,285 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
+import { buildCrd, ClusterBlueprintCrd } from '../crds/index.js';
+import { renderManifests } from '../operator-manifests.js';
+import {
+  blueprintParametersJsonSchema,
+  blueprintToSpecSchema,
+  ClusterBlueprintSpecSchema,
+  versionsOutsideCatalog,
+  type ClusterBlueprintSpecInput,
+} from './blueprint.js';
+import type { ClusterSpecInput } from './spec.js';
+import { transform, type TransformContext } from './transform.js';
+
+const workers = (machineSize: string) => ({
+  mode: 'standard' as const,
+  controlPlane: { replicas: 1 as const, machineSize },
+  workerPools: [{ name: 'default', replicas: 2, machineSize }],
+});
+
+const SPECS: Record<string, { cluster: ClusterSpecInput; sizes: string[]; ctx: TransformContext }> =
+  {
+    openstack: {
+      cluster: {
+        name: 'example',
+        namespace: 'osb',
+        labels: { addons: 'base' },
+        kubernetes: { version: 'v1.35.9+rke2r1' },
+        topology: workers('a2-ram4-disk50-perf1'),
+        infrastructure: {
+          provider: 'openstack',
+          credentialRef: 'infomaniak',
+          image: '6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2',
+          externalNetwork: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d',
+        },
+      },
+      sizes: ['a2-ram4-disk50-perf1', 'a4-ram8-disk50-perf1'],
+      ctx: { credential: { cloudName: 'infomaniak' } },
+    },
+    aws: {
+      cluster: {
+        name: 'example',
+        namespace: 'osb',
+        kubernetes: { flavor: 'k0s', version: 'v1.35.9+k0s.0' },
+        topology: workers('t3.large'),
+        infrastructure: {
+          provider: 'aws',
+          credentialRef: 'aws-dev',
+          region: 'eu-central-1',
+          image: 'ami-0e27250725fa51794',
+        },
+      },
+      sizes: ['t3.large', 't3.xlarge'],
+      ctx: { credential: {} },
+    },
+    gcp: {
+      cluster: {
+        name: 'example',
+        namespace: 'osb',
+        kubernetes: { flavor: 'kubeadm', version: 'v1.35.9' },
+        topology: workers('e2-standard-2'),
+        infrastructure: {
+          provider: 'gcp',
+          credentialRef: 'gcp-dev',
+          project: 'demo-proj',
+          region: 'europe-west6',
+          image: 'projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261015',
+          controlPlaneServiceAccount: 'capi@demo-proj.iam.gserviceaccount.com',
+        },
+      },
+      sizes: ['e2-standard-2', 'n2-standard-4'],
+      ctx: {
+        credential: {
+          secret: { name: 'capi-navigator-credential-gcp-dev', namespace: 'capg-system' },
+        },
+      },
+    },
+    proxmox: {
+      cluster: {
+        name: 'example',
+        namespace: 'osb',
+        kubernetes: { version: 'v1.35.9+rke2r1' },
+        topology: workers('medium'),
+        infrastructure: {
+          provider: 'proxmox',
+          credentialRef: 'homelab',
+          sourceNode: 'homeserver',
+          image: '7112',
+          storage: 'local-zfs',
+          bootDisk: 'virtio0',
+          network: {
+            nodeCidr: '10.20.0.0/24',
+            gateway: '10.20.0.1',
+            addresses: ['10.20.0.71-10.20.0.88'],
+          },
+          apiEndpoint: '10.20.0.89',
+        },
+      },
+      sizes: ['medium', 'large'],
+      ctx: { credential: { machineSizes: DEFAULT_PROXMOX_MACHINE_SIZES } },
+    },
+  };
+
+const blueprint = (provider: string, over: Partial<ClusterBlueprintSpecInput> = {}) => {
+  const { cluster, sizes } = SPECS[provider]!;
+  return ClusterBlueprintSpecSchema.parse({
+    displayName: `Small ${provider}`,
+    connection: 'home',
+    cluster,
+    parameters: {
+      workerCounts: [{ pool: 'default', min: 1, max: 5 }],
+      machineSizes: [{ pool: 'default', choices: sizes }],
+    },
+    ...over,
+  });
+};
+
+describe('cluster blueprints (FP-34)', () => {
+  describe('blueprint + parameters → cluster spec → YAML snapshots (FP34-F-05)', () => {
+    for (const provider of Object.keys(SPECS)) {
+      it(provider, () => {
+        const bp = blueprint(provider);
+        const spec = blueprintToSpecSchema(bp).parse({
+          name: 'ordered',
+          parameters: {
+            workerPools: { default: { replicas: 3, machineSize: SPECS[provider]!.sizes[1] } },
+          },
+          labels: { 'osb.example.com/instance-id': 'b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f' },
+        });
+        expect(spec.name).toBe('ordered');
+        expect(spec.topology.workerPools[0]).toMatchObject({
+          replicas: 3,
+          machineSize: SPECS[provider]!.sizes[1],
+        });
+        expect(renderManifests(transform(spec, SPECS[provider]!.ctx))).toMatchSnapshot();
+      });
+    }
+  });
+
+  it('keeps the base spec without parameters', () => {
+    const bp = blueprint('openstack');
+    const spec = blueprintToSpecSchema(bp).parse({ name: 'plain' });
+    expect({ ...spec, name: 'example' }).toEqual(bp.cluster);
+  });
+
+  it('merges additional labels without changing the blueprint labels (FP34-F-05)', () => {
+    const toSpec = blueprintToSpecSchema(blueprint('openstack'));
+    expect(toSpec.parse({ name: 'a', labels: { team: 'x', addons: 'base' } }).labels).toEqual({
+      team: 'x',
+      addons: 'base',
+    });
+    const r = toSpec.safeParse({ name: 'a', labels: { addons: 'none' } });
+    expect(r.success).toBe(false);
+    expect(r.error?.issues[0]?.path).toEqual(['labels', 'addons']);
+    expect(toSpec.safeParse({ name: 'a', labels: { 'capi-navigator.io/x': '1' } }).success).toBe(
+      false,
+    );
+  });
+
+  it('refuses parameters outside the limits and unknown parameters (FP34-F-02)', () => {
+    const toSpec = blueprintToSpecSchema(blueprint('aws'));
+    const bad = [
+      { workerPools: { default: { replicas: 6 } } },
+      { workerPools: { default: { replicas: 0 } } },
+      { workerPools: { default: { machineSize: 'm5.24xlarge' } } },
+      { workerPools: { other: { replicas: 1 } } },
+      { kubernetesVersion: 'v1.36.5+k0s.0' },
+      { controlPlane: { replicas: 3 } },
+    ];
+    for (const parameters of bad) {
+      expect(toSpec.safeParse({ name: 'a', parameters }).success, JSON.stringify(parameters)).toBe(
+        false,
+      );
+    }
+    expect(toSpec.safeParse({ name: 'Not_A_Name' }).success).toBe(false);
+  });
+
+  it('applies a Kubernetes version from the choices', () => {
+    const bp = blueprint('openstack', {
+      parameters: { kubernetesVersions: ['v1.35.9+rke2r1', 'v1.36.5+rke2r1'] },
+    });
+    expect(
+      blueprintToSpecSchema(bp).parse({
+        name: 'a',
+        parameters: { kubernetesVersion: 'v1.36.5+rke2r1' },
+      }).kubernetes.version,
+    ).toBe('v1.36.5+rke2r1');
+  });
+
+  it('checks that the parameters fit the base spec (FP34-F-02)', () => {
+    const issues = (parameters: ClusterBlueprintSpecInput['parameters']) =>
+      ClusterBlueprintSpecSchema.safeParse({
+        displayName: 'x',
+        connection: 'home',
+        cluster: SPECS.openstack!.cluster,
+        parameters,
+      }).error?.issues.map((i) => i.message) ?? [];
+    expect(issues({ workerCounts: [{ pool: 'gpu', min: 1, max: 2 }] })).toEqual([
+      'The cluster has no worker pool "gpu"',
+    ]);
+    expect(issues({ workerCounts: [{ pool: 'default', min: 3, max: 5 }] })).toEqual([
+      "The pool's 2 workers must lie between minimum and maximum",
+    ]);
+    expect(issues({ workerCounts: [{ pool: 'default', min: 3, max: 1 }] })).toContain(
+      'At least the minimum',
+    );
+    expect(issues({ machineSizes: [{ pool: 'default', choices: ['other'] }] })).toEqual([
+      "The pool's size a2-ram4-disk50-perf1 must be one of the choices",
+    ]);
+    expect(issues({ kubernetesVersions: ['v1.36.5+rke2r1'] })).toEqual([
+      "The cluster's version v1.35.9+rke2r1 must be one of the choices",
+    ]);
+    expect(
+      issues({
+        workerCounts: [
+          { pool: 'default', min: 1, max: 3 },
+          { pool: 'default', min: 1, max: 3 },
+        ],
+      }),
+    ).toEqual(['Worker pool "default" is listed twice']);
+  });
+
+  it('offers no versions for air-gapped clusters (FP34-F-02)', () => {
+    const r = ClusterBlueprintSpecSchema.safeParse({
+      displayName: 'x',
+      connection: 'home',
+      cluster: {
+        ...SPECS.proxmox!.cluster,
+        airGapped: {
+          registry: {
+            host: 'registry.internal:5000',
+            mirrors: [{ upstream: 'docker.io' }],
+            artifactsPath: 'library',
+          },
+        },
+      },
+      parameters: { kubernetesVersions: ['v1.35.9+rke2r1'] },
+    });
+    expect(r.error?.issues.map((i) => i.message)).toContain(
+      'Air-gapped clusters cannot offer versions: their artifacts are pinned per version',
+    );
+  });
+
+  it('finds versions outside the catalog', () => {
+    const bp = blueprint('openstack', {
+      parameters: { kubernetesVersions: ['v1.35.9+rke2r1', 'v1.30.0+rke2r1'] },
+    });
+    expect(versionsOutsideCatalog(bp)).toEqual(['v1.30.0+rke2r1']);
+  });
+
+  it('describes the parameters as JSON Schema draft-04 (FP34-F-03)', () => {
+    const bp = blueprint('openstack', {
+      parameters: {
+        workerCounts: [{ pool: 'default', min: 1, max: 5 }],
+        machineSizes: [{ pool: 'default', choices: SPECS.openstack!.sizes }],
+        kubernetesVersions: ['v1.35.9+rke2r1', 'v1.36.5+rke2r1'],
+      },
+    });
+    expect(blueprintParametersJsonSchema(bp)).toMatchSnapshot();
+    expect(blueprintParametersJsonSchema(blueprint('aws', { parameters: {} }))).toEqual({
+      $schema: 'http://json-schema.org/draft-04/schema#',
+      type: 'object',
+      properties: {},
+      additionalProperties: false,
+    });
+  });
+
+  it('stores the cluster spec opaque in the CRD (STATE-02)', () => {
+    const crd = buildCrd(ClusterBlueprintCrd) as {
+      spec: {
+        versions: {
+          schema: {
+            openAPIV3Schema: { properties: { spec: { properties: Record<string, unknown> } } };
+          };
+        }[];
+      };
+    };
+    expect(crd.spec.versions[0]!.schema.openAPIV3Schema.properties.spec.properties.cluster).toEqual(
+      {
+        type: 'object',
+        'x-kubernetes-preserve-unknown-fields': true,
+      },
+    );
+  });
+});

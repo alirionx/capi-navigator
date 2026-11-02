@@ -10494,6 +10494,7 @@
           "connections.manage",
           "helmRepositories.manage",
           "managementNodes.shell",
+          "blueprints.manage",
           "users.manage"
         ]
       },
@@ -12260,7 +12261,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 14,
+            "maxItems": 15,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"
@@ -13866,7 +13867,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 14,
+            "maxItems": 15,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"

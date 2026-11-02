@@ -1,4 +1,5 @@
 import { AuditEventCrd } from './audit-event.js';
+import { ClusterBlueprintCrd } from './cluster-blueprint.js';
 import { HelmRepositoryCrd } from './helm-repository.js';
 import { ManagementClusterCrd } from './management-cluster.js';
 import { NavigatorAuthSettingsCrd } from './navigator-auth-settings.js';
@@ -17,6 +18,7 @@ export * from './navigator-auth-settings.js';
 export * from './audit-event.js';
 export * from './management-cluster.js';
 export * from './helm-repository.js';
+export * from './cluster-blueprint.js';
 export { buildCrd } from './generate.js';
 
 /** All CRDs of the app, in a stable order. */
@@ -29,4 +31,5 @@ export const ALL_CRDS: CrdDefinition[] = [
   NavigatorTokenCrd,
   NavigatorGroupCrd,
   NavigatorAuthSettingsCrd,
+  ClusterBlueprintCrd,
 ];
