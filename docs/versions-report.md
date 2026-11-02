@@ -1,6 +1,6 @@
 # Version report
 
-Generated on 2026-10-31 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
+Generated on 2026-11-02 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
 **47 app versions** in [versions.yaml](../versions.yaml): 3 with a newer version (1 major, 1 minor, 1 patch).
 
@@ -94,11 +94,11 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Local test tools
 
-| Entry              | Current | Newest  | Update                                                       | Change in                          |
-| ------------------ | ------- | ------- | ------------------------------------------------------------ | ---------------------------------- |
-| testTools.dex      | 0.26.0  | –       | up to date                                                   | versions.yaml → testTools.dex      |
-| testTools.socat    | 1.8.1.1 | 1.8.1.3 | **patch** (released today; wait for the minimum release age) | versions.yaml → testTools.socat    |
-| testTools.gitleaks | v8.30.1 | –       | up to date                                                   | versions.yaml → testTools.gitleaks |
+| Entry              | Current | Newest  | Update                                                            | Change in                          |
+| ------------------ | ------- | ------- | ----------------------------------------------------------------- | ---------------------------------- |
+| testTools.dex      | 0.26.0  | –       | up to date                                                        | versions.yaml → testTools.dex      |
+| testTools.socat    | 1.8.1.1 | 1.8.1.3 | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → testTools.socat    |
+| testTools.gitleaks | v8.30.1 | –       | up to date                                                        | versions.yaml → testTools.gitleaks |
 
 ## Appendix: GitHub Actions and Docker images
 
