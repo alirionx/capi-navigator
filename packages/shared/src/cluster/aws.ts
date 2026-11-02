@@ -125,6 +125,17 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     const controlPlaneOnly = network.nodeTraffic.filter(inNodeGroup);
     const controlPlaneRules = [
       ...direct.map((p) => tcp(p.port, p.description, fromNodes)),
+      // The NLB does not preserve client IPs: the control plane nodes see the NLB, whose security
+      // group CAPA allows only on the API port. Without this, the targets of the other ports fail
+      // their health checks and k0s Konnectivity agents never connect (CAPA v2.13.1 leaves the
+      // rules of the "lb" group to the CCM).
+      ...(hosted
+        ? []
+        : viaLb.map((p) =>
+            tcp(p.port, `${p.description} (load balancer)`, {
+              sourceSecurityGroupRoles: ['apiserver-lb'],
+            }),
+          )),
       ...controlPlaneOnly.map((r) =>
         tcp(r.fromPort, r.description, { sourceSecurityGroupRoles: ['node', 'controlplane'] }),
       ),
@@ -162,8 +173,8 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
             ? controlPlaneRules
             : undefined,
         }),
-        // NLB for the API server and the distribution's ports behind it. CAPA copies NLB ingress
-        // rules into the control plane security group, so each port appears only once.
+        // NLB for the API server and the distribution's ports behind it; these rules guard the
+        // NLB itself (its security group), the control plane rules above the traffic behind it.
         // FP24-F-05: hosted control planes have their endpoint in the host; CAPA waits for the
         // one k0smotron writes (checkForExternalControlPlaneLoadBalancer, CAPA v2.13.1).
         controlPlaneLoadBalancer: hosted

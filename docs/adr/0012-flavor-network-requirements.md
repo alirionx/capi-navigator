@@ -29,7 +29,12 @@ as soon as a second distribution exists.
     reach it through the NAT gateways and rules from security group roles do not match; each
     port behind the load balancer therefore also gets a rule with `natGatewaysIPsSource` (CAPA
     adds the NAT addresses itself only for the API port). Found live on 2026-11-01 with k0s on
-    AWS: the Konnectivity agents never connected, so `kubectl logs/exec` failed.
+    AWS: the Konnectivity agents never connected, so `kubectl logs/exec` failed. Behind the
+    NLB, the control plane nodes see the NLB (it does not preserve client IPs), and CAPA v2.13.1
+    allows the NLB's security group on the control plane only for the API port (it leaves the
+    rules of the `lb` group to the CCM), so each port behind the load balancer also gets an
+    `additionalControlPlaneIngressRules` entry from the `apiserver-lb` role. Found live on
+    2026-11-02: the 8132 and 9443 targets failed their health checks.
 - RKE2 declares 9345 (direct) and its Calico rules; the generated manifests stay byte-identical
   (existing snapshots unchanged). k0s declares 8132 and 9443 (via load balancer), Calico VXLAN
   (UDP 4789) and the kubelet port.

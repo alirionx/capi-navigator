@@ -161,6 +161,18 @@ spec:
           toPort: 4789
           protocol: udp
     additionalControlPlaneIngressRules:
+      - description: k0s Konnectivity (load balancer)
+        fromPort: 8132
+        toPort: 8132
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - apiserver-lb
+      - description: k0s controller join API (load balancer)
+        fromPort: 9443
+        toPort: 9443
+        protocol: tcp
+        sourceSecurityGroupRoles:
+          - apiserver-lb
       - description: Kubelet API
         fromPort: 10250
         toPort: 10250
