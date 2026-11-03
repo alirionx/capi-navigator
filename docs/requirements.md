@@ -1214,13 +1214,16 @@ Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control pla
 **Acceptance criteria**
 
 - [ ] An admin saves a blueprint for each infrastructure provider; saving shows the YAML and is refused for a blueprint whose dry run fails.
-- [ ] The JSON Schema of a blueprint lists exactly its parameters with defaults and limits; snapshot tests cover blueprint plus parameters → cluster spec → YAML for one blueprint per provider.
-- [ ] A technical user with `clusters.create` in the blueprint's namespace creates a cluster from it with `curl`, with parameters and an additional label; values outside the limits, unknown parameters and labels that override the blueprint's are refused with 400, other namespaces with 403.
-- [ ] The cluster is found with `labelSelector`, carries the blueprint annotation and becomes ready; its kubeconfig can be downloaded with the token.
-- [ ] Scaling and label changes of the cluster are refused in the backend; an admin upgrades it to the next minor version with preview.
-- [ ] Changing the blueprint leaves the cluster unchanged; deleting the blueprint is refused while the cluster exists and works after the cluster is deleted.
-- [ ] Two clusters from one Proxmox VE blueprint run side by side with addresses from its pool.
+- [x] The JSON Schema of a blueprint lists exactly its parameters with defaults and limits; snapshot tests cover blueprint plus parameters → cluster spec → YAML for one blueprint per provider.
+- [x] A technical user with `clusters.create` in the blueprint's namespace creates a cluster from it with `curl`, with parameters and an additional label; values outside the limits, unknown parameters and labels that override the blueprint's are refused with 400, other namespaces with 403.
+- [x] The cluster is found with `labelSelector`, carries the blueprint annotation and becomes ready; its kubeconfig can be downloaded with the token.
+- [x] Scaling and label changes of the cluster are refused in the backend; an admin upgrades it to the next minor version with preview.
+- [x] Changing the blueprint leaves the cluster unchanged; deleting the blueprint is refused while the cluster exists and works after the cluster is deleted.
+- [x] Two clusters from one Proxmox VE blueprint run side by side with addresses from its pool.
 - [ ] A Playwright test covers creating a blueprint on the blueprints page.
+
+Live acceptance on Proxmox VE 9.2 (2026-11-03, through the API of the dev backend with the token of a technical admin user): blueprint `acc-small` (RKE2 v1.35.9, one control plane node and one worker, workers 1–2, two sizes, two versions) saved after a check without blockers; orders with too many workers, a changed blueprint label or a control plane parameter answered `400`. The order with an instance label created `acc-bp-1`, found by `labelSelector`, with the annotation `capi-navigator.io/blueprint`, Available after 182 s; the kubeconfig from the API worked. Scaling, labels and a scale change were refused with `409`; the admin upgrade to v1.36.5 replaced the control plane and then the worker (325 s), the annotation stayed. Deleting the blueprint was refused while the cluster existed; the cluster was deleted with cleanup in 20 s, then the blueprint, nothing left on Proxmox VE. Found: the fixed addresses of the base spec let a Proxmox VE blueprint serve one cluster only and refused saving it while that cluster ran; fixed with the address pool (FP34-F-14). Retest: an all-in-one blueprint with the pool .71–.80, two concurrent orders got .71–.73 and .74–.76 and were Available after 105 s; changing the blueprint while they ran passed. The scoped permission of a limited technical user is covered by HTTP tests (a token cannot create users). Open: saving blueprints live on OpenStack, AWS and Google Cloud (covered by snapshot and HTTP tests), and running the Playwright test (local browser libraries missing, BL-04).
+
 
 ## 7. Non-functional requirements
 
