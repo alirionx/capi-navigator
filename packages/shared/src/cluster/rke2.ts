@@ -154,10 +154,11 @@ export const rke2Plugin: BootstrapFlavorPlugin = {
   // via internal IPs (registrationMethod internal-first): the supervisor needs no LB listener.
   network: {
     controlPlanePorts: [{ port: 9345, description: 'RKE2 supervisor', viaLoadBalancer: false }],
-    // Calico (serverConfig.cni) between nodes.
+    // Calico (serverConfig.cni) between nodes. The rke2-calico chart encapsulates in VXLAN
+    // (IPPool vxlanMode Always, no BGP); the provider example's BGP and IP-in-IP rules left
+    // pods on different nodes unreachable, cluster DNS included (live test on AWS, RKE2 v1.36).
     nodeTraffic: [
-      { protocol: 'tcp', fromPort: 179, toPort: 179, description: 'BGP' },
-      { protocol: '4', fromPort: -1, toPort: 65535, description: 'IP-in-IP' },
+      { protocol: 'udp', fromPort: 4789, toPort: 4789, description: 'Calico VXLAN' },
       { protocol: 'tcp', fromPort: 5473, toPort: 5473, description: 'Calico Typha' },
       { protocol: 'tcp', fromPort: 9098, toPort: 9098, description: 'Calico Typha health check' },
       { protocol: 'tcp', fromPort: 9099, toPort: 9099, description: 'Calico health check' },
