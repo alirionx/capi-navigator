@@ -58,6 +58,10 @@ describe('spec changes (FP6-F-05, FP6-F-07)', () => {
     expect(setLabels(spec, {}).labels).toBeUndefined();
     expect(() => setLabels(spec, { 'capi-navigator.io/ccm': 'x' })).toThrow(/reserved/);
     expect(() => setLabels(spec, { 'cluster.x-k8s.io/cluster-name': 'x' })).toThrow(/reserved/);
+    // Only the prefixes themselves: subdomains stay free, e.g. for a service broker (CNR-03).
+    expect(setLabels(spec, { 'osb.capi-navigator.io/instance-id': 'x' }).labels).toEqual({
+      'osb.capi-navigator.io/instance-id': 'x',
+    });
   });
 
   it('enables and disables the bastion without touching machine templates (FP5-F-20)', () => {

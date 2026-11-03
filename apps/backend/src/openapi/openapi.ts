@@ -148,10 +148,14 @@ class SchemaSet {
       unrepresentable: 'any',
     }) as Json;
     const defs = (json.$defs ?? {}) as Json;
-    for (const id of Object.keys(defs)) this.used[io].add(id);
-    delete json.$defs;
-    delete json.$schema;
-    return rewriteRefs(json, io) as Json;
+    // A named shared schema comes back as a mere $ref to itself: take its body, or a query object
+    // loses its parameters (CNR-01, labelSelector of the cluster list).
+    const self = /^#\/\$defs\/(.+)$/.exec((json.$ref as string | undefined) ?? '')?.[1];
+    const body = self ? { ...(defs[self] as Json) } : json;
+    for (const id of Object.keys(defs)) if (id !== self) this.used[io].add(id);
+    delete body.$defs;
+    delete body.$schema;
+    return rewriteRefs(body, io) as Json;
   }
 
   /**

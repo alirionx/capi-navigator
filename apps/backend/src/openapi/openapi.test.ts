@@ -57,6 +57,14 @@ describe('OpenAPI document (FP-23, ADR-0016)', () => {
     );
   });
 
+  it('lists the properties of a named query schema as parameters (FP34-F-10, CNR-01)', () => {
+    const list = doc.paths['/api/connections/{connection}/clusters']!.get!;
+    const params = list.parameters as Json[];
+    expect(params).toContainEqual(
+      expect.objectContaining({ name: 'labelSelector', in: 'query', required: false }),
+    );
+  });
+
   it('names permission, scope, CSRF header and public endpoints (FP23-F-02, FP23-F-03)', () => {
     const change =
       doc.paths['/api/connections/{connection}/clusters/{namespace}/{name}/changes']!.post!;

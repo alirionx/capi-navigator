@@ -92,7 +92,10 @@ the app.
 ### Technical user for a client
 
 A client such as a service broker uses a technical user with an API token (FP-22) and a role with
-these permissions, limited to the connection and namespace of its blueprints:
+these permissions. Limit the assignment of `clusters.create`, `clusters.delete` and
+`clusters.kubeconfig` to the connection and namespace of its blueprints. `view` cannot be limited
+(FP-19): the user can read every cluster and blueprint of the app, but change none outside its
+scope.
 
 | Permission            | For                                                      |
 | --------------------- | -------------------------------------------------------- |

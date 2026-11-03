@@ -1784,6 +1784,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "labelSelector",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "pattern": "^[A-Za-z0-9._/=!, ()-]+$"
+            }
           }
         ],
         "responses": {
@@ -12405,16 +12415,6 @@
         "required": [
           "spec"
         ]
-      },
-      "ClusterListQueryInput": {
-        "type": "object",
-        "properties": {
-          "labelSelector": {
-            "type": "string",
-            "maxLength": 500,
-            "pattern": "^[A-Za-z0-9._/=!, ()-]+$"
-          }
-        }
       },
       "ClusterSpecInput": {
         "type": "object",
