@@ -21,14 +21,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: BGP
-          fromPort: 179
-          toPort: 179
-          protocol: tcp
-        - description: IP-in-IP
-          fromPort: -1
-          toPort: 65535
-          protocol: "4"
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
         - description: Calico Typha
           fromPort: 5473
           toPort: 5473
@@ -2618,14 +2614,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: BGP
-          fromPort: 179
-          toPort: 179
-          protocol: tcp
-        - description: IP-in-IP
-          fromPort: -1
-          toPort: 65535
-          protocol: "4"
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
         - description: Calico Typha
           fromPort: 5473
           toPort: 5473
@@ -2799,14 +2791,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: BGP
-          fromPort: 179
-          toPort: 179
-          protocol: tcp
-        - description: IP-in-IP
-          fromPort: -1
-          toPort: 65535
-          protocol: "4"
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
         - description: Calico Typha
           fromPort: 5473
           toPort: 5473
@@ -3069,14 +3057,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: BGP
-          fromPort: 179
-          toPort: 179
-          protocol: tcp
-        - description: IP-in-IP
-          fromPort: -1
-          toPort: 65535
-          protocol: "4"
+        - description: Calico VXLAN
+          fromPort: 4789
+          toPort: 4789
+          protocol: udp
         - description: Calico Typha
           fromPort: 5473
           toPort: 5473
