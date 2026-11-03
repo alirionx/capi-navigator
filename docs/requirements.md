@@ -717,7 +717,9 @@ Highly available control plane verified on 2026-11-02 on Proxmox VE (ADR-0033): 
 - [x] On an RKE2 cluster on Infomaniak, usage and requests match `kubectl top nodes` and `kubectl describe node`.
 - [x] A viewer opens the dashboard and sees nodes and workloads; no action buttons.
 - [x] Without metrics-server the dashboard still works and says so.
-- [ ] An operator opens the logs of a Deployment and of a crashing pod (previous container) on a real cluster; a viewer sees no logs button and the backend refuses the request with 403; every read appears in the audit log.
+- [x] An operator opens the logs of a Deployment and of a crashing pod (previous container) on a real cluster; a viewer sees no logs button and the backend refuses the request with 403; every read appears in the audit log.
+
+Verified on 2026-11-04 on Infomaniak with `logs-test` (k0s all-in-one from the blueprint `opst-k0s-aio`): a Deployment with two pods and a sidecar opened on the `app` container through `kubectl.kubernetes.io/default-container`, the sidecar selectable; a crashing Deployment showed as a problem pod with its panic marked as an error; a DaemonSet in `kube-system` read through its selector; "previous container" of a pod without restarts gave the API server's hint instead of an error. For a container that lives only milliseconds the kubelet answers "unable to retrieve container logs" for the previous container, exactly as `kubectl logs --previous`. Every read is an `AuditEvent` `cluster.logs.view` with user and token; the viewer's 403 and the missing button are covered by the Playwright test against the backend. While the Konnectivity agent of a fresh k0s cluster is not connected yet, the read fails with "No agent available" (shown under details). The live test also found that a container terminated with an exit code but not yet in back-off was not listed as a problem pod; FP18-F-02 now covers it.
 
 ### FP-19: Role management (optional)
 

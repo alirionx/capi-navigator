@@ -96,6 +96,9 @@ function workloadStatus(desired: number, ready: number): DashboardWorkload['stat
   return desired > 0 && ready === 0 ? 'degraded' : 'progressing';
 }
 
+const podReadyNow = (p: V1Pod) =>
+  !!p.status?.conditions?.some((c) => c.type === 'Ready' && c.status === 'True');
+
 function problemOf(pod: V1Pod): ProblemPod | undefined {
   const phase = pod.status?.phase ?? 'Unknown';
   if (phase === 'Succeeded') return undefined;
@@ -120,6 +123,10 @@ function problemOf(pod: V1Pod): ProblemPod | undefined {
     );
     reason = cond?.reason ?? waiting?.reason ?? 'Pending';
     message = cond?.message ?? waiting?.message;
+  } else if (terminated && !podReadyNow(pod)) {
+    // Between restarts a crashing container shows as terminated before CrashLoopBackOff.
+    reason = `${terminated.reason ?? 'Terminated'} (exit ${terminated.exitCode})`;
+    message = terminated.message;
   } else if (restarts >= RESTART_THRESHOLD) {
     reason = `${restarts} restarts`;
   }

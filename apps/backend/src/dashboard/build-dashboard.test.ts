@@ -66,6 +66,18 @@ const raw = (over: Partial<DashboardRaw> = {}): DashboardRaw => ({
         ],
       },
     },
+    // Crashed and not yet in back-off: terminated with an exit code while the pod runs.
+    {
+      metadata: { namespace: 'shop', name: 'exited' },
+      // Without requests, so the node sums above stay as they are.
+      spec: { nodeName: 'n1', containers: [{ name: 'c' }] },
+      status: {
+        phase: 'Running',
+        containerStatuses: [
+          { restartCount: 2, state: { terminated: { exitCode: 1, reason: 'Error' } } },
+        ],
+      },
+    },
     // Completed pods count neither as problems nor towards node requests.
     {
       metadata: { namespace: 'kube-system', name: 'helm-install' },
@@ -165,16 +177,16 @@ describe('cluster dashboard (FP-18)', () => {
   it('computes node requests like the scheduler and adds metrics', () => {
     const d = buildDashboard(raw());
     const n1 = d.nodes.find((n) => n.name === 'n1')!;
-    // web: max(150m, init 500m) = 500m; crashy: 10m. Succeeded pod excluded.
+    // web: max(150m, init 500m) = 500m; crashy: 10m; exited: none. Succeeded pod excluded.
     expect(n1.cpu).toMatchObject({ allocatable: 2000, requests: 510, usage: 250 });
     expect(n1.memory.requests).toBe((192 + 16) * 1024 ** 2);
     expect(n1.memory.usage).toBe(1024 ** 3);
-    expect(n1.pods).toEqual({ count: 2, capacity: 110 });
+    expect(n1.pods).toEqual({ count: 3, capacity: 110 });
     expect(d.totals).toMatchObject({
       nodes: 2,
       readyNodes: 1,
-      pods: 4,
-      podPhases: { Running: 2, Pending: 1, Succeeded: 1 },
+      pods: 5,
+      podPhases: { Running: 3, Pending: 1, Succeeded: 1 },
     });
     expect(d.metricsAvailable).toBe(true);
   });
@@ -193,9 +205,10 @@ describe('cluster dashboard (FP-18)', () => {
     const d = buildDashboard(raw());
     expect(d.problemPods.map((p) => `${p.name}:${p.reason}:${p.restarts}`)).toEqual([
       'crashy:CrashLoopBackOff:7',
+      'exited:Error (exit 1):2',
       'stuck:Unschedulable:0',
     ]);
-    expect(d.problemPods[1]?.message).toBe('Insufficient cpu');
+    expect(d.problemPods.find((p) => p.name === 'stuck')?.message).toBe('Insufficient cpu');
   });
 
   it('shows services with routes, endpoints and workloads, newest events first (FP18-F-03, UX-09)', () => {

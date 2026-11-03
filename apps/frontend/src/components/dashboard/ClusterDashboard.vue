@@ -316,23 +316,25 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
               <tbody>
                 <tr v-for="w in workloads" :key="w.kind + w.namespace + w.name">
                   <td class="text-body-small">{{ w.kind }}</td>
-                  <td class="text-no-wrap">
+                  <td class="text-break">
                     <span class="text-medium-emphasis">{{ w.namespace }}/</span>{{ w.name }}
                   </td>
-                  <td>
-                    <v-chip size="x-small" variant="tonal" :color="statusColor(w.status)"
-                      >{{ w.ready }}/{{ w.desired }}</v-chip
-                    >
-                    <v-btn
-                      v-if="canLogs"
-                      icon="mdi-text-box-search-outline"
-                      variant="text"
-                      size="x-small"
-                      :title="t('logs.show')"
-                      :data-testid="`logs-${w.kind}-${w.namespace}-${w.name}`"
-                      @click="showLogs({ kind: w.kind, namespace: w.namespace, name: w.name })"
-                    />
-                    <YamlButton :target="inCluster(w.kind, w.name, w.namespace)" />
+                  <td class="text-no-wrap">
+                    <div class="d-flex align-center">
+                      <v-chip size="x-small" variant="tonal" :color="statusColor(w.status)"
+                        >{{ w.ready }}/{{ w.desired }}</v-chip
+                      >
+                      <v-btn
+                        v-if="canLogs"
+                        icon="mdi-text-box-search-outline"
+                        variant="text"
+                        size="x-small"
+                        :title="t('logs.show')"
+                        :data-testid="`logs-${w.kind}-${w.namespace}-${w.name}`"
+                        @click="showLogs({ kind: w.kind, namespace: w.namespace, name: w.name })"
+                      />
+                      <YamlButton :target="inCluster(w.kind, w.name, w.namespace)" />
+                    </div>
                   </td>
                 </tr>
                 <tr v-if="!workloads.length">
