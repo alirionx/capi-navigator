@@ -63,6 +63,15 @@ describe('OpenAPI document (FP-23, ADR-0016)', () => {
     expect(params).toContainEqual(
       expect.objectContaining({ name: 'labelSelector', in: 'query', required: false }),
     );
+    // Single values like @Query('region') become optional string parameters.
+    const lookup =
+      doc.paths['/api/connections/{connection}/credentials/{provider}/{name}/lookups/{kind}']!.get!;
+    expect(lookup.parameters as Json[]).toContainEqual({
+      name: 'region',
+      in: 'query',
+      required: false,
+      schema: { type: 'string' },
+    });
   });
 
   it('names permission, scope, CSRF header and public endpoints (FP23-F-02, FP23-F-03)', () => {

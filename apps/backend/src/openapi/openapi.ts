@@ -67,6 +67,8 @@ interface Route {
   sse: boolean;
   body?: ZodSchema;
   query?: ZodSchema;
+  /** Single query values without a schema, e.g. `@Query('region')`: optional strings. */
+  queryNames: string[];
   pathParams: string[];
 }
 
@@ -86,11 +88,14 @@ export function describeRoutes(controllers: Type[]): Route[] {
       const meta = <T>(key: string) =>
         (Reflect.getMetadata(key, handler) ?? Reflect.getMetadata(key, ctrl)) as T | undefined;
       const fullPath = join(base, path);
+      const args = Object.entries(
+        (Reflect.getMetadata(ROUTE_ARGS, ctrl, name) as
+          Record<string, { data?: string; pipes?: unknown[] }> | undefined) ?? {},
+      );
       const zodOf = (type: number) => {
-        const arg = Object.entries(
-          (Reflect.getMetadata(ROUTE_ARGS, ctrl, name) as
-            Record<string, { data?: string; pipes?: unknown[] }> | undefined) ?? {},
-        ).find(([key, a]) => Number(key.split(':')[0]) === type && a.data === undefined);
+        const arg = args.find(
+          ([key, a]) => Number(key.split(':')[0]) === type && a.data === undefined,
+        );
         const pipe = arg?.[1].pipes?.find(
           (p): p is ZodValidationPipe<ZodSchema> => p instanceof ZodValidationPipe,
         );
@@ -109,6 +114,10 @@ export function describeRoutes(controllers: Type[]): Route[] {
         sse: Reflect.getMetadata(SSE, handler) === true,
         body: zodOf(PARAM_BODY),
         query: zodOf(PARAM_QUERY),
+        queryNames: args
+          .filter(([key, a]) => Number(key.split(':')[0]) === PARAM_QUERY && a.data !== undefined)
+          .map(([, a]) => a.data!)
+          .sort(),
         pathParams: [...fullPath.matchAll(/:([A-Za-z0-9_]+)/g)].map((m) => m[1]!),
       });
     }
@@ -266,6 +275,9 @@ export function buildOpenApi(controllers: Type[], opts: { version: string }): Js
       for (const [name, schema] of Object.entries(props)) {
         parameters.push({ name, in: 'query', required: required.has(name), schema });
       }
+    }
+    for (const name of route.queryNames) {
+      parameters.push({ name, in: 'query', required: false, schema: { type: 'string' } });
     }
     // The CSRF check applies to every mutating /api request, also public ones like the login.
     if (MUTATING.has(route.method) && route.path.startsWith('/api/')) {
