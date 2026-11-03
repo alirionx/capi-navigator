@@ -75,6 +75,7 @@ One NestJS module per domain:
 | `credentials`      | [credentials](../apps/backend/src/credentials)                             | Cloud credentials on the management cluster; tests and lookups (images, flavors, networks) against the cloud                                                                                                                                                         |
 | `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client), AWS, Google Cloud and Proxmox VE (API token, CA, machine sizes)                                                                                                                      |
 | `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                                                                                             |
+| `blueprints`       | [blueprints](../apps/backend/src/blueprints)                               | Cluster blueprints (`ClusterBlueprint` CRs): checked saving, creating clusters from a blueprint without a preview (ADR-0035)                                                                                                                                         |
 | `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets and the kube-vip presets for LoadBalancer Services on Proxmox                                                                                           |
 | `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                                                                                                                                             |
 | `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                                                                                    |
@@ -93,6 +94,7 @@ One NestJS module per domain:
 | Management cluster connections     | `ManagementCluster` CR (incl. the outbound proxy, FP-29), kubeconfig or token in a Secret                                                                                                                                                                                                                                                                                                 | Home cluster            |
 | Helm repositories                  | `HelmRepository` CR, OCI credentials in a Secret                                                                                                                                                                                                                                                                                                                                          | Home cluster            |
 | Preset overrides (CCM, CSI, kured) | ConfigMap                                                                                                                                                                                                                                                                                                                                                                                 | Home cluster            |
+| Cluster blueprints                 | `ClusterBlueprint` CR: base spec (opaque in the CRD, checked by the backend) and parameters                                                                                                                                                                                                                                                                                               | Home cluster            |
 | Audit log                          | `AuditEvent` CRs                                                                                                                                                                                                                                                                                                                                                                          | Home cluster            |
 | Cloud credentials                  | Secret in the provider namespace (`capo-system`, `capa-system`, `capg-system`, `capmox-system`) plus a cluster-scoped identity listing the allowed namespaces ([ADR-0002](adr/0002-cluster-scoped-provider-identities.md)); CAPG has none, the list is an annotation on the Secret; Proxmox clusters get a copy of the token per cluster ([ADR-0027](adr/0027-proxmox-ve-with-capmox.md)) | Management cluster      |
 | A workload cluster                 | **Cluster spec** as annotation `capi-navigator.io/cluster-spec` on the CAPI `Cluster`, plus the generated CAPI resources                                                                                                                                                                                                                                                                  | Management cluster      |
@@ -334,6 +336,19 @@ infrastructure and credential, a worker per replica, and on Proxmox VE a free Lo
 as fixed tenant address (kube-vip announces a Service only once it has endpoints). Hosts with
 tenants cannot be deleted or unmarked. Details and limits:
 [hosted-control-planes.md](hosted-control-planes.md).
+
+### Cluster blueprints
+
+A blueprint stores a complete cluster spec and the parameters that may vary
+([blueprint.ts](../packages/shared/src/cluster/blueprint.ts)). Saving runs the preview of a new
+cluster with the default parameters; a blueprint with blockers is not saved. Creating from a
+blueprint is a pure step before the usual creation: the request's parameters are checked against a
+Zod schema built from the blueprint, the base spec gets the name, the parameters, the additional
+labels and `blueprint: <name>`, and the result goes through `ClustersService.create` without a
+preview (ADR-0035). The permission guard takes connection and namespace of `clusters.create` from
+the blueprint. The transformation writes `blueprint` as annotation on the `Cluster`, so every later
+apply keeps it; the change pipeline refuses changes of such clusters except upgrade and reapply by
+`blueprints.manage`. Details: [blueprints.md](blueprints.md).
 
 ### OpenAPI description and Swagger UI
 

@@ -84,7 +84,10 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
   created in the app ([docs/oidc.md](docs/oidc.md)).
 - **API tokens** for technical users, so pipelines and GitOps tools call the API with their own
   role assignments.
-- **Users and roles**: built-in roles viewer, operator and admin plus custom roles from 14
+- **Cluster blueprints**: admins save a reviewed cluster spec with a few parameters (workers,
+  machine sizes, Kubernetes versions); clients such as a service broker create clusters from it
+  through the API, and those clusters stay bound to it ([docs/blueprints.md](docs/blueprints.md)).
+- **Users and roles**: built-in roles viewer, operator and admin plus custom roles from 15
   permissions; role assignments can be limited to management cluster connections and namespaces
   (e.g. operator only in `team-a`). Enforced in the backend; every change is written
   to an audit log.

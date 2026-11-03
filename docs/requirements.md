@@ -1205,7 +1205,7 @@ Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control pla
 - **FP34-F-08** MUST apply changes to a blueprint only to clusters created afterwards; existing clusters stay as they are.
 - **FP34-F-09** MUST refuse deleting a blueprint while clusters created from it exist; the message names the clusters.
 - **FP34-F-10** MUST filter the cluster list by a label selector (`GET …/clusters?labelSelector=…`), so a client can find its cluster by its own label.
-- **FP34-F-11** MUST provide a blueprints page for users with `blueprints.manage`: list, create (starting from an existing cluster's spec or empty), change, delete, the parameters with their limits, and the clusters of each blueprint. The cluster detail view shows the blueprint of a blueprint cluster and hides the refused actions (cosmetic, FP19-F-10).
+- **FP34-F-11** MUST provide a blueprints page for users with `blueprints.manage`: list, create from the spec of an existing cluster created by the app, change, delete, the parameters with their limits, and the clusters of each blueprint. The cluster detail view shows the blueprint of a blueprint cluster and hides the refused actions (cosmetic, FP19-F-10).
 - **FP34-F-12** MUST record creating, changing and deleting blueprints and creating clusters from them as `AuditEvent`s, and describe the new endpoints in the OpenAPI document (FP-23).
 - **FP34-F-13** MUST document blueprints (`docs/blueprints.md`): purpose, parameters, permissions for a technical user of a client (`view`, `clusters.create`, `clusters.delete`, `clusters.kubeconfig` in the blueprint's namespace), and what is not possible in the first version.
 
