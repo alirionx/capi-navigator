@@ -17,14 +17,18 @@ const props = defineProps<{
   namespace: string;
   name: string;
   labels: Record<string, string>;
+  /** FP34-F-07: blueprint clusters keep the labels of their blueprint. */
+  blueprint?: string;
 }>();
 const { t } = useI18n();
 const store = useAddonsStore();
 const clusters = useClustersStore();
 const auth = useAuthStore();
-// Assigning an add-on changes the cluster's labels (FP19-F-10).
-const canChange = computed(() =>
-  auth.can('clusters.change', { connection: props.connection, namespace: props.namespace }),
+// Assigning an add-on changes the cluster's labels (FP19-F-10); not for blueprint clusters (FP34-F-07).
+const canChange = computed(
+  () =>
+    !props.blueprint &&
+    auth.can('clusters.change', { connection: props.connection, namespace: props.namespace }),
 );
 
 let release: (() => void) | null = null;

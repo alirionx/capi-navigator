@@ -4,6 +4,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { onUnauthorized } from '../api/client.js';
 import { useAuthStore } from '../stores/auth.js';
 import AddonsView from '../views/AddonsView.vue';
+import BlueprintsView from '../views/BlueprintsView.vue';
 import ChangePasswordView from '../views/ChangePasswordView.vue';
 import ClusterDetailView from '../views/ClusterDetailView.vue';
 import ClustersView from '../views/ClustersView.vue';
@@ -125,6 +126,17 @@ export const routes: RouteRecordRaw[] = [
       permission: 'view',
       titleKey: 'nav.helmRepositories',
       icon: 'mdi-database-outline',
+      navGroup: 'management',
+    },
+  },
+  {
+    path: '/blueprints',
+    name: 'blueprints',
+    component: BlueprintsView,
+    meta: {
+      permission: 'blueprints.manage',
+      titleKey: 'nav.blueprints',
+      icon: 'mdi-shape-outline',
       navGroup: 'management',
     },
   },

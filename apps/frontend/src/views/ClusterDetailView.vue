@@ -60,7 +60,18 @@ const deleteOpen = ref(false);
 const scope = () => ({ connection: connections.activeName ?? '', namespace: props.namespace });
 const canChange = computed(
   () =>
-    auth.can('clusters.change', scope()) && !!s.value?.summary.managed && !s.value.summary.deletion,
+    auth.can('clusters.change', scope()) &&
+    !!s.value?.summary.managed &&
+    !s.value.summary.deletion &&
+    !s.value.summary.blueprint,
+);
+/** FP34-F-07: blueprint clusters stay bound; admins may still upgrade and reapply them. */
+const canMaintainBlueprint = computed(
+  () =>
+    !!s.value?.summary.blueprint &&
+    !s.value.summary.deletion &&
+    auth.can('clusters.change', scope()) &&
+    auth.can('blueprints.manage'),
 );
 /** Deleting again is possible when nothing runs or the cleanup timed out. */
 const canDelete = computed(
@@ -281,6 +292,17 @@ const machineHeaders = computed(() => [
         :title="t('clusters.externalHint')"
         >{{ t('clusters.external') }}</v-chip
       >
+      <v-chip
+        v-if="s?.summary.blueprint"
+        size="small"
+        variant="tonal"
+        color="primary"
+        class="ml-2"
+        prepend-icon="mdi-shape-outline"
+        :title="t('blueprints.boundHint', { blueprint: s.summary.blueprint })"
+        data-testid="blueprint-chip"
+        >{{ t('blueprints.chip', { blueprint: s.summary.blueprint }) }}</v-chip
+      >
       <AirGappedChip
         v-if="s?.summary.airGappedRegistry"
         :registry="s.summary.airGappedRegistry"
@@ -364,7 +386,9 @@ const machineHeaders = computed(() => [
           {{ t('clusters.machines') }}
           <v-chip size="x-small" class="ml-2" variant="tonal">{{ s.machines.length }}</v-chip>
         </v-tab>
-        <v-tab v-if="canChange" value="config" data-testid="tab-config">{{ t('day2.tab') }}</v-tab>
+        <v-tab v-if="canChange || canMaintainBlueprint" value="config" data-testid="tab-config">{{
+          t('day2.tab')
+        }}</v-tab>
         <v-tab value="addons" data-testid="tab-addons">{{ t('addons.tab') }}</v-tab>
         <v-tab value="resources" data-testid="tab-resources">{{ t('yamlView.resources') }}</v-tab>
         <v-tab value="events" data-testid="tab-events">
@@ -753,6 +777,7 @@ const machineHeaders = computed(() => [
             :namespace="namespace"
             :name="name"
             :status="s"
+            :blueprint="s.summary.blueprint"
           />
         </v-window-item>
 
@@ -765,6 +790,7 @@ const machineHeaders = computed(() => [
             :namespace="namespace"
             :name="name"
             :labels="s.summary.labels"
+            :blueprint="s.summary.blueprint"
           />
         </v-window-item>
 

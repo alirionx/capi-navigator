@@ -36,6 +36,8 @@ const props = defineProps<{
   namespace: string;
   name: string;
   status: ClusterStatus;
+  /** FP34-F-07: blueprint the cluster is bound to; only upgrade and reapply are offered. */
+  blueprint?: string;
 }>();
 const emit = defineEmits<{ changed: [] }>();
 const { t } = useI18n();
@@ -453,6 +455,15 @@ const infraNotes = computed(() =>
       }}</v-alert>
 
       <!-- Kubernetes version -->
+      <v-alert
+        v-if="blueprint"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+        data-testid="day2-blueprint"
+        >{{ t('blueprints.boundHint', { blueprint }) }}</v-alert
+      >
       <v-card border class="mb-4" data-testid="day2-kubernetes">
         <v-card-item
           :title="t('day2.kubernetes')"
@@ -480,7 +491,12 @@ const infraNotes = computed(() =>
       </v-card>
 
       <!-- Infrastructure settings (FP-33) -->
-      <v-card v-if="infraForm?.fields.length" border class="mb-4" data-testid="day2-infra">
+      <v-card
+        v-if="!blueprint && infraForm?.fields.length"
+        border
+        class="mb-4"
+        data-testid="day2-infra"
+      >
         <v-card-item
           :title="t('day2.infrastructure')"
           :subtitle="t('day2.infraSubtitle', { kind: infraPlugin!.infraClusterKind })"
@@ -509,7 +525,7 @@ const infraNotes = computed(() =>
 
       <!-- FP24-F-01: host for hosted control planes -->
       <v-card
-        v-if="spec.topology.mode !== 'hosted' && !!infraPlugin?.hosted"
+        v-if="!blueprint && spec.topology.mode !== 'hosted' && !!infraPlugin?.hosted"
         border
         class="mb-4"
         data-testid="day2-host"
@@ -578,7 +594,7 @@ const infraNotes = computed(() =>
       </v-card>
 
       <!-- Groups -->
-      <v-row>
+      <v-row v-if="!blueprint">
         <v-col v-for="g in groups" :key="g.id" cols="12" md="6">
           <v-card border class="fill-height" :data-testid="`day2-group-${g.id}`">
             <v-card-item
@@ -702,7 +718,7 @@ const infraNotes = computed(() =>
         </v-col>
       </v-row>
       <v-btn
-        v-if="spec.topology.mode !== 'all-in-one'"
+        v-if="!blueprint && spec.topology.mode !== 'all-in-one'"
         class="mt-4"
         variant="tonal"
         prepend-icon="mdi-plus"
