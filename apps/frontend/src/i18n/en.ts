@@ -345,6 +345,22 @@ export const en = {
       requests: '{cpu} CPU · {memory}',
     },
   },
+  logs: {
+    show: 'Show logs',
+    title: 'Logs',
+    hint: 'Newest lines of one container; refresh to read again. Logs may contain secrets: every read is audited.',
+    pod: 'Pod',
+    container: 'Container',
+    lines: 'Lines',
+    previous: 'Previous container',
+    restarts: '{n} restarts',
+    refresh: 'Read again',
+    filter: 'Filter lines',
+    matches: '{n} of {total} lines',
+    timestamps: 'Timestamps',
+    wrap: 'Wrap lines',
+    truncated: 'Showing the newest {n} lines; older ones are cut off.',
+  },
   kubeconfig: {
     show: 'Kubeconfig',
     title: 'Kubeconfig of {name}',
@@ -1574,6 +1590,8 @@ export const en = {
       'Day-2 changes incl. upgrades and infrastructure settings, scaling, labels (assigns add-ons) and bastion.',
     clusters_delete: 'Delete workload clusters.',
     clusters_kubeconfig: 'View and download the admin kubeconfig of workload clusters.',
+    clusters_logs:
+      'Read the logs of workloads in workload clusters (audited; logs may contain secrets).',
     nodes_shell: 'Open a root shell on workload cluster nodes.',
     addons_manage: 'Create, change and delete Helm and manifest add-ons; browse charts.',
     presets_manage:

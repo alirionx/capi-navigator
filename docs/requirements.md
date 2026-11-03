@@ -710,12 +710,14 @@ Highly available control plane verified on 2026-11-02 on Proxmox VE (ADR-0033): 
 - **FP18-F-04** MUST show the newest events of the cluster, filterable by namespace and to warnings.
 - **FP18-F-05** MUST be readable by viewers and offer no actions; Secret and ConfigMap content is never read.
 - **FP18-F-06** SHOULD refresh while open and work without metrics-server (requests and limits only).
+- **FP18-F-07** (added 2026-11-04, [ADR-0036](adr/0036-workload-logs-in-the-dashboard.md)) MUST show the logs of a workload or problem pod in a dialog for users with the permission `clusters.logs` (operator, admin; scopable): pods found through the workload's selector, the most interesting one (not ready, most restarts) and its default container first; pod, container, number of newest lines (100 to 5,000, at most 2 MiB) and the previous container selectable; filter, timestamps, line wrap and download in the browser. Every read is audited like the kubeconfig; the logs are neither logged nor cached by the backend and are dropped when the dialog closes. Viewers keep the dashboard without logs (FP18-F-05).
 
 **Acceptance criteria**
 
 - [x] On an RKE2 cluster on Infomaniak, usage and requests match `kubectl top nodes` and `kubectl describe node`.
 - [x] A viewer opens the dashboard and sees nodes and workloads; no action buttons.
 - [x] Without metrics-server the dashboard still works and says so.
+- [ ] An operator opens the logs of a Deployment and of a crashing pod (previous container) on a real cluster; a viewer sees no logs button and the backend refuses the request with 403; every read appears in the audit log.
 
 ### FP-19: Role management (optional)
 
@@ -730,6 +732,7 @@ Highly available control plane verified on 2026-11-02 on Proxmox VE (ADR-0033): 
 | `clusters.change` | Day-2 changes incl. upgrades and infrastructure settings (FP-33), scaling, labels (which also assigns add-ons), bastion | operator | yes |
 | `clusters.delete` | Delete workload clusters | operator | yes |
 | `clusters.kubeconfig` | View and download workload kubeconfigs | operator | yes |
+| `clusters.logs` | Read the logs of workloads in workload clusters (audited, FP18-F-07) | operator | yes |
 | `nodes.shell` | Node shell on workload cluster nodes | operator | yes |
 | `addons.manage` | Create, change and delete add-ons (Helm and manifest, FP-30); browse charts | operator | yes |
 | `presets.manage` | Override and roll out the presets (CCM, CSI, kured, kube-vip for LoadBalancer Services, FP-32) | admin | no |

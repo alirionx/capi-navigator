@@ -6,6 +6,8 @@ import { DashboardSchema, type Dashboard, type ResourceUse } from '@capi-navigat
 import { liveStream } from '../../api/live.js';
 import { formatAge, useNow } from '../../composables/age.js';
 import UsageBar from './UsageBar.vue';
+import WorkloadLogsDialog, { type LogTarget } from './WorkloadLogsDialog.vue';
+import { useAuthStore } from '../../stores/auth.js';
 
 /**
  * Read-only dashboard of a workload cluster (FP-18): usage, workloads, network and events,
@@ -14,6 +16,18 @@ import UsageBar from './UsageBar.vue';
 const props = defineProps<{ connection: string; namespace: string; name: string }>();
 const { t } = useI18n();
 const now = useNow(5000);
+const auth = useAuthStore();
+
+/** FP18-F-07: logs need their own permission, since they may contain secrets (ADR-0036). */
+const canLogs = computed(() =>
+  auth.can('clusters.logs', { connection: props.connection, namespace: props.namespace }),
+);
+const logTarget = ref<LogTarget | null>(null);
+const logsOpen = ref(false);
+function showLogs(target: LogTarget): void {
+  logTarget.value = target;
+  logsOpen.value = true;
+}
 
 const d = ref<Dashboard | null>(null);
 const error = ref<string | null>(null);
@@ -247,7 +261,18 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
               <td>{{ p.restarts }}</td>
               <td class="text-body-small">{{ p.node ?? '–' }}</td>
               <td class="text-body-small">{{ p.message ?? '' }}</td>
-              <td><YamlButton :target="inCluster('Pod', p.name, p.namespace)" /></td>
+              <td class="text-no-wrap">
+                <v-btn
+                  v-if="canLogs"
+                  icon="mdi-text-box-search-outline"
+                  variant="text"
+                  size="x-small"
+                  :title="t('logs.show')"
+                  :data-testid="`logs-Pod-${p.namespace}-${p.name}`"
+                  @click="showLogs({ kind: 'Pod', namespace: p.namespace, name: p.name })"
+                />
+                <YamlButton :target="inCluster('Pod', p.name, p.namespace)" />
+              </td>
             </tr>
           </tbody>
         </v-table>
@@ -298,6 +323,15 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
                     <v-chip size="x-small" variant="tonal" :color="statusColor(w.status)"
                       >{{ w.ready }}/{{ w.desired }}</v-chip
                     >
+                    <v-btn
+                      v-if="canLogs"
+                      icon="mdi-text-box-search-outline"
+                      variant="text"
+                      size="x-small"
+                      :title="t('logs.show')"
+                      :data-testid="`logs-${w.kind}-${w.namespace}-${w.name}`"
+                      @click="showLogs({ kind: w.kind, namespace: w.namespace, name: w.name })"
+                    />
                     <YamlButton :target="inCluster(w.kind, w.name, w.namespace)" />
                   </td>
                 </tr>
@@ -441,6 +475,13 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
         </v-table>
       </v-card>
     </template>
+    <WorkloadLogsDialog
+      v-model="logsOpen"
+      :connection="connection"
+      :namespace="namespace"
+      :name="name"
+      :target="logTarget"
+    />
   </div>
 </template>
 

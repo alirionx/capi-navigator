@@ -161,3 +161,64 @@ export type Dashboard = z.infer<typeof DashboardSchema>;
 
 export const DASHBOARD_EVENT_LIMIT = 100;
 export const DASHBOARD_REFRESH_SECONDS = 15;
+
+// ---- Logs of a workload (FP18-F-07, ADR-0036) ----
+
+export const LOG_KINDS = ['Deployment', 'StatefulSet', 'DaemonSet', 'Job', 'Pod'] as const;
+export const LOG_TAIL_CHOICES = [100, 500, 2000, 5000] as const;
+
+/** Which logs to read; without pod and container the backend picks the most interesting ones. */
+export const WorkloadLogsQuerySchema = z.object({
+  kind: z.enum(LOG_KINDS),
+  /** Namespace of the workload inside the workload cluster. */
+  workloadNamespace: z
+    .string()
+    .max(63)
+    .regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/, 'Not a valid namespace name'),
+  workload: z
+    .string()
+    .max(253)
+    .regex(/^[a-z0-9]([-.a-z0-9]*[a-z0-9])?$/, 'Not a valid name'),
+  pod: z
+    .string()
+    .max(253)
+    .regex(/^[a-z0-9]([-.a-z0-9]*[a-z0-9])?$/, 'Not a valid pod name')
+    .optional(),
+  container: z
+    .string()
+    .max(63)
+    .regex(/^[a-z0-9]([-a-z0-9]*[a-z0-9])?$/, 'Not a valid container name')
+    .optional(),
+  tailLines: z.coerce.number().int().min(10).max(5000).default(500),
+  /** Logs of the previous, terminated container, e.g. after a crash. */
+  previous: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+});
+export type WorkloadLogsQuery = z.input<typeof WorkloadLogsQuerySchema>;
+
+export const LogPodSchema = z.object({
+  name: z.string(),
+  phase: z.string(),
+  ready: z.boolean(),
+  restarts: z.number(),
+  node: z.string().optional(),
+  containers: z.array(z.string()),
+});
+export type LogPod = z.infer<typeof LogPodSchema>;
+
+export const WorkloadLogsSchema = z.object({
+  /** Pods of the workload, the most interesting (not ready, most restarts) first. */
+  pods: z.array(LogPodSchema),
+  pod: z.string().optional(),
+  container: z.string().optional(),
+  previous: z.boolean(),
+  /** Log lines with RFC 3339 timestamps, as `kubectl logs --timestamps`. */
+  text: z.string(),
+  /** Older lines exist: the tail or the size limit cut them off. */
+  truncated: z.boolean(),
+  /** Why there is no text, e.g. no pods or no previous container. */
+  hint: z.string().optional(),
+});
+export type WorkloadLogs = z.infer<typeof WorkloadLogsSchema>;

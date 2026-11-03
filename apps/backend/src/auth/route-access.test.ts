@@ -51,6 +51,8 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'GET /api/connections/:connection/clusters/:namespace/:name/registry-contents': 'viewer',
     'GET /api/connections/:connection/clusters/:namespace/:name/hosted-tenants': 'viewer',
     'GET /api/connections/:connection/clusters/:namespace/:name/hosted-control-plane': 'viewer',
+    // FP18-F-07: logs may contain secrets, so not for viewers (ADR-0036).
+    'GET /api/connections/:connection/clusters/:namespace/:name/logs': 'operator',
     // FP-34: cluster blueprints; creating from one needs clusters.create like the wizard.
     'GET /api/blueprints': 'viewer',
     'POST /api/blueprints/preview': 'admin',

@@ -39,3 +39,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0033](0033-kubeadm-no-longer-experimental.md)              | kubeadm is no longer experimental                                                | accepted |
 | [0034](0034-hosted-control-planes-with-k0smotron.md)        | Hosted control planes with k0smotron on an app-created host cluster              | accepted |
 | [0035](0035-clusters-from-blueprints-without-preview.md)    | Clusters from blueprints without a preview per request                           | accepted |
+| [0036](0036-workload-logs-in-the-dashboard.md)              | Workload logs in the dashboard                                                   | accepted |

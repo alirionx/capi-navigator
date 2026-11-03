@@ -77,7 +77,7 @@ One NestJS module per domain:
 | `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                                                                                             |
 | `blueprints`       | [blueprints](../apps/backend/src/blueprints)                               | Cluster blueprints (`ClusterBlueprint` CRs): checked saving, creating clusters from a blueprint without a preview (ADR-0035)                                                                                                                                         |
 | `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets and the kube-vip presets for LoadBalancer Services on Proxmox                                                                                           |
-| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it                                                                                                                                                                                             |
+| `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it; workload logs on request with `clusters.logs`, audited (ADR-0036)                                                                                                                          |
 | `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                                                                                    |
 | `health`, `config` | [health](../apps/backend/src/health), [config](../apps/backend/src/config) | Liveness/readiness and health of connections; environment variables validated with Zod                                                                                                                                                                               |
 
@@ -396,6 +396,9 @@ Secret that CAPI maintains:
 
 - **Dashboard**: read-only lists of nodes, workloads, services, ingresses, routes and metrics;
   never Secrets or ConfigMaps ([ADR-0009](adr/0009-dashboard-polling.md)).
+- **Logs**: the newest lines of one container of a workload, read on request for users with
+  `clusters.logs`, audited and passed through without logging or caching
+  ([ADR-0036](adr/0036-workload-logs-in-the-dashboard.md)).
 - **Node shell**: a privileged pod on the chosen node, `nsenter` into the host, relayed over a
   WebSocket; deleted when the session ends ([ADR-0008](adr/0008-node-shell-via-privileged-pod.md)).
 - **Kubeconfig**: view and download for operators, every access audited

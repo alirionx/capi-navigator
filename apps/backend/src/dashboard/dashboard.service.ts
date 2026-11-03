@@ -8,7 +8,11 @@ import {
   NetworkingV1Api,
   VersionApi,
 } from '@kubernetes/client-node';
-import { DASHBOARD_REFRESH_SECONDS, type Dashboard } from '@capi-navigator/shared';
+import {
+  DASHBOARD_REFRESH_SECONDS,
+  type Dashboard,
+  type WorkloadLogs,
+} from '@capi-navigator/shared';
 import {
   catchError,
   exhaustMap,
@@ -21,11 +25,13 @@ import {
   type Observable,
 } from 'rxjs';
 import { ClustersService } from '../clusters/clusters.service.js';
-import { kubeStatus } from '../kube/errors.js';
+import { kubeStatus, toHttpException } from '../kube/errors.js';
 import type { LiveEvent } from '../kube/live-channels.js';
 import { buildDashboard, type DashboardRaw, type HttpRoute } from './build-dashboard.js';
+import { readWorkloadLogs, type LogsRequest } from './workload-logs.js';
 
 const REQUEST_TIMEOUT_MS = 10_000;
+const LOGS_TIMEOUT_MS = 20_000;
 
 /**
  * Read-only dashboard of a workload cluster (FP-18, ADR-0009). Metrics cannot be watched, so the
@@ -43,6 +49,28 @@ export class DashboardService {
     kc.loadFromString(await this.clusters.kubeconfig(connection, namespace, name));
     return buildDashboard(await this.read(kc));
   }
+
+  /** FP18-F-07: logs of a workload's container; never logged or cached (ADR-0036). */
+  async logs(
+    connection: string,
+    namespace: string,
+    name: string,
+    req: LogsRequest,
+  ): Promise<WorkloadLogs> {
+    const kc = new KubeConfig();
+    kc.loadFromString(await this.clusters.kubeconfig(connection, namespace, name));
+    try {
+      return await withTimeout(this.readLogs(kc, req), LOGS_TIMEOUT_MS);
+    } catch (err) {
+      throw toHttpException(
+        err,
+        `Read the logs of ${req.kind} ${req.workloadNamespace}/${req.workload}`,
+      );
+    }
+  }
+
+  /** Replaced in tests. */
+  readLogs = readWorkloadLogs;
 
   stream(connection: string, namespace: string, name: string): Observable<LiveEvent<Dashboard>> {
     const key = `${connection}/${namespace}/${name}`;

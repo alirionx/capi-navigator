@@ -152,6 +152,40 @@ const dashboard = {
   warnings: [],
 };
 
+const logs = {
+  pods: [
+    {
+      name: 'web-7d9f-x2k4p',
+      phase: 'Running',
+      ready: false,
+      restarts: 3,
+      node: 'demo-cp-1',
+      containers: ['web', 'istio-proxy'],
+    },
+    {
+      name: 'web-7d9f-q8m2z',
+      phase: 'Running',
+      ready: true,
+      restarts: 0,
+      node: 'demo-cp-1',
+      containers: ['web', 'istio-proxy'],
+    },
+  ],
+  pod: 'web-7d9f-x2k4p',
+  container: 'web',
+  previous: false,
+  text: [
+    '2026-11-04T08:00:00.000Z starting web 2.4.1',
+    '2026-11-04T08:00:00.120Z listening on :8080',
+    '2026-11-04T08:00:03.410Z level=warn msg="cache warm-up slow" took=2.9s',
+    '2026-11-04T08:00:05.002Z GET /healthz 200 1ms',
+    '2026-11-04T08:00:09.877Z level=error msg="db: dial tcp 10.43.12.7:5432: connection refused"',
+    '2026-11-04T08:00:10.001Z GET /healthz 503 2ms',
+    '',
+  ].join('\n'),
+  truncated: false,
+};
+
 async function openFixture(page: Page): Promise<void> {
   // FP-18: read-only dashboard from a fixture as well.
   await page.route('**/clusters/team-a/demo/dashboard/events', (route) =>
@@ -208,6 +242,28 @@ test.describe('cluster lifecycle and roles (FP-6, FP-7)', () => {
     for (const id of ['delete-cluster', 'edit-labels', 'show-kubeconfig', 'scale-default']) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
+    // FP18-F-07: logs of a workload in a dialog, for operators and admins.
+    const logsQueries: string[] = [];
+    await page.route('**/clusters/team-a/demo/logs?*', (route) => {
+      logsQueries.push(new URL(route.request().url()).searchParams.toString());
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(logs),
+      });
+    });
+    await page.getByTestId('tab-dashboard').click();
+    await page.getByTestId('logs-Deployment-shop-web').click();
+    const dialog = page.getByTestId('logs-dialog');
+    await expect(dialog.getByTestId('logs-text')).toContainText('connection refused');
+    expect(logsQueries[0]).toContain('kind=Deployment&workloadNamespace=shop&workload=web');
+    await dialog.getByTestId('logs-filter').getByRole('textbox').fill('refused');
+    await expect(dialog.getByTestId('logs-text')).not.toContainText('listening on :8080');
+    if (process.env.E2E_SCREENSHOT_DIR) {
+      await dialog.getByTestId('logs-filter').getByRole('textbox').fill('');
+      await dialog.screenshot({ path: `${process.env.E2E_SCREENSHOT_DIR}/logs-dialog.png` });
+    }
+    await page.keyboard.press('Escape');
     await page.getByTestId('tab-tree').click();
     await expect(page.getByTestId('resource-tree')).toContainText('demo-control-plane');
     // FP-17: node shell for operators and admins.
@@ -232,6 +288,8 @@ test.describe('cluster lifecycle and roles (FP-6, FP-7)', () => {
       await viewerPage.getByTestId('tab-dashboard').click();
       await expect(viewerPage.getByTestId('dash-node-demo-cp-1')).toBeVisible();
       await expect(viewerPage.getByTestId('dash-workloads')).toContainText('shop/web');
+      // FP18-F-07: no logs for viewers, in the UI and in the backend.
+      await expect(viewerPage.getByTestId('logs-Deployment-shop-web')).toHaveCount(0);
       // UX-09: services with routes, ready pods and workloads; "only exposed" hides the rest.
       const services = viewerPage.getByTestId('dash-services');
       await expect(viewerPage.getByTestId('dash-service-shop-web')).toContainText(
@@ -266,6 +324,11 @@ test.describe('cluster lifecycle and roles (FP-6, FP-7)', () => {
       const base = '/api/connections/home/clusters/team-a/demo';
       expect((await api.get(`${base}/kubeconfig`)).status()).toBe(403);
       expect((await api.get(`${base}/delete-preview`)).status()).toBe(403);
+      expect(
+        (
+          await api.get(`${base}/logs?kind=Deployment&workloadNamespace=shop&workload=web`)
+        ).status(),
+      ).toBe(403);
       expect(
         (
           await api.post(`${base}/scale/preview`, {

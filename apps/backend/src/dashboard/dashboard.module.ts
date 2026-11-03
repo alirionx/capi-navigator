@@ -1,11 +1,26 @@
-import { Controller, Get, Module, Param, Sse, type MessageEvent } from '@nestjs/common';
-import type { Dashboard } from '@capi-navigator/shared';
+import {
+  Controller,
+  Get,
+  Header,
+  Module,
+  Param,
+  Query,
+  Sse,
+  type MessageEvent,
+} from '@nestjs/common';
+import type { Dashboard, WorkloadLogs } from '@capi-navigator/shared';
 import { interval, map, merge, type Observable } from 'rxjs';
-import { Requires } from '../auth/decorators.js';
+import { Audit, Requires } from '../auth/decorators.js';
+import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { ClustersModule } from '../clusters/clusters.module.js';
 import { DashboardService } from './dashboard.service.js';
 import { Api, liveEvents } from '../openapi/api.decorator.js';
-import { DashboardSchema } from '@capi-navigator/shared';
+import {
+  DashboardSchema,
+  WorkloadLogsQuerySchema,
+  WorkloadLogsSchema,
+} from '@capi-navigator/shared';
+import type { LogsRequest } from './workload-logs.js';
 
 const HEARTBEAT_MS = 25_000;
 
@@ -50,10 +65,44 @@ export class DashboardController {
   }
 }
 
+/**
+ * FP18-F-07: logs of a workload. Logs may contain secrets, so they need their own permission
+ * and every read is audited like the kubeconfig (ADR-0036).
+ */
+@Controller('api/connections/:connection/clusters/:namespace/:name/logs')
+export class WorkloadLogsController {
+  constructor(private readonly dashboards: DashboardService) {}
+
+  @Requires('clusters.logs')
+  @Api({
+    summary: 'Logs of a workload in a workload cluster (one container, newest lines)',
+    description:
+      'Pods are found through the selector of the workload; without pod and container the most interesting pod (not ready, most restarts) and its default container are read. Every access is audited (ADR-0036); not cached.',
+    response: WorkloadLogsSchema,
+  })
+  @Get()
+  @Header('Cache-Control', 'no-store')
+  @Audit({
+    action: 'cluster.logs.view',
+    sensitiveRead: true,
+    managementClusterParam: 'connection',
+    targetKind: 'Cluster',
+    targetParam: 'name',
+  })
+  logs(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Query(new ZodValidationPipe(WorkloadLogsQuerySchema)) query: LogsRequest,
+  ): Promise<WorkloadLogs> {
+    return this.dashboards.logs(connection, namespace, name, query);
+  }
+}
+
 /** FP-18: read-only cluster dashboard. */
 @Module({
   imports: [ClustersModule],
-  controllers: [DashboardController],
+  controllers: [DashboardController, WorkloadLogsController],
   providers: [DashboardService],
 })
 export class DashboardModule {}
