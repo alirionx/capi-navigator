@@ -195,7 +195,7 @@ describe('cluster deletion (FP6-F-06)', () => {
     await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
   });
 
-  it('deletes without cleanup when the workload cluster stays unreachable', async () => {
+  it('answers at once and deletes without cleanup when the workload cluster stays unreachable (CNR-05)', async () => {
     DELETION_TIMING.startMs = 30;
     DELETION_TIMING.startRetryMs = 5;
     const down = fakeWorkload();
@@ -207,8 +207,10 @@ describe('cluster deletion (FP6-F-06)', () => {
       confirmName: 'demo',
       cleanup: true,
     });
-    expect(status.phase).toBe('deleting');
-    expect(events).toEqual(['phase:deleting', 'deleted']);
+    // Recorded before the first attempt to start the cleanup; the retries run in the background.
+    expect(status.phase).toBe('cleanup');
+    expect(events).toEqual(['phase:cleanup']);
+    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
   });
 
   it('stops with cleanup-timeout while resources remain', async () => {

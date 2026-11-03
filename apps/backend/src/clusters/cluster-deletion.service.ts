@@ -129,33 +129,50 @@ export class ClusterDeletionService {
       throw new ConflictException({ message: blockers[0], hint: 'Delete the tenants first.' });
     }
     const api = req.cleanup ? await this.workload(connection, namespace, name) : undefined;
-    let cleanup = false;
-    if (api) {
-      // A single failed request (e.g. a load balancer failover in front of the API) must not
-      // skip the cleanup and leave load balancers and floating IPs behind: retry for a while.
-      const deadline = Date.now() + DELETION_TIMING.startMs;
-      for (;;) {
-        try {
-          await withTimeout(startCleanup(api), Math.max(1, deadline - Date.now()));
-          cleanup = true;
-          break;
-        } catch (err) {
-          if (Date.now() + DELETION_TIMING.startRetryMs >= deadline) {
-            this.logger.warn(`Cleanup of ${namespace}/${name} could not start: ${String(err)}`);
-            break;
-          }
-          await new Promise((r) => setTimeout(r, DELETION_TIMING.startRetryMs));
-        }
-      }
-    }
-    const status: DeletionStatus = cleanup
-      ? { phase: 'cleanup', startedAt: new Date().toISOString() }
-      : { phase: 'deleting', startedAt: new Date().toISOString() };
+    // CNR-05: record the deletion first and answer at once; starting the cleanup may take up to
+    // DELETION_TIMING.startMs, longer than clients such as the Cloud Controller of Cloud Foundry
+    // wait. The progress shows in the annotation.
+    const status: DeletionStatus = {
+      phase: api ? 'cleanup' : 'deleting',
+      startedAt: new Date().toISOString(),
+    };
     await this.annotate(kc, namespace, name, status);
     if (req.skipDrain) await this.skipDrain(kc, namespace, name);
-    if (cleanup) void this.finishAfterCleanup(connection, namespace, name, api!, status.startedAt);
+    if (api) void this.cleanUpThenDelete(connection, namespace, name, api, status.startedAt);
     else await this.deleteObjects(kc, namespace, name);
     return status;
+  }
+
+  /** Starts the cleanup in the background; without it the cluster is deleted right away. */
+  private async cleanUpThenDelete(
+    connection: string,
+    namespace: string,
+    name: string,
+    api: WorkloadApi,
+    startedAt: string,
+  ): Promise<void> {
+    // A single failed request (e.g. a load balancer failover in front of the API) must not
+    // skip the cleanup and leave load balancers and floating IPs behind: retry for a while.
+    const deadline = Date.now() + DELETION_TIMING.startMs;
+    for (;;) {
+      try {
+        await withTimeout(startCleanup(api), Math.max(1, deadline - Date.now()));
+        return this.finishAfterCleanup(connection, namespace, name, api, startedAt);
+      } catch (err) {
+        if (Date.now() + DELETION_TIMING.startRetryMs >= deadline) {
+          this.logger.warn(`Cleanup of ${namespace}/${name} could not start: ${String(err)}`);
+          break;
+        }
+        await new Promise((r) => setTimeout(r, DELETION_TIMING.startRetryMs));
+      }
+    }
+    try {
+      const kc = await this.clients.forConnection(connection);
+      await this.annotate(kc, namespace, name, { phase: 'deleting', startedAt });
+      await this.deleteObjects(kc, namespace, name);
+    } catch (err) {
+      this.logger.error(`Deletion of ${namespace}/${name} failed: ${String(err)}`);
+    }
   }
 
   /**
