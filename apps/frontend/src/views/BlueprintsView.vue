@@ -89,7 +89,9 @@ const pools = ref<PoolParams[]>([]);
 const versionsOn = ref(false);
 const versions = ref<string[]>([]);
 /** FP34-F-14: address pool for providers where every cluster needs own addresses. */
-const addressPool = ref<string[]>([]);
+// A text field with comma-separated ranges: a combobox lost typed ranges without Enter.
+const addressPoolText = ref('');
+const addressPool = computed(() => addressPoolText.value.split(/[\s,]+/).filter(Boolean));
 const needsPool = computed(
   () => !!base.value && !!INFRA_PLUGINS[base.value.infrastructure.provider].addressPool,
 );
@@ -133,7 +135,7 @@ function openForm(b?: ClusterBlueprint): void {
   sourceCluster.value = null;
   base.value = null;
   pools.value = [];
-  addressPool.value = b?.spec.addressPool ?? [];
+  addressPoolText.value = (b?.spec.addressPool ?? []).join(', ');
   if (b) setBase(b.spec.cluster, b.spec.parameters);
   formError.value = null;
   preview.value = null;
@@ -417,9 +419,9 @@ async function confirmDelete(): Promise<void> {
               })
             }}</v-alert>
 
-            <v-combobox
+            <v-text-field
               v-if="needsPool"
-              v-model="addressPool"
+              v-model="addressPoolText"
               :label="t('blueprints.addressPool')"
               :hint="
                 t('blueprints.addressPoolHint', {
@@ -429,9 +431,6 @@ async function confirmDelete(): Promise<void> {
                 })
               "
               persistent-hint
-              multiple
-              chips
-              closable-chips
               class="mb-4"
               data-testid="blueprint-address-pool"
             />

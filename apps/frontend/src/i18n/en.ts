@@ -530,7 +530,7 @@ export const en = {
       'Flavors, instance or machine types, or Proxmox VE sizes of the credential; must contain the current {size} (the default).',
     addressPool: 'Address pool',
     addressPoolHint:
-      'Required on Proxmox VE: every cluster gets its API address, node addresses (nodes plus one for rollouts) and LoadBalancer addresses from these free ranges in {cidr}, e.g. 192.168.10.100-192.168.10.149. The addresses of the base spec are not used.',
+      'Required on Proxmox VE: every cluster gets its API address, node addresses (nodes plus one for rollouts) and LoadBalancer addresses from these free ranges in {cidr}, separated by commas, e.g. 192.168.10.100-192.168.10.149. The addresses of the base spec are not used.',
     versionsOn: 'Kubernetes version can be chosen',
     versionsHint: 'Versions from the version catalog; the current version is the default.',
     versionsAirGapped: 'Not for air-gapped clusters: their artifacts are pinned per version.',

@@ -3,9 +3,12 @@ import { expect, test } from '@playwright/test';
 // Cluster blueprints (FP-34, acceptance criterion "Playwright"). Needs an admin account and a
 // cluster created by the app whose check passes (providers ready, credential tested and allowed):
 //   E2E_ADMIN_PASSWORD=... E2E_BLUEPRINT_SOURCE=<connection>/<namespace>/<cluster> pnpm test:e2e
+// For a Proxmox VE cluster also E2E_BLUEPRINT_POOL=<range>, e.g. 192.168.10.74-192.168.10.80
+// (free addresses for the check, FP34-F-14).
 const adminUser = process.env.E2E_ADMIN_USER ?? 'admin';
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
 const source = process.env.E2E_BLUEPRINT_SOURCE;
+const pool = process.env.E2E_BLUEPRINT_POOL;
 
 test.describe('cluster blueprints (FP-34)', () => {
   test.skip(!adminPassword || !source, 'set E2E_ADMIN_PASSWORD and E2E_BLUEPRINT_SOURCE to run');
@@ -13,6 +16,8 @@ test.describe('cluster blueprints (FP-34)', () => {
   test('an admin creates a blueprint from a cluster, checks, saves and deletes it', async ({
     page,
   }) => {
+    // The check runs a dry run on the management cluster.
+    test.setTimeout(120_000);
     const [connection, namespace, cluster] = source!.split('/') as [string, string, string];
     const name = `e2e-${Date.now().toString(36)}`;
 
@@ -31,6 +36,16 @@ test.describe('cluster blueprints (FP-34)', () => {
     await page.getByRole('option', { name: connection, exact: true }).click();
     await page.getByTestId('blueprint-source').click();
     await page.getByRole('option', { name: `${namespace}/${cluster}`, exact: true }).click();
+
+    // The spec of the source cluster loads asynchronously.
+    await expect(page.getByText('is only the example for the check')).toBeVisible();
+
+    // FP34-F-14: providers where every cluster needs own addresses ask for an address pool.
+    const poolField = page.getByTestId('blueprint-address-pool');
+    if (await poolField.isVisible()) {
+      expect(pool, 'set E2E_BLUEPRINT_POOL for a Proxmox VE source cluster').toBeTruthy();
+      await poolField.getByRole('textbox').fill(pool!);
+    }
 
     // Number of workers of the first pool as parameter; the defaults fit the base spec.
     const counts = page.locator('[data-testid^="blueprint-count-"]');
