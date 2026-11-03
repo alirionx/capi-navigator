@@ -65,7 +65,7 @@ const dashboard = {
     namespaces: 4,
     pods: 3,
     podPhases: { Running: 3 },
-    services: { ClusterIP: 2 },
+    services: { ClusterIP: 2, LoadBalancer: 1 },
   },
   nodes: [
     {
@@ -80,9 +80,73 @@ const dashboard = {
   ],
   workloads: [
     { kind: 'Deployment', namespace: 'shop', name: 'web', desired: 1, ready: 1, status: 'ok' },
+    {
+      kind: 'StatefulSet',
+      namespace: 'shop',
+      name: 'db',
+      desired: 1,
+      ready: 0,
+      status: 'degraded',
+    },
   ],
   problemPods: [],
-  services: [],
+  // UX-09: the way of the traffic per service.
+  services: [
+    {
+      namespace: 'shop',
+      name: 'api',
+      type: '',
+      external: [],
+      ports: [],
+      status: 'degraded',
+      workloads: [],
+      routes: [{ kind: 'HTTPRoute', name: 'api', host: 'api.example.com/v1', tls: false }],
+      missing: true,
+    },
+    {
+      namespace: 'shop',
+      name: 'db',
+      type: 'ClusterIP',
+      external: [],
+      ports: ['5432/TCP'],
+      endpoints: { ready: 0, total: 1 },
+      status: 'degraded',
+      workloads: [{ kind: 'StatefulSet', name: 'db' }],
+      routes: [],
+    },
+    {
+      namespace: 'ingress',
+      name: 'ingress-nginx-controller',
+      type: 'LoadBalancer',
+      external: ['203.0.113.10'],
+      ports: ['80:31080/TCP (http)', '443:31443/TCP (https)'],
+      endpoints: { ready: 2, total: 2 },
+      status: 'ok',
+      workloads: [{ kind: 'Deployment', name: 'ingress-nginx-controller' }],
+      routes: [],
+    },
+    {
+      namespace: 'shop',
+      name: 'web',
+      type: 'ClusterIP',
+      external: [],
+      ports: ['80/TCP'],
+      endpoints: { ready: 1, total: 1 },
+      status: 'ok',
+      workloads: [{ kind: 'Deployment', name: 'web' }],
+      routes: [{ kind: 'Ingress', name: 'web', host: 'shop.example.com', tls: true }],
+    },
+    {
+      namespace: 'default',
+      name: 'kubernetes',
+      type: 'ClusterIP',
+      external: [],
+      ports: ['443/TCP (https)'],
+      status: 'none',
+      workloads: [],
+      routes: [],
+    },
+  ],
   ingresses: [],
   events: [],
   warnings: [],
@@ -168,6 +232,19 @@ test.describe('cluster lifecycle and roles (FP-6, FP-7)', () => {
       await viewerPage.getByTestId('tab-dashboard').click();
       await expect(viewerPage.getByTestId('dash-node-demo-cp-1')).toBeVisible();
       await expect(viewerPage.getByTestId('dash-workloads')).toContainText('shop/web');
+      // UX-09: services with routes, ready pods and workloads; "only exposed" hides the rest.
+      const services = viewerPage.getByTestId('dash-services');
+      await expect(viewerPage.getByTestId('dash-service-shop-web')).toContainText(
+        'shop.example.com',
+      );
+      await expect(viewerPage.getByTestId('dash-service-shop-api')).toContainText('missing');
+      if (process.env.E2E_SCREENSHOT_DIR) {
+        await services.screenshot({ path: `${process.env.E2E_SCREENSHOT_DIR}/dash-services.png` });
+      }
+      await viewerPage.getByTestId('dash-only-exposed').getByRole('checkbox').check();
+      await expect(viewerPage.getByTestId('dash-service-default-kubernetes')).toHaveCount(0);
+      await expect(viewerPage.getByTestId('dash-service-shop-db')).toHaveCount(0);
+      await expect(viewerPage.getByTestId('dash-service-shop-web')).toBeVisible();
       // FP-7: viewers read the YAML but get no day-2 forms.
       await expect(viewerPage.getByTestId('tab-config')).toHaveCount(0);
       await viewerPage.route('**/resources/yaml/events?*', (route) =>

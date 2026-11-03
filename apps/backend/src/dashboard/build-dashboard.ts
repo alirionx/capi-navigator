@@ -15,6 +15,7 @@ import {
   DASHBOARD_EVENT_LIMIT,
   parseQuantity,
   type Dashboard,
+  type DashboardService,
   type DashboardWorkload,
   type ProblemPod,
 } from '@capi-navigator/shared';
@@ -44,7 +45,10 @@ export interface HttpRoute {
   spec?: {
     hostnames?: string[];
     parentRefs?: { name?: string }[];
-    rules?: { backendRefs?: { name?: string; port?: number }[] }[];
+    rules?: {
+      matches?: { path?: { value?: string } }[];
+      backendRefs?: { name?: string; namespace?: string; kind?: string; port?: number }[];
+    }[];
   };
 }
 
@@ -129,6 +133,149 @@ function problemOf(pod: V1Pod): ProblemPod | undefined {
     restarts,
     ...(message ? { message: message.slice(0, 300) } : {}),
   };
+}
+
+const podReady = (p: V1Pod) =>
+  !!p.status?.conditions?.some((c) => c.type === 'Ready' && c.status === 'True');
+
+/** The workload owning a pod: a Deployment through its ReplicaSet (pod-template-hash). */
+function ownerOf(pod: V1Pod): { kind: string; name: string } | undefined {
+  const ref = pod.metadata?.ownerReferences?.find((r) => r.controller);
+  if (!ref) return undefined;
+  const hash = pod.metadata?.labels?.['pod-template-hash'];
+  if (ref.kind === 'ReplicaSet' && hash && ref.name.endsWith(`-${hash}`)) {
+    return { kind: 'Deployment', name: ref.name.slice(0, -hash.length - 1) };
+  }
+  return { kind: ref.kind, name: ref.name };
+}
+
+const routePath = (host: string, path?: string) => `${host}${path && path !== '/' ? path : ''}`;
+
+/**
+ * Services with their routes, ready endpoints and workloads (FP18-F-03, UX-09); routes to a
+ * service that does not exist come out as missing services.
+ */
+function servicesView(raw: DashboardRaw): DashboardService[] {
+  const key = (ns: string, name: string) => `${ns}/${name}`;
+  const routes = new Map<string, DashboardService['routes']>();
+  const addRoute = (ns: string, svc: string, r: DashboardService['routes'][number]) => {
+    const list = routes.get(key(ns, svc)) ?? [];
+    if (!list.some((x) => x.kind === r.kind && x.name === r.name && x.host === r.host))
+      list.push(r);
+    routes.set(key(ns, svc), list);
+  };
+  for (const i of raw.ingresses) {
+    const ns = i.metadata?.namespace ?? '';
+    const name = i.metadata?.name ?? '';
+    const tlsHosts = new Set((i.spec?.tls ?? []).flatMap((t) => t.hosts ?? []));
+    const anyTls = (i.spec?.tls?.length ?? 0) > 0;
+    for (const rule of i.spec?.rules ?? []) {
+      const host = rule.host ?? '*';
+      for (const p of rule.http?.paths ?? []) {
+        if (!p.backend.service) continue;
+        addRoute(ns, p.backend.service.name, {
+          kind: 'Ingress',
+          name,
+          host: routePath(host, p.path),
+          tls: tlsHosts.has(host) || (anyTls && !rule.host),
+        });
+      }
+    }
+    const def = i.spec?.defaultBackend?.service;
+    if (def) addRoute(ns, def.name, { kind: 'Ingress', name, host: '*', tls: anyTls });
+  }
+  for (const r of raw.httpRoutes) {
+    const ns = r.metadata?.namespace ?? '';
+    const name = r.metadata?.name ?? '';
+    for (const rule of r.spec?.rules ?? []) {
+      const paths = (rule.matches ?? []).map((m) => m.path?.value).filter((v) => !!v);
+      for (const b of rule.backendRefs ?? []) {
+        if (!b.name || (b.kind && b.kind !== 'Service')) continue;
+        for (const host of r.spec?.hostnames?.length ? r.spec.hostnames : ['*']) {
+          for (const path of paths.length ? paths : [undefined]) {
+            addRoute(b.namespace ?? ns, b.name, {
+              kind: 'HTTPRoute',
+              name,
+              host: routePath(host, path),
+              tls: false,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  const pods = raw.pods.filter(active);
+  const services: DashboardService[] = raw.services.map((s) => {
+    const ns = s.metadata?.namespace ?? '';
+    const name = s.metadata?.name ?? '';
+    const type = s.spec?.type ?? 'ClusterIP';
+    const selector = s.spec?.selector ?? {};
+    const hasSelector = Object.keys(selector).length > 0;
+    const behind = hasSelector
+      ? pods.filter(
+          (p) =>
+            p.metadata?.namespace === ns &&
+            Object.entries(selector).every(([k, v]) => p.metadata?.labels?.[k] === v),
+        )
+      : [];
+    const ready = behind.filter(podReady).length;
+    const owners = new Map<string, { kind: string; name: string }>();
+    for (const p of behind) {
+      const o = ownerOf(p) ?? { kind: 'Pod', name: p.metadata?.name ?? '' };
+      owners.set(`${o.kind}/${o.name}`, o);
+    }
+    return {
+      namespace: ns,
+      name,
+      type,
+      external:
+        type === 'ExternalName' && s.spec?.externalName
+          ? [s.spec.externalName]
+          : lbAddresses(s.status?.loadBalancer?.ingress),
+      ports: (s.spec?.ports ?? []).map(
+        (p) =>
+          `${p.port}${p.nodePort ? `:${p.nodePort}` : ''}/${p.protocol ?? 'TCP'}${p.name ? ` (${p.name})` : ''}`,
+      ),
+      ...(hasSelector ? { endpoints: { ready, total: behind.length } } : {}),
+      status: !hasSelector
+        ? 'none'
+        : behind.length === 0
+          ? 'degraded'
+          : workloadStatus(behind.length, ready),
+      workloads: [...owners.values()].sort(
+        (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name),
+      ),
+      routes: routes.get(key(ns, name)) ?? [],
+    };
+  });
+  const present = new Set(services.map((s) => key(s.namespace, s.name)));
+  for (const [k, list] of routes) {
+    if (present.has(k)) continue;
+    const [namespace = '', name = ''] = k.split('/');
+    services.push({
+      namespace,
+      name,
+      type: '',
+      external: [],
+      ports: [],
+      status: 'degraded',
+      workloads: [],
+      routes: list,
+      missing: true,
+    });
+  }
+  const exposed = (s: DashboardService) =>
+    s.type === 'LoadBalancer' || s.type === 'NodePort' || s.routes.length > 0;
+  const order = (s: DashboardService) =>
+    s.status === 'degraded' ? 0 : s.status === 'progressing' ? 1 : 2;
+  return services.sort(
+    (a, b) =>
+      order(a) - order(b) ||
+      Number(exposed(b)) - Number(exposed(a)) ||
+      a.namespace.localeCompare(b.namespace) ||
+      a.name.localeCompare(b.name),
+  );
 }
 
 const lbAddresses = (ingress?: { ip?: string; hostname?: string }[]) =>
@@ -254,17 +401,7 @@ export function buildDashboard(raw: DashboardRaw, now = new Date()): Dashboard {
     serviceCounts[type] = (serviceCounts[type] ?? 0) + 1;
   }
 
-  const services = raw.services
-    .filter((s) => s.spec?.type === 'LoadBalancer' || s.spec?.type === 'NodePort')
-    .map((s) => ({
-      ...meta(s),
-      type: s.spec?.type ?? '',
-      external: lbAddresses(s.status?.loadBalancer?.ingress),
-      ports: (s.spec?.ports ?? []).map(
-        (p) =>
-          `${p.port}${p.nodePort ? `:${p.nodePort}` : ''}/${p.protocol ?? 'TCP'}${p.name ? ` (${p.name})` : ''}`,
-      ),
-    }));
+  const services = servicesView(raw);
 
   const ingresses = [
     ...raw.ingresses.map((i) => ({

@@ -20,17 +20,26 @@ const raw = (over: Partial<DashboardRaw> = {}): DashboardRaw => ({
   nodes: [node('n1'), node('n2', false)] as never,
   pods: [
     {
-      metadata: { namespace: 'shop', name: 'web' },
+      metadata: {
+        namespace: 'shop',
+        name: 'web',
+        labels: { app: 'web', 'pod-template-hash': '7d9f' },
+        ownerReferences: [{ kind: 'ReplicaSet', name: 'web-7d9f', controller: true }],
+      },
       spec: {
         nodeName: 'n1',
         containers: [container('100m', '128Mi'), container('50m', '64Mi')],
         // A larger init container dominates the effective request (scheduler rule).
         initContainers: [container('500m', '32Mi')],
       },
-      status: { phase: 'Running', containerStatuses: [{ restartCount: 0 }] },
+      status: {
+        phase: 'Running',
+        conditions: [{ type: 'Ready', status: 'True' }],
+        containerStatuses: [{ restartCount: 0 }],
+      },
     },
     {
-      metadata: { namespace: 'shop', name: 'crashy' },
+      metadata: { namespace: 'shop', name: 'crashy', labels: { app: 'web' } },
       spec: { nodeName: 'n1', containers: [container('10m', '16Mi')] },
       status: {
         phase: 'Running',
@@ -87,10 +96,18 @@ const raw = (over: Partial<DashboardRaw> = {}): DashboardRaw => ({
   services: [
     {
       metadata: { namespace: 'shop', name: 'web' },
-      spec: { type: 'LoadBalancer', ports: [{ port: 80, nodePort: 31000, protocol: 'TCP' }] },
+      spec: {
+        type: 'LoadBalancer',
+        selector: { app: 'web' },
+        ports: [{ port: 80, nodePort: 31000, protocol: 'TCP' }],
+      },
       status: { loadBalancer: { ingress: [{ ip: '203.0.113.10' }] } },
     },
-    { metadata: { namespace: 'shop', name: 'db' }, spec: { type: 'ClusterIP' } },
+    {
+      metadata: { namespace: 'shop', name: 'db' },
+      spec: { type: 'ClusterIP', selector: { app: 'db' }, ports: [{ port: 5432 }] },
+    },
+    { metadata: { namespace: 'default', name: 'kubernetes' }, spec: { type: 'ClusterIP' } },
   ] as never,
   ingresses: [
     {
@@ -101,7 +118,9 @@ const raw = (over: Partial<DashboardRaw> = {}): DashboardRaw => ({
         rules: [
           {
             host: 'shop.example.com',
-            http: { paths: [{ backend: { service: { name: 'web', port: { number: 80 } } } }] },
+            http: {
+              paths: [{ path: '/', backend: { service: { name: 'web', port: { number: 80 } } } }],
+            },
           },
         ],
       },
@@ -179,18 +198,61 @@ describe('cluster dashboard (FP-18)', () => {
     expect(d.problemPods[1]?.message).toBe('Insufficient cpu');
   });
 
-  it('shows external services, ingresses and HTTP routes, newest events first', () => {
+  it('shows services with routes, endpoints and workloads, newest events first (FP18-F-03, UX-09)', () => {
     const d = buildDashboard(raw());
     expect(d.services).toEqual([
+      // Problems first, exposed ones before the others: routed to by the HTTPRoute, but absent.
+      {
+        namespace: 'shop',
+        name: 'api',
+        type: '',
+        external: [],
+        ports: [],
+        status: 'degraded',
+        workloads: [],
+        routes: [{ kind: 'HTTPRoute', name: 'api', host: 'api.example.com', tls: false }],
+        missing: true,
+      },
+      // No pod behind the selector: a problem, but not reachable from outside.
+      {
+        namespace: 'shop',
+        name: 'db',
+        type: 'ClusterIP',
+        external: [],
+        ports: ['5432/TCP'],
+        endpoints: { ready: 0, total: 0 },
+        status: 'degraded',
+        workloads: [],
+        routes: [],
+      },
+      // One of two pods ready (crashy has no Ready condition); the Deployment from the ReplicaSet.
       {
         namespace: 'shop',
         name: 'web',
         type: 'LoadBalancer',
         external: ['203.0.113.10'],
         ports: ['80:31000/TCP'],
+        endpoints: { ready: 1, total: 2 },
+        status: 'progressing',
+        workloads: [
+          { kind: 'Deployment', name: 'web' },
+          { kind: 'Pod', name: 'crashy' },
+        ],
+        routes: [{ kind: 'Ingress', name: 'web', host: 'shop.example.com', tls: true }],
+      },
+      // No selector (endpoints managed by the API server): nothing to judge.
+      {
+        namespace: 'default',
+        name: 'kubernetes',
+        type: 'ClusterIP',
+        external: [],
+        ports: [],
+        status: 'none',
+        workloads: [],
+        routes: [],
       },
     ]);
-    expect(d.totals.services).toEqual({ LoadBalancer: 1, ClusterIP: 1 });
+    expect(d.totals.services).toEqual({ LoadBalancer: 1, ClusterIP: 2 });
     expect(d.ingresses).toEqual([
       {
         kind: 'Ingress',

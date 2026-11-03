@@ -9393,6 +9393,34 @@
         ],
         "additionalProperties": false
       },
+      "DashboardRoute": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Ingress",
+              "HTTPRoute"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "tls": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "host",
+          "tls"
+        ],
+        "additionalProperties": false
+      },
       "DashboardService": {
         "type": "object",
         "properties": {
@@ -9416,6 +9444,59 @@
             "items": {
               "type": "string"
             }
+          },
+          "endpoints": {
+            "type": "object",
+            "properties": {
+              "ready": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "ready",
+              "total"
+            ],
+            "additionalProperties": false
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "progressing",
+              "degraded",
+              "none"
+            ]
+          },
+          "workloads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardRoute"
+            }
+          },
+          "missing": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -9423,7 +9504,10 @@
           "name",
           "type",
           "external",
-          "ports"
+          "ports",
+          "status",
+          "workloads",
+          "routes"
         ],
         "additionalProperties": false
       },

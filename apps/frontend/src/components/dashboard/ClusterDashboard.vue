@@ -53,12 +53,19 @@ const namespaces = computed(() =>
 );
 const ns = ref<string | null>(null);
 const onlyProblems = ref(false);
+const onlyExposed = ref(false);
 const onlyWarnings = ref(false);
 const inNs = (x: { namespace: string }) => !ns.value || x.namespace === ns.value;
 
 const workloads = computed(
   () =>
     d.value?.workloads.filter((w) => inNs(w) && (!onlyProblems.value || w.status !== 'ok')) ?? [],
+);
+/** Reachable from outside the cluster: LoadBalancer, NodePort or behind a route (UX-09). */
+const exposed = (s: Dashboard['services'][number]) =>
+  s.type === 'LoadBalancer' || s.type === 'NodePort' || s.routes.length > 0;
+const services = computed(
+  () => d.value?.services.filter((s) => inNs(s) && (!onlyExposed.value || exposed(s))) ?? [],
 );
 const events = computed(
   () =>
@@ -82,7 +89,8 @@ const sum = (pick: (n: Dashboard['nodes'][number]) => ResourceUse): ResourceUse 
 const totalCpu = computed(() => sum((n) => n.cpu));
 const totalMem = computed(() => sum((n) => n.memory));
 
-const statusColor = (s: string) => (s === 'ok' ? 'success' : s === 'degraded' ? 'error' : 'info');
+const statusColor = (s: string) =>
+  s === 'ok' ? 'success' : s === 'degraded' ? 'error' : s === 'none' ? 'grey' : 'info';
 const phaseColor = (p: string) =>
   p === 'Running' || p === 'Succeeded' ? 'success' : p === 'Failed' ? 'error' : 'info';
 const when = (iso?: string) => (iso ? formatAge(iso, now.value) : '–');
@@ -260,7 +268,7 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
 
       <v-row>
         <!-- Workloads -->
-        <v-col cols="12" lg="6">
+        <v-col cols="12" xl="5">
           <v-card border class="fill-height" data-testid="dash-workloads">
             <v-card-item :title="t('dashboard.workloads')">
               <template #append>
@@ -301,60 +309,94 @@ const inCluster = (kind: string, name: string, namespace?: string) => ({
           </v-card>
         </v-col>
 
-        <!-- Network -->
-        <v-col cols="12" lg="6">
-          <v-card border class="fill-height" data-testid="dash-network">
-            <v-card-item :title="t('dashboard.network')" />
-            <v-card-text>
-              <div class="text-title-small mb-1">{{ t('dashboard.exposedServices') }}</div>
-              <v-table density="compact" class="mb-4">
-                <tbody>
-                  <tr v-for="s in d.services.filter(inNs)" :key="s.namespace + s.name">
-                    <td class="text-no-wrap">
-                      <span class="text-medium-emphasis">{{ s.namespace }}/</span>{{ s.name }}
-                    </td>
-                    <td>
-                      <v-chip size="x-small" variant="outlined">{{ s.type }}</v-chip>
-                    </td>
-                    <td class="font-monospace text-body-small">
-                      {{
-                        s.external.join(', ') ||
-                        (s.type === 'LoadBalancer' ? t('dashboard.pendingIP') : '')
-                      }}
-                    </td>
-                    <td class="text-body-small">{{ s.ports.join(', ') }}</td>
-                    <td><YamlButton :target="inCluster('Service', s.name, s.namespace)" /></td>
-                  </tr>
-                  <tr v-if="!d.services.filter(inNs).length">
-                    <td class="text-medium-emphasis">{{ t('dashboard.noExposed') }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-              <div class="text-title-small mb-1">{{ t('dashboard.ingresses') }}</div>
-              <v-table density="compact">
-                <tbody>
-                  <tr v-for="i in d.ingresses.filter(inNs)" :key="i.kind + i.namespace + i.name">
-                    <td class="text-no-wrap">
-                      <span class="text-medium-emphasis">{{ i.namespace }}/</span>{{ i.name }}
-                      <div class="text-body-small text-medium-emphasis">
-                        {{ i.kind }}{{ i.className ? ` · ${i.className}` : '' }}
-                      </div>
-                    </td>
-                    <td>
-                      <div v-for="h in i.hosts" :key="h" class="text-body-small">
-                        <v-icon v-if="i.tls" icon="mdi-lock" size="x-small" class="mr-1" />{{ h }}
-                      </div>
-                    </td>
-                    <td class="text-body-small">→ {{ i.backends.join(', ') || '–' }}</td>
-                    <td class="font-monospace text-body-small">{{ i.addresses.join(', ') }}</td>
-                    <td><YamlButton :target="inCluster(i.kind, i.name, i.namespace)" /></td>
-                  </tr>
-                  <tr v-if="!d.ingresses.filter(inNs).length">
-                    <td class="text-medium-emphasis">{{ t('dashboard.noIngresses') }}</td>
-                  </tr>
-                </tbody>
-              </v-table>
-            </v-card-text>
+        <!-- Services: routes → service → ready endpoints → workloads (FP18-F-03, UX-09) -->
+        <v-col cols="12" xl="7">
+          <v-card border class="fill-height" data-testid="dash-services">
+            <v-card-item :title="t('dashboard.services')" :subtitle="t('dashboard.servicesHint')">
+              <template #append>
+                <v-switch
+                  v-model="onlyExposed"
+                  :label="t('dashboard.onlyExposed')"
+                  hide-details
+                  density="compact"
+                  data-testid="dash-only-exposed"
+                />
+              </template>
+            </v-card-item>
+            <v-table density="compact" class="scroll">
+              <thead>
+                <tr>
+                  <th>{{ t('dashboard.service') }}</th>
+                  <th>{{ t('dashboard.access') }}</th>
+                  <th>{{ t('dashboard.backend') }}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="s in services"
+                  :key="s.namespace + s.name"
+                  :data-testid="`dash-service-${s.namespace}-${s.name}`"
+                >
+                  <td class="text-no-wrap">
+                    <span class="text-medium-emphasis">{{ s.namespace }}/</span>{{ s.name }}
+                    <div class="text-body-small text-medium-emphasis">
+                      <v-chip v-if="s.missing" size="x-small" variant="tonal" color="error">{{
+                        t('dashboard.missingService')
+                      }}</v-chip>
+                      <template v-else>{{ s.type }}</template>
+                    </div>
+                  </td>
+                  <td class="text-body-small">
+                    <div
+                      v-for="r in s.routes"
+                      :key="r.kind + r.name + r.host"
+                      class="text-no-wrap"
+                      :title="`${r.kind} ${s.namespace}/${r.name}`"
+                    >
+                      <v-icon
+                        :icon="r.tls ? 'mdi-lock' : 'mdi-web'"
+                        size="x-small"
+                        class="mr-1"
+                      />{{ r.host }}
+                      <YamlButton :target="inCluster(r.kind, r.name, s.namespace)" />
+                    </div>
+                    <div v-if="s.external.length" class="font-monospace">
+                      {{ s.external.join(', ') }}
+                    </div>
+                    <div v-else-if="s.type === 'LoadBalancer'" class="text-medium-emphasis">
+                      {{ t('dashboard.pendingIP') }}
+                    </div>
+                    <div class="text-medium-emphasis">{{ s.ports.join(', ') }}</div>
+                  </td>
+                  <td class="text-body-small">
+                    <v-chip
+                      v-if="s.endpoints"
+                      size="x-small"
+                      variant="tonal"
+                      :color="statusColor(s.status)"
+                      :title="t('dashboard.readyPods')"
+                      >{{ s.endpoints.ready }}/{{ s.endpoints.total }}</v-chip
+                    >
+                    <span v-else-if="!s.missing" class="text-medium-emphasis">{{
+                      t('dashboard.noSelector')
+                    }}</span>
+                    <div v-for="w in s.workloads" :key="w.kind + w.name" class="text-no-wrap">
+                      <span class="text-medium-emphasis">{{ w.kind }}</span> {{ w.name }}
+                    </div>
+                  </td>
+                  <td>
+                    <YamlButton
+                      v-if="!s.missing"
+                      :target="inCluster('Service', s.name, s.namespace)"
+                    />
+                  </td>
+                </tr>
+                <tr v-if="!services.length">
+                  <td colspan="4" class="text-medium-emphasis">{{ t('dashboard.noServices') }}</td>
+                </tr>
+              </tbody>
+            </v-table>
           </v-card>
         </v-col>
       </v-row>

@@ -82,14 +82,37 @@ export const ProblemPodSchema = z.object({
 });
 export type ProblemPod = z.infer<typeof ProblemPodSchema>;
 
+/** An ingress rule or HTTPRoute that sends traffic to a service (FP18-F-03, UX-09). */
+export const DashboardRouteSchema = z.object({
+  kind: z.enum(['Ingress', 'HTTPRoute']),
+  name: z.string(),
+  /** Host with path, e.g. "shop.example.com/api"; "*" without a host. */
+  host: z.string(),
+  tls: z.boolean(),
+});
+
+/**
+ * A service with the way traffic takes (UX-09): routes → service → ready endpoints → workloads.
+ * Endpoints are the active pods matching the selector, so no further API is read.
+ */
 export const DashboardServiceSchema = z.object({
   namespace: z.string(),
   name: z.string(),
   type: z.string(),
-  /** External IPs / hostnames of LoadBalancer services. */
+  /** External IPs / hostnames of LoadBalancer services, the target of ExternalName services. */
   external: z.array(z.string()),
   ports: z.array(z.string()),
+  /** Pods behind the selector; absent for services without a selector. */
+  endpoints: z.object({ ready: z.number(), total: z.number() }).optional(),
+  /** ok, some or no endpoints ready; none: no selector, nothing to judge. */
+  status: z.enum(['ok', 'progressing', 'degraded', 'none']),
+  /** Workloads owning the pods behind the service, e.g. Deployment web. */
+  workloads: z.array(z.object({ kind: z.string(), name: z.string() })),
+  routes: z.array(DashboardRouteSchema),
+  /** Referenced by a route but not present in the cluster. */
+  missing: z.boolean().optional(),
 });
+export type DashboardService = z.infer<typeof DashboardServiceSchema>;
 
 export const DashboardIngressSchema = z.object({
   kind: z.enum(['Ingress', 'HTTPRoute']),
