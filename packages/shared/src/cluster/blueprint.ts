@@ -1,16 +1,15 @@
 import { z } from 'zod';
 import { distributionCatalog } from '../catalog/kubernetes-versions.js';
 import { ConnectionNameSchema } from '../connections.js';
+import { ipv4RangeInCidr, parseIpv4Range } from './cidr.js';
 import { ClusterSpecSchema, UserLabelsSchema, type ClusterSpec } from './spec.js';
+import { INFRA_PLUGINS } from './transform.js';
 
 /**
  * Cluster blueprints (FP-34, ADR-0035): a concrete, reviewed cluster spec plus a fixed list of
  * parameters that may vary within limits. Clusters are created from a blueprint through the API
  * without a preview per request; the blueprint is what was reviewed when it was saved.
  */
-
-/** Annotation on the CAPI Cluster naming its blueprint (FP34-F-06). */
-export const BLUEPRINT_ANNOTATION = 'capi-navigator.io/blueprint';
 
 const VERSION_PATTERN = /^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$/;
 const PoolNameSchema = z.string().min(1).max(12);
@@ -53,6 +52,23 @@ const blueprintFields = {
   /** Management cluster connection the clusters are created in. */
   connection: ConnectionNameSchema,
   parameters: BlueprintParametersSchema.default({ workerCounts: [], machineSizes: [] }),
+  /**
+   * FP34-F-14: for providers where every cluster needs its own addresses (Proxmox VE): each
+   * cluster gets its API, node and LoadBalancer addresses from these ranges.
+   */
+  addressPool: z
+    .array(
+      z
+        .string()
+        .trim()
+        .refine(
+          (v) => !!parseIpv4Range(v),
+          'An address, a range like 10.0.0.5-10.0.0.9 or a network',
+        ),
+    )
+    .min(1)
+    .max(16)
+    .optional(),
 };
 
 /**
@@ -65,6 +81,9 @@ export const ClusterBlueprintSpecSchema = z
   .superRefine((bp, ctx) => {
     for (const issue of blueprintParameterIssues(bp.cluster, bp.parameters)) {
       ctx.addIssue({ code: 'custom', path: ['parameters', ...issue.path], message: issue.message });
+    }
+    for (const issue of addressPoolIssues(bp.cluster, bp.addressPool)) {
+      ctx.addIssue({ code: 'custom', path: ['addressPool'], message: issue });
     }
   });
 export type ClusterBlueprintSpecInput = z.input<typeof ClusterBlueprintSpecSchema>;
@@ -170,6 +189,24 @@ function blueprintParameterIssues(
   return issues;
 }
 
+/** FP34-F-14: a pool exactly where clusters need addresses of their own, inside the node network. */
+function addressPoolIssues(spec: ClusterSpec, pool: string[] | undefined): string[] {
+  const infra = spec.infrastructure;
+  const needsPool = !!INFRA_PLUGINS[infra.provider].addressPool;
+  if (!needsPool) {
+    return pool ? [`Clusters on ${infra.provider} need no address pool`] : [];
+  }
+  if (spec.topology.mode === 'hosted') {
+    return ['Blueprints of hosted control planes are not supported on this provider'];
+  }
+  if (!pool) {
+    return ['Every cluster needs addresses of its own: give an address pool for the blueprint'];
+  }
+  const cidr = (infra as { network?: { nodeCidr?: string } }).network?.nodeCidr ?? '';
+  const outside = pool.filter((r) => !ipv4RangeInCidr(r, cidr));
+  return outside.length ? [`${outside.join(', ')} not in the node network ${cidr}`] : [];
+}
+
 /**
  * Versions of a blueprint that are not in the version catalog of its distribution (FP34-F-02).
  * Checked when a blueprint is saved, not when a cluster is created, so a later catalog update
@@ -250,7 +287,12 @@ export type BlueprintClusterRequest = z.input<typeof BlueprintClusterRequestSche
  * requested name, parameters and additional labels, checked like every cluster spec. Additional
  * labels may not change the blueprint's labels.
  */
-export function blueprintToSpecSchema(blueprintName: string, bp: ClusterBlueprintSpec) {
+export function blueprintToSpecSchema(
+  blueprintName: string,
+  bp: ClusterBlueprintSpec,
+  /** FP34-F-14: addresses other clusters use, for blueprints with an address pool. */
+  usedAddresses: string[] = [],
+) {
   const baseLabels = bp.cluster.labels ?? {};
   return z
     .object({
@@ -269,7 +311,7 @@ export function blueprintToSpecSchema(blueprintName: string, bp: ClusterBlueprin
         }
       }
     })
-    .transform((req): z.input<typeof ClusterSpecSchema> => {
+    .transform((req, ctx): z.input<typeof ClusterSpecSchema> => {
       const params = req.parameters as {
         workerPools?: Record<string, { replicas?: number; machineSize?: string }>;
         kubernetesVersion?: string;
@@ -285,6 +327,20 @@ export function blueprintToSpecSchema(blueprintName: string, bp: ClusterBlueprin
         const p = params.workerPools?.[pool.name];
         if (p?.replicas !== undefined) pool.replicas = p.replicas;
         if (p?.machineSize !== undefined) pool.machineSize = p.machineSize;
+      }
+      const addressPool = INFRA_PLUGINS[spec.infrastructure.provider].addressPool;
+      if (addressPool && bp.addressPool) {
+        const infra = addressPool.assign(
+          spec,
+          spec.infrastructure as never,
+          bp.addressPool,
+          usedAddresses,
+        );
+        if (typeof infra === 'string') {
+          ctx.addIssue({ code: 'custom', path: ['addressPool'], message: infra });
+          return z.NEVER;
+        }
+        spec.infrastructure = infra;
       }
       return spec;
     })

@@ -120,6 +120,12 @@ spec:
                       items:
                         type: string
                         pattern: ^v\d+\.\d+\.\d+(\+[a-z0-9.]+)?$
+                addressPool:
+                  minItems: 1
+                  maxItems: 16
+                  type: array
+                  items:
+                    type: string
                 cluster:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true

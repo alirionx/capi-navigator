@@ -53,6 +53,7 @@ const blueprint = (over: object = {}) => ({
     displayName: 'Small cluster',
     connection: 'home',
     cluster,
+    addressPool: ['10.20.0.100-10.20.0.109'],
     parameters: {
       workerCounts: [{ pool: 'default', min: 1, max: 3 }],
       machineSizes: [{ pool: 'default', choices: ['medium', 'large'] }],
@@ -69,6 +70,7 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
   let otherOperator: string;
   let blockers: string[] = [];
   let existing: ClusterSummary[] = [];
+  let used: string[] = [];
   const created: { connection: string; spec: ClusterSpec }[] = [];
   const clusters = {
     preview: vi.fn(async () => ({ yaml: 'kind: Cluster', objects: [], warnings: [], blockers })),
@@ -81,6 +83,7 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
       } as ClusterSummary;
     }),
     list: vi.fn(async () => existing),
+    usedAddresses: vi.fn(async () => used),
   };
   const http = () => request(app.getHttpServer());
   const cookieFrom = (res: request.Response) =>
@@ -148,6 +151,7 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
   beforeEach(() => {
     blockers = [];
     existing = [];
+    used = [];
     created.length = 0;
   });
 
@@ -204,6 +208,11 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
       blueprint: 'small',
       labels: { addons: 'base', 'osb.example.com/instance-id': 'abc' },
       topology: { workerPools: [{ name: 'default', replicas: 3, machineSize: 'large' }] },
+      // FP34-F-14: free addresses of the pool: API, 1 + 3 nodes and 1 for rollouts.
+      infrastructure: {
+        apiEndpoint: '10.20.0.100',
+        network: { addresses: ['10.20.0.101-10.20.0.105'] },
+      },
     });
     const audit = fake.auditEvents.find((e) => e.spec.action === 'cluster.create-from-blueprint');
     expect(audit?.spec).toMatchObject({
@@ -212,6 +221,15 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
       target: { kind: 'Cluster', name: 'ordered' },
       request: { path: '/api/blueprints/small/clusters' },
     });
+  });
+
+  it('refuses an order when the address pool is used up (FP34-F-14)', async () => {
+    used = ['10.20.0.100-10.20.0.106'];
+    const res = await send('post', '/api/blueprints/small/clusters', operator, {
+      name: 'ordered-2',
+    }).expect(409);
+    expect(res.body.message).toMatch(/address pool has 3 free/);
+    expect(created).toHaveLength(0);
   });
 
   it('checks the permission in the blueprint namespace and the parameters (FP34-F-05)', async () => {

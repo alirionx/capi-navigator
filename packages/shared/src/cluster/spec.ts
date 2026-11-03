@@ -713,3 +713,6 @@ export type ClusterSpec = z.output<typeof ClusterSpecSchema>;
 
 /** Annotation on the CAPI Cluster that stores the spec (FP5-F-07). */
 export const CLUSTER_SPEC_ANNOTATION = 'capi-navigator.io/cluster-spec';
+
+/** Annotation on the CAPI Cluster naming its cluster blueprint (FP34-F-06). */
+export const BLUEPRINT_ANNOTATION = 'capi-navigator.io/blueprint';

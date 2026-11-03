@@ -33,6 +33,7 @@ import {
   CALICO_MANIFEST,
   manifestAddonsFor,
   INFRA_PLUGINS,
+  type Infrastructure,
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
   presetsFor,
@@ -253,6 +254,14 @@ export class ClustersService {
     const cluster =
       (await this.getCluster(plan.kc, spec.namespace, spec.name).catch(() => undefined)) ?? applied;
     return toSummary(cluster);
+  }
+
+  /** FP34-F-14: addresses the infrastructure clusters of a provider use, for address pools. */
+  async usedAddresses(connection: string, provider: Infrastructure['provider']): Promise<string[]> {
+    const plugin = INFRA_PLUGINS[provider];
+    if (!plugin.addressPool) return [];
+    const kc = await this.clients.forConnection(connection);
+    return plugin.addressPool.used(await infraClusters(kc, plugin));
   }
 
   /** FP34-F-10: optionally only the clusters matching a label selector. */
@@ -957,16 +966,7 @@ export class ClustersService {
     }
     // FP31-F-08: addresses the user hands out must not clash with other clusters.
     if (infraPlugin.addressConflicts) {
-      const [group, version] = infraPlugin.apiVersion.split('/') as [string, string];
-      const others = await kc
-        .makeApiClient(CustomObjectsApi)
-        .listClusterCustomObject({
-          group,
-          version,
-          plural: infraPlugin.resources.infraClusterPlural,
-        })
-        .then((r) => (r as { items: Record<string, unknown>[] }).items)
-        .catch(() => []);
+      const others = await infraClusters(kc, infraPlugin);
       blockers.push(...infraPlugin.addressConflicts(spec, infra, others));
     }
     // FP-24: a hosted control plane needs a fitting host (FP24-F-03, FP24-F-06).
@@ -1383,4 +1383,17 @@ function safeJson(raw: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+/** The infrastructure clusters of a provider in the management cluster; none if unreadable. */
+async function infraClusters(
+  kc: KubeConfig,
+  plugin: { apiVersion: string; resources: { infraClusterPlural: string } },
+): Promise<Record<string, unknown>[]> {
+  const [group, version] = plugin.apiVersion.split('/') as [string, string];
+  return kc
+    .makeApiClient(CustomObjectsApi)
+    .listClusterCustomObject({ group, version, plural: plugin.resources.infraClusterPlural })
+    .then((r) => (r as { items: Record<string, unknown>[] }).items)
+    .catch(() => []);
 }

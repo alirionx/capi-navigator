@@ -53,10 +53,11 @@ export class BlueprintsController {
   preview(
     @Body(new ZodValidationPipe(BlueprintSaveRequestSchema))
     body: {
+      name: string;
       spec: ClusterBlueprintSpec;
     },
   ): Promise<ClusterPreview> {
-    return this.blueprints.preview(body.spec);
+    return this.blueprints.preview(body.name, body.spec);
   }
 
   @Requires('blueprints.manage')

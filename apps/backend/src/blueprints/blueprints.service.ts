@@ -22,6 +22,9 @@ import { ClustersService } from '../clusters/clusters.service.js';
 import { isNotFound } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
 
+const POOL_HINT =
+  'Free addresses in the address pool of the blueprint, or delete clusters created from it.';
+
 const issuesOf = (error: z.ZodError) =>
   error.issues.map((i) => `${i.path.join('.') || '(request)'}: ${i.message}`).join('; ');
 
@@ -31,6 +34,9 @@ const issuesOf = (error: z.ZodError) =>
  */
 @Injectable()
 export class BlueprintsService {
+  /** Last order per connection; orders run one after another (FP34-F-14). */
+  private readonly orders = new Map<string, Promise<unknown>>();
+
   constructor(
     private readonly store: StoreService,
     private readonly clusterService: ClustersService,
@@ -52,9 +58,10 @@ export class BlueprintsService {
 
   /**
    * FP34-F-04: the check when saving, like a new cluster with the default parameters: the YAML,
-   * a dry run on the management cluster and the blockers of the wizard.
+   * a dry run on the management cluster and the blockers of the wizard. With an address pool
+   * (FP34-F-14) the example gets free addresses of the pool, like every order.
    */
-  async preview(spec: ClusterBlueprintSpec): Promise<ClusterPreview> {
+  async preview(name: string, spec: ClusterBlueprintSpec): Promise<ClusterPreview> {
     const outside = versionsOutsideCatalog(spec);
     if (outside.length > 0) {
       throw new BadRequestException({
@@ -62,14 +69,24 @@ export class BlueprintsService {
         hint: 'Offer only versions of the catalog (versions.yaml).',
       });
     }
-    return this.clusterService.preview(spec.connection, baseSpec(spec), false);
+    const example = await this.toSpec(name, spec, { name: spec.cluster.name });
+    if (!example.success) {
+      return {
+        yaml: '',
+        objects: [],
+        warnings: [],
+        blockers: example.error.issues.map((i) => i.message),
+        credentialNamespaceMissing: false,
+      };
+    }
+    return this.clusterService.preview(spec.connection, example.data, false);
   }
 
   async create(name: string, spec: ClusterBlueprintSpec): Promise<ClusterBlueprint> {
     if (this.store.blueprintCache.get(name)) {
       throw new ConflictException(`Blueprint ${name} already exists`);
     }
-    await this.check(spec);
+    await this.check(name, spec);
     const created = await this.store.blueprints.create({ name }, storage(spec));
     this.store.blueprintCache.upsert(created);
     return this.get(name);
@@ -78,7 +95,7 @@ export class BlueprintsService {
   /** FP34-F-08: changes apply only to clusters created afterwards. */
   async update(name: string, spec: ClusterBlueprintSpec): Promise<ClusterBlueprint> {
     const current = this.resource(name);
-    await this.check(spec);
+    await this.check(name, spec);
     const updated = await this.store.blueprints.replaceSpec(current, storage(spec));
     this.store.blueprintCache.upsert(updated);
     return toApi(name, spec);
@@ -110,18 +127,36 @@ export class BlueprintsService {
   /** FP34-F-05: builds the spec from blueprint and request and creates it without a preview. */
   async createCluster(name: string, req: BlueprintClusterRequest): Promise<ClusterSummary> {
     const bp = this.spec(name);
-    const spec = blueprintToSpecSchema(name, bp).safeParse(req);
-    if (!spec.success) {
-      throw new BadRequestException({
-        message: 'The request does not fit the blueprint',
-        details: issuesOf(spec.error),
+    // FP34-F-14: one order per connection at a time, so two orders never get the same addresses.
+    const previous = this.orders.get(bp.connection) ?? Promise.resolve();
+    const run = previous
+      .catch(() => undefined)
+      .then(async () => {
+        const spec = await this.toSpec(name, bp, req);
+        if (!spec.success) {
+          const pool = spec.error.issues.find((i) => i.path[0] === 'addressPool');
+          if (pool) throw new ConflictException({ message: pool.message, hint: POOL_HINT });
+          throw new BadRequestException({
+            message: 'The request does not fit the blueprint',
+            details: issuesOf(spec.error),
+          });
+        }
+        return this.clusterService.create(bp.connection, spec.data, false);
       });
-    }
-    return this.clusterService.create(bp.connection, spec.data, false);
+    this.orders.set(bp.connection, run);
+    return run;
   }
 
-  private async check(spec: ClusterBlueprintSpec): Promise<void> {
-    const preview = await this.preview(spec);
+  /** The cluster spec of an order, with free addresses of the pool if the blueprint has one. */
+  private async toSpec(name: string, bp: ClusterBlueprintSpec, req: BlueprintClusterRequest) {
+    const used = bp.addressPool
+      ? await this.clusterService.usedAddresses(bp.connection, bp.cluster.infrastructure.provider)
+      : [];
+    return blueprintToSpecSchema(name, bp, used).safeParse(req);
+  }
+
+  private async check(name: string, spec: ClusterBlueprintSpec): Promise<void> {
+    const preview = await this.preview(name, spec);
     if (preview.blockers.length > 0) {
       throw new ConflictException({
         message: preview.blockers[0],

@@ -3,7 +3,14 @@ import { PROXMOX_LB_ADDRESSES_ANNOTATION, PROXMOX_STORAGE_LABEL } from './addons
 import type { ManifestObject } from '../operator-manifests.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import { HOSTED_ON_LABEL, type MachineGroup, type ProxmoxInfra } from './spec.js';
-import { ipv4RangesCover, ipv4RangesOverlap, ipv4StartEndRanges } from './cidr.js';
+import {
+  formatIpv4,
+  ipv4RangesCover,
+  ipv4RangesOverlap,
+  ipv4StartEndRanges,
+  parseIpv4Cidr,
+  parseIpv4Range,
+} from './cidr.js';
 import { airGapDnsWarnings } from './air-gap.js';
 import { compact } from './util.js';
 
@@ -331,18 +338,9 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
     for (const o of others) {
       const meta = (o.metadata ?? {}) as { name?: string; namespace?: string };
       if (meta.name === spec.name && meta.namespace === spec.namespace) continue;
-      const s = (o.spec ?? {}) as {
-        ipv4Config?: { addresses?: string[] };
-        controlPlaneEndpoint?: { host?: string };
-      };
       const annotations = ((o.metadata ?? {}) as { annotations?: Record<string, string> })
         .annotations;
-      // FP32-F-02: their LoadBalancer addresses.
-      const theirLb = annotations?.[PROXMOX_LB_ADDRESSES_ANNOTATION]?.split(',') ?? [];
-      const theirEndpoint = s.controlPlaneEndpoint?.host ?? '';
-      const theirs = [...(s.ipv4Config?.addresses ?? []), theirEndpoint, ...theirLb].filter(
-        Boolean,
-      );
+      const { theirs, theirLb, theirEndpoint } = addressesOf(o);
       const myLb = infra.network.loadBalancerAddresses ?? [];
       const mine = [...infra.network.addresses, infra.apiEndpoint, ...myLb];
       // FP24-F-08: a hosted tenant's endpoint lies in its host's LoadBalancer range, by design.
@@ -362,6 +360,43 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       }
     }
     return out;
+  },
+
+  // FP34-F-14: blueprint clusters take their API, node and LoadBalancer addresses from a pool.
+  addressPool: {
+    used: (others) => others.flatMap((o) => addressesOf(o).theirs),
+    assign(spec, infra, pool, used) {
+      const hosted = spec.topology.mode === 'hosted';
+      const groups = [
+        ...(hosted ? [] : [spec.topology.controlPlane]),
+        ...spec.topology.workerPools,
+      ];
+      // One rollout at a time (FP-7): at most the largest surge of a group in addition.
+      const surge = Math.max(
+        hosted ? 0 : 1,
+        spec.rollout.maxSurge,
+        ...spec.topology.workerPools.map((p) => p.rollout?.maxSurge ?? 0),
+      );
+      const nodes = groups.reduce((n, g) => n + g.replicas, 0) + surge;
+      const lb = (infra.network.loadBalancerAddresses ?? []).reduce((n, r) => {
+        const range = parseIpv4Range(r);
+        return n + (range ? range.end - range.start + 1 : 0);
+      }, 0);
+      const free = freeAddresses(pool, used, infra.network.nodeCidr, infra.network.gateway);
+      const needed = 1 + nodes + lb;
+      if (free.length < needed) {
+        return `The address pool has ${free.length} free address(es); the cluster needs ${needed}: the API address, ${nodes} node addresses (including ${surge} for rollouts)${lb ? ` and ${lb} LoadBalancer addresses` : ''}.`;
+      }
+      return {
+        ...infra,
+        apiEndpoint: formatIpv4(free[0]!),
+        network: {
+          ...infra.network,
+          addresses: toRanges(free.slice(1, 1 + nodes)),
+          ...(lb ? { loadBalancerAddresses: toRanges(free.slice(1 + nodes, needed)) } : {}),
+        },
+      };
+    },
   },
 
   // CAPMOX sets the machine's providerID to the VM's SMBIOS UUID, which cloud-init reports as
@@ -445,3 +480,47 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
     ];
   },
 };
+
+/** Addresses an infrastructure cluster uses: nodes, API endpoint and LoadBalancer ranges. */
+function addressesOf(o: Record<string, unknown>) {
+  const s = (o.spec ?? {}) as {
+    ipv4Config?: { addresses?: string[] };
+    controlPlaneEndpoint?: { host?: string };
+  };
+  const annotations = ((o.metadata ?? {}) as { annotations?: Record<string, string> }).annotations;
+  // FP32-F-02: their LoadBalancer addresses.
+  const theirLb = annotations?.[PROXMOX_LB_ADDRESSES_ANNOTATION]?.split(',') ?? [];
+  const theirEndpoint = s.controlPlaneEndpoint?.host ?? '';
+  const theirs = [...(s.ipv4Config?.addresses ?? []), theirEndpoint, ...theirLb].filter(Boolean);
+  return { theirs, theirLb, theirEndpoint };
+}
+
+/** Addresses of the pool in the node network, without the gateway and used ones, ascending. */
+function freeAddresses(pool: string[], used: string[], cidr: string, gateway: string): number[] {
+  const net = parseIpv4Cidr(cidr);
+  const taken = [...used, gateway].map(parseIpv4Range).filter((r) => !!r);
+  const out = new Set<number>();
+  for (const r of pool.map(parseIpv4Range)) {
+    if (!r || !net) continue;
+    // Not the network and broadcast address; at most a /16 per range.
+    const start = Math.max(r.start, net.start + 1);
+    const end = Math.min(r.end, net.end - 1, start + 65_535);
+    for (let ip = start; ip <= end; ip++) {
+      if (!taken.some((t) => t.start <= ip && ip <= t.end)) out.add(ip);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/** Consecutive addresses as ranges ("a-b", or "a" alone). */
+function toRanges(ips: number[]): string[] {
+  const out: string[] = [];
+  let start = ips[0];
+  for (let i = 0; i < ips.length; i++) {
+    const ip = ips[i]!;
+    if (ips[i + 1] === ip + 1) continue;
+    out.push(start === ip ? formatIpv4(ip) : `${formatIpv4(start!)}-${formatIpv4(ip)}`);
+    start = ips[i + 1];
+  }
+  return out;
+}

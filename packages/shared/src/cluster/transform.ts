@@ -13,8 +13,8 @@ import type {
 import { k0sPlugin } from './k0s.js';
 import { kubeadmPlugin } from './kubeadm.js';
 import { rke2Plugin } from './rke2.js';
-import { BLUEPRINT_ANNOTATION } from './blueprint.js';
 import {
+  BLUEPRINT_ANNOTATION,
   CLUSTER_SPEC_ANNOTATION,
   HOST_LABEL,
   HOSTED_ON_LABEL,

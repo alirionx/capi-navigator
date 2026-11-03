@@ -1209,6 +1209,8 @@ Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control pla
 - **FP34-F-12** MUST record creating, changing and deleting blueprints and creating clusters from them as `AuditEvent`s, and describe the new endpoints in the OpenAPI document (FP-23).
 - **FP34-F-13** MUST document blueprints (`docs/blueprints.md`): purpose, parameters, permissions for a technical user of a client (`view`, `clusters.create`, `clusters.delete`, `clusters.kubeconfig` in the blueprint's namespace), and what is not possible in the first version.
 
+- **FP34-F-14** MUST give every cluster of a blueprint on a provider where clusters need addresses of their own (Proxmox VE: API address, node addresses, LoadBalancer addresses) free addresses from an address pool of the blueprint: one API address, the nodes plus the largest surge of a rollout, and as many LoadBalancer addresses as the base spec has; orders of a connection run one after another, an exhausted pool refuses the order with `409`. Blueprints of hosted control planes on such providers are not supported. Found in the live acceptance on 2026-11-03: with the fixed addresses of the base spec, a Proxmox VE blueprint served only one cluster at a time.
+
 **Acceptance criteria**
 
 - [ ] An admin saves a blueprint for each infrastructure provider; saving shows the YAML and is refused for a blueprint whose dry run fails.
@@ -1217,6 +1219,7 @@ Findings of the spikes (2026-11-01, k0smotron v2.3.1, hosts with one control pla
 - [ ] The cluster is found with `labelSelector`, carries the blueprint annotation and becomes ready; its kubeconfig can be downloaded with the token.
 - [ ] Scaling and label changes of the cluster are refused in the backend; an admin upgrades it to the next minor version with preview.
 - [ ] Changing the blueprint leaves the cluster unchanged; deleting the blueprint is refused while the cluster exists and works after the cluster is deleted.
+- [ ] Two clusters from one Proxmox VE blueprint run side by side with addresses from its pool.
 - [ ] A Playwright test covers creating a blueprint on the blueprints page.
 
 ## 7. Non-functional requirements

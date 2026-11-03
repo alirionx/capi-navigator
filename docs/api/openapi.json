@@ -7908,6 +7908,14 @@
             },
             "$ref": "#/components/schemas/BlueprintParameters"
           },
+          "addressPool": {
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "cluster": {
             "$ref": "#/components/schemas/ClusterSpec"
           }
@@ -12364,6 +12372,14 @@
               "machineSizes": []
             },
             "$ref": "#/components/schemas/BlueprintParametersInput"
+          },
+          "addressPool": {
+            "minItems": 1,
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cluster": {
             "$ref": "#/components/schemas/ClusterSpecInput"

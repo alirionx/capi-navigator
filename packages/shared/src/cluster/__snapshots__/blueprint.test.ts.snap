@@ -973,7 +973,7 @@ metadata:
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
     capi-navigator.io/blueprint: small
-    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiEndpoint":"10.20.0.89","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.71-10.20.0.88"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":3}]}}'
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"blueprint":"small","infrastructure":{"apiEndpoint":"10.20.0.100","bootDisk":"virtio0","bridge":"vmbr0","credentialRef":"homelab","image":"7112","memoryAdjustment":0,"network":{"addresses":["10.20.0.101-10.20.0.105"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"10.20.0.1","nodeCidr":"10.20.0.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"rke2","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+rke2r1"},"labels":{"osb.example.com/instance-id":"b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f"},"name":"ordered","namespace":"osb","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"medium","replicas":1},"mode":"standard","workerPools":[{"machineSize":"large","name":"default","replicas":3}]}}'
 spec:
   clusterNetwork:
     pods:
@@ -1003,11 +1003,11 @@ metadata:
     capi-navigator.io/credential: homelab
 spec:
   controlPlaneEndpoint:
-    host: 10.20.0.89
+    host: 10.20.0.100
     port: 6443
   ipv4Config:
     addresses:
-      - 10.20.0.71-10.20.0.88
+      - 10.20.0.101-10.20.0.105
     prefix: 24
     gateway: 10.20.0.1
   dnsServers:
@@ -1081,7 +1081,7 @@ spec:
       kubernetesComponents:
         - cloudController
     tlsSan:
-      - 10.20.0.89
+      - 10.20.0.100
   agentConfig:
     nodeName: "{{ v1.local_hostname }}"
     nodeLabels:
@@ -1159,7 +1159,7 @@ spec:
                     - name: vip_retryperiod
                       value: "2"
                     - name: address
-                      value: 10.20.0.89
+                      value: 10.20.0.100
                     - name: prometheus_server
                       value: :2112
                   securityContext:

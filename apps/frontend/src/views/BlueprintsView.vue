@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import {
   ClusterListSchema,
   distributionCatalog,
+  INFRA_PLUGINS,
   type BlueprintParameters,
   type ClusterBlueprint,
   type ClusterBlueprintSpecInput,
@@ -87,6 +88,11 @@ const base = ref<ClusterSpec | null>(null);
 const pools = ref<PoolParams[]>([]);
 const versionsOn = ref(false);
 const versions = ref<string[]>([]);
+/** FP34-F-14: address pool for providers where every cluster needs own addresses. */
+const addressPool = ref<string[]>([]);
+const needsPool = computed(
+  () => !!base.value && !!INFRA_PLUGINS[base.value.infrastructure.provider].addressPool,
+);
 const formError = ref<unknown>(null);
 const preview = ref<ClusterPreview | null>(null);
 const previewedFor = ref('');
@@ -127,6 +133,7 @@ function openForm(b?: ClusterBlueprint): void {
   sourceCluster.value = null;
   base.value = null;
   pools.value = [];
+  addressPool.value = b?.spec.addressPool ?? [];
   if (b) setBase(b.spec.cluster, b.spec.parameters);
   formError.value = null;
   preview.value = null;
@@ -178,6 +185,7 @@ const request = computed((): { name: string; spec: ClusterBlueprintSpecInput } |
           .map((p) => ({ pool: p.name, choices: p.sizes })),
         ...(versionsOn.value ? { kubernetesVersions: versions.value } : {}),
       },
+      ...(needsPool.value ? { addressPool: addressPool.value } : {}),
     },
   };
 });
@@ -409,6 +417,24 @@ async function confirmDelete(): Promise<void> {
               })
             }}</v-alert>
 
+            <v-combobox
+              v-if="needsPool"
+              v-model="addressPool"
+              :label="t('blueprints.addressPool')"
+              :hint="
+                t('blueprints.addressPoolHint', {
+                  cidr:
+                    (base.infrastructure as { network?: { nodeCidr?: string } }).network
+                      ?.nodeCidr ?? '',
+                })
+              "
+              persistent-hint
+              multiple
+              chips
+              closable-chips
+              class="mb-4"
+              data-testid="blueprint-address-pool"
+            />
             <div class="text-title-small mt-2 mb-1">{{ t('blueprints.parameters') }}</div>
             <p class="text-body-small text-medium-emphasis mb-2">
               {{ t('blueprints.parametersHint') }}

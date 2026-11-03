@@ -39,6 +39,21 @@ Only these parameters exist. Each one has a default (the value of the base spec)
 
 Unknown parameters and values outside the limits are refused with `400`.
 
+## Address pool (Proxmox VE)
+
+On Proxmox VE the API address, the node addresses and the LoadBalancer addresses belong to one
+cluster. A blueprint there carries an **address pool** instead: for every order the app takes free
+addresses of the pool (addresses no other Proxmox cluster of the management cluster uses, without
+the gateway):
+
+- one API address,
+- the nodes of the cluster plus the largest surge of a rollout (by default one),
+- as many LoadBalancer addresses as the base spec has.
+
+Orders of a connection run one after another, so two orders never get the same addresses. When the
+pool is used up, an order is refused with `409`. Blueprints of hosted control planes are not
+supported on Proxmox VE.
+
 ## Saving a blueprint
 
 The Blueprints page (users with `blueprints.manage`, admins) creates a blueprint from the spec of an

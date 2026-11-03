@@ -49,5 +49,10 @@ API, keeps no state of its own and supports no updates in its first version.
 - Blueprint clusters cannot be scaled or relabelled; a user who needs a different cluster orders a
   new one. Clusters created from an older state of a blueprint keep that state until an admin
   upgrades their Kubernetes version.
+- On Proxmox VE every cluster needs its own API, node and LoadBalancer addresses. A blueprint there
+  carries an address pool, and every order gets free addresses of it (FP34-F-14, found in the
+  live acceptance on 2026-11-03); orders of a connection are serialized in the backend. With
+  several backend replicas two simultaneous orders could still pick the same addresses; the
+  address check of the next change shows it.
 - No limit on the number of clusters per blueprint in the first version; capacity stays with the
   admins (and plan visibility in Cloud Foundry).

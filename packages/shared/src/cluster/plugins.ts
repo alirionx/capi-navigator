@@ -89,6 +89,16 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * for providers where the user hands out addresses (FP31-F-08).
    */
   addressConflicts?(spec: ClusterSpec, infra: T, others: Record<string, unknown>[]): string[];
+  /**
+   * FP34-F-14: providers where every cluster needs addresses of its own. A blueprint of them
+   * carries an address pool, and each cluster created from it gets free addresses of the pool.
+   */
+  addressPool?: {
+    /** Addresses the other infrastructure clusters of the management cluster use. */
+    used(others: Record<string, unknown>[]): string[];
+    /** The infrastructure with addresses from the pool, or why the pool does not suffice. */
+    assign(spec: ClusterSpec, infra: T, pool: string[], used: string[]): T | string;
+  };
   /** Likely mistakes that do not block, shown in the preview, e.g. public DNS when air-gapped. */
   warnings?(spec: ClusterSpec, infra: T): string[];
   /** Problems the spec alone cannot show, e.g. a size the credential does not know (blockers). */

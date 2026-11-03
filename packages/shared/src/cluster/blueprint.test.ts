@@ -101,12 +101,15 @@ const SPECS: Record<string, { cluster: ClusterSpecInput; sizes: string[]; ctx: T
     },
   };
 
+const POOL = ['10.20.0.100-10.20.0.119'];
+
 const blueprint = (provider: string, over: Partial<ClusterBlueprintSpecInput> = {}) => {
   const { cluster, sizes } = SPECS[provider]!;
   return ClusterBlueprintSpecSchema.parse({
     displayName: `Small ${provider}`,
     connection: 'home',
     cluster,
+    ...(provider === 'proxmox' ? { addressPool: POOL } : {}),
     parameters: {
       workerCounts: [{ pool: 'default', min: 1, max: 5 }],
       machineSizes: [{ pool: 'default', choices: sizes }],
@@ -266,6 +269,64 @@ describe('cluster blueprints (FP-34)', () => {
       type: 'object',
       properties: {},
       additionalProperties: false,
+    });
+  });
+
+  describe('address pool for providers where clusters need own addresses (FP34-F-14)', () => {
+    it('gives every cluster free addresses of the pool', () => {
+      const bp = blueprint('proxmox');
+      const used = ['10.20.0.100', '10.20.0.102-10.20.0.103'];
+      const spec = blueprintToSpecSchema('small', bp, used).parse({
+        name: 'a',
+        parameters: { workerPools: { default: { replicas: 2 } } },
+      });
+      // API address, 1 control plane + 2 workers + 1 for rollouts.
+      expect(spec.infrastructure).toMatchObject({
+        apiEndpoint: '10.20.0.101',
+        network: { addresses: ['10.20.0.104-10.20.0.107'] },
+      });
+    });
+
+    it('takes LoadBalancer addresses as many as the base spec has', () => {
+      const cluster = structuredClone(SPECS.proxmox!.cluster) as {
+        infrastructure: { network: Record<string, unknown> };
+      };
+      cluster.infrastructure.network.loadBalancerAddresses = ['10.20.0.90-10.20.0.91'];
+      const bp = blueprint('proxmox', { cluster: cluster as ClusterSpecInput });
+      const spec = blueprintToSpecSchema('small', bp).parse({ name: 'a' });
+      expect(spec.infrastructure).toMatchObject({
+        apiEndpoint: '10.20.0.100',
+        network: {
+          addresses: ['10.20.0.101-10.20.0.104'],
+          loadBalancerAddresses: ['10.20.0.105-10.20.0.106'],
+        },
+      });
+    });
+
+    it('refuses an order when the pool is used up', () => {
+      const bp = blueprint('proxmox', { addressPool: ['10.20.0.100-10.20.0.104'] });
+      const r = blueprintToSpecSchema('small', bp, ['10.20.0.100']).safeParse({ name: 'a' });
+      expect(r.error?.issues[0]?.message).toBe(
+        'The address pool has 4 free address(es); the cluster needs 5: the API address, 4 node addresses (including 1 for rollouts).',
+      );
+    });
+
+    it('requires a pool on Proxmox VE, inside the node network, and none elsewhere', () => {
+      const issues = (provider: string, addressPool?: string[]) =>
+        ClusterBlueprintSpecSchema.safeParse({
+          displayName: 'x',
+          connection: 'home',
+          cluster: SPECS[provider]!.cluster,
+          ...(addressPool ? { addressPool } : {}),
+        }).error?.issues.map((i) => i.message) ?? [];
+      expect(issues('proxmox')).toEqual([
+        'Every cluster needs addresses of its own: give an address pool for the blueprint',
+      ]);
+      expect(issues('proxmox', ['10.30.0.1-10.30.0.9'])).toEqual([
+        '10.30.0.1-10.30.0.9 not in the node network 10.20.0.0/24',
+      ]);
+      expect(issues('aws', POOL)).toEqual(['Clusters on aws need no address pool']);
+      expect(issues('proxmox', POOL)).toEqual([]);
     });
   });
 
