@@ -979,7 +979,7 @@ Requirements:
 - **FP31-F-02** MUST offer a credential type "Proxmox VE": API URL, API token ID and secret, optional CA certificate (PEM), stored as a Secret; never in API responses, logs or audit events.
 - **FP31-F-03** MUST test a Proxmox credential: version, reachability with TLS verification, and the token's effective privileges against those CAPMOX, the CCM and the CSI driver need (`/access/permissions`), naming missing ones.
 - **FP31-F-04** MUST keep machine sizes per Proxmox credential (name, vCPUs, memory), editable by admins, with four defaults (2 vCPU/4 GiB, 4/8, 8/16, 8/32); the wizard offers them as machine sizes.
-- **FP31-F-05** MUST provide lookups for the wizard: nodes, templates (with a warning when a template has a cloud-init drive or no QEMU guest agent enabled), bridges and storages with content type.
+- **FP31-F-05** MUST provide lookups for the wizard: nodes, templates (with a warning when a template has a cloud-init drive or no QEMU guest agent enabled), bridges and storages with content type. Since 2026-11-04 the template list also names each template's boot disk, which the wizard takes, and the preview refuses a boot disk the template lacks for new clusters (CAPMOX grows only that disk; found in the UX review: a `virtio0` template with the default `scsi0` kept its 8 GB root disk) and warns for existing ones.
 - **FP31-F-06** MUST generate `ProxmoxCluster` and `ProxmoxMachineTemplate` (field names verified against the pinned CAPMOX release): template, source and allowed nodes, storage, boot disk size, bridge, VM ID range, memory scheduling (`memoryAdjustment`, default 0 = off), node IP range per cluster with prefix, gateway and DNS servers, and the control plane endpoint.
 - **FP31-F-07** MUST provide the API endpoint as a virtual IP held by kube-vip (ARP, control plane only), rendered by one pure function and delivered per distribution: RKE2 through its manifests, k0s through its manifest deployer, kubeadm as static pod, always with the node's admin kubeconfig through localhost (never in-cluster credentials, so the VIP leaves a node whose API server stops). The infrastructure plugin declares that the distribution provides the endpoint (no `apiLoadBalancer`); no distribution-specific code in generic modules.
 - **FP31-F-08** MUST refuse in the preview a VIP inside the node range or outside its subnet, and a node range or VIP that overlaps those of another Proxmox cluster of the management cluster.
@@ -1075,6 +1075,11 @@ Requirements:
 - **UX-08** (done in 0.14.0) The cluster list and the cluster page do not show where a cluster runs (which OpenStack cloud, Proxmox VE, region of a public cloud). Both name the credentials entry and the region or node: OpenStack the region of the credential, AWS and Google Cloud the region (and project) of the spec, Proxmox VE the node; the list search finds them.
 - **UX-09** (done in 0.16.0) Dashboard (FP-18): exposed services and ingresses are two separate lists, without telling whether anything answers behind them. One services overview in the style of the workloads: per service its routes (Ingress hosts and paths, HTTPRoutes, TLS), the external address and ports, the ready pods behind the selector and the workloads owning them; services without ready pods first, "Only exposed" filters LoadBalancer, NodePort and routed services, and routes to a missing service show as an error. Endpoints come from the pods already read, so no further API is needed.
 - **UX-10** (done, user request 2026-11-04) Cluster list and cluster page: hosts and tenants of hosted control planes (FP-24) look like any other cluster. A chip next to the name, like the air-gapped chip: "HCP host" for hosts, "HCP · <host>" for tenants, with a tooltip.
+- **UX-11** (done, review 2026-11-04) Logs dialog (FP18-F-07): the labels of the fields in the first row (pod, container, lines) are cut off at the top.
+- **UX-12** (done, review 2026-11-04) Overview of a tenant (FP-24): the infrastructure table lists size, image and root disk for the control plane, which has no machines; it says that the control plane runs as pods in the host. Long kinds such as `K0smotronControlPlane` wrap between their words instead of being cut off in the status cards.
+- **UX-13** (done, review 2026-11-04) Cluster list: with long generated names and labels (e.g. from a service broker) the list is wider than the page and status and age are cut off. The namespace goes below the name and the distribution below the version; location, labels (two, the rest behind "+n" with a tooltip) and node counts stay on one line.
+- **UX-14** (done, review 2026-11-04) Wizard, air-gapped (FP-29): the public DNS default is only flagged in the preview. The DNS field warns at once.
+- **UX-15** (done, review 2026-11-04) Blueprint list (FP-34): name and display name are shown twice when they are the same.
 
 **Review log**
 
@@ -1087,6 +1092,7 @@ Requirements:
 | 0.14.0 | UX-08 | – |
 | 0.15.0 | – (no open items; row added with 0.16.0) | – |
 | 0.16.0 | UX-09 | – |
+| next | UX-10 to UX-15 | – |
 
 ### FP-29: Air-gapped workload clusters (optional)
 

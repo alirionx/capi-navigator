@@ -68,17 +68,17 @@ in Proxmox VE, what the app creates per cluster, and the limits compared with th
    new machine templates.
 3. **Create cluster**: choose Proxmox VE and fill in the infrastructure step:
 
-   | Field                  | Meaning                                                                                                   |
-   | ---------------------- | --------------------------------------------------------------------------------------------------------- |
-   | Node, template         | Proxmox node that holds the template; VMs are full clones of it                                           |
-   | Boot disk, storage     | Disk of the template with the root file system (grown to the wizard's size) and the storage of the clones |
-   | Bridge                 | Network bridge of the VMs (default `vmbr0`)                                                               |
-   | Network, gateway       | The bridge's network in CIDR notation and its gateway                                                     |
-   | Node addresses         | The cluster's range, e.g. `10.20.0.71-10.20.0.80`                                                         |
-   | API virtual IP         | A free address in the network, outside the node range                                                     |
-   | LoadBalancer addresses | Optional: addresses for Services of type `LoadBalancer` (see below)                                       |
-   | Memory scheduling      | CAPMOX's memory check (see below), default 0 = off                                                        |
-   | Allowed nodes, VM ID   | Optional: further Proxmox nodes for the VMs, and a VM ID range of their own                               |
+   | Field                  | Meaning                                                                                                                                                                  |
+   | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+   | Node, template         | Proxmox node that holds the template; VMs are full clones of it                                                                                                          |
+   | Boot disk, storage     | Disk of the template with the root file system (grown to the wizard's size; taken from the template, a disk the template lacks is refused) and the storage of the clones |
+   | Bridge                 | Network bridge of the VMs (default `vmbr0`)                                                                                                                              |
+   | Network, gateway       | The bridge's network in CIDR notation and its gateway                                                                                                                    |
+   | Node addresses         | The cluster's range, e.g. `10.20.0.71-10.20.0.80`                                                                                                                        |
+   | API virtual IP         | A free address in the network, outside the node range                                                                                                                    |
+   | LoadBalancer addresses | Optional: addresses for Services of type `LoadBalancer` (see below)                                                                                                      |
+   | Memory scheduling      | CAPMOX's memory check (see below), default 0 = off                                                                                                                       |
+   | Allowed nodes, VM ID   | Optional: further Proxmox nodes for the VMs, and a VM ID range of their own                                                                                              |
 
 4. **Later changes**: the cluster's **Configuration** tab shows the infrastructure settings that
    may change after creation (FP-33): memory scheduling and allowed nodes (apply when the next VM
