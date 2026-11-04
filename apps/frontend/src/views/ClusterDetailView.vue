@@ -19,6 +19,7 @@ import {
 } from '@capi-navigator/shared';
 import { useRoute, useRouter } from 'vue-router';
 import AirGappedChip from '../components/AirGappedChip.vue';
+import HostedChip from '../components/HostedChip.vue';
 import ChangeDialog from '../components/ChangeDialog.vue';
 import ImageLabel from '../components/ImageLabel.vue';
 import BastionEditor, { type BastionDraft } from '../components/BastionEditor.vue';
@@ -309,6 +310,7 @@ const machineHeaders = computed(() => [
         size="small"
         class="ml-2"
       />
+      <HostedChip v-if="s" :labels="s.summary.labels" size="small" class="ml-2" />
       <v-spacer />
       <v-btn
         v-if="canDelete"

@@ -9,6 +9,7 @@ import { useConnectionsStore } from '../stores/connections.js';
 import { useCredentialsStore } from '../stores/credentials.js';
 import { infraLocation } from '../components/infra-location.js';
 import AirGappedChip from '../components/AirGappedChip.vue';
+import HostedChip from '../components/HostedChip.vue';
 
 /** Live list of the workload clusters of the active management cluster (FP6-F-01). */
 const { t } = useI18n();
@@ -157,6 +158,7 @@ const phaseColor = (c: ClusterSummary) =>
               :registry="item.airGappedRegistry"
               class="ml-2"
             />
+            <HostedChip :labels="item.labels" class="ml-2" />
           </template>
           <template #[`item.provider`]="{ item }">
             <div>{{ item.provider ?? '–' }}</div>

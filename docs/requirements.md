@@ -1074,6 +1074,7 @@ Requirements:
 - **UX-07** (done in 0.13.0) Vertical spacing of forms is uneven: hints of different length shift fields in a row, and every dialog has its own margins. Fields reserve no space below unless they show an error, and stacked fields are evenly spaced (one rule for all forms).
 - **UX-08** (done in 0.14.0) The cluster list and the cluster page do not show where a cluster runs (which OpenStack cloud, Proxmox VE, region of a public cloud). Both name the credentials entry and the region or node: OpenStack the region of the credential, AWS and Google Cloud the region (and project) of the spec, Proxmox VE the node; the list search finds them.
 - **UX-09** (done in 0.16.0) Dashboard (FP-18): exposed services and ingresses are two separate lists, without telling whether anything answers behind them. One services overview in the style of the workloads: per service its routes (Ingress hosts and paths, HTTPRoutes, TLS), the external address and ports, the ready pods behind the selector and the workloads owning them; services without ready pods first, "Only exposed" filters LoadBalancer, NodePort and routed services, and routes to a missing service show as an error. Endpoints come from the pods already read, so no further API is needed.
+- **UX-10** (done, user request 2026-11-04) Cluster list and cluster page: hosts and tenants of hosted control planes (FP-24) look like any other cluster. A chip next to the name, like the air-gapped chip: "HCP host" for hosts, "HCP · <host>" for tenants, with a tooltip.
 
 **Review log**
 
