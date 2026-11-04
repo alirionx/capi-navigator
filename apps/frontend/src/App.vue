@@ -87,8 +87,9 @@ async function signOut(): Promise<void> {
         <AppLogo :size="38" />
         <div>
           <div class="brand-title">{{ t('app.title') }}</div>
-          <div class="brand-subtitle">{{ t('app.subtitle') }}</div>
-          <div class="brand-author">{{ t('app.byAuthor') }}</div>
+          <div class="brand-subtitle">
+            {{ t('app.subtitle') }} <span class="brand-author">{{ t('app.byAuthor') }}</span>
+          </div>
         </div>
       </router-link>
 
@@ -134,7 +135,7 @@ async function signOut(): Promise<void> {
         target="_blank"
         rel="noopener"
         variant="text"
-        prepend-icon="mdi-api"
+        prepend-icon="mdi-code-braces"
         :title="t('app.apiDocsHint')"
         class="ml-2"
         data-testid="api-docs-button"
@@ -198,7 +199,7 @@ async function signOut(): Promise<void> {
           />
           <!-- FP23-F-07: Swagger UI of the REST API, served by the backend. -->
           <v-list-item
-            prepend-icon="mdi-api"
+            prepend-icon="mdi-code-braces"
             :title="t('app.apiDocs')"
             href="/api/docs/"
             target="_blank"
@@ -293,16 +294,17 @@ async function signOut(): Promise<void> {
 .v-main .v-container {
   max-width: 1800px;
 }
-/* Stacked form fields are evenly spaced; fields in grid columns are spaced by the grid gap. */
+/* Stacked form fields are evenly spaced; fields in grid columns are spaced by the grid gap. The
+   app bar is a flex row without .d-flex: its buttons next to the connection selector stay centred. */
 :is(.v-application, .v-overlay-container)
-  :is(:not(.d-flex), .flex-column)
+  :is(:not(.d-flex):not(.v-toolbar__content), .flex-column)
   > :is(.v-text-field, .v-file-input)
   + :is(.v-text-field, .v-file-input) {
   margin-top: 12px;
 }
 /* A button or alert right below the last stacked field keeps the same distance as a section. */
 :is(.v-application, .v-overlay-container)
-  :is(:not(.d-flex), .flex-column)
+  :is(:not(.d-flex):not(.v-toolbar__content), .flex-column)
   > :is(.v-text-field, .v-file-input)
   + :is(.v-btn, .v-alert) {
   margin-top: 20px;
@@ -351,13 +353,12 @@ async function signOut(): Promise<void> {
   line-height: 1.1;
 }
 .brand-subtitle {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   opacity: 0.75;
+  white-space: nowrap;
 }
 .brand-author {
-  font-size: 0.6875rem;
-  opacity: 0.5;
-  margin-top: 1px;
+  opacity: 0.7;
 }
 .sidebar :deep(.v-list-item__spacer) {
   width: 14px !important;
