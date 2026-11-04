@@ -923,6 +923,8 @@ export const en = {
     hostHint:
       'A cluster of the app in this namespace, marked as host, on the same infrastructure and credential. Maps to K0smotronControlPlane.spec.remoteHostCluster (the host kubeconfig Secret). Default: the first host.',
     noHosts: 'No host on this infrastructure and credential',
+    hostedAirGapped:
+      'Air-gapped: only air-gapped hosts with the internal registry {registry} are listed. The host pulls the control plane images (k0s and etcd) from it; the registry contents of the host list them.',
     noHostsHint:
       'Mark a cluster as host first: in its Configuration tab, or when creating it (Topology step).',
     hostedReplicas: 'Replicas',

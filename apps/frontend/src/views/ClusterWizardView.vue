@@ -180,9 +180,9 @@ const cpKind = computed(() =>
 );
 
 // ---- FP-24: hosted control planes ----
-/** k0s on an infrastructure that runs workers of hosted control planes, not air-gapped. */
+/** k0s on an infrastructure that runs workers of hosted control planes. */
 const hostedAvailable = computed(
-  () => !!flavorPlugin.value?.hosted && !!INFRA_PLUGINS[draft.provider].hosted && !airGapped.value,
+  () => !!flavorPlugin.value?.hosted && !!INFRA_PLUGINS[draft.provider].hosted,
 );
 /** FP24-F-06: the tenant needs a fixed address from the host (kube-vip on Proxmox VE). */
 const fixedAddress = computed(() => !!INFRA_PLUGINS[draft.provider].hosted?.endpoint);
@@ -196,14 +196,18 @@ watch(
     if (mode === 'hosted' && draft.cp.replicas === 5) draft.cp.replicas = 3;
   },
 );
-/** Hosts in the namespace on the same infrastructure and credential (FP24-F-03). */
+/**
+ * Hosts in the namespace on the same infrastructure and credential (FP24-F-03); for an air-gapped
+ * tenant only air-gapped hosts with the same registry (FP24-F-14; the preview checks all fields).
+ */
 const hosts = computed(() =>
   clusters.clusters.filter(
     (c) =>
       c.labels[HOST_LABEL] === 'true' &&
       c.namespace === draft.namespace &&
       c.provider === draft.provider &&
-      c.credential === draft.credential,
+      c.credential === draft.credential &&
+      (!airGapped.value || c.airGappedRegistry === registry.value?.host),
   ),
 );
 watch(
@@ -876,6 +880,13 @@ const canPreview = computed(() => issues.value.length === 0);
           </v-row>
           <div v-if="hosts.length === 0" class="text-body-medium text-medium-emphasis">
             {{ t('wizard.noHostsHint') }}
+          </div>
+          <div
+            v-if="airGapped"
+            class="text-body-medium text-medium-emphasis"
+            data-testid="hosted-air-gapped"
+          >
+            {{ t('wizard.hostedAirGapped', { registry: registry?.host }) }}
           </div>
           <v-alert
             v-if="hostCapacity"
