@@ -2,6 +2,7 @@ import type { InternalRegistry } from '../connections.js';
 import { REBOOT_DAEMON_LABEL, presetsFor, type AddonPresetOverrides } from './addons.js';
 import { artifactPushCommands, artifactRepository, type AirGapArtifact } from './air-gap.js';
 import { AIR_GAP_IMAGES } from './air-gap-images.generated.js';
+import { HOSTED_ETCD_IMAGE, hostedK0sImage } from './k0s.js';
 import { KUBE_VIP_IMAGE } from './kube-vip.js';
 import type { BootstrapFlavorPlugin, InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec } from './spec.js';
@@ -45,6 +46,29 @@ export interface RegistryContents {
   unknown: string[];
 }
 
+/**
+ * FP24-F-14: a tenant whose control plane runs as pods in a host, with the images those pods run
+ * now (read from the host). k0smotron keeps the init image of an existing StatefulSet, so the k0s
+ * image of the version a tenant was created with stays needed after upgrades (ADR-0037).
+ */
+export interface HostedTenantImages {
+  name: string;
+  version: string;
+  running?: string[];
+}
+
+/** FP24-F-14: what the control planes of a host's tenants pull from the host's registry. */
+export function hostedControlPlaneImages(
+  tenants: HostedTenantImages[],
+): { image: string; usedBy: string }[] {
+  return tenants.flatMap((t) =>
+    [hostedK0sImage(t.version), HOSTED_ETCD_IMAGE, ...(t.running ?? [])].map((image) => ({
+      image: normalizeImage(image),
+      usedBy: `Hosted control plane ${t.name}`,
+    })),
+  );
+}
+
 /** The internal registry's name of an upstream image, through the mirror of its registry. */
 export function mirroredImage(registry: InternalRegistry, image: string): string | undefined {
   const [upstream, ...repo] = image.split('/');
@@ -59,6 +83,7 @@ export function registryContents(
   flavor: BootstrapFlavorPlugin,
   infra: InfraTransformPlugin,
   overrides: AddonPresetOverrides = {},
+  tenants: HostedTenantImages[] = [],
 ): RegistryContents {
   const registry = spec.airGapped?.registry;
   if (!registry || !flavor.airGap) return { artifacts: [], images: [], unknown: [] };
@@ -90,6 +115,7 @@ export function registryContents(
       wanted.push(...known.images.map((image) => ({ image, usedBy: preset.displayName })));
     else unknown.push(`${preset.displayName} ${preset.version}`);
   }
+  if (spec.controlPlaneHost) wanted.push(...hostedControlPlaneImages(tenants));
   const seen = new Set<string>();
   const images = wanted
     .filter(({ image }) => !seen.has(image) && !!seen.add(image))
@@ -130,11 +156,18 @@ export function imageCopyCommands(images: RegistryImage[]): string {
 export function registryContentsView(
   spec: ClusterSpec,
   overrides: AddonPresetOverrides = {},
+  tenants: HostedTenantImages[] = [],
 ): RegistryContentsView | undefined {
   const flavor = FLAVOR_PLUGINS[spec.kubernetes.flavor];
   const registry = spec.airGapped?.registry;
   if (!registry || !flavor?.airGap) return undefined;
-  const c = registryContents(spec, flavor, INFRA_PLUGINS[spec.infrastructure.provider], overrides);
+  const c = registryContents(
+    spec,
+    flavor,
+    INFRA_PLUGINS[spec.infrastructure.provider],
+    overrides,
+    tenants,
+  );
   return {
     artifacts: c.artifacts.map(({ artifact, commands }) => ({
       reference: `${registry.host}/${artifactRepository(registry, artifact)}:${artifact.tag}`,
@@ -143,5 +176,8 @@ export function registryContentsView(
     images: c.images,
     imageCommands: imageCopyCommands(c.images),
     unknown: c.unknown,
+    ...(spec.topology.mode === 'hosted' && spec.topology.hosted
+      ? { controlPlaneOn: spec.topology.hosted.host }
+      : {}),
   };
 }

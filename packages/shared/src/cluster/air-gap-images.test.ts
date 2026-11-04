@@ -163,6 +163,30 @@ describe('registry contents of a cluster (FP29-F-17)', () => {
     ).toBe(`registry.example.internal/proxy-k8s-io/kube-apiserver:${version}`);
   });
 
+  it('lists the control plane images of the tenants on a host only (FP24-F-14)', () => {
+    const k0s = { kubernetes: { flavor: 'k0s', version: 'v1.35.9+k0s.0' } };
+    const tenants = [{ name: 'tenant', version: 'v1.36.5+k0s.0', running: ['quay.io/a:1'] }];
+    const sources = (s: ReturnType<typeof spec>) =>
+      registryContents(s, FLAVOR_PLUGINS.k0s!, INFRA_PLUGINS.proxmox, {}, tenants)
+        .images.filter((i) => i.usedBy === 'Hosted control plane tenant')
+        .map((i) => i.source);
+    const base = spec().infrastructure as { network: object };
+    const host = spec({
+      ...k0s,
+      controlPlaneHost: true,
+      infrastructure: {
+        ...base,
+        network: { ...base.network, loadBalancerAddresses: ['10.20.0.90-10.20.0.99'] },
+      },
+    });
+    expect(sources(host)).toEqual([
+      'quay.io/k0sproject/k0s:v1.36.5-k0s.0',
+      'quay.io/k0sproject/etcd:v3.7.1',
+      'quay.io/a:1',
+    ]);
+    expect(sources(spec(k0s))).toEqual([]);
+  });
+
   it('lists both versions during an upgrade', () => {
     const c = contents(
       spec({ kubernetes: { version: 'v1.36.5+rke2r1', workerVersion: 'v1.35.9+rke2r1' } }),

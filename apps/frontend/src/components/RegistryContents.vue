@@ -30,6 +30,24 @@ async function copy(text: string): Promise<void> {
   <div data-testid="registry-contents">
     <p class="text-body-medium mb-3">{{ t('registryContents.intro') }}</p>
     <v-alert
+      v-if="contents.controlPlaneOn"
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mb-3"
+      data-testid="registry-control-plane-on"
+      >{{ t('registryContents.controlPlaneOn', { host: contents.controlPlaneOn }) }}</v-alert
+    >
+    <v-alert
+      v-for="w in contents.warnings ?? []"
+      :key="w"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="mb-3"
+      >{{ w }}</v-alert
+    >
+    <v-alert
       v-if="contents.unknown.length"
       type="warning"
       variant="tonal"

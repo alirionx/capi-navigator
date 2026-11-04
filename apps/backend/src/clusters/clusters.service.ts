@@ -47,6 +47,8 @@ import {
   type ClusterSummary,
   type ManifestObject,
   hostedTenantProblems,
+  hostedK0sImage,
+  HOSTED_ETCD_IMAGE,
   schedulableHostNodes,
   type HostView,
   type TenantView,
@@ -80,6 +82,7 @@ import {
   hostFacts,
   hostServiceAddresses,
   readHostView,
+  readHostedTenantImages,
   readTenantView,
   tenantsOf,
 } from './hosting.js';
@@ -507,9 +510,19 @@ export class ClustersService {
     name: string,
   ): Promise<RegistryContentsView> {
     const spec = await this.storedSpec(connection, namespace, name);
-    const view = registryContentsView(spec, await this.store.addonPresetOverrides());
+    if (!spec.airGapped)
+      throw new NotFoundException(`Cluster ${namespace}/${name} is not air-gapped`);
+    // FP24-F-14: a host also holds the control plane images of its tenants.
+    const hosted =
+      spec.controlPlaneHost &&
+      (await readHostedTenantImages(await this.clients.forConnection(connection), spec));
+    const view = registryContentsView(
+      spec,
+      await this.store.addonPresetOverrides(),
+      hosted ? hosted.tenants : [],
+    );
     if (!view) throw new NotFoundException(`Cluster ${namespace}/${name} is not air-gapped`);
-    return view;
+    return hosted && hosted.warnings.length ? { ...view, warnings: hosted.warnings } : view;
   }
 
   async storedSpec(connection: string, namespace: string, name: string): Promise<ClusterSpec> {
@@ -976,6 +989,16 @@ export class ClustersService {
         hostFacts(kc, spec.namespace, host),
       );
       blockers.push(...hostedTenantProblems(spec, facts));
+      // FP24-F-14: an air-gapped host pulls the control plane images from its internal registry.
+      if (facts?.spec?.airGapped) {
+        const earlier =
+          baseline && baseline.kubernetes.version !== spec.kubernetes.version
+            ? ` Keep ${hostedK0sImage(baseline.kubernetes.version)} as well: k0smotron keeps the init image of the existing pods.`
+            : '';
+        warnings.push(
+          `The host ${spec.namespace}/${host} pulls the control plane images from its internal registry ${facts.spec.airGapped.registry.host}: ${hostedK0sImage(spec.kubernetes.version)} and ${HOSTED_ETCD_IMAGE} must be there (see the registry contents of the host).${earlier}`,
+        );
+      }
       warnings.push(
         `Hosted control planes are experimental: the control plane runs as pods in ${spec.namespace}/${host}, its API pauses briefly while host nodes are replaced (ADR-0034).`,
       );

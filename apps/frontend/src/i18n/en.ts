@@ -751,6 +751,8 @@ export const en = {
     title: 'What the internal registry must hold',
     intro:
       'Everything the nodes of this cluster pull. A pull-through cache (e.g. Harbor proxy cache projects) fills itself; otherwise copy it with these commands, on a machine with internet access, skopeo and oras.',
+    controlPlaneOn:
+      'The control plane of this cluster runs as pods in its host {host}: their images (k0s and etcd) are listed in the registry contents of the host.',
     login: 'Log in with a user that may push:',
     binaries: 'The Kubernetes binaries, downloaded from the official release and pushed:',
     images:

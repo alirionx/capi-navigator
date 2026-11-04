@@ -8,6 +8,7 @@ import {
   tenantRequests,
   type ClusterSpec,
   type HostFacts,
+  type HostedTenantImages,
   type HostView,
   type TenantView,
 } from '@capi-navigator/shared';
@@ -209,6 +210,53 @@ export async function readHostView(kc: KubeConfig, host: ClusterSpec): Promise<H
     );
   }
   return view;
+}
+
+/**
+ * FP24-F-14: the tenants of a host with the images their control plane pods run now, for the
+ * registry contents of an air-gapped host. Without an answer from the host only the versions count.
+ */
+export async function readHostedTenantImages(
+  kc: KubeConfig,
+  host: ClusterSpec,
+): Promise<{ tenants: HostedTenantImages[]; warnings: string[] }> {
+  const tenants: HostedTenantImages[] = (await tenantsOf(kc, host.namespace, host.name)).flatMap(
+    (c) => {
+      const spec = specOf(c);
+      return spec ? [{ name: spec.name, version: spec.kubernetes.version }] : [];
+    },
+  );
+  if (!tenants.length) return { tenants, warnings: [] };
+  const unknown = `the images the control planes run now are not known, only those of their versions.`;
+  const kubeconfig = await clusterKubeconfig(kc, host.namespace, host.name);
+  if (!kubeconfig) return { tenants, warnings: [`The host has no kubeconfig yet: ${unknown}`] };
+  try {
+    const pods = await withTimeout(
+      hostApi(kubeconfig).listNamespacedPod({
+        namespace: host.namespace,
+        labelSelector: 'app=k0smotron',
+      }),
+    );
+    for (const t of tenants) {
+      t.running = [
+        ...new Set(
+          pods.items
+            .filter((p) => p.metadata?.labels?.cluster === t.name)
+            .flatMap((p) => [...(p.spec?.initContainers ?? []), ...(p.spec?.containers ?? [])])
+            .map((c) => c.image ?? '')
+            .filter(Boolean),
+        ),
+      ].sort();
+    }
+    return { tenants, warnings: [] };
+  } catch (err) {
+    return {
+      tenants,
+      warnings: [
+        `The host does not answer (${err instanceof Error ? err.message : String(err)}): ${unknown}`,
+      ],
+    };
+  }
 }
 
 /** FP24-F-11: where a tenant's control plane runs in its host. */

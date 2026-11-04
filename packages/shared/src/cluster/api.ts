@@ -40,6 +40,10 @@ export const RegistryContentsSchema = z.object({
   imageCommands: z.string(),
   /** Parts whose images are not known, e.g. a preset on another chart version. */
   unknown: z.array(z.string()),
+  /** FP24-F-14: a hosted tenant; its control plane images are listed on this host. */
+  controlPlaneOn: z.string().optional(),
+  /** FP24-F-14: e.g. a host that did not answer, so the images its tenants run are not known. */
+  warnings: z.array(z.string()).optional(),
 });
 export type RegistryContentsView = z.infer<typeof RegistryContentsSchema>;
 

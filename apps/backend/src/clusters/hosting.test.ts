@@ -1,5 +1,9 @@
 import { CoreV1Api } from '@kubernetes/client-node';
-import { ClusterSpecSchema, type ClusterSpecInput } from '@capi-navigator/shared';
+import {
+  ClusterSpecSchema,
+  registryContentsView,
+  type ClusterSpecInput,
+} from '@capi-navigator/shared';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   cpuMillis,
@@ -8,6 +12,7 @@ import {
   hostServiceAddresses,
   memoryMiB,
   readHostView,
+  readHostedTenantImages,
   readTenantView,
   specOf,
 } from './hosting.js';
@@ -62,6 +67,11 @@ const tenantInput: ClusterSpecInput = {
   },
 };
 const host = ClusterSpecSchema.parse(hostInput);
+const registry = {
+  host: 'registry.example.internal',
+  mirrors: [{ upstream: 'quay.io', path: 'proxy-quay-io' }],
+  artifactsPath: 'library',
+};
 const tenant = ClusterSpecSchema.parse(tenantInput);
 const clusterObject = (spec: unknown, extra: Record<string, unknown> = {}) => ({
   metadata: {
@@ -92,7 +102,7 @@ function management(opts: { kubeconfig?: boolean } = {}) {
 }
 
 /** The host cluster: three workers, a tainted control plane node, Services and the tenant's pods. */
-function fakeHost(opts: { down?: boolean } = {}) {
+function fakeHost(opts: { down?: boolean; podsDown?: boolean } = {}) {
   const node = (name: string, taint?: boolean) => ({
     metadata: { name },
     spec: taint
@@ -125,20 +135,36 @@ function fakeHost(opts: { down?: boolean } = {}) {
         { metadata: { namespace: 'web', name: 'internal' }, spec: { type: 'ClusterIP' } },
       ],
     }),
-    listNamespacedPod: async () => ({
-      items: [
-        {
-          metadata: { name: 'kmc-tenant-etcd-0', labels: { component: 'etcd' } },
-          spec: { nodeName: 'w1' },
-          status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] },
-        },
-        {
-          metadata: { name: 'kmc-tenant-0', labels: { component: 'cluster' } },
-          spec: { nodeName: 'w2' },
-          status: { phase: 'Pending', conditions: [] },
-        },
-      ],
-    }),
+    listNamespacedPod: opts.podsDown
+      ? fail
+      : async () => ({
+          items: [
+            {
+              metadata: {
+                name: 'kmc-tenant-etcd-0',
+                labels: { app: 'k0smotron', cluster: 'tenant', component: 'etcd' },
+              },
+              spec: {
+                nodeName: 'w1',
+                // k0smotron keeps the init image of the version the tenant was created with.
+                initContainers: [{ image: 'quay.io/k0sproject/k0s:v1.34.12-k0s.0' }],
+                containers: [{ image: 'quay.io/k0sproject/etcd:v3.7.1' }],
+              },
+              status: { phase: 'Running', conditions: [{ type: 'Ready', status: 'True' }] },
+            },
+            {
+              metadata: {
+                name: 'kmc-tenant-0',
+                labels: { app: 'k0smotron', cluster: 'tenant', component: 'cluster' },
+              },
+              spec: {
+                nodeName: 'w2',
+                containers: [{ image: 'quay.io/k0sproject/k0s:v1.35.9-k0s.0' }],
+              },
+              status: { phase: 'Pending', conditions: [] },
+            },
+          ],
+        }),
     listNamespacedPersistentVolumeClaim: async () => ({
       items: [
         {
@@ -220,6 +246,41 @@ describe('hosts of hosted control planes (FP-24)', () => {
     expect((await readHostView(management({ kubeconfig: false }), host)).warnings[0]).toContain(
       'no kubeconfig yet',
     );
+  });
+
+  it('reads the images the control planes of its tenants run in a host (FP24-F-14)', async () => {
+    hostAccess.api = () => fakeHost() as never;
+    expect(await readHostedTenantImages(management(), host)).toEqual({
+      tenants: [
+        {
+          name: 'tenant',
+          version: 'v1.35.9+k0s.0',
+          running: [
+            'quay.io/k0sproject/etcd:v3.7.1',
+            'quay.io/k0sproject/k0s:v1.34.12-k0s.0',
+            'quay.io/k0sproject/k0s:v1.35.9-k0s.0',
+          ],
+        },
+      ],
+      warnings: [],
+    });
+    const listed = registryContentsView(
+      ClusterSpecSchema.parse({ ...hostInput, airGapped: { registry } }),
+      {},
+      (await readHostedTenantImages(management(), host)).tenants,
+    )!.images.filter((i) => i.usedBy === 'Hosted control plane tenant');
+    expect(listed.map((i) => i.target)).toEqual([
+      'registry.example.internal/proxy-quay-io/k0sproject/k0s:v1.35.9-k0s.0',
+      'registry.example.internal/proxy-quay-io/k0sproject/etcd:v3.7.1',
+      'registry.example.internal/proxy-quay-io/k0sproject/k0s:v1.34.12-k0s.0',
+    ]);
+    hostAccess.api = () => fakeHost({ down: true, podsDown: true }) as never;
+    const down = await readHostedTenantImages(management(), host);
+    expect(down.tenants).toEqual([{ name: 'tenant', version: 'v1.35.9+k0s.0' }]);
+    expect(down.warnings[0]).toContain('does not answer');
+    expect(
+      (await readHostedTenantImages(management({ kubeconfig: false }), host)).warnings[0],
+    ).toContain('no kubeconfig yet');
   });
 
   it('shows where the control plane of a tenant runs (FP24-F-11)', async () => {
