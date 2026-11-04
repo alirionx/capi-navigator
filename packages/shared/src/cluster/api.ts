@@ -190,6 +190,8 @@ export const InfraSummarySchema = z.object({
       image: ImageRefSchema.optional(),
       rootVolumeGB: z.number().optional(),
       rootVolumeType: z.string().optional(),
+      /** FP-24: a hosted control plane runs as pods in this host cluster, not as machines. */
+      hostedOn: z.string().optional(),
     }),
   ),
 });

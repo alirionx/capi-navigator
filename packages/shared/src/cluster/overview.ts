@@ -87,7 +87,14 @@ export function infraSummary(spec: ClusterSpec): InfraSummary {
       ...(spec.airGapped ? [{ label: AIR_GAPPED_FACT, value: spec.airGapped.registry.host }] : []),
     ],
     groups: [
-      group('control plane', 'control-plane', cp.replicas, cp),
+      spec.topology.mode === 'hosted' && spec.topology.hosted
+        ? {
+            name: 'control plane',
+            role: 'control-plane' as const,
+            replicas: cp.replicas,
+            hostedOn: spec.topology.hosted.host,
+          }
+        : group('control plane', 'control-plane', cp.replicas, cp),
       ...spec.topology.workerPools.map((p) => group(p.name, 'worker', p.replicas, p)),
     ],
   };

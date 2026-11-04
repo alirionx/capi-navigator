@@ -116,7 +116,8 @@ function download(): void {
         </v-card-title>
         <v-card-subtitle>{{ t('logs.hint') }}</v-card-subtitle>
       </v-card-item>
-      <v-card-text class="pb-0">
+      <!-- Room above the first row: the outlined fields' labels float above their border. -->
+      <v-card-text class="pt-2 pb-0">
         <div class="d-flex flex-wrap align-center ga-3 mb-3">
           <v-select
             :model-value="pod"

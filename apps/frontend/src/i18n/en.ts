@@ -148,6 +148,7 @@ export const en = {
     image: 'Image',
     rootDisk: 'Root disk',
     localDisk: 'local disk of the flavor',
+    hostedOn: 'pods in host {host}, no machines',
   },
   bastion: {
     title: 'Bastion host',

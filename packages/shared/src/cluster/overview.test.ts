@@ -41,6 +41,32 @@ describe('provider usage (FP6-F-08)', () => {
 });
 
 describe('infrastructure summary (FP6-F-02)', () => {
+  it('names the host instead of machines for a hosted control plane (FP-24)', () => {
+    const spec = ClusterSpecSchema.parse({
+      name: 'tenant',
+      kubernetes: { flavor: 'k0s', version: 'v1.35.9+k0s.0' },
+      topology: {
+        mode: 'hosted',
+        controlPlane: { replicas: 1, machineSize: 'unused' },
+        workerPools: [{ name: 'default', replicas: 2, machineSize: 't3.large' }],
+        hosted: { host: 'host' },
+      },
+      infrastructure: {
+        provider: 'aws',
+        credentialRef: 'aws-dev',
+        region: 'eu-central-1',
+        image: 'ami-0e27250725fa51794',
+      },
+    });
+    expect(infraSummary(spec).groups[0]).toEqual({
+      name: 'control plane',
+      role: 'control-plane',
+      replicas: 1,
+      hostedOn: 'host',
+    });
+    expect(infraSummary(spec).groups[1]).toMatchObject({ name: 'default', size: 't3.large' });
+  });
+
   it('shows effective size, image and root disk per group, with provider defaults', () => {
     const spec = ClusterSpecSchema.parse({
       name: 'demo',

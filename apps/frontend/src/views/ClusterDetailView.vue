@@ -259,6 +259,9 @@ const machineHeaders = computed(() => [
   { title: '', key: 'shell', sortable: false },
   { title: '', key: 'data-table-expand' },
 ]);
+
+/** Kinds may wrap between their words in the narrow cards (zero-width spaces). */
+const breakable = (kind: string) => kind.replace(/([a-z0-9])([A-Z])/g, '$1\u200b$2');
 </script>
 
 <template>
@@ -439,7 +442,11 @@ const machineHeaders = computed(() => [
             </v-col>
             <v-col v-if="s.infrastructure" cols="12" md="3">
               <v-card border class="fill-height">
-                <v-card-item :title="s.infrastructure.kind" :subtitle="s.infrastructure.name" />
+                <v-card-item
+                  class="kind-title"
+                  :title="breakable(s.infrastructure.kind)"
+                  :subtitle="s.infrastructure.name"
+                />
                 <v-card-text>
                   <v-chip :color="color(s.infrastructure.ready)" variant="tonal">{{
                     s.infrastructure.ready ? t('clusters.provisioned') : t('clusters.provisioning')
@@ -449,7 +456,11 @@ const machineHeaders = computed(() => [
             </v-col>
             <v-col v-if="s.controlPlane" cols="12" md="3">
               <v-card border class="fill-height">
-                <v-card-item :title="s.controlPlane.kind" :subtitle="s.controlPlane.version" />
+                <v-card-item
+                  class="kind-title"
+                  :title="breakable(s.controlPlane.kind)"
+                  :subtitle="s.controlPlane.version"
+                />
                 <v-card-text>
                   <v-chip
                     :color="color(s.controlPlane.ready === s.controlPlane.replicas)"
@@ -515,24 +526,30 @@ const machineHeaders = computed(() => [
                   <tr v-for="g in s.infraSummary.groups" :key="g.name">
                     <td class="font-weight-medium">{{ g.name }}</td>
                     <td>{{ g.replicas }}</td>
-                    <td>{{ g.size ?? '–' }}</td>
-                    <td class="py-2" style="max-width: 26rem">
-                      <ImageLabel
-                        v-if="g.image"
-                        :id="g.image.id"
-                        :name="g.image.name"
-                        :not-found="g.image.notFound"
-                      />
-                      <span v-else>–</span>
+                    <!-- FP-24: no machines for a hosted control plane, its pods run in the host. -->
+                    <td v-if="g.hostedOn" colspan="3" class="text-medium-emphasis">
+                      {{ t('infra.hostedOn', { host: g.hostedOn }) }}
                     </td>
-                    <td>
-                      <template v-if="g.rootVolumeGB"
-                        >{{ g.rootVolumeGB }} GB{{
-                          g.rootVolumeType ? ` · ${g.rootVolumeType}` : ''
-                        }}</template
-                      >
-                      <span v-else class="text-medium-emphasis">{{ t('infra.localDisk') }}</span>
-                    </td>
+                    <template v-else>
+                      <td>{{ g.size ?? '–' }}</td>
+                      <td class="py-2" style="max-width: 26rem">
+                        <ImageLabel
+                          v-if="g.image"
+                          :id="g.image.id"
+                          :name="g.image.name"
+                          :not-found="g.image.notFound"
+                        />
+                        <span v-else>–</span>
+                      </td>
+                      <td>
+                        <template v-if="g.rootVolumeGB"
+                          >{{ g.rootVolumeGB }} GB{{
+                            g.rootVolumeType ? ` · ${g.rootVolumeType}` : ''
+                          }}</template
+                        >
+                        <span v-else class="text-medium-emphasis">{{ t('infra.localDisk') }}</span>
+                      </td>
+                    </template>
                   </tr>
                 </tbody>
               </v-table>
@@ -955,5 +972,9 @@ const machineHeaders = computed(() => [
   border-radius: 6px;
   background: rgba(var(--v-theme-on-surface), 0.06);
   word-break: break-all;
+}
+/* Kinds such as K0smotronControlPlane wrap between words instead of being cut off. */
+.kind-title :deep(.v-card-title) {
+  white-space: normal;
 }
 </style>
