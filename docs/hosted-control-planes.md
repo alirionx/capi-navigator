@@ -58,6 +58,8 @@ one etcd pod per host node (hard topology spread).
 
 ## Limits
 
+- **One replica** means API downtime during upgrades: k0smotron replaces the only controller pod
+  (about 90 s measured on Proxmox VE). Use three replicas where the API must stay reachable.
 - **Replicas are fixed** at creation: scaling makes k0smotron split etcd (its init script treats
   a single failed member list as "first member").
 - **Host maintenance:** the tenant API pauses briefly while host nodes are replaced (load balancer
