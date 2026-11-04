@@ -781,7 +781,7 @@ export const en = {
     hostHint: 'Host name and optional port, without https://, e.g. registry.example.com. Required.',
     mirrors: 'Mirrored registries',
     mirrorsHint:
-      'Upstream registry and the path its images have in the internal one, e.g. docker.io → proxy-docker-io (a Harbor proxy cache project). Empty path: the images keep their names. Default: docker.io, registry.k8s.io, ghcr.io and quay.io.',
+      'Upstream registry and the path its images have in the internal one, e.g. docker.io → proxy-docker-io (a Harbor proxy cache project). Empty path: the images keep their names. Default: docker.io, registry.k8s.io, ghcr.io, quay.io and public.ecr.aws.',
     mirrorOf: 'Mirror of {upstream}',
     upstream: 'Upstream registry',
     path: 'Path in the internal registry',

@@ -80,7 +80,14 @@ const RepositoryPathSchema = z
   );
 
 /** Upstream registries every internal registry should mirror (FP29-F-10). */
-export const DEFAULT_MIRRORED_REGISTRIES = ['docker.io', 'registry.k8s.io', 'ghcr.io', 'quay.io'];
+export const DEFAULT_MIRRORED_REGISTRIES = [
+  'docker.io',
+  'registry.k8s.io',
+  'ghcr.io',
+  'quay.io',
+  // EBS CSI driver and its sidecars on AWS.
+  'public.ecr.aws',
+];
 
 /**
  * FP29-F-10: internal OCI registry that nodes without internet pull from. Images keep their names
