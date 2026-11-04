@@ -973,12 +973,15 @@ export class ClustersService {
         ),
       ];
       const problems = await this.credentials
-        .imageProblems(infra.provider, resolved.data, ids)
+        .imageProblems(infra.provider, resolved.data, ids, infra)
         .catch(() => ({}) as Record<string, string>);
       for (const [id, problem] of Object.entries(problems)) {
-        blockers.push(
-          `${problem.replace(/^Template /, `Template ${id} `).replaceAll('<id>', id)}: its machines would never become ready.`,
-        );
+        const text = problem.replace(/^Template /, `Template ${id} `).replaceAll('<id>', id);
+        // A problem that is a sentence of its own says what it causes and lets machines boot
+        // (e.g. a boot disk the template lacks): it blocks new clusters, existing ones are
+        // warned, since their setting cannot change after creation.
+        if (!text.endsWith('.')) blockers.push(`${text}: its machines would never become ready.`);
+        else (baseline ? warnings : blockers).push(text);
       }
     }
     // FP31-F-08: addresses the user hands out must not clash with other clusters.

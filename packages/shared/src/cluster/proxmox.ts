@@ -82,6 +82,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
         hint: 'wizard.pveTemplateHint',
         // A template without warnings (no cloud-init drive, guest agent on).
         preselect: (options) => options.find((o) => !o.details?.warning)?.value,
+        // CAPMOX grows only this disk to the root disk size (FP31-F-05).
+        fills: { bootDisk: 'bootDisk' },
         cols: 5,
         testId: 'image',
       },

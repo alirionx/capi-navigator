@@ -384,6 +384,20 @@ watch(
   },
 );
 
+// A chosen list entry sets the fields its details name (e.g. a template's boot disk).
+watch(
+  () => form.value.fields.filter((f) => f.fills && f.lookup).map((f) => infraValues.value[f.path]),
+  () => {
+    for (const f of form.value.fields.filter((f) => f.fills && f.lookup)) {
+      const chosen = (lists[f.lookup!] ?? []).find((o) => o.value === infraValues.value[f.path]);
+      for (const [key, path] of Object.entries(f.fills!)) {
+        const value = chosen?.details?.[key];
+        if (typeof value === 'string' && value) infraValues.value[path] = value;
+      }
+    }
+  },
+);
+
 const sizes = computed(() => lists[form.value.machine.sizeLookup] ?? []);
 /** Images for per-group overrides: the list of the plugin's image field (e.g. Proxmox templates). */
 const images = computed(

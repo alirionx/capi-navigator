@@ -4,6 +4,7 @@ import type {
   CredentialProvider,
   CredentialSummary,
   CredentialTestResult,
+  Infrastructure,
   LookupKind,
   LookupOption,
 } from '@capi-navigator/shared';
@@ -91,7 +92,11 @@ export interface CredentialPlugin<TInput = unknown> {
    * Problems of the given images that keep machines from ever becoming ready (e.g. a Proxmox
    * template with the guest agent disabled), by image ID; the preview refuses them (read-only).
    */
-  imageProblems?(data: Record<string, string>, ids: string[]): Promise<Record<string, string>>;
+  imageProblems?(
+    data: Record<string, string>,
+    ids: string[],
+    infra?: Infrastructure,
+  ): Promise<Record<string, string>>;
   /** Selection lists for the cluster wizard (read-only). */
   lookup(
     data: Record<string, string>,

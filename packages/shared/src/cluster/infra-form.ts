@@ -34,6 +34,11 @@ export interface InfraField {
   fromCredential?: (summary: CredentialSummary) => string | undefined;
   /** Fields emptied when this one changes; the selection lists are reloaded (e.g. region). */
   resets?: string[];
+  /**
+   * Fields set from the details of the chosen list entry, detail key → field path (e.g. the boot
+   * disk of a Proxmox template).
+   */
+  fills?: Record<string, string>;
   testId?: string;
   /**
    * FP-33: may change after creation. Set only when the provider accepts the change on its

@@ -14,6 +14,7 @@ import {
   ProxmoxCredentialInputSchema,
   type CredentialSummary,
   type CredentialTestResult,
+  type Infrastructure,
   type LookupKind,
   type LookupOption,
 } from '@capi-navigator/shared';
@@ -244,15 +245,16 @@ export class ProxmoxCredentialPlugin implements CredentialPlugin<unknown> {
    * the machine; without the agent, or with a Proxmox cloud-init drive, its machines never become
    * ready (live test: a template with the agent disabled).
    */
-  async imageProblems(data: Record<string, string>, ids: string[]) {
+  async imageProblems(data: Record<string, string>, ids: string[], infra?: Infrastructure) {
     const vms = await this.get<Resource[]>(data, '/cluster/resources?type=vm');
     const out: Record<string, string> = {};
+    const bootDisk = infra?.provider === 'proxmox' ? infra.bootDisk : undefined;
     for (const vm of vms.filter((v) => v.template === 1 && ids.includes(String(v.vmid)))) {
       const config = await this.get<Record<string, string | number>>(
         data,
         `/nodes/${encodeURIComponent(vm.node)}/qemu/${vm.vmid}/config`,
       );
-      const warning = templateWarning(config);
+      const warning = templateWarning(config) ?? (bootDisk && bootDiskProblem(config, bootDisk));
       if (warning) out[String(vm.vmid)] = warning;
     }
     return out;
@@ -304,10 +306,15 @@ export class ProxmoxCredentialPlugin implements CredentialPlugin<unknown> {
             `/nodes/${encodeURIComponent(vm.node)}/qemu/${vm.vmid}/config`,
           );
           const warning = templateWarning(config);
+          const bootDisk = bootDiskOf(config);
           out.push({
             value: String(vm.vmid),
             label: `${vm.vmid} – ${vm.name ?? 'template'}`,
-            details: { node: vm.node, ...(warning ? { warning } : {}) },
+            details: {
+              node: vm.node,
+              ...(bootDisk ? { bootDisk } : {}),
+              ...(warning ? { warning } : {}),
+            },
           });
         }
         return out;
@@ -410,6 +417,37 @@ export function templateWarning(config: Record<string, string | number>): string
     }
   }
   return problems.length ? `Template ${problems.join('; ')}` : undefined;
+}
+
+const isDisk = (config: Record<string, string | number>, key: string) =>
+  /^(scsi|virtio|sata)\d+$/.test(key) &&
+  config[key] !== undefined &&
+  !/media=cdrom|cloudinit/.test(String(config[key]));
+
+/**
+ * The disk a template boots from: the first disk of its boot order, else its first disk. The
+ * wizard takes it as `bootDisk`, which CAPMOX grows to the root disk size.
+ */
+export function bootDiskOf(config: Record<string, string | number>): string | undefined {
+  const order = /^order=([^,]*)/.exec(String(config.boot ?? ''))?.[1]?.split(';') ?? [];
+  return order.find((d) => isDisk(config, d)) ?? Object.keys(config).find((k) => isDisk(config, k));
+}
+
+/**
+ * FP31-F-05: CAPMOX grows only the disk named in `bootVolume.disk`; on a template without it the
+ * root disk silently keeps the template's size (seen live: virtio0 templates with the default
+ * scsi0 stayed at 8 GB with 40 GB set, and the kubelet ran out of image space).
+ */
+export function bootDiskProblem(
+  config: Record<string, string | number>,
+  bootDisk: string,
+): string | undefined {
+  if (isDisk(config, bootDisk)) return undefined;
+  const actual = bootDiskOf(config);
+  const size = actual && /size=(\w+)/.exec(String(config[actual]))?.[1];
+  return actual
+    ? `Template has no disk ${bootDisk}, it boots from ${actual}: choose ${actual} as boot disk, otherwise the root disk keeps the template's size${size ? ` (${size})` : ''}.`
+    : `Template has no disk ${bootDisk}: the root disk would keep the template's size.`;
 }
 
 function fail(err: unknown): never {

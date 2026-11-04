@@ -28,6 +28,7 @@ import {
   type Credential,
   type CredentialProvider,
   type CredentialSummary,
+  type Infrastructure,
   type LookupKind,
   type LookupResponse,
   type ManifestPreview,
@@ -328,10 +329,11 @@ export class CredentialsService {
     provider: string,
     data: Record<string, string>,
     ids: string[],
+    infra?: Infrastructure,
   ): Promise<Record<string, string>> {
     const plugin = this.plugin(provider);
     return plugin.imageProblems && ids.length
-      ? plugin.imageProblems(data, ids)
+      ? plugin.imageProblems(data, ids, infra)
       : Promise.resolve({});
   }
 

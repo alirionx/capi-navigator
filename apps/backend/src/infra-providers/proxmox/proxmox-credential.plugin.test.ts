@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import type { HttpFn } from '../https-client.js';
 import { CredentialInputError } from '../credential-plugin.js';
-import { ProxmoxCredentialPlugin, templateWarning } from './proxmox-credential.plugin.js';
+import {
+  bootDiskOf,
+  bootDiskProblem,
+  ProxmoxCredentialPlugin,
+  templateWarning,
+} from './proxmox-credential.plugin.js';
 
 const CA = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
 const ALL = Object.fromEntries(PROXMOX_REQUIRED_PRIVILEGES.map((p) => [p.privilege, 1]));
@@ -152,7 +157,7 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
     ]);
     const templates = await look('templates');
     expect(templates.map((t) => t.value)).toEqual(['7111', '7112']);
-    expect(templates[0]!.details).toEqual({ node: 'pve1' });
+    expect(templates[0]!.details).toEqual({ node: 'pve1', bootDisk: 'virtio0' });
     expect(String(templates[1]!.details?.warning)).toMatch(
       /cloud-init drive \(ide2\).*guest agent disabled/,
     );
@@ -172,6 +177,13 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
     // FP31-F-05: the preview refuses templates whose machines would never become ready.
     expect(await plugin.imageProblems(data, ['7111', '7112'])).toEqual({
       '7112': expect.stringMatching(/guest agent disabled/),
+    });
+    // A boot disk the template does not have would keep its root disk small.
+    const infra = { provider: 'proxmox', bootDisk: 'scsi0' } as unknown as Parameters<
+      typeof plugin.imageProblems
+    >[2];
+    expect(await plugin.imageProblems(data, ['7111'], infra)).toEqual({
+      '7111': expect.stringMatching(/no disk scsi0, it boots from virtio0: choose virtio0/),
     });
   });
 
@@ -194,6 +206,21 @@ describe('Proxmox VE credentials (FP31-F-02..05)', () => {
     ).toBeUndefined();
     // Legacy or missing boot settings boot from the disks by default.
     expect(templateWarning({ agent: '1', boot: 'cdn', scsi0: 'local-zfs:disk' })).toBeUndefined();
+  });
+
+  it('finds the boot disk of a template (FP31-F-05)', () => {
+    const config = {
+      boot: 'order=ide2;virtio0;net0',
+      ide2: 'none,media=cdrom',
+      scsi1: 'local-zfs:data',
+      virtio0: 'local-zfs:base-7211-disk-0,size=8G',
+    };
+    expect(bootDiskOf(config)).toBe('virtio0');
+    expect(bootDiskOf({ sata0: 'local-zfs:disk' })).toBe('sata0');
+    expect(bootDiskProblem(config, 'virtio0')).toBeUndefined();
+    expect(bootDiskProblem(config, 'scsi0')).toBe(
+      "Template has no disk scsi0, it boots from virtio0: choose virtio0 as boot disk, otherwise the root disk keeps the template's size (8G).",
+    );
   });
 
   it('accepts templates without cloud-init drive and with the guest agent', () => {
