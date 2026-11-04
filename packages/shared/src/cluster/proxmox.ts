@@ -11,7 +11,7 @@ import {
   parseIpv4Cidr,
   parseIpv4Range,
 } from './cidr.js';
-import { airGapDnsWarnings } from './air-gap.js';
+import { airGapDnsWarnings, publicResolvers } from './air-gap.js';
 import { compact } from './util.js';
 
 /**
@@ -145,6 +145,8 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       {
         path: 'network.dnsNameservers',
         kind: 'list',
+        airGapWarning: (v) =>
+          publicResolvers(v as string[] | string).length ? 'wizard.dnsPublicAirGapped' : undefined,
         label: 'wizard.dns',
         hint: 'wizard.pveDnsHint',
         default: '1.1.1.1, 8.8.8.8',

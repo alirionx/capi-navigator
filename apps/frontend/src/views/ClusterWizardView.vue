@@ -1061,6 +1061,7 @@ const canPreview = computed(() => issues.value.length === 0);
           :form="form"
           :lists="lists"
           :loading="listLoading"
+          :air-gapped="airGapped"
         />
         <v-card v-if="form.bastion" border class="pa-4 mt-4">
           <div class="text-body-large mb-1">{{ t('bastion.title') }}</div>

@@ -51,6 +51,12 @@ export const nodePreparation = (spec: ClusterSpec, infra: InfraTransformPlugin) 
 /** Public resolvers the wizards offer as default DNS servers. */
 const PUBLIC_RESOLVERS = ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4', '9.9.9.9'];
 
+/** The public resolvers among DNS servers, given as list or as comma or space separated text. */
+export function publicResolvers(dnsServers: string[] | string): string[] {
+  const list = typeof dnsServers === 'string' ? dnsServers.split(/[\s,]+/) : dnsServers;
+  return list.filter((s) => PUBLIC_RESOLVERS.includes(s.trim()));
+}
+
 /**
  * Air-gapped nodes resolve the internal registry; public resolvers cannot reach or do not know it
  * (FP-29 live test: the download stopped and cloud-init failed). For infrastructures where the
@@ -58,7 +64,7 @@ const PUBLIC_RESOLVERS = ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4', '9.9.9.9']
  */
 export function airGapDnsWarnings(spec: ClusterSpec, dnsServers: string[]): string[] {
   const host = spec.airGapped?.registry.host.replace(/:\d+$/, '');
-  const pub = dnsServers.filter((s) => PUBLIC_RESOLVERS.includes(s));
+  const pub = publicResolvers(dnsServers);
   if (!host || pub.length === 0) return [];
   return [
     `The nodes use the public DNS server(s) ${pub.join(', ')}, which air-gapped nodes cannot reach, and which do not know internal names: if ${host} is only in your internal DNS, the download of the binaries fails and the nodes never come up. Set your internal DNS servers in the Infrastructure step.`,

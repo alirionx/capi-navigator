@@ -39,6 +39,11 @@ export interface InfraField {
    * disk of a Proxmox template).
    */
   fills?: Record<string, string>;
+  /**
+   * FP-29: an i18n key shown below the field when the cluster is air-gapped and the value would
+   * not work without internet (e.g. public DNS servers).
+   */
+  airGapWarning?: (value: unknown) => string | undefined;
   testId?: string;
   /**
    * FP-33: may change after creation. Set only when the provider accepts the change on its

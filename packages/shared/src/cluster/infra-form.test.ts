@@ -97,3 +97,16 @@ describe('infrastructure forms of the plugins (FP25-F-05)', () => {
     });
   });
 });
+
+describe('air-gap warnings of infrastructure fields (FP-29)', () => {
+  it('warns about public DNS servers on OpenStack and Proxmox VE, as list or text', () => {
+    for (const provider of ['openstack', 'proxmox'] as const) {
+      const dns = INFRA_PLUGINS[provider].form.fields.find(
+        (f) => f.path === 'network.dnsNameservers',
+      )!;
+      expect(dns.airGapWarning?.('1.1.1.1, 8.8.8.8')).toBe('wizard.dnsPublicAirGapped');
+      expect(dns.airGapWarning?.(['10.0.0.53', '9.9.9.9'])).toBe('wizard.dnsPublicAirGapped');
+      expect(dns.airGapWarning?.('10.0.0.53 10.0.0.54')).toBeUndefined();
+    }
+  });
+});

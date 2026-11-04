@@ -1,7 +1,7 @@
 import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
-import { airGapDnsWarnings } from './air-gap.js';
+import { airGapDnsWarnings, publicResolvers } from './air-gap.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -65,6 +65,8 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       {
         path: 'network.dnsNameservers',
         kind: 'list',
+        airGapWarning: (v) =>
+          publicResolvers(v as string[] | string).length ? 'wizard.dnsPublicAirGapped' : undefined,
         label: 'wizard.dns',
         hint: 'wizard.dnsHint',
         default: '1.1.1.1, 8.8.8.8',

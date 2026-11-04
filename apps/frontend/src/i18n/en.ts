@@ -1002,6 +1002,8 @@ export const en = {
     nodeCidr: 'Node network',
     nodeCidrHint: 'Dedicated subnet per cluster. Default: 10.6.0.0/24. Maps to managedSubnets.',
     dns: 'DNS servers',
+    dnsPublicAirGapped:
+      'Air-gapped nodes cannot use public DNS servers: enter internal ones that resolve the registry.',
     dnsHint: 'Comma-separated. Default: 1.1.1.1, 8.8.8.8.',
     apiLb: 'API load balancer',
     apiLbHint:

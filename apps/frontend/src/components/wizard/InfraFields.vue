@@ -9,6 +9,8 @@ const props = defineProps<{
   form: InfraForm;
   lists: Record<string, LookupOption[]>;
   loading?: boolean;
+  /** FP-29: fields warn about values that need the internet. */
+  airGapped?: boolean;
 }>();
 const { t } = useI18n();
 
@@ -96,6 +98,15 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         class="mt-2"
         data-testid="lookup-warning"
         >{{ chosenWarning(f) }}</v-alert
+      >
+      <v-alert
+        v-if="airGapped && f.airGapWarning?.(values[f.path])"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mt-2"
+        data-testid="air-gap-warning"
+        >{{ t(f.airGapWarning(values[f.path])!) }}</v-alert
       >
     </v-col>
     <v-col v-for="n in form.notes ?? []" :key="n" cols="12">
