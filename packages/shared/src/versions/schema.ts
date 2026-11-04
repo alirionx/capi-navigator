@@ -96,6 +96,7 @@ export const VersionsFileSchema = z.strictObject({
     'node-shell': EntrySchema,
     'kube-vip': EntrySchema,
     'kube-vip-cloud-provider': EntrySchema,
+    'k0smotron-etcd': EntrySchema,
   }),
   /** Tools of the local test setup, not part of the app (e.g. Dex for FP-14). */
   testTools: z.strictObject({ dex: EntrySchema, socat: EntrySchema, gitleaks: EntrySchema }),

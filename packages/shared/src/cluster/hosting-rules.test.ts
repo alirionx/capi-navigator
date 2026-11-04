@@ -187,6 +187,46 @@ describe('tenants on their host (FP24-F-03, FP24-F-06)', () => {
     expect(freeAddresses(['192.168.10.78'], ['192.168.10.78'], 2)).toEqual([]);
   });
 
+  it('needs an air-gapped host with the same registry for an air-gapped tenant (FP24-F-14)', () => {
+    const registry = {
+      host: 'registry.example.internal',
+      mirrors: [
+        { upstream: 'quay.io', path: 'proxy-quay-io' },
+        { upstream: 'docker.io', path: 'proxy-docker-io' },
+      ],
+      artifactsPath: 'library',
+    };
+    const offline = (input: ClusterSpecInput, r: Record<string, unknown> = registry) =>
+      ClusterSpecSchema.parse({ ...input, airGapped: { registry: r } });
+    const offlineHost = (r?: Record<string, unknown>) => facts({ spec: offline(hostInput(), r) });
+
+    expect(hostedTenantProblems(offline(tenantInput()), facts())).toEqual([
+      'An air-gapped hosted control plane needs an air-gapped host; team-a/host pulls from the internet.',
+    ]);
+    expect(hostedTenantProblems(offline(tenantInput()), offlineHost())).toEqual([]);
+    // The order of the mirrors does not matter.
+    expect(
+      hostedTenantProblems(
+        offline(tenantInput()),
+        offlineHost({ ...registry, mirrors: [...registry.mirrors].reverse() }),
+      ),
+    ).toEqual([]);
+    expect(
+      hostedTenantProblems(
+        offline(tenantInput()),
+        offlineHost({
+          ...registry,
+          host: 'other.example.internal',
+          mirrors: [{ upstream: 'quay.io' }, registry.mirrors[1]],
+        }),
+      ),
+    ).toEqual([
+      "An air-gapped hosted control plane uses its host's internal registry; team-a/host differs in: host, mirror paths.",
+    ]);
+    // A host without internet may serve tenants with internet.
+    expect(hostedTenantProblems(tenant(), offlineHost())).toEqual([]);
+  });
+
   it('adds up the requests of a control plane (FP24-F-12)', () => {
     expect(tenantRequests(3)).toEqual({ cpuMillis: 450, memoryMiB: 1920 });
   });

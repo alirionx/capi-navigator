@@ -8,6 +8,7 @@ import {
 } from './plugins.js';
 import type { ClusterSpec, MachineGroup, NodeCustomization } from './spec.js';
 import { compact } from './util.js';
+import { VERSIONS } from '../versions.generated.js';
 
 /**
  * k0s via k0smotron v2.3 (controlplane/bootstrap.cluster.x-k8s.io/v1beta2), control plane on
@@ -149,6 +150,21 @@ export const HOSTED_ETCD_REQUESTS = { cpu: '50m', memory: '128Mi' };
 export const HOSTED_CONTROL_PLANE_KIND = 'K0smotronControlPlane';
 
 /**
+ * FP24-F-14, ADR-0037: the images of a hosted control plane, pinned instead of left to the
+ * k0smotron CRD defaults (v2.3.1), so the YAML and the image list of an air-gapped host do not depend
+ * on the installed k0smotron. k0smotron appends the tag to `image` itself.
+ */
+export const HOSTED_K0S_IMAGE = 'quay.io/k0sproject/k0s';
+const etcd = VERSIONS.images['k0smotron-etcd'];
+export const HOSTED_ETCD_IMAGE = `${etcd.source.registry}/${etcd.source.package}:${etcd.version}`;
+
+/** The k0s image k0smotron runs for a version (GetImage in v2.3.1: `+k0s.` becomes `-k0s.`). */
+export function hostedK0sImage(version: string): string {
+  const tag = version.replace('+k0s.', '-k0s.');
+  return `${HOSTED_K0S_IMAGE}:${tag.includes('-k0s.') ? tag : `${tag}-k0s.0`}`;
+}
+
+/**
  * One pod of a component per host node (ADR-0034): k0smotron sets only preferred anti-affinity, and
  * two of three etcd pods shared a node in the spike. Tainted (cordoned, control plane) nodes do not
  * count as places.
@@ -183,6 +199,7 @@ function hostedControlPlane(
     spec: compact({
       version: spec.kubernetes.version,
       replicas: spec.topology.controlPlane.replicas,
+      image: HOSTED_K0S_IMAGE,
       externalAddress: endpoint?.externalAddress,
       // ADR-0034: the host's Cluster API admin kubeconfig, in the tenant's namespace.
       remoteHostCluster: {
@@ -196,6 +213,7 @@ function hostedControlPlane(
       storage: {
         type: 'etcd',
         etcd: {
+          image: HOSTED_ETCD_IMAGE,
           autoDeletePVCs: true,
           persistence: { size: `${hosted.etcdVolumeGiB}Gi` },
           resources: { requests: HOSTED_ETCD_REQUESTS },

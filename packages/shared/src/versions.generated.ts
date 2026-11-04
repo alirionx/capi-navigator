@@ -384,6 +384,16 @@ export const VERSIONS: VersionsFile = {
       },
       "verified": "2026-10-24",
       "note": "Reads its ConfigMap on every Service sync, so a changed range applies without a restart; ranges are always start-end. Verified live in the FP-32 spike."
+    },
+    "k0smotron-etcd": {
+      "version": "v3.7.1",
+      "source": {
+        "datasource": "docker",
+        "package": "k0sproject/etcd",
+        "registry": "quay.io"
+      },
+      "verified": "2026-11-04",
+      "note": "The default of k0smotron v2.3.1 (CRD default of storage.etcd.image). Pinned so that the YAML and the image list of air-gapped hosts do not depend on the installed k0smotron (ADR-0037). Follow k0smotron's default on updates; its webhook refuses to skip an etcd minor version."
     }
   },
   "testTools": {

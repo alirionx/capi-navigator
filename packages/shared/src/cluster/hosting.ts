@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { formatIpv4, ipv4RangesCover, parseIpv4, parseIpv4Range } from './cidr.js';
 import { HOSTED_CONTROLLER_REQUESTS, HOSTED_ETCD_REQUESTS } from './k0s.js';
+import type { InternalRegistry } from '../connections.js';
 import type { ClusterSpec } from './spec.js';
 
 /**
@@ -38,6 +39,43 @@ export interface HostFacts {
   kubeconfig: boolean;
 }
 
+/** The fields that must match so that tenant and host pull from the same registry. */
+function registryDifferences(a: InternalRegistry, b: InternalRegistry): string[] {
+  const mirrors = (r: InternalRegistry) =>
+    r.mirrors
+      .map((m) => `${m.upstream}=${m.path ?? ''}`)
+      .sort()
+      .join(',');
+  return [
+    ...(a.host !== b.host ? ['host'] : []),
+    ...(mirrors(a) !== mirrors(b) ? ['mirror paths'] : []),
+    ...(a.artifactsPath !== b.artifactsPath ? ['artifacts path'] : []),
+    ...((a.caCert ?? '').trim() !== (b.caCert ?? '').trim() ? ['CA certificate'] : []),
+  ];
+}
+
+/**
+ * FP24-F-14, ADR-0037: an air-gapped tenant needs an air-gapped host with the same registry, so the
+ * control plane images in the host and the worker images come from one place. A host without
+ * internet may still serve tenants with internet.
+ */
+export function hostedAirGapProblems(tenant: ClusterSpec, host: ClusterSpec): string[] {
+  const mine = tenant.airGapped?.registry;
+  if (!mine) return [];
+  const ref = `${tenant.namespace}/${host.name}`;
+  const theirs = host.airGapped?.registry;
+  if (!theirs)
+    return [
+      `An air-gapped hosted control plane needs an air-gapped host; ${ref} pulls from the internet.`,
+    ];
+  const diff = registryDifferences(mine, theirs);
+  return diff.length
+    ? [
+        `An air-gapped hosted control plane uses its host's internal registry; ${ref} differs in: ${diff.join(', ')}.`,
+      ]
+    : [];
+}
+
 /** FP24-F-01, FP24-F-03, FP24-F-06: why a tenant cannot be placed on its host (blockers). */
 export function hostedTenantProblems(tenant: ClusterSpec, host: HostFacts | undefined): string[] {
   const name = tenant.topology.hosted?.host;
@@ -59,6 +97,7 @@ export function hostedTenantProblems(tenant: ClusterSpec, host: HostFacts | unde
       `A hosted control plane runs its workers on the host's infrastructure and credential (${theirs.provider}, "${theirs.credentialRef}").`,
     );
   }
+  problems.push(...hostedAirGapProblems(tenant, host.spec));
   const nodes = schedulableHostNodes(host.spec);
   const replicas = tenant.topology.controlPlane.replicas;
   if (nodes < replicas) {

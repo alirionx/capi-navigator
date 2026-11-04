@@ -514,7 +514,6 @@ export const ClusterSpecSchema = z
           ['topology', 'mode'],
           'Google Cloud cannot run workers of hosted control planes: CAPG always creates its own API load balancer',
         );
-      if (spec.airGapped) issue(['topology', 'mode'], 'Hosted control planes cannot be air-gapped');
       if (spec.topology.hosted?.host === spec.name)
         issue(['topology', 'hosted', 'host'], 'A cluster cannot host itself');
     } else if (spec.topology.hosted) {

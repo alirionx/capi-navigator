@@ -79,6 +79,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 1
+  image: quay.io/k0sproject/k0s
   remoteHostCluster:
     kubeconfigRef:
       name: host-kubeconfig
@@ -91,6 +92,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi
@@ -303,6 +305,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 3
+  image: quay.io/k0sproject/k0s
   remoteHostCluster:
     kubeconfigRef:
       name: host-kubeconfig
@@ -315,6 +318,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi
@@ -515,6 +519,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 1
+  image: quay.io/k0sproject/k0s
   remoteHostCluster:
     kubeconfigRef:
       name: host-kubeconfig
@@ -527,6 +532,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi
@@ -643,6 +649,364 @@ spec:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: K0sWorkerConfigTemplate
           name: tenant-default-82d9f2d0
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: OpenStackMachineTemplate
+        name: tenant-default-48c486ad
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-cloud-config
+  strategy: Reconcile
+"
+`;
+
+exports[`hosted control planes (FP-24) > OpenStack, 3 replica(s), air-gapped: k0s workers from the internal registry (FP24-F-14) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: openstack
+    capi-navigator.io/csi: openstack
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"airGapped":{"artifacts":[{"files":[{"digest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","name":"k0s"}],"repository":"library/k0s-amd64","version":"v1.35.9+k0s.0"}],"registry":{"artifactsPath":"library","host":"registry.example.internal","mirrors":[{"path":"proxy-docker-io","upstream":"docker.io"},{"path":"proxy-k8s-io","upstream":"registry.k8s.io"},{"path":"proxy-quay-io","upstream":"quay.io"}]}},"infrastructure":{"apiServerLoadBalancer":true,"credentialRef":"infomaniak","externalNetwork":"0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d","image":"6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2","network":{"dnsNameservers":["1.1.1.1","8.8.8.8"],"nodeCidr":"10.6.0.0/24"},"provider":"openstack","zoneBoundVolumes":true},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":3},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: OpenStackCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  identityRef:
+    type: ClusterIdentity
+    name: infomaniak
+    cloudName: infomaniak
+  externalNetwork:
+    id: 0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
+  managedSubnets:
+    - cidr: 10.6.0.0/24
+      dnsNameservers:
+        - 1.1.1.1
+        - 8.8.8.8
+  managedSecurityGroups:
+    allowAllInClusterTraffic: true
+  apiServer:
+    enableFloatingIP: false
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 3
+  image: quay.io/k0sproject/k0s
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackMachineTemplate
+metadata:
+  name: tenant-default-48c486ad
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      flavor:
+        filter:
+          name: small
+      image:
+        id: 6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-d5d9a4b1
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+      files:
+        - path: /usr/local/bin/capi-navigator-fetch-artifact
+          content: |
+            #!/usr/bin/env python3
+            # Generated by CAPI Navigator (FP29-F-13): downloads files of an OCI artifact from the internal
+            # registry by their layer digest and checks their sha256. Python 3 comes with cloud-init.
+            # Usage: capi-navigator-fetch-artifact <registry URL> <repository> (<digest> <target> <mode>)...
+            # A missing artifact, a registry that stays unreachable or a changed file end it with exit code 1.
+            import hashlib
+            import json
+            import os
+            import re
+            import sys
+            import time
+            import urllib.error
+            import urllib.parse
+            import urllib.request
+
+            ATTEMPTS = 10
+
+
+            class DropTokenOffRegistry(urllib.request.HTTPRedirectHandler):
+                """Registries may redirect blobs to object storage, which must not get the registry token."""
+
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    new = super().redirect_request(req, fp, code, msg, headers, newurl)
+                    if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+                        new.remove_header("Authorization")
+                    return new
+
+
+            opener = urllib.request.build_opener(DropTokenOffRegistry)
+
+
+            def fail(message):
+                print("capi-navigator-fetch-artifact: " + message, file=sys.stderr)
+                sys.exit(1)
+
+
+            def bearer_token(challenge, repository):
+                """Anonymous token as the registry asks for it (WWW-Authenticate: Bearer realm=...)."""
+                if not challenge.lower().startswith("bearer "):
+                    fail("the registry asks for credentials, anonymous pulls must be allowed: " + challenge)
+                params = dict(re.findall(r'(\\w+)="([^"]*)"', challenge))
+                realm = params.pop("realm", None)
+                if not realm:
+                    fail("no token realm in the registry's challenge: " + challenge)
+                params.setdefault("scope", "repository:" + repository + ":pull")
+                separator = "&" if "?" in realm else "?"
+                with opener.open(realm + separator + urllib.parse.urlencode(params), timeout=30) as response:
+                    body = json.load(response)
+                token = body.get("token") or body.get("access_token")
+                if not token:
+                    fail("the registry returned no token")
+                return token
+
+
+            def fetch(base, repository, digest, target, mode):
+                expected = digest.split(":", 1)[1]
+                url = base.rstrip("/") + "/v2/" + repository + "/blobs/" + digest
+                headers = {}
+                os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+                partial = target + ".part"
+                for attempt in range(1, ATTEMPTS + 1):
+                    try:
+                        sha = hashlib.sha256()
+                        with opener.open(urllib.request.Request(url, headers=headers), timeout=60) as response:
+                            with open(partial, "wb") as out:
+                                for chunk in iter(lambda: response.read(1024 * 1024), b""):
+                                    sha.update(chunk)
+                                    out.write(chunk)
+                        if sha.hexdigest() != expected:
+                            os.remove(partial)
+                            fail(target + ": sha256 " + sha.hexdigest() + " does not match the pinned " + digest)
+                        os.chmod(partial, int(mode, 8))
+                        os.replace(partial, target)
+                        print("capi-navigator-fetch-artifact: " + target + " " + digest)
+                        return
+                    except urllib.error.HTTPError as err:
+                        if err.code == 401:
+                            headers = {"Authorization": "Bearer " + bearer_token(err.headers.get("WWW-Authenticate", ""), repository)}
+                            continue
+                        if err.code == 404:
+                            fail(url + " not found: push the artifact to the internal registry")
+                        error = "HTTP " + str(err.code)
+                    except (urllib.error.URLError, OSError) as err:
+                        error = str(err)
+                    print("capi-navigator-fetch-artifact: attempt " + str(attempt) + " for " + url + ": " + error, file=sys.stderr)
+                    time.sleep(min(2 ** attempt, 30))
+                fail("giving up on " + url)
+
+
+            def main(args):
+                if len(args) < 5 or (len(args) - 2) % 3 != 0:
+                    fail("usage: <registry URL> <repository> (<digest> <target> <mode>)...")
+                base, repository, rest = args[0], args[1], args[2:]
+                for i in range(0, len(rest), 3):
+                    fetch(base, repository, rest[i], rest[i + 1], rest[i + 2])
+
+
+            if __name__ == "__main__":
+                main(sys.argv[1:])
+          permissions: "0755"
+        - path: /etc/k0s/containerd.d/cri-registry.toml
+          content: |
+            version = 2
+
+            [plugins."io.containerd.grpc.v1.cri".registry]
+            config_path = "/etc/k0s/containerd.d/certs.d"
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/docker.io/hosts.toml
+          content: |
+            server = "https://registry-1.docker.io"
+
+            [host."https://registry.example.internal/v2/proxy-docker-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/registry.k8s.io/hosts.toml
+          content: |
+            server = "https://registry.k8s.io"
+
+            [host."https://registry.example.internal/v2/proxy-k8s-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/quay.io/hosts.toml
+          content: |
+            server = "https://quay.io"
+
+            [host."https://registry.example.internal/v2/proxy-quay-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+      preK0sCommands:
+        - python3 /usr/local/bin/capi-navigator-fetch-artifact https://registry.example.internal library/k0s-amd64 sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd /usr/local/bin/k0s 0755 || exit 1
+      preInstalledK0s: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-d5d9a4b1
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
@@ -734,6 +1098,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 3
+  image: quay.io/k0sproject/k0s
   remoteHostCluster:
     kubeconfigRef:
       name: host-kubeconfig
@@ -746,6 +1111,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi
@@ -886,6 +1252,393 @@ spec:
 "
 `;
 
+exports[`hosted control planes (FP-24) > Proxmox VE, 1 replica(s), air-gapped: k0s workers from the internal registry (FP24-F-14) 1`] = `
+"apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/ccm: proxmox
+    capi-navigator.io/csi: proxmox
+    capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/loadbalancer: proxmox
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/cluster-spec: '{"addons":{"cloudControllerManager":true,"csiDriver":true},"airGapped":{"artifacts":[{"files":[{"digest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","name":"k0s"}],"repository":"library/k0s-amd64","version":"v1.35.9+k0s.0"}],"registry":{"artifactsPath":"library","host":"registry.example.internal","mirrors":[{"path":"proxy-docker-io","upstream":"docker.io"},{"path":"proxy-k8s-io","upstream":"registry.k8s.io"},{"path":"proxy-quay-io","upstream":"quay.io"}]}},"infrastructure":{"apiEndpoint":"192.168.10.78","bootDisk":"scsi0","bridge":"vmbr0","credentialRef":"homelab","image":"7211","memoryAdjustment":0,"network":{"addresses":["192.168.10.81-192.168.10.85"],"dnsNameservers":["1.1.1.1","8.8.8.8"],"gateway":"192.168.10.1","loadBalancerAddresses":["192.168.10.86-192.168.10.89"],"nodeCidr":"192.168.10.0/24"},"provider":"proxmox","sourceNode":"homeserver","storage":"local-zfs"},"kubernetes":{"flavor":"k0s","podCidr":"10.42.0.0/16","serviceCidr":"10.43.0.0/16","version":"v1.35.9+k0s.0"},"name":"tenant","namespace":"team-a","rollout":{"maxSurge":1,"maxUnavailable":0},"sshPublicKeys":[],"topology":{"controlPlane":{"machineSize":"unused","replicas":1},"hosted":{"etcdVolumeGiB":1,"host":"host"},"mode":"hosted","workerPools":[{"machineSize":"small","name":"default","replicas":2}]}}'
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks:
+        - 10.42.0.0/16
+    services:
+      cidrBlocks:
+        - 10.43.0.0/16
+  controlPlaneRef:
+    apiGroup: controlplane.cluster.x-k8s.io
+    kind: K0smotronControlPlane
+    name: tenant-control-plane
+  infrastructureRef:
+    apiGroup: infrastructure.cluster.x-k8s.io
+    kind: ProxmoxCluster
+    name: tenant
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxCluster
+metadata:
+  name: tenant
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+  annotations:
+    capi-navigator.io/credential: homelab
+    capi-navigator.io/hosted-on: host
+    capi-navigator.io/loadbalancer-addresses: 192.168.10.86-192.168.10.89
+spec:
+  externalManagedControlPlane: true
+  ipv4Config:
+    addresses:
+      - 192.168.10.81-192.168.10.85
+    prefix: 24
+    gateway: 192.168.10.1
+  dnsServers:
+    - 1.1.1.1
+    - 8.8.8.8
+  allowedNodes:
+    - homeserver
+  schedulerHints:
+    memoryAdjustment: 0
+  credentialsRef:
+    name: tenant-proxmox-credentials
+    namespace: team-a
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: K0smotronControlPlane
+metadata:
+  name: tenant-control-plane
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  version: v1.35.9+k0s.0
+  replicas: 1
+  image: quay.io/k0sproject/k0s
+  externalAddress: 192.168.10.78
+  remoteHostCluster:
+    kubeconfigRef:
+      name: host-kubeconfig
+      namespace: team-a
+      key: value
+  service:
+    type: LoadBalancer
+    apiPort: 6443
+    konnectivityPort: 8132
+  storage:
+    type: etcd
+    etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
+      autoDeletePVCs: true
+      persistence:
+        size: 1Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+  controlPlaneFlags:
+    - --enable-cloud-provider=true
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      nodeTaintsPolicy: Honor
+      labelSelector:
+        matchLabels:
+          app: k0smotron
+          cluster: tenant
+          component: cluster
+  patches:
+    - target:
+        kind: StatefulSet
+        component: etcd
+      patch:
+        type: strategic
+        content: '{"spec":{"template":{"spec":{"topologySpreadConstraints":[{"maxSkew":1,"topologyKey":"kubernetes.io/hostname","whenUnsatisfiable":"DoNotSchedule","nodeTaintsPolicy":"Honor","labelSelector":{"matchLabels":{"app":"k0smotron","cluster":"tenant","component":"etcd"}}}]}}}}'
+    - target:
+        kind: Service
+        component: control-plane
+      patch:
+        type: merge
+        content: '{"metadata":{"annotations":{"kube-vip.io/loadbalancerIPs":"192.168.10.78"}}}'
+  k0sConfig:
+    apiVersion: k0s.k0sproject.io/v1beta1
+    kind: ClusterConfig
+    metadata:
+      name: k0s
+    spec:
+      api:
+        extraArgs:
+          anonymous-auth: "true"
+      network:
+        provider: calico
+        calico:
+          mode: vxlan
+        podCIDR: 10.42.0.0/16
+        serviceCIDR: 10.43.0.0/16
+      telemetry:
+        enabled: false
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha2
+kind: ProxmoxMachineTemplate
+metadata:
+  name: tenant-default-b02f4e7a
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      sourceNode: homeserver
+      templateID: 7211
+      full: true
+      storage: local-zfs
+      numSockets: 1
+      numCores: 2
+      memoryMiB: 4096
+      disks:
+        bootVolume:
+          disk: scsi0
+          sizeGb: 40
+      network:
+        networkDevices:
+          - name: net0
+            bridge: vmbr0
+            model: virtio
+            defaultIPv4: true
+      tags:
+        - capi-navigator
+---
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
+kind: K0sWorkerConfigTemplate
+metadata:
+  name: tenant-default-89163c82
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  template:
+    spec:
+      version: v1.35.9+k0s.0
+      args:
+        - --enable-cloud-provider
+        - --kubelet-extra-args=--node-ip=$(ip -4 -o route get 192.168.10.1 | sed -n 's/.* src \\([0-9.]*\\).*/\\1/p')
+        - --kubelet-root-dir=/var/lib/kubelet
+      useSystemHostname: true
+      files:
+        - path: /usr/local/bin/capi-navigator-fetch-artifact
+          content: |
+            #!/usr/bin/env python3
+            # Generated by CAPI Navigator (FP29-F-13): downloads files of an OCI artifact from the internal
+            # registry by their layer digest and checks their sha256. Python 3 comes with cloud-init.
+            # Usage: capi-navigator-fetch-artifact <registry URL> <repository> (<digest> <target> <mode>)...
+            # A missing artifact, a registry that stays unreachable or a changed file end it with exit code 1.
+            import hashlib
+            import json
+            import os
+            import re
+            import sys
+            import time
+            import urllib.error
+            import urllib.parse
+            import urllib.request
+
+            ATTEMPTS = 10
+
+
+            class DropTokenOffRegistry(urllib.request.HTTPRedirectHandler):
+                """Registries may redirect blobs to object storage, which must not get the registry token."""
+
+                def redirect_request(self, req, fp, code, msg, headers, newurl):
+                    new = super().redirect_request(req, fp, code, msg, headers, newurl)
+                    if new is not None and urllib.parse.urlsplit(newurl).netloc != urllib.parse.urlsplit(req.full_url).netloc:
+                        new.remove_header("Authorization")
+                    return new
+
+
+            opener = urllib.request.build_opener(DropTokenOffRegistry)
+
+
+            def fail(message):
+                print("capi-navigator-fetch-artifact: " + message, file=sys.stderr)
+                sys.exit(1)
+
+
+            def bearer_token(challenge, repository):
+                """Anonymous token as the registry asks for it (WWW-Authenticate: Bearer realm=...)."""
+                if not challenge.lower().startswith("bearer "):
+                    fail("the registry asks for credentials, anonymous pulls must be allowed: " + challenge)
+                params = dict(re.findall(r'(\\w+)="([^"]*)"', challenge))
+                realm = params.pop("realm", None)
+                if not realm:
+                    fail("no token realm in the registry's challenge: " + challenge)
+                params.setdefault("scope", "repository:" + repository + ":pull")
+                separator = "&" if "?" in realm else "?"
+                with opener.open(realm + separator + urllib.parse.urlencode(params), timeout=30) as response:
+                    body = json.load(response)
+                token = body.get("token") or body.get("access_token")
+                if not token:
+                    fail("the registry returned no token")
+                return token
+
+
+            def fetch(base, repository, digest, target, mode):
+                expected = digest.split(":", 1)[1]
+                url = base.rstrip("/") + "/v2/" + repository + "/blobs/" + digest
+                headers = {}
+                os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+                partial = target + ".part"
+                for attempt in range(1, ATTEMPTS + 1):
+                    try:
+                        sha = hashlib.sha256()
+                        with opener.open(urllib.request.Request(url, headers=headers), timeout=60) as response:
+                            with open(partial, "wb") as out:
+                                for chunk in iter(lambda: response.read(1024 * 1024), b""):
+                                    sha.update(chunk)
+                                    out.write(chunk)
+                        if sha.hexdigest() != expected:
+                            os.remove(partial)
+                            fail(target + ": sha256 " + sha.hexdigest() + " does not match the pinned " + digest)
+                        os.chmod(partial, int(mode, 8))
+                        os.replace(partial, target)
+                        print("capi-navigator-fetch-artifact: " + target + " " + digest)
+                        return
+                    except urllib.error.HTTPError as err:
+                        if err.code == 401:
+                            headers = {"Authorization": "Bearer " + bearer_token(err.headers.get("WWW-Authenticate", ""), repository)}
+                            continue
+                        if err.code == 404:
+                            fail(url + " not found: push the artifact to the internal registry")
+                        error = "HTTP " + str(err.code)
+                    except (urllib.error.URLError, OSError) as err:
+                        error = str(err)
+                    print("capi-navigator-fetch-artifact: attempt " + str(attempt) + " for " + url + ": " + error, file=sys.stderr)
+                    time.sleep(min(2 ** attempt, 30))
+                fail("giving up on " + url)
+
+
+            def main(args):
+                if len(args) < 5 or (len(args) - 2) % 3 != 0:
+                    fail("usage: <registry URL> <repository> (<digest> <target> <mode>)...")
+                base, repository, rest = args[0], args[1], args[2:]
+                for i in range(0, len(rest), 3):
+                    fetch(base, repository, rest[i], rest[i + 1], rest[i + 2])
+
+
+            if __name__ == "__main__":
+                main(sys.argv[1:])
+          permissions: "0755"
+        - path: /etc/k0s/containerd.d/cri-registry.toml
+          content: |
+            version = 2
+
+            [plugins."io.containerd.grpc.v1.cri".registry]
+            config_path = "/etc/k0s/containerd.d/certs.d"
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/docker.io/hosts.toml
+          content: |
+            server = "https://registry-1.docker.io"
+
+            [host."https://registry.example.internal/v2/proxy-docker-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/registry.k8s.io/hosts.toml
+          content: |
+            server = "https://registry.k8s.io"
+
+            [host."https://registry.example.internal/v2/proxy-k8s-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+        - path: /etc/k0s/containerd.d/certs.d/quay.io/hosts.toml
+          content: |
+            server = "https://quay.io"
+
+            [host."https://registry.example.internal/v2/proxy-quay-io"]
+              capabilities = ["pull", "resolve"]
+              override_path = true
+          permissions: "0644"
+      preK0sCommands:
+        - python3 /usr/local/bin/capi-navigator-fetch-artifact https://registry.example.internal library/k0s-amd64 sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd /usr/local/bin/k0s 0755 || exit 1
+      preInstalledK0s: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: MachineDeployment
+metadata:
+  name: tenant-default
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterName: tenant
+  replicas: 2
+  rollout:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 1
+        maxUnavailable: 0
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+      capi-navigator.io/pool: default
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: tenant
+        capi-navigator.io/pool: default
+    spec:
+      clusterName: tenant
+      version: v1.35.9+k0s
+      bootstrap:
+        configRef:
+          apiGroup: bootstrap.cluster.x-k8s.io
+          kind: K0sWorkerConfigTemplate
+          name: tenant-default-89163c82
+      infrastructureRef:
+        apiGroup: infrastructure.cluster.x-k8s.io
+        kind: ProxmoxMachineTemplate
+        name: tenant-default-b02f4e7a
+---
+apiVersion: addons.cluster.x-k8s.io/v1beta2
+kind: ClusterResourceSet
+metadata:
+  name: tenant-proxmox-cloud-config
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: tenant
+spec:
+  clusterSelector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: tenant
+  resources:
+    - kind: Secret
+      name: tenant-proxmox-cloud-config
+  strategy: Reconcile
+"
+`;
+
 exports[`hosted control planes (FP-24) > Proxmox VE, 1 replica(s): k0smotron control plane in the host, k0s workers (FP24-F-04, FP24-F-05) 1`] = `
 "apiVersion: cluster.x-k8s.io/v1beta2
 kind: Cluster
@@ -960,6 +1713,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 1
+  image: quay.io/k0sproject/k0s
   externalAddress: 192.168.10.78
   remoteHostCluster:
     kubeconfigRef:
@@ -973,6 +1727,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi
@@ -1210,6 +1965,7 @@ metadata:
 spec:
   version: v1.35.9+k0s.0
   replicas: 3
+  image: quay.io/k0sproject/k0s
   externalAddress: 192.168.10.78
   remoteHostCluster:
     kubeconfigRef:
@@ -1223,6 +1979,7 @@ spec:
   storage:
     type: etcd
     etcd:
+      image: quay.io/k0sproject/etcd:v3.7.1
       autoDeletePVCs: true
       persistence:
         size: 1Gi

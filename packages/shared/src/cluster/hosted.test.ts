@@ -4,6 +4,7 @@ import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
 import { renderManifests } from '../operator-manifests.js';
 import { ADDON_PRESETS } from './addons.js';
 import { awsPlugin } from './aws.js';
+import { hostedK0sImage } from './k0s.js';
 import { proxmoxPlugin } from './proxmox.js';
 import { ClusterSpecSchema, HOSTED_ON_LABEL, type ClusterSpecInput } from './spec.js';
 import { transform, type TransformContext } from './transform.js';
@@ -59,6 +60,26 @@ const proxmox: ClusterSpecInput['infrastructure'] = {
   apiEndpoint: '192.168.10.78',
 };
 
+// FP24-F-14, ADR-0037: air-gapped tenants, with the k0s artifact pinned for the workers.
+const airGapped: ClusterSpecInput['airGapped'] = {
+  registry: {
+    host: 'registry.example.internal',
+    mirrors: [
+      { upstream: 'docker.io', path: 'proxy-docker-io' },
+      { upstream: 'registry.k8s.io', path: 'proxy-k8s-io' },
+      { upstream: 'quay.io', path: 'proxy-quay-io' },
+    ],
+    artifactsPath: 'library',
+  },
+  artifacts: [
+    {
+      version: K0S,
+      repository: 'library/k0s-amd64',
+      files: [{ name: 'k0s', digest: `sha256:${'d'.repeat(64)}` }],
+    },
+  ],
+};
+
 const objects = (input: ClusterSpecInput) => transform(ClusterSpecSchema.parse(input), ctx);
 // Deep manifest paths in assertions; a missing field fails the expectation anyway.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,6 +101,34 @@ describe('hosted control planes (FP-24)', () => {
       });
     }
   }
+
+  for (const [name, infra, replicas] of [
+    ['Proxmox VE', proxmox, 1],
+    ['OpenStack', openstack, 3],
+  ] as const) {
+    it(`${name}, ${replicas} replica(s), air-gapped: k0s workers from the internal registry (FP24-F-14)`, () => {
+      expect(renderManifests(objects(tenant(infra, replicas, { airGapped })))).toMatchSnapshot();
+    });
+  }
+
+  it('pins the images of the control plane in the host (FP24-F-14, ADR-0037)', () => {
+    const cp = find(tenant(openstack), 'K0smotronControlPlane').spec;
+    expect(cp.image).toBe('quay.io/k0sproject/k0s');
+    expect(cp.storage.etcd.image).toBe('quay.io/k0sproject/etcd:v3.7.1');
+    expect(hostedK0sImage('v1.35.9+k0s.0')).toBe('quay.io/k0sproject/k0s:v1.35.9-k0s.0');
+    expect(hostedK0sImage('v1.33.13+k0s.1')).toBe('quay.io/k0sproject/k0s:v1.33.13-k0s.1');
+    expect(hostedK0sImage('v1.36.5')).toBe('quay.io/k0sproject/k0s:v1.36.5-k0s.0');
+  });
+
+  it('runs air-gapped tenant workers like other air-gapped k0s nodes (FP24-F-14)', () => {
+    const workers = find(tenant(proxmox, 1, { airGapped }), 'K0sWorkerConfigTemplate').spec.template
+      .spec;
+    expect(workers.preInstalledK0s).toBe(true);
+    expect(
+      workers.files.some((f: Manifest) => String(f.path).endsWith('/quay.io/hosts.toml')),
+    ).toBe(true);
+    expect(issues(tenant(proxmox, 1, { airGapped }))).toEqual([]);
+  });
 
   it('creates no control plane machines and points the Cluster to the K0smotronControlPlane', () => {
     const all = objects(tenant(openstack));
