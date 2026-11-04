@@ -277,8 +277,14 @@ async function confirmDelete(): Promise<void> {
       data-testid="blueprints-table"
     >
       <template #[`item.name`]="{ item }">
-        <div class="font-weight-medium">{{ item.spec.displayName }}</div>
-        <div class="text-body-small text-medium-emphasis">{{ item.name }}</div>
+        <div class="font-weight-medium">{{ item.spec.displayName || item.name }}</div>
+        <!-- The name below only when the display name differs from it. -->
+        <div
+          v-if="item.spec.displayName && item.spec.displayName !== item.name"
+          class="text-body-small text-medium-emphasis"
+        >
+          {{ item.name }}
+        </div>
       </template>
       <template #[`item.target`]="{ item }">
         {{ item.spec.connection }} / {{ item.spec.cluster.namespace }}
