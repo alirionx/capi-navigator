@@ -2,6 +2,7 @@ import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
 import { airGapDnsWarnings, publicResolvers } from './air-gap.js';
+import { cidrsOverlap, freeCidr } from './cidr.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -34,6 +35,8 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       { kind: 'keyPairs' },
       // Clouds without Cinder simply offer no volume types.
       { kind: 'volumeTypes', optional: true },
+      // FP5-F-21: only a suggestion, the default stays if the list is not available.
+      { kind: 'subnets', optional: true },
     ],
     fields: [
       {
@@ -60,6 +63,12 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         label: 'wizard.nodeCidr',
         hint: 'wizard.nodeCidrHint',
         default: '10.6.0.0/24',
+        lookup: 'subnets',
+        suggest: (subnets) =>
+          freeCidr(
+            '10.6.0.0/24',
+            subnets.map((s) => s.value),
+          ),
         cols: 4,
       },
       {
@@ -248,6 +257,28 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
 
   // FP-29: the nodes resolve the internal registry with the subnet's DNS servers.
   warnings: (spec, infra) => airGapDnsWarnings(spec, infra.network.dnsNameservers),
+
+  // FP5-F-21: every cluster has its own network and router, but some clouds refuse overlapping
+  // subnets (seen on a restricted OpenStack), so the preview names them without blocking.
+  addressWarnings(spec, infra, others) {
+    return others.flatMap((o) => {
+      const meta = (o.metadata ?? {}) as { name?: string; namespace?: string };
+      if (meta.name === spec.name && meta.namespace === spec.namespace) return [];
+      const theirs = (o.spec ?? {}) as {
+        identityRef?: { name?: string };
+        managedSubnets?: { cidr?: string }[];
+      };
+      if (theirs.identityRef?.name !== infra.credentialRef) return [];
+      const clash = (theirs.managedSubnets ?? []).find(
+        (s) => s.cidr && cidrsOverlap(s.cidr, infra.network.nodeCidr),
+      );
+      return clash
+        ? [
+            `Subnet CIDR ${infra.network.nodeCidr} overlaps ${clash.cidr} of cluster ${meta.namespace}/${meta.name} with the same credentials. Some clouds refuse overlapping subnets and the cluster then never comes up; choose another node network if yours does.`,
+          ]
+        : [];
+    });
+  },
 
   infraFacts: (infra) => [
     { label: 'Node network', value: infra.network.nodeCidr },

@@ -89,6 +89,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
    * for providers where the user hands out addresses (FP31-F-08).
    */
   addressConflicts?(spec: ClusterSpec, infra: T, others: Record<string, unknown>[]): string[];
+  /** Overlaps that only some clouds refuse (warnings for new clusters, FP5-F-21). */
+  addressWarnings?(spec: ClusterSpec, infra: T, others: Record<string, unknown>[]): string[];
   /**
    * FP34-F-14: providers where every cluster needs addresses of its own. A blueprint of them
    * carries an address pool, and each cluster created from it gets free addresses of the pool.

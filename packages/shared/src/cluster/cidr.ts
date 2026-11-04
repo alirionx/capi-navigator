@@ -27,6 +27,22 @@ export function cidrsOverlap(a: string, b: string): boolean {
   return x.start <= y.end && y.start <= x.end;
 }
 
+/**
+ * FP5-F-21: the first network of the size of `start`, from `start` on within its /16, that overlaps
+ * none of `used`; undefined when none is free.
+ */
+export function freeCidr(start: string, used: string[]): string | undefined {
+  const first = parseIpv4Cidr(start);
+  if (!first) return undefined;
+  const size = first.end - first.start + 1;
+  const limit = first.start - (first.start % 65536) + 65536;
+  for (let net = first.start; net + size <= limit; net += size) {
+    const cidr = `${formatIpv4(net)}/${first.prefix}`;
+    if (!used.some((u) => cidrsOverlap(cidr, u))) return cidr;
+  }
+  return undefined;
+}
+
 /** An IPv4 address as number, or undefined. */
 export function parseIpv4(ip: string): number | undefined {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip.trim());

@@ -989,6 +989,10 @@ export class ClustersService {
       const others = await infraClusters(kc, infraPlugin);
       blockers.push(...infraPlugin.addressConflicts(spec, infra, others));
     }
+    if (infraPlugin.addressWarnings && !baseline) {
+      const others = await infraClusters(kc, infraPlugin);
+      warnings.push(...infraPlugin.addressWarnings(spec, infra, others));
+    }
     // FP-24: a hosted control plane needs a fitting host (FP24-F-03, FP24-F-06).
     if (spec.topology.mode === 'hosted' && spec.topology.hosted) {
       const host = spec.topology.hosted.host;

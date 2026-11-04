@@ -17,6 +17,10 @@ A blueprint takes the spec of a cluster the app created. Everything in it is fix
 
 The cluster name in the base spec is only the example used for the check when saving.
 
+On OpenStack all clusters of a blueprint share its node network. Each has its own network and
+router, so this works on most clouds. A cloud that refuses overlapping subnets needs one blueprint
+per cluster, or clusters from the wizard.
+
 ## Parameters
 
 Only these parameters exist. Each one has a default (the value of the base spec) and limits:

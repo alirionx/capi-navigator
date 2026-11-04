@@ -1000,7 +1000,8 @@ export const en = {
     externalNetworkHint:
       'For the router and floating IPs. Maps to OpenStackCluster.spec.externalNetwork.',
     nodeCidr: 'Node network',
-    nodeCidrHint: 'Dedicated subnet per cluster. Default: 10.6.0.0/24. Maps to managedSubnets.',
+    nodeCidrHint:
+      'Dedicated subnet per cluster. Default: the first free /24 from 10.6.0.0/24 on. Maps to managedSubnets.',
     dns: 'DNS servers',
     dnsPublicAirGapped:
       'Air-gapped nodes cannot use public DNS servers: enter internal ones that resolve the registry.',
@@ -1194,6 +1195,7 @@ export const en = {
       images: 'Images',
       flavors: 'Flavors',
       externalNetworks: 'External networks',
+      subnets: 'Subnets',
       availabilityZones: 'Availability zones',
       keyPairs: 'Key pairs',
       regions: 'Regions',

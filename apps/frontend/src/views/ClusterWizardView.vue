@@ -335,6 +335,9 @@ async function loadLists(): Promise<void> {
 function applyDefaults(): void {
   const values = infraValues.value;
   for (const f of form.value.fields) {
+    if (f.suggest && f.lookup && values[f.path] === f.default) {
+      values[f.path] = f.suggest(lists[f.lookup] ?? []) ?? f.default;
+    }
     if (!isEmpty(values[f.path])) continue;
     const value =
       (credential.value && f.fromCredential?.(credential.value.summary)) ||

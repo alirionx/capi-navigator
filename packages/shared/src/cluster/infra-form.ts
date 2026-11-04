@@ -30,6 +30,11 @@ export interface InfraField {
   cols?: number;
   /** Preselects a value once the selection list has loaded, if the field is empty. */
   preselect?: (options: LookupOption[]) => string | undefined;
+  /**
+   * Replaces the default once the selection list has loaded, unless the user changed the field
+   * (e.g. a node network no other subnet of the cloud uses).
+   */
+  suggest?: (options: LookupOption[]) => string | undefined;
   /** Initial value from the credential summary, e.g. its region. */
   fromCredential?: (summary: CredentialSummary) => string | undefined;
   /** Fields emptied when this one changes; the selection lists are reloaded (e.g. region). */

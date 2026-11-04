@@ -263,6 +263,15 @@ export class OpenStackCredentialPlugin implements CredentialPlugin<OpenStackCred
           );
           return networks.map((n) => ({ value: n.id, label: n.name || n.id }));
         }
+        case 'subnets': {
+          // FP5-F-21: what the project already uses; the wizard suggests a free node network.
+          const { subnets } = await getJson<{
+            subnets: { cidr: string; name?: string; ip_version: number }[];
+          }>(session, 'network', '/subnets', opts);
+          return subnets
+            .filter((s) => s.ip_version === 4)
+            .map((s) => ({ value: s.cidr, label: s.name || s.cidr }));
+        }
         case 'availabilityZones': {
           const res = await getJson<{
             availabilityZoneInfo: { zoneName: string; zoneState: { available: boolean } }[];

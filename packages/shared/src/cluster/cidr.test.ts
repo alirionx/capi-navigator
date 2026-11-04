@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { cidrsOverlap, ipv4RangeInCidr, ipv4RangesOverlap, parseIpv4Range } from './cidr.js';
+import {
+  cidrsOverlap,
+  freeCidr,
+  ipv4RangeInCidr,
+  ipv4RangesOverlap,
+  parseIpv4Range,
+} from './cidr.js';
 
 describe('IPv4 helpers', () => {
+  it('finds the next free network (FP5-F-21)', () => {
+    expect(freeCidr('10.6.0.0/24', [])).toBe('10.6.0.0/24');
+    expect(freeCidr('10.6.0.0/24', ['10.6.0.0/24', '10.6.1.128/25', '192.168.0.0/24'])).toBe(
+      '10.6.2.0/24',
+    );
+    expect(freeCidr('10.6.0.0/24', ['10.6.0.0/23'])).toBe('10.6.2.0/24');
+    expect(freeCidr('10.6.0.0/24', ['10.0.0.0/8'])).toBeUndefined();
+  });
+
   it('detects overlapping networks', () => {
     expect(cidrsOverlap('10.42.0.0/16', '10.42.8.0/24')).toBe(true);
     expect(cidrsOverlap('10.42.0.0/16', '10.43.0.0/16')).toBe(false);

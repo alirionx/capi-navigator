@@ -321,6 +321,7 @@ export const LOOKUP_KINDS = {
     'availabilityZones',
     'keyPairs',
     'volumeTypes',
+    'subnets',
   ],
   aws: ['regions', 'availabilityZones', 'instanceTypes', 'images', 'keyPairs'],
   gcp: ['regions', 'zones', 'machineTypes', 'images', 'networks'],

@@ -5,7 +5,7 @@ import {
   infraFromValues,
   initialInfraValues,
 } from './infra-form.js';
-import { InfrastructureSchema } from './spec.js';
+import { InfrastructureSchema, type ClusterSpec, type OpenStackInfra } from './spec.js';
 import { INFRA_PLUGINS } from './transform.js';
 
 const os = INFRA_PLUGINS.openstack.form;
@@ -108,5 +108,36 @@ describe('air-gap warnings of infrastructure fields (FP-29)', () => {
       expect(dns.airGapWarning?.(['10.0.0.53', '9.9.9.9'])).toBe('wizard.dnsPublicAirGapped');
       expect(dns.airGapWarning?.('10.0.0.53 10.0.0.54')).toBeUndefined();
     }
+  });
+});
+
+describe('node network of OpenStack clusters (FP5-F-21)', () => {
+  const plugin = INFRA_PLUGINS.openstack;
+  const spec = { name: 'b', namespace: 'default' } as ClusterSpec;
+  const infra = {
+    credentialRef: 'cloud',
+    network: { nodeCidr: '10.6.0.0/24' },
+  } as OpenStackInfra;
+  const other = (name: string, credential: string, cidr: string) => ({
+    metadata: { name, namespace: 'default' },
+    spec: { identityRef: { name: credential }, managedSubnets: [{ cidr }] },
+  });
+
+  it('suggests the first free network and keeps the default without one', () => {
+    const field = plugin.form.fields.find((f) => f.path === 'network.nodeCidr')!;
+    expect(field.suggest?.([])).toBe('10.6.0.0/24');
+    expect(field.suggest?.([{ value: '10.6.0.0/24', label: 'a' }])).toBe('10.6.1.0/24');
+    expect(field.suggest?.([{ value: '10.0.0.0/8', label: 'a' }])).toBeUndefined();
+  });
+
+  it('warns about overlaps with other clusters of the same credentials', () => {
+    const warnings = plugin.addressWarnings!(spec, infra, [
+      other('a', 'cloud', '10.6.0.0/23'),
+      other('b', 'cloud', '10.6.0.0/24'), // the cluster itself
+      other('c', 'another-project', '10.6.0.0/24'),
+      other('d', 'cloud', '10.6.1.0/24'),
+    ]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('overlaps 10.6.0.0/23 of cluster default/a');
   });
 });

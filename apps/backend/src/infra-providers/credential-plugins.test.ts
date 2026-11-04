@@ -134,6 +134,12 @@ function fakeOpenStack(
     'https://api.example/image/v2/images?marker=img-1': {
       images: [{ id: 'img-2', name: 'Debian 12' }],
     },
+    'https://api.example/network/v2.0/subnets': {
+      subnets: [
+        { cidr: '10.6.0.0/24', name: 'k8s-a', ip_version: 4 },
+        { cidr: 'fd00::/64', name: 'v6', ip_version: 6 },
+      ],
+    },
     'https://api.example/network/v2.0/networks?router:external=true': {
       networks: [{ id: 'net-1', name: 'ext-floating1' }],
     },
@@ -258,6 +264,10 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
       'big (4 vCPU, 8 GiB RAM, 40 GB disk)',
     ]);
     expect(await labels('externalNetworks')).toEqual(['ext-floating1']);
+    // FP5-F-21: IPv4 subnets the project uses.
+    expect((await plugin.lookup(data, summary, 'subnets')).map((o) => o.value)).toEqual([
+      '10.6.0.0/24',
+    ]);
     expect(await labels('availabilityZones')).toEqual(['az-1']);
     expect(await labels('keyPairs')).toEqual(['my-keys']);
     // FP5-F-19: root disk volume types.
