@@ -200,6 +200,7 @@ const optionalPath = (v: string) => !v.trim() || zodRule(shape.artifactsPath)(v.
             rows="3"
             placeholder="-----BEGIN CERTIFICATE-----"
             :rules="[zodRule(shape.caCert)]"
+            :error-messages="fieldErrors(serverFieldErrors, 'internalRegistry.caCert')"
             class="mono-input"
             data-testid="registry-ca"
           >

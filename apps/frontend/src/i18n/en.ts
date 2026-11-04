@@ -791,7 +791,7 @@ export const en = {
       'Where the RKE2 and k0s binaries are pushed as OCI artifacts, e.g. library → library/rke2-artifacts:v1.35.9-rke2r1. Required.',
     caCert: 'CA certificate',
     caCertHint:
-      "For a registry with a private CA: the root CA and every intermediate CA, one PEM block after another. Added to the nodes' trust store and to the app's (in addition to the public CAs). Default: none.",
+      "For a registry with a private CA: the root CA and every intermediate CA, one PEM block after another. Added to the nodes' trust store and to the app's (in addition to the public CAs). Each CA needs critical basicConstraints and the keyUsage extension, as Python 3.13 on the nodes checks strictly. Default: none.",
     caSet: 'set',
     remove: 'Remove registry',
   },

@@ -53,6 +53,7 @@ import {
   type HostView,
   type TenantView,
 } from '@capi-navigator/shared';
+import { REGISTRY_CA_HINT, registryCaProblems } from '../common/registry-ca.js';
 import { pinArtifacts } from './air-gap-artifacts.js';
 import { stringify } from 'yaml';
 import { ZodError } from 'zod';
@@ -502,7 +503,6 @@ export class ClustersService {
 
   // ---- spec changes (FP6-F-05, FP6-F-07; hard rules 4 and 6) ----
 
-  /** The stored spec of a cluster created by the app; external clusters are read-only. */
   /** FP29-F-17: what the internal registry must hold for an air-gapped cluster. */
   async registryContents(
     connection: string,
@@ -525,6 +525,7 @@ export class ClustersService {
     return hosted && hosted.warnings.length ? { ...view, warnings: hosted.warnings } : view;
   }
 
+  /** The stored spec of a cluster created by the app; external clusters are read-only. */
   async storedSpec(connection: string, namespace: string, name: string): Promise<ClusterSpec> {
     const kc = await this.clients.forConnection(connection);
     const cluster = await this.getCluster(kc, namespace, name);
@@ -880,6 +881,9 @@ export class ClustersService {
     const pinned = await pinArtifacts(requested);
     const spec = pinned.spec;
     blockers.push(...pinned.blockers);
+    const ca = spec.airGapped?.registry.caCert;
+    const caProblems = ca ? registryCaProblems(ca) : [];
+    if (caProblems.length) warnings.push(`${caProblems.join(' ')} ${REGISTRY_CA_HINT}`);
 
     // FP5-F-05, FP5-F-18: required providers installed and ready.
     const state = await this.operator.state(connection);

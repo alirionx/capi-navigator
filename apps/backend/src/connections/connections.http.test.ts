@@ -14,6 +14,7 @@ import { StoreModule } from '../store/store.module.js';
 import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { ConnectionsModule } from './connections.module.js';
+import { TEST_CA, TEST_CA_WITHOUT_KEY_USAGE } from '../testing/test-cas.js';
 
 // The real connection test needs a cluster; here it returns a fixed result per server.
 const testConnection = vi.hoisted(() => vi.fn());
@@ -292,7 +293,7 @@ describe('connections API (FP-2)', () => {
   it('sets, replaces and removes the internal registry (FP29-F-10)', async () => {
     const patch = (body: object) =>
       http().patch('/api/connections/prod').set(CSRF).set('Cookie', admin).send(body);
-    const ca = '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+    const ca = TEST_CA;
     const registry = {
       host: 'registry.example.internal',
       caCert: ca,
@@ -310,6 +311,13 @@ describe('connections API (FP-2)', () => {
       },
     }).expect(400);
     expect(JSON.stringify(twice.body)).toContain('only once');
+    // A CA the nodes' Python would reject (FP29-F-10).
+    const weak = await patch({
+      internalRegistry: { ...registry, caCert: TEST_CA_WITHOUT_KEY_USAGE },
+    }).expect(400);
+    expect(weak.body.fieldErrors['internalRegistry.caCert']).toContain(
+      'CN=Test CA without key usage: the keyUsage extension (keyCertSign, cRLSign) is missing.',
+    );
     const set = await patch({ internalRegistry: registry }).expect(200);
     expect(set.body.internalRegistry).toEqual(registry);
     // The CA left out is removed, the mirror list replaced as a whole (merge patch).

@@ -15,6 +15,7 @@ import {
   type NavigatorResource,
   type UpdateConnectionRequest,
 } from '@capi-navigator/shared';
+import { REGISTRY_CA_HINT, registryCaProblems } from '../common/registry-ca.js';
 import { isNotFound, toHttpException } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
 import { testConnection } from './connection-tester.js';
@@ -115,6 +116,16 @@ export class ConnectionsService {
       };
     }
     if (req.internalRegistry !== undefined) {
+      const problems = req.internalRegistry?.caCert
+        ? registryCaProblems(req.internalRegistry.caCert)
+        : [];
+      if (problems.length) {
+        throw new BadRequestException({
+          message: problems.join(' '),
+          hint: REGISTRY_CA_HINT,
+          fieldErrors: { 'internalRegistry.caCert': problems },
+        });
+      }
       // Merge patch as above; the mirror list is replaced as a whole (FP29-F-10).
       patch.internalRegistry = req.internalRegistry && { caCert: null, ...req.internalRegistry };
     }
