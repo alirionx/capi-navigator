@@ -252,6 +252,11 @@ of exactly their version, check that before `kubeadm init` or `join` (or stop), 
 registry mirrors and CA; its upgrades carry the image of the new version, which the worker pools
 take when they follow (`kubernetes.workerImage`). Online, the same image works: the install script
 finds kubeadm of the selected version and installs nothing.
+Hosted control planes run air-gapped on an air-gapped host with the same registry
+([ADR-0037](adr/0037-air-gapped-hosted-control-planes.md)): the tenant's workers are ordinary
+air-gapped k0s nodes, the control plane pods in the host pull their pinned k0s and etcd images
+through the host's mirrors, and the registry contents of the host list them per tenant, with the
+images its pods run now read from the host.
 
 ### Day-2 changes, drift and template rotation
 

@@ -70,4 +70,9 @@ one etcd pod per host node (hard topology spread).
   workers, which therefore get the control plane instance profile: every pod on them can use its
   rights to load balancers, volumes and instances. Hosts on AWS have all nodes in one availability
   zone, since the app sets no failure domain per worker pool there.
-- **Not available** air-gapped and on Google Cloud.
+- **Air-gapped** ([ADR-0037](adr/0037-air-gapped-hosted-control-planes.md)): an air-gapped tenant
+  needs an air-gapped host with the same internal registry. The host pulls the tenant's control
+  plane images (`quay.io/k0sproject/k0s:<version>` and the etcd image) from it; the registry
+  contents of the host list them. After an upgrade keep the k0s image of the earlier versions:
+  k0smotron keeps the init image of the pods it created first.
+- **Not available** on Google Cloud.

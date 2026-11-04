@@ -195,6 +195,10 @@ Upgrades work like for other clusters: push the binaries of the new version firs
 pins them and the machines are replaced. kubeadm upgrades ask for the template of the new version:
 the control plane moves to it at once, the worker pools when they follow.
 
+Hosted control planes work air-gapped too, on an air-gapped host with the same registry
+([hosted control planes](hosted-control-planes.md),
+[ADR-0037](adr/0037-air-gapped-hosted-control-planes.md)).
+
 ### Cluster API images for kubeadm
 
 A Cluster API image has containerd, runc, kubelet, kubeadm and kubectl of one Kubernetes version
