@@ -10324,6 +10324,9 @@
                 },
                 "rootVolumeType": {
                   "type": "string"
+                },
+                "hostedOn": {
+                  "type": "string"
                 }
               },
               "required": [
