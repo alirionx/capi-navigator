@@ -170,6 +170,18 @@ describe('workload logs (FP18-F-07)', () => {
     expect(noPrevious.text).toBe('');
   });
 
+  it('turns the kubelet line for removed log files into a hint (FP18-F-07)', async () => {
+    const removed = await readWorkloadLogs(
+      fakeKc(
+        [pod('web-1')],
+        async () => 'unable to retrieve container logs for containerd://4047e418',
+      ).kc,
+      req({ previous: true }),
+    );
+    expect(removed.text).toBe('');
+    expect(removed.hint).toContain('no longer has the logs of the previous container');
+  });
+
   it('never matches all pods of a namespace with an empty selector', async () => {
     const { kc, listed } = fakeKc([pod('other')], async () => '');
     const logs = await readWorkloadLogs(kc, req({ kind: 'Job', workload: 'migrate' }));

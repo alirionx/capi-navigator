@@ -130,6 +130,18 @@ export async function readWorkloadLogs(kc: KubeConfig, req: LogsRequest): Promis
     if (kubeStatus(err) !== 400) throw err;
     return { ...base, pod: podName, container, hint: kubeMessage(err) ?? 'No logs available.' };
   }
+  // The kubelet answers 200 with this line when the container's log file is gone, e.g. a
+  // previous container removed after its successor started (seen live with containerd).
+  if (/^unable to retrieve container logs for \S+\s*$/.test(text)) {
+    return {
+      ...base,
+      pod: podName,
+      container,
+      hint: req.previous
+        ? 'The node no longer has the logs of the previous container (removed by the kubelet). Load them right after a crash, or collect logs centrally.'
+        : 'The node no longer has the logs of this container.',
+    };
+  }
   const lines = text ? text.split('\n').filter((l, i, a) => l || i < a.length - 1).length : 0;
   return {
     ...base,
