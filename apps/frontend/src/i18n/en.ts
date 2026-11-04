@@ -823,6 +823,7 @@ export const en = {
     count: '{n} clusters',
     search: 'Search name, namespace or label',
     distribution: 'Distribution',
+    kubernetes: 'Kubernetes',
     age: 'Age',
     created: 'Created {date} ({age} ago)',
     labels: 'Labels',

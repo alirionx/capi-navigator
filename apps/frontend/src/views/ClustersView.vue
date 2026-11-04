@@ -34,11 +34,10 @@ watch(
 onBeforeUnmount(() => store.unwatchList());
 
 const headers = computed(() => [
-  { title: t('clusters.name'), key: 'name' },
-  { title: t('clusters.namespace'), key: 'namespace' },
+  // Namespace below the name and distribution below the version keep the table within the page.
+  { title: t('clusters.name'), key: 'name', minWidth: 200 },
   { title: t('clusters.provider'), key: 'provider' },
-  { title: t('clusters.distribution'), key: 'flavor' },
-  { title: t('clusters.version'), key: 'version' },
+  { title: t('clusters.kubernetes'), key: 'version' },
   { title: t('clusters.nodes'), key: 'nodes', sortable: false },
   { title: t('clusters.labels'), key: 'labels', sortable: false },
   { title: t('clusters.phase'), key: 'phase' },
@@ -50,6 +49,8 @@ const headers = computed(() => [
       (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
   },
 ]);
+
+const MAX_LABELS = 2;
 
 /** Labels shown in the list: without the labels the app and CAPI set themselves. */
 const userLabels = (c: ClusterSummary) =>
@@ -142,7 +143,7 @@ const phaseColor = (c: ClusterSummary) =>
           <template #[`item.name`]="{ item }">
             <router-link
               :to="{ name: 'cluster', params: { namespace: item.namespace, name: item.name } }"
-              class="font-weight-medium"
+              class="font-weight-medium cluster-name"
               >{{ item.name }}</router-link
             >
             <v-chip
@@ -159,37 +160,60 @@ const phaseColor = (c: ClusterSummary) =>
               class="ml-2"
             />
             <HostedChip :labels="item.labels" class="ml-2" />
+            <div class="text-body-small text-medium-emphasis">{{ item.namespace }}</div>
           </template>
           <template #[`item.provider`]="{ item }">
             <div>{{ item.provider ?? '–' }}</div>
             <div
               v-if="location(item)"
-              class="text-body-small text-medium-emphasis"
+              class="text-body-small text-medium-emphasis one-line"
+              :title="location(item)"
               data-testid="cluster-location"
             >
               {{ location(item) }}
             </div>
           </template>
-          <template #[`item.flavor`]="{ item }">{{ item.flavor ?? '–' }}</template>
-          <template #[`item.version`]="{ item }">{{ item.version ?? '–' }}</template>
+          <template #[`item.version`]="{ item }">
+            <div class="text-no-wrap">{{ item.version ?? '–' }}</div>
+            <div v-if="item.flavor" class="text-body-small text-medium-emphasis">
+              {{ item.flavor }}
+            </div>
+          </template>
           <template #[`item.nodes`]="{ item }">
-            <span v-if="item.controlPlane"
+            <span v-if="item.controlPlane" class="text-no-wrap"
               >{{ item.controlPlane.ready }}/{{ item.controlPlane.replicas }} CP</span
             >
-            <span v-if="item.workers">
+            <span v-if="item.workers" class="text-no-wrap">
               · {{ item.workers.ready }}/{{ item.workers.replicas }}
               {{ t('clusters.workers') }}</span
             >
           </template>
           <template #[`item.labels`]="{ item }">
-            <v-chip
-              v-for="[k, v] in userLabels(item)"
-              :key="k"
-              size="x-small"
-              variant="outlined"
-              class="mr-1"
-              >{{ k }}={{ v }}</v-chip
-            >
+            <!-- Two labels, each cut to the column; the rest behind "+n" with a tooltip. -->
+            <div class="d-flex flex-wrap ga-1 labels-cell">
+              <v-chip
+                v-for="[k, v] in userLabels(item).slice(0, MAX_LABELS)"
+                :key="k"
+                size="x-small"
+                variant="outlined"
+                :title="`${k}=${v}`"
+                class="label-chip"
+                ><span class="one-line">{{ k }}={{ v }}</span></v-chip
+              >
+              <v-chip
+                v-if="userLabels(item).length > MAX_LABELS"
+                size="x-small"
+                variant="tonal"
+                :title="
+                  userLabels(item)
+                    .slice(MAX_LABELS)
+                    .map(([k, v]) => `${k}=${v}`)
+                    .join('\n')
+                "
+                data-testid="more-labels"
+                >+{{ userLabels(item).length - MAX_LABELS }}</v-chip
+              >
+            </div>
           </template>
           <template #[`item.createdAt`]="{ item }">
             <span :title="formatCreated(item.createdAt)" data-testid="cluster-age">{{
@@ -215,3 +239,23 @@ const phaseColor = (c: ClusterSummary) =>
     </template>
   </v-container>
 </template>
+
+<style scoped>
+.one-line {
+  display: block;
+  max-width: 13rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.labels-cell {
+  max-width: 11rem;
+}
+/* Generated names (e.g. from a service broker) break anywhere instead of widening the table. */
+.cluster-name {
+  word-break: break-all;
+}
+.label-chip {
+  max-width: 100%;
+}
+</style>
