@@ -260,6 +260,16 @@ The app shows what the registry must hold, with `oras push` and `skopeo copy` co
 templates need the QEMU guest agent baked in; see
 [Air-gapped clusters](docs/proxmox.md#air-gapped-clusters) and
 [ADR-0030](docs/adr/0030-air-gapped-nodes-from-an-internal-registry.md).
+A private CA of the registry needs `basicConstraints=critical,CA:TRUE` and
+`keyUsage=critical,keyCertSign,cRLSign`: Python 3.13 on the nodes (e.g. Debian 13) rejects it
+otherwise, and the app refuses to save it.
+
+On AWS (tested with k0s, no target of FP-29) the VPC CAPA creates has NAT gateways, so the nodes
+are not cut off by themselves. Block outbound traffic of its private subnets, e.g. with a network
+ACL that allows only the VPC and the registry, and add interface endpoints for `ec2` and
+`elasticloadbalancing` with private DNS, which the AWS CCM and the EBS CSI driver need. Do this
+before the first machine starts. When deleting, remove LoadBalancer Services and volumes first,
+while CCM and CSI still reach the endpoints, then the endpoints, then the cluster.
 
 The chart installs the app's CRDs, RBAC and one replica. The initial admin password is read from
 the Secret `capi-navigator-initial-admin` (key `password`) in the release namespace, or generated

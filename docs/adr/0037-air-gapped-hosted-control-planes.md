@@ -42,4 +42,5 @@ in use after upgrades.
   defaulted them to, so applying the new YAML changes nothing in the host.
 - Hosts with tenants of many versions keep several k0s images; a cleanup in the registry has to
   follow the list of the host, not only the current versions.
-- Air-gapped AWS clusters remain untested (AWS is no target of FP-29); a test setup is planned.
+- Air-gapped hosted control planes on AWS remain untested (AWS is no target of FP-29); an air-gapped
+  k0s cluster on AWS was tested on 2026-11-04 (FP-29).
