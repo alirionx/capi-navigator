@@ -3,6 +3,8 @@ export const en = {
   app: {
     title: 'CAPI Navigator',
     subtitle: 'Cluster API web UI',
+    byAuthor: 'by alirionx',
+    sourceCode: 'Source code on GitHub',
     toggleTheme: 'Toggle light/dark theme',
     lightMode: 'Light mode',
     licenses: 'Open source licenses',

@@ -11,6 +11,8 @@ import { useThemeSwitch } from './composables/theme.js';
 import { useAuthStore } from './stores/auth.js';
 import { useConnectionsStore } from './stores/connections.js';
 
+const REPOSITORY_URL = 'https://github.com/alirionx/capi-navigator';
+
 const { t } = useI18n();
 const { theme, toggle: toggleTheme } = useThemeSwitch();
 const dark = computed(() => theme.global.current.value.dark);
@@ -86,6 +88,7 @@ async function signOut(): Promise<void> {
         <div>
           <div class="brand-title">{{ t('app.title') }}</div>
           <div class="brand-subtitle">{{ t('app.subtitle') }}</div>
+          <div class="brand-author">{{ t('app.byAuthor') }}</div>
         </div>
       </router-link>
 
@@ -137,6 +140,18 @@ async function signOut(): Promise<void> {
         data-testid="api-docs-button"
         >{{ t('app.api') }}</v-btn
       >
+      <v-btn
+        :href="REPOSITORY_URL"
+        target="_blank"
+        rel="noopener"
+        variant="text"
+        icon="mdi-github"
+        size="small"
+        :title="t('app.sourceCode')"
+        :aria-label="t('app.sourceCode')"
+        class="ml-1"
+        data-testid="github-link"
+      />
       <v-menu v-if="auth.me">
         <template #activator="{ props }">
           <v-btn
@@ -338,6 +353,11 @@ async function signOut(): Promise<void> {
 .brand-subtitle {
   font-size: 0.75rem;
   opacity: 0.75;
+}
+.brand-author {
+  font-size: 0.6875rem;
+  opacity: 0.5;
+  margin-top: 1px;
 }
 .sidebar :deep(.v-list-item__spacer) {
   width: 14px !important;
