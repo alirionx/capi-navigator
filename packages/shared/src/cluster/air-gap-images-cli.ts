@@ -119,16 +119,41 @@ function calicoImages(): string[] {
   return imagesInManifests(readFileSync(manifest, 'utf8'));
 }
 
-/** Renders a preset's chart with its values; CAAPH's Go templates get placeholders. */
+/** Replaces `{{ if … }}a{{ else }}b{{ end }}` by b, innermost conditions first. */
+function elseBranches(template: string): string {
+  const innermost =
+    /\{\{ if [^}]*\}\}((?:(?!\{\{ if )[\s\S])*?)\{\{ else \}\}((?:(?!\{\{ if )[\s\S])*?)\{\{ end \}\}/;
+  let out = template;
+  while (innermost.test(out)) out = out.replace(innermost, '$2');
+  return out;
+}
+
+/**
+ * Renders a preset's chart with its values. CAAPH's Go templates get placeholders, conditions take
+ * their else branch (a cluster with its own control plane nodes). Test hooks are left out: CAAPH
+ * never runs them.
+ */
 function presetImages(preset: (typeof ADDON_PRESETS)[number], work: string): string[] {
   const values = join(work, `${preset.id}.yaml`);
-  writeFileSync(values, preset.valuesTemplate.replace(/\{\{[^}]*\}\}/g, 'placeholder'));
+  writeFileSync(
+    values,
+    elseBranches(preset.valuesTemplate).replace(/\{\{[^}]*\}\}/g, 'placeholder'),
+  );
   const chart = preset.repoURL.startsWith('oci://')
     ? [`${preset.repoURL}/${preset.chartName}`]
     : [preset.chartName, '--repo', preset.repoURL];
   const out = execFileSync(
     'helm',
-    ['template', preset.chartName, ...chart, '--version', preset.version, '-f', values],
+    [
+      'template',
+      preset.chartName,
+      ...chart,
+      '--version',
+      preset.version,
+      '-f',
+      values,
+      '--skip-tests',
+    ],
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
   );
   return imagesInManifests(out);

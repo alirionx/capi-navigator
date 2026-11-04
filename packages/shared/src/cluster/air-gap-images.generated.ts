@@ -285,7 +285,6 @@ export const AIR_GAP_IMAGES = {
         'public.ecr.aws/csi-components/csi-resizer:v2.3.0-eksbuild.3',
         'public.ecr.aws/csi-components/livenessprobe:v2.20.0-eksbuild.3',
         'public.ecr.aws/ebs-csi-driver/aws-ebs-csi-driver:v1.67.2',
-        'us-central1-docker.pkg.dev/k8s-staging-test-infra/images/kubekins-e2e:v20260817-81577dc432-master',
       ],
     },
     'proxmox-ccm': {
