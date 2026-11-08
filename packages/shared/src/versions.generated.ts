@@ -5,13 +5,13 @@ export const VERSIONS: VersionsFile = {
   "schemaVersion": 1,
   "providers": {
     "cluster-api": {
-      "version": "v1.14.3",
+      "version": "v1.14.4",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api"
       },
-      "verified": "2026-10-17",
-      "note": "CAPI contract v1beta2."
+      "verified": "2026-11-08",
+      "note": "CAPI contract v1beta2. v1.14.4 has bug fixes and Go updates only; the CRDs and manifests of core, kubeadm bootstrap and control plane are unchanged from v1.14.3 apart from the images."
     },
     "rke2": {
       "version": "v0.27.1",
@@ -58,13 +58,13 @@ export const VERSIONS: VersionsFile = {
       "note": "Still implements the v1beta1 contract (built against CAPI v1.13.2). CAPI v1.14 supports it; CAPI plans to drop v1beta1 contract support with v1.16 (tentatively April 2027), so CAPG must move to v1beta2 before core can go there."
     },
     "proxmox": {
-      "version": "v0.9.1",
+      "version": "v0.9.2",
       "source": {
         "datasource": "github-releases",
         "package": "ionos-cloud/cluster-api-provider-proxmox"
       },
-      "verified": "2026-10-23",
-      "note": "API v1alpha2, contract v1beta2. Upstream lists CAPI v1.11/v1.12; verified live with CAPI v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false."
+      "verified": "2026-11-08",
+      "note": "API v1alpha2, contract v1beta2. v0.9.2: security and bug fixes (among them waiting for the boot disk resize and for running VM tasks); CRDs and manifests unchanged from v0.9.1 apart from the image. Upstream lists CAPI v1.11/v1.12; verified live with CAPI v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false."
     },
     "ipam-in-cluster": {
       "version": "v1.1.1",
@@ -154,24 +154,24 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "k0sproject/k0s"
       },
-      "verified": "2026-10-31",
-      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (v1.36.4, upgrade from v1.35.8, 2026-10-28). The patches of 2026-10-27 (v1.34.12, v1.35.9, v1.36.5) were taken one day after their release, before the minimum release age, at the user's request for 0.12.0. v1.37.1: a one-node cluster on Proxmox VE upgraded live from v1.36.5 (2026-10-28). k0smotron v2.3.1 (2026-10-31): three control plane nodes upgraded live from v1.35.9 to v1.36.5 on OpenStack (ADR-0013); the patch release changes nothing for the other versions.",
+      "verified": "2026-11-08",
+      "note": "Latest patch per minor from the k0sproject/k0s releases. k0smotron runs its e2e tests with v1.31 only; v1.34 and v1.35 were verified live in FP-9, v1.36 in FP-29 (v1.36.4, upgrade from v1.35.8, 2026-10-28). The patches of 2026-10-27 (v1.34.12, v1.35.9, v1.36.5) were taken one day after their release, before the minimum release age, at the user's request for 0.12.0. v1.37.1: a one-node cluster on Proxmox VE upgraded live from v1.36.5 (2026-10-28). k0smotron v2.3.1 (2026-10-31): three control plane nodes upgraded live from v1.35.9 to v1.36.5 on OpenStack (ADR-0013); the patch release changes nothing for the other versions. 2026-11-08: patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (Kubernetes patches, containerd 2.3.6 for v1.36 and v1.37), five days after their release; the hosted k0s images exist.",
       "versions": [
         {
-          "version": "v1.37.1+k0s.0",
+          "version": "v1.37.2+k0s.0",
           "verifiedWithProvider": "v2.3.1"
         },
         {
-          "version": "v1.36.5+k0s.0",
+          "version": "v1.36.6+k0s.0",
           "verifiedWithProvider": "v2.3.1"
         },
         {
-          "version": "v1.35.9+k0s.0",
+          "version": "v1.35.10+k0s.0",
           "verifiedWithProvider": "v2.3.1",
           "default": true
         },
         {
-          "version": "v1.34.12+k0s.0",
+          "version": "v1.34.13+k0s.0",
           "verifiedWithProvider": "v2.3.1"
         },
         {
@@ -185,29 +185,29 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "kubernetes/kubernetes"
       },
-      "verified": "2026-10-30",
+      "verified": "2026-11-08",
       "note": "Checked against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and rpm repositories (FP10-F-02); Cluster API v1.14 supports v1.33 to v1.37 for kubeadm. The Cluster API images of capi-navigator-images and osism carry the same patch versions (ADR-0032).",
       "versions": [
         {
           "version": "v1.37.2",
-          "verifiedWithProvider": "v1.14.3"
+          "verifiedWithProvider": "v1.14.4"
         },
         {
           "version": "v1.36.6",
-          "verifiedWithProvider": "v1.14.3"
+          "verifiedWithProvider": "v1.14.4"
         },
         {
           "version": "v1.35.10",
-          "verifiedWithProvider": "v1.14.3",
+          "verifiedWithProvider": "v1.14.4",
           "default": true
         },
         {
           "version": "v1.34.13",
-          "verifiedWithProvider": "v1.14.3"
+          "verifiedWithProvider": "v1.14.4"
         },
         {
           "version": "v1.33.13",
-          "verifiedWithProvider": "v1.14.3"
+          "verifiedWithProvider": "v1.14.4"
         }
       ]
     }
@@ -281,14 +281,14 @@ export const VERSIONS: VersionsFile = {
       "note": "A DaemonSet driven by env; 0.11.2 only raises the default image tag over 0.11.1, which the preset overrides. Rendered with the preset values it matches the FP-32 spike."
     },
     "proxmox-kube-vip-cloud-provider": {
-      "version": "0.2.10",
+      "version": "0.2.11",
       "source": {
         "datasource": "helm",
         "package": "kube-vip-cloud-provider",
         "registry": "https://kube-vip.github.io/helm-charts"
       },
-      "verified": "2026-10-24",
-      "note": "Chart default image is v0.0.12 on Docker Hub; the preset uses images.kube-vip-cloud-provider. RBAC identical to the upstream manifest of v0.0.13."
+      "verified": "2026-11-08",
+      "note": "0.2.11 only raises appVersion to v0.0.13 (templates and values unchanged). Chart default image is on Docker Hub; the preset uses images.kube-vip-cloud-provider. RBAC identical to the upstream manifest of v0.0.13."
     },
     "kured": {
       "version": "6.1.0",

@@ -16,7 +16,8 @@ import { compact } from './util.js';
 
 /**
  * Proxmox VE (CAPMOX v0.9.1, infrastructure.cluster.x-k8s.io/v1alpha2, CAPI v1beta2 contract;
- * ADR-0027). Field names verified against the CRDs of the release and live in the FP-31 spike.
+ * ADR-0027). Field names verified against the CRDs of the release and live in the FP-31 spike;
+ * the CRDs of v0.9.2 are unchanged.
  * No load balancer: the distributions hold the API endpoint with kube-vip (`apiVip`). No flavors:
  * sizes come from the credential (FP31-F-04). Node addresses come from the in-cluster IPAM pool
  * CAPMOX creates from `ipv4Config`.

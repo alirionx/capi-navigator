@@ -135,46 +135,46 @@ export const AIR_GAP_IMAGES = {
       ],
     },
     k0s: {
-      'v1.37.1+k0s.0': [
+      'v1.37.2+k0s.0': [
         'quay.io/k0sproject/apiserver-network-proxy-agent:v0.37.0-k0s.1',
         'quay.io/k0sproject/calico-cni:v3.32.2-1',
         'quay.io/k0sproject/calico-kube-controllers:v3.32.2-1',
         'quay.io/k0sproject/calico-node:v3.32.2-1',
         'quay.io/k0sproject/coredns:1.14.7-k0s.1',
-        'quay.io/k0sproject/kube-proxy:v1.37.1-1',
+        'quay.io/k0sproject/kube-proxy:v1.37.2',
         'quay.io/k0sproject/metrics-server:v0.9.0-k0s.2',
         'quay.io/k0sproject/pause:3.10.2-0',
       ],
-      'v1.36.5+k0s.0': [
+      'v1.36.6+k0s.0': [
         'quay.io/k0sproject/apiserver-network-proxy-agent:v0.36.0-k0s.2',
         'quay.io/k0sproject/calico-cni:v3.32.2-1',
         'quay.io/k0sproject/calico-kube-controllers:v3.32.2-1',
         'quay.io/k0sproject/calico-node:v3.32.2-1',
         'quay.io/k0sproject/coredns:1.14.7-k0s.1',
-        'quay.io/k0sproject/kube-proxy:v1.36.5-1',
+        'quay.io/k0sproject/kube-proxy:v1.36.6',
         'quay.io/k0sproject/metrics-server:v0.9.0-k0s.2',
         'quay.io/k0sproject/pause:3.10.2-0',
       ],
-      'v1.35.9+k0s.0': [
+      'v1.35.10+k0s.0': [
         'quay.io/k0sproject/apiserver-network-proxy-agent:v0.34.0-k0s.3',
         'quay.io/k0sproject/calico-cni:v3.31.7-1',
         'quay.io/k0sproject/calico-kube-controllers:v3.31.7-1',
         'quay.io/k0sproject/calico-node:v3.31.7-1',
         'quay.io/k0sproject/cni-node:v1.8.0-k0s.1',
         'quay.io/k0sproject/coredns:1.14.7-k0s.1',
-        'quay.io/k0sproject/kube-proxy:v1.35.9-1',
+        'quay.io/k0sproject/kube-proxy:v1.35.10',
         'quay.io/k0sproject/kube-router:v2.7.1-iptables1.8.11-0',
         'quay.io/k0sproject/metrics-server:v0.9.0-k0s.2',
         'quay.io/k0sproject/pause:3.10.1',
       ],
-      'v1.34.12+k0s.0': [
+      'v1.34.13+k0s.0': [
         'quay.io/k0sproject/apiserver-network-proxy-agent:v0.33.1-k0s.2',
         'quay.io/k0sproject/calico-cni:v3.29.7-2',
         'quay.io/k0sproject/calico-kube-controllers:v3.29.7-2',
         'quay.io/k0sproject/calico-node:v3.29.7-2',
         'quay.io/k0sproject/cni-node:v1.8.0-k0s.1',
         'quay.io/k0sproject/coredns:1.13.2',
-        'quay.io/k0sproject/kube-proxy:v1.34.12-1',
+        'quay.io/k0sproject/kube-proxy:v1.34.13',
         'quay.io/k0sproject/kube-router:v2.6.3-iptables1.8.11-0',
         'quay.io/k0sproject/metrics-server:v0.7.2-k0s.2',
         'quay.io/k0sproject/pause:3.10.1',
@@ -308,7 +308,7 @@ export const AIR_GAP_IMAGES = {
       images: ['ghcr.io/kube-vip/kube-vip:v1.3.1'],
     },
     'proxmox-kube-vip-cloud-provider': {
-      version: '0.2.10',
+      version: '0.2.11',
       images: ['ghcr.io/kube-vip/kube-vip-cloud-provider:v0.0.13'],
     },
     kured: {
