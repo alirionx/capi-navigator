@@ -125,8 +125,8 @@ const draft = reactive({
   maxSurge: 1,
   maxUnavailable: 0,
   grantNamespace: false,
-  /** FP29-F-11: on by default where the connection has an internal registry. */
-  airGapped: true,
+  /** FP29-F-11: off by default, also where the connection has an internal registry. */
+  airGapped: false,
 });
 /** FP19-F-10: users limited to namespaces may only create clusters there. */
 const allowedNamespaces = computed(() =>

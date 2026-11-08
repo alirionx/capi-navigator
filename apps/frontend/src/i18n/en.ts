@@ -878,7 +878,8 @@ export const en = {
     distributionHint:
       'Installed via cloud-init on stock images; its bootstrap and control plane providers must be installed. Default: RKE2.',
     installAtBootTitle: 'Installed at first boot',
-    airGapped: 'Air-gapped: nodes without internet access, everything from {registry}',
+    airGapped:
+      'Air-gapped: nodes without internet access, everything from {registry} (default off)',
     airGapUnavailable:
       '{flavor} cannot be installed air-gapped; choose another distribution for a cluster without internet access.',
     airGappedInfo:
