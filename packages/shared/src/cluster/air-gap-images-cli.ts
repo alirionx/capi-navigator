@@ -171,7 +171,8 @@ try {
       distributions.rke2![version] = await rke2Images(version);
       console.log(`rke2 ${version}: ${distributions.rke2![version]!.length} images`);
     } catch (err) {
-      // A release without assets (seen with v1.33.13+rke2r3) cannot be installed at all.
+      // A release without assets (e.g. Prime-only releases such as v1.33.13+rke2r3) cannot be
+      // installed at all; the image list test then fails for it.
       console.warn(`rke2 ${version} skipped, check the catalog: ${(err as Error).message}`);
     }
   }

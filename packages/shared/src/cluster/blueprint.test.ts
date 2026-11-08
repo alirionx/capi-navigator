@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { distributionCatalog } from '../catalog/kubernetes-versions.js';
 import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
 import { buildCrd, ClusterBlueprintCrd } from '../crds/index.js';
 import { renderManifests } from '../operator-manifests.js';
@@ -249,8 +250,12 @@ describe('cluster blueprints (FP-34)', () => {
   });
 
   it('finds versions outside the catalog', () => {
+    // A version of the current catalog, so the test survives patch updates of versions.yaml.
+    const known = distributionCatalog('rke2')!.versions[0]!.version;
+    const { cluster } = SPECS.openstack!;
     const bp = blueprint('openstack', {
-      parameters: { kubernetesVersions: ['v1.35.9+rke2r1', 'v1.30.0+rke2r1'] },
+      cluster: { ...cluster, kubernetes: { ...cluster.kubernetes, version: known } },
+      parameters: { kubernetesVersions: [known, 'v1.30.0+rke2r1'] },
     });
     expect(versionsOutsideCatalog(bp)).toEqual(['v1.30.0+rke2r1']);
   });

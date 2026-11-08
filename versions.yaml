@@ -142,14 +142,14 @@ kubernetes:
     source:
       datasource: github-releases
       package: rancher/rke2
-    verified: 2026-10-20
-    note: Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28).
+    verified: 2026-11-08
+    note: Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28). Patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (containerd 2.2.9 or 2.3.6, chart updates) taken on 2026-11-08, three days after their release, at the user's request. v1.33.13+rke2r3 is a Prime-only release without assets on GitHub (no install, no image lists); v1.33 stays on v1.33.13+rke2r2, the last community release of that minor.
     versions:
-      - { version: v1.37.1+rke2r1, verifiedWithProvider: v0.27.1, untested: true }
-      - { version: v1.36.5+rke2r1, verifiedWithProvider: v0.27.1 }
-      - { version: v1.35.9+rke2r1, verifiedWithProvider: v0.27.1, default: true }
-      - { version: v1.34.12+rke2r1, verifiedWithProvider: v0.27.1 }
-      - { version: v1.33.13+rke2r3, verifiedWithProvider: v0.27.1 }
+      - { version: v1.37.2+rke2r1, verifiedWithProvider: v0.27.1, untested: true }
+      - { version: v1.36.6+rke2r1, verifiedWithProvider: v0.27.1, default: true }
+      - { version: v1.35.10+rke2r1, verifiedWithProvider: v0.27.1 }
+      - { version: v1.34.13+rke2r1, verifiedWithProvider: v0.27.1 }
+      - { version: v1.33.13+rke2r2, verifiedWithProvider: v0.27.1 }
   k0s:
     source:
       datasource: github-releases
@@ -165,10 +165,12 @@ kubernetes:
       on OpenStack (ADR-0013); the patch release changes nothing for the other versions.
       2026-11-08: patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (Kubernetes patches, containerd
       2.3.6 for v1.36 and v1.37), five days after their release; the hosted k0s images exist.
+      v1.37.2+k0s.1 (2026-11-06, Helm extension, kine and Traefik fixes) two days after its release,
+      at the user's request.
     versions:
-      - { version: v1.37.2+k0s.0, verifiedWithProvider: v2.3.1 }
-      - { version: v1.36.6+k0s.0, verifiedWithProvider: v2.3.1 }
-      - { version: v1.35.10+k0s.0, verifiedWithProvider: v2.3.1, default: true }
+      - { version: v1.37.2+k0s.1, verifiedWithProvider: v2.3.1 }
+      - { version: v1.36.6+k0s.0, verifiedWithProvider: v2.3.1, default: true }
+      - { version: v1.35.10+k0s.0, verifiedWithProvider: v2.3.1 }
       - { version: v1.34.13+k0s.0, verifiedWithProvider: v2.3.1 }
       - { version: v1.33.13+k0s.1, verifiedWithProvider: v2.3.1 }
   kubeadm:
@@ -179,8 +181,8 @@ kubernetes:
     note: Checked against dl.k8s.io/release/stable-1.XX.txt and the pkgs.k8s.io deb and rpm repositories (FP10-F-02); Cluster API v1.14 supports v1.33 to v1.37 for kubeadm. The Cluster API images of capi-navigator-images and osism carry the same patch versions (ADR-0032).
     versions:
       - { version: v1.37.2, verifiedWithProvider: v1.14.4 }
-      - { version: v1.36.6, verifiedWithProvider: v1.14.4 }
-      - { version: v1.35.10, verifiedWithProvider: v1.14.4, default: true }
+      - { version: v1.36.6, verifiedWithProvider: v1.14.4, default: true }
+      - { version: v1.35.10, verifiedWithProvider: v1.14.4 }
       - { version: v1.34.13, verifiedWithProvider: v1.14.4 }
       - { version: v1.33.13, verifiedWithProvider: v1.14.4 }
 
@@ -305,27 +307,33 @@ cni:
 addonManifests:
   gcp-ccm:
     # deploy/packages/default/manifest.yaml of tag vX; the app sets the image to this version.
-    version: v36.4.9
+    version: v37.2.5
     source:
       datasource: docker
       package: cloud-provider-gcp/cloud-controller-manager
       registry: https://registry.k8s.io
-    verified: 2026-10-20
+    verified: 2026-11-08
     note: >-
       The repository has tags but no GitHub releases; the image follows the Kubernetes minor (v36 =
       1.36) and supports the minors around it. The manifest is meant for tooling (empty args, cloud
-      config from the host); the app fills both (gcp-addons.ts).
-    manifest: gcp-ccm-v36.4.9.yaml
-    sha256: 46ffa27d31d17a8f7cbfbabefa61b6031def573763bb7be1b3bc0d5525e91970
+      config from the host); the app fills both (gcp-addons.ts). v37 for all catalog minors at the
+      user's decision (2026-11-08), as v36 was before: newer than the API server of v1.33 to v1.36,
+      outside the version skew policy. The manifest differs from v36.4.9 only in its image line.
+    manifest: gcp-ccm-v37.2.5.yaml
+    sha256: 5e20f64573d7e83b9a03eca5e2266f013b930b3970e3d2819fd272f62a740d65
   gcp-csi:
     # `kubectl kustomize deploy/kubernetes/overlays/noauth` of the release tag (images as pinned by
     # upstream's stable-master): no service account key, the controller uses the node's account.
-    version: v1.27.5
+    version: v1.28.1
     source:
       datasource: github-releases
       package: kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
-    verified: 2026-10-20
-    manifest: gcp-pd-csi-noauth-v1.27.5.yaml
+    verified: 2026-11-08
+    note: >-
+      The overlay of v1.27.5 and v1.28.1 renders identically: upstream's stable-master still pins
+      the driver image v1.26.0 and the sidecars. The app pins the driver image to this version
+      (gcp-addons.ts); before 2026-11-08 clusters ran driver v1.26.0.
+    manifest: gcp-pd-csi-noauth-v1.28.1.yaml
     sha256: 72d2f057d3d69bad407cea926e2de62d9ca4e19aef9a0c383e3d6c48500e9b22
 
 # ---- Container images the app starts -------------------------------------------------------------
@@ -391,12 +399,12 @@ testTools:
   socat:
     # Forwards 127.0.0.1:5556 to the Dex NodePort in kind, so the browser and the backend reach
     # Dex under one issuer URL also with Docker Desktop (no route to the kind network).
-    version: 1.8.1.1
+    version: 1.8.1.3
     source:
       datasource: docker
       package: alpine/socat
       registry: docker.io
-    verified: 2026-10-20
+    verified: 2026-11-08
   gitleaks:
     # Secret scan of the whole Git history before pushing (`pnpm secrets:scan`, run in Docker).
     version: v8.30.1

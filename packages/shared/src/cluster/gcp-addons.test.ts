@@ -82,6 +82,23 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
     });
   });
 
+  it('runs the PD CSI driver of the release, not the stable-master image of the overlay', () => {
+    const images = adapted('gcp-csi').flatMap((o) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (o.spec?.template?.spec?.containers ?? []).map((c: any) => c.image as string),
+    );
+    const drivers = images.filter((i) => i.includes('/gcp-compute-persistent-disk-csi-driver:'));
+    expect(drivers.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(drivers)).toEqual(
+      new Set([
+        `registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver:${addon('gcp-csi').version}`,
+      ]),
+    );
+    expect(() => addon('gcp-csi').forCluster('kind: ConfigMap\nmetadata: {name: x}\n')).toThrow(
+      /PD CSI driver not found/,
+    );
+  });
+
   it('marks every adapted manifest with source, license and changes (Apache-2.0 4b)', () => {
     for (const a of MANIFEST_ADDONS) {
       const text = a.forCluster(asset(a.dir, a.file));
@@ -102,7 +119,7 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
   it('delivers each add-on by a ClusterResourceSet per namespace, selected by label', () => {
     const a = addon('gcp-csi');
     const [cm, crs] = buildManifestAddonResourceSet(a, 'team-a', asset(a.dir, a.file));
-    expect(cm!.metadata.name).toMatch(/^capi-navigator-gcp-csi-v1-27-5-[0-9a-f]{6}$/);
+    expect(cm!.metadata.name).toMatch(/^capi-navigator-gcp-csi-v1-28-1-[0-9a-f]{6}$/);
     expect(crs).toMatchObject({
       kind: 'ClusterResourceSet',
       metadata: { name: cm!.metadata.name, namespace: 'team-a' },

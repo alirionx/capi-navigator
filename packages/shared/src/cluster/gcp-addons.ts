@@ -110,13 +110,28 @@ export function gcpCcmManifestForCluster(manifest: string): string {
   );
 }
 
+const CSI_DRIVER_IMAGE =
+  'registry.k8s.io/cloud-provider-gcp/gcp-compute-persistent-disk-csi-driver';
+
 /**
  * The noauth overlay of the PD CSI driver (no key; the controller uses the node's account). The
- * app adds the namespace the overlay expects, keeps the controller on control plane nodes and adds
- * a default StorageClass on balanced persistent disks.
+ * app pins the driver image to the release, adds the namespace the overlay expects, keeps the
+ * controller on control plane nodes and adds a default StorageClass on balanced persistent disks.
  */
 export function gcpCsiManifestForCluster(manifest: string): string {
   const objects = parseManifest(manifest);
+  // The overlay takes its images from upstream's stable-master transformer, which still names
+  // driver v1.26.0 in the release tags v1.27.5 and v1.28.1: pin the driver of the release.
+  let pinned = 0;
+  for (const o of objects) {
+    for (const c of o.spec?.template?.spec?.containers ?? []) {
+      if (typeof c.image === 'string' && c.image.startsWith(`${CSI_DRIVER_IMAGE}:`)) {
+        c.image = `${CSI_DRIVER_IMAGE}:${VERSIONS.addonManifests['gcp-csi'].version}`;
+        pinned++;
+      }
+    }
+  }
+  if (!pinned) throw new Error('Manifest: container image of the PD CSI driver not found');
   const controller = findObject(objects, 'Deployment', 'csi-gce-pd-controller');
   const pod = controller.spec.template.spec;
   pod.affinity = CONTROL_PLANE_AFFINITY;
@@ -127,7 +142,7 @@ export function gcpCsiManifestForCluster(manifest: string): string {
   return (
     modificationNotice(
       `Compute Engine PD CSI driver ${VERSIONS.addonManifests['gcp-csi'].version}, overlay noauth`,
-      'namespace added, controller on control plane nodes, node plugin on all nodes, default StorageClass.',
+      'driver image pinned, namespace added, controller on control plane nodes, node plugin on all nodes, default StorageClass.',
     ) +
     renderObjects([
       { apiVersion: 'v1', kind: 'Namespace', metadata: { name: 'gce-pd-csi-driver' } },

@@ -14,9 +14,9 @@ directory, or https://www.apache.org/licenses/LICENSE-2.0).
 - Changes by CAPI Navigator (`calicoManifestForCluster`, packages/shared/src/cluster/cni.ts):
   `CALICO_IPV4POOL_VXLAN` and `CALICO_IPV6POOL_VXLAN` set from `CrossSubnet` to `Always`.
 
-## gcp/gcp-ccm-v36.4.9.yaml
+## gcp/gcp-ccm-v37.2.5.yaml
 
-- Source: Cloud Provider GCP, `deploy/packages/default/manifest.yaml` of tag v36.4.9,
+- Source: Cloud Provider GCP, `deploy/packages/default/manifest.yaml` of tag v37.2.5,
   https://github.com/kubernetes/cloud-provider-gcp (Copyright The Kubernetes Authors)
 - License: Apache License 2.0
 - Changes by CAPI Navigator (`gcpCcmManifestForCluster`, packages/shared/src/cluster/gcp-addons.ts):
@@ -24,16 +24,16 @@ directory, or https://www.apache.org/licenses/LICENSE-2.0).
   path, API server environment variables removed, a Role and RoleBinding for the `ingress-uid`
   ConfigMap added.
 
-## gcp/gcp-pd-csi-noauth-v1.27.5.yaml
+## gcp/gcp-pd-csi-noauth-v1.28.1.yaml
 
 - Source: Google Compute Engine Persistent Disk CSI Driver, output of
-  `kubectl kustomize deploy/kubernetes/overlays/noauth` at release v1.27.5,
+  `kubectl kustomize deploy/kubernetes/overlays/noauth` at release v1.28.1,
   https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   (Copyright The Kubernetes Authors)
 - License: Apache License 2.0
 - Changes by CAPI Navigator (`gcpCsiManifestForCluster`, packages/shared/src/cluster/gcp-addons.ts):
-  namespace added, controller kept on control plane nodes, node plugin allowed on control plane
-  nodes, default StorageClass `pd-balanced` added.
+  driver image pinned to the release, namespace added, controller kept on control plane nodes,
+  node plugin allowed on control plane nodes, default StorageClass `pd-balanced` added.
 
 ## swagger-ui/
 

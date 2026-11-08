@@ -79,14 +79,11 @@ describe('generated image lists (FP29-F-17)', () => {
   const lists = AIR_GAP_IMAGES.distributions as Record<string, Record<string, readonly string[]>>;
   const presets = AIR_GAP_IMAGES.presets as Record<string, { version: string }>;
 
-  // v1.33.13+rke2r3 was published without any assets upstream; the generator skips such releases.
-  const broken = new Set(['v1.33.13+rke2r3']);
   it.each([
     ...VERSIONS.kubernetes.rke2.versions.map((v) => ['rke2', v.version]),
     ...VERSIONS.kubernetes.k0s.versions.map((v) => ['k0s', v.version]),
     ...VERSIONS.kubernetes.kubeadm.versions.map((v) => ['kubeadm', v.version]),
   ])('%s %s has its images: run pnpm airgap:images', (flavor, version) => {
-    if (broken.has(version)) return;
     expect(lists[flavor]?.[version]?.length).toBeGreaterThan(5);
   });
 
@@ -102,7 +99,7 @@ describe('registry contents of a cluster (FP29-F-17)', () => {
   const spec = (over: object = {}) =>
     ClusterSpecSchema.parse({
       name: 'offline',
-      kubernetes: { version: 'v1.35.9+rke2r1' },
+      kubernetes: { version: 'v1.35.10+rke2r1' },
       topology: {
         controlPlane: { replicas: 1, machineSize: 'medium' },
         workerPools: [{ name: 'default', replicas: 1, machineSize: 'large' }],
@@ -132,12 +129,12 @@ describe('registry contents of a cluster (FP29-F-17)', () => {
     expect(c.artifacts.map((a) => a.artifact.name)).toEqual(['rke2-artifacts']);
     expect(c.unknown).toEqual([]);
     const usedBy = new Set(c.images.map((i) => i.usedBy));
-    expect(usedBy).toContain('RKE2 v1.35.9+rke2r1');
+    expect(usedBy).toContain('RKE2 v1.35.10+rke2r1');
     expect(usedBy).toContain('kube-vip (API address)');
     expect([...usedBy].some((u) => u.includes('Proxmox'))).toBe(true);
     expect(
       c.images.find((i) => i.source.startsWith('docker.io/rancher/rke2-runtime'))?.target,
-    ).toBe('registry.example.internal/proxy-docker-io/rancher/rke2-runtime:v1.35.9-rke2r1');
+    ).toBe('registry.example.internal/proxy-docker-io/rancher/rke2-runtime:v1.35.10-rke2r1');
   });
 
   it('names add-ons it does not know, e.g. a preset on another chart version', () => {

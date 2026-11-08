@@ -2,7 +2,7 @@
 
 Generated on 2026-11-08 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
-**48 app versions** in [versions.yaml](../versions.yaml): 8 with a newer version (1 major, 1 minor, 6 patch).
+**48 app versions** in [versions.yaml](../versions.yaml): 0 with a newer version (0 major, 0 minor, 0 patch).
 
 npm packages are not part of this report: run `pnpm outdated -r`.
 
@@ -32,23 +32,23 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Kubernetes versions
 
-| Entry                   | Current         | Newest          | Update                                                            | Change in                                   |
-| ----------------------- | --------------- | --------------- | ----------------------------------------------------------------- | ------------------------------------------- |
-| kubernetes.rke2 1.37    | v1.37.1+rke2r1  | v1.37.2+rke2r1  | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.rke2.versions    |
-| kubernetes.rke2 1.36    | v1.36.5+rke2r1  | v1.36.6+rke2r1  | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.rke2.versions    |
-| kubernetes.rke2 1.35    | v1.35.9+rke2r1  | v1.35.10+rke2r1 | **patch** (released 3 days ago; wait for the minimum release age) | versions.yaml → kubernetes.rke2.versions    |
-| kubernetes.rke2 1.34    | v1.34.12+rke2r1 | v1.34.13+rke2r1 | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.rke2.versions    |
-| kubernetes.rke2 1.33    | v1.33.13+rke2r3 | –               | up to date                                                        | versions.yaml → kubernetes.rke2.versions    |
-| kubernetes.k0s 1.37     | v1.37.2+k0s.0   | v1.37.2+k0s.1   | **patch** (released 1 days ago; wait for the minimum release age) | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.k0s 1.36     | v1.36.6+k0s.0   | –               | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.k0s 1.35     | v1.35.10+k0s.0  | –               | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.k0s 1.34     | v1.34.13+k0s.0  | –               | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.k0s 1.33     | v1.33.13+k0s.1  | –               | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.kubeadm 1.37 | v1.37.2         | –               | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.36 | v1.36.6         | –               | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.35 | v1.35.10        | –               | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.34 | v1.34.13        | –               | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.33 | v1.33.13        | –               | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
+| Entry                   | Current         | Newest | Update     | Change in                                   |
+| ----------------------- | --------------- | ------ | ---------- | ------------------------------------------- |
+| kubernetes.rke2 1.37    | v1.37.2+rke2r1  | –      | up to date | versions.yaml → kubernetes.rke2.versions    |
+| kubernetes.rke2 1.36    | v1.36.6+rke2r1  | –      | up to date | versions.yaml → kubernetes.rke2.versions    |
+| kubernetes.rke2 1.35    | v1.35.10+rke2r1 | –      | up to date | versions.yaml → kubernetes.rke2.versions    |
+| kubernetes.rke2 1.34    | v1.34.13+rke2r1 | –      | up to date | versions.yaml → kubernetes.rke2.versions    |
+| kubernetes.rke2 1.33    | v1.33.13+rke2r2 | –      | up to date | versions.yaml → kubernetes.rke2.versions    |
+| kubernetes.k0s 1.37     | v1.37.2+k0s.1   | –      | up to date | versions.yaml → kubernetes.k0s.versions     |
+| kubernetes.k0s 1.36     | v1.36.6+k0s.0   | –      | up to date | versions.yaml → kubernetes.k0s.versions     |
+| kubernetes.k0s 1.35     | v1.35.10+k0s.0  | –      | up to date | versions.yaml → kubernetes.k0s.versions     |
+| kubernetes.k0s 1.34     | v1.34.13+k0s.0  | –      | up to date | versions.yaml → kubernetes.k0s.versions     |
+| kubernetes.k0s 1.33     | v1.33.13+k0s.1  | –      | up to date | versions.yaml → kubernetes.k0s.versions     |
+| kubernetes.kubeadm 1.37 | v1.37.2         | –      | up to date | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.36 | v1.36.6         | –      | up to date | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.35 | v1.35.10        | –      | up to date | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.34 | v1.34.13        | –      | up to date | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.33 | v1.33.13        | –      | up to date | versions.yaml → kubernetes.kubeadm.versions |
 
 ### Add-on preset charts
 
@@ -79,10 +79,10 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Add-on manifests
 
-| Entry                  | Current | Newest  | Update                                                                    | Change in                              |
-| ---------------------- | ------- | ------- | ------------------------------------------------------------------------- | -------------------------------------- |
-| addonManifests.gcp-ccm | v36.4.9 | v37.2.5 | **major** (released undefined days ago; wait for the minimum release age) | versions.yaml → addonManifests.gcp-ccm |
-| addonManifests.gcp-csi | v1.27.5 | v1.28.1 | **minor**                                                                 | versions.yaml → addonManifests.gcp-csi |
+| Entry                  | Current | Newest | Update     | Change in                              |
+| ---------------------- | ------- | ------ | ---------- | -------------------------------------- |
+| addonManifests.gcp-ccm | v37.2.5 | –      | up to date | versions.yaml → addonManifests.gcp-ccm |
+| addonManifests.gcp-csi | v1.28.1 | –      | up to date | versions.yaml → addonManifests.gcp-csi |
 
 ### Images
 
@@ -95,17 +95,12 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Local test tools
 
-| Entry              | Current | Newest  | Update                                                       | Change in                          |
-| ------------------ | ------- | ------- | ------------------------------------------------------------ | ---------------------------------- |
-| testTools.dex      | 0.26.0  | –       | up to date                                                   | versions.yaml → testTools.dex      |
-| testTools.socat    | 1.8.1.1 | 1.8.1.3 | **patch** (released today; wait for the minimum release age) | versions.yaml → testTools.socat    |
-| testTools.gitleaks | v8.30.1 | –       | up to date                                                   | versions.yaml → testTools.gitleaks |
+| Entry              | Current | Newest | Update     | Change in                          |
+| ------------------ | ------- | ------ | ---------- | ---------------------------------- |
+| testTools.dex      | 0.26.0  | –      | up to date | versions.yaml → testTools.dex      |
+| testTools.socat    | 1.8.1.3 | –      | up to date | versions.yaml → testTools.socat    |
+| testTools.gitleaks | v8.30.1 | –      | up to date | versions.yaml → testTools.gitleaks |
 
 ## Appendix: GitHub Actions and Docker images
 
-28 references in workflows, Dockerfile and .nvmrc; 3 of them have a newer version.
-
-| Dependency | Current          | Newest           | Update                                                                    | Change in  |
-| ---------- | ---------------- | ---------------- | ------------------------------------------------------------------------- | ---------- |
-| node (×2)  | 24-bookworm-slim | 26-bookworm-slim | **major** (released undefined days ago; wait for the minimum release age) | Dockerfile |
-| node       | 24               | 26               | **major**                                                                 | .nvmrc     |
+28 references in workflows, Dockerfile and .nvmrc; 0 of them have a newer version.

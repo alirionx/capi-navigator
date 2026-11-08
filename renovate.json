@@ -29,6 +29,11 @@
       "versioning": "regex:^v(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)\\+k0s\\.(?<build>\\d+)$"
     },
     {
+      "description": "v1.33.13+rke2r3 is a Prime-only release without assets on GitHub.",
+      "matchDepNames": ["kubernetes.rke2 1.33"],
+      "allowedVersions": "!/^v1\\.33\\.13\\+rke2r3$/"
+    },
+    {
       "description": "Kubernetes catalogs keep one entry per minor: report patches of that minor separately.",
       "matchDepNames": ["/^kubernetes\\./"],
       "separateMinorPatch": true
