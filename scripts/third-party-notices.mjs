@@ -104,7 +104,7 @@ const parts = [
   line,
   'Container image',
   line,
-  'The image is based on the official node:24-bookworm-slim image: the Node.js runtime',
+  'The image is based on the official node:26-bookworm-slim image: the Node.js runtime',
   '(https://github.com/nodejs/node/blob/main/LICENSE) on Debian GNU/Linux, whose packages carry their',
   'own licenses (including GPL); their sources are available from https://sources.debian.org.',
   '',

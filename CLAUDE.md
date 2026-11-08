@@ -80,7 +80,7 @@ Browser (Vue 3 SPA)  ──REST + SSE──▶  NestJS backend  ──Kubernetes
 ## Tech stack
 
 - TypeScript (strict) everywhere. No plain JavaScript files in `src/`.
-- Backend: NestJS, Node.js 24 LTS, `@kubernetes/client-node`.
+- Backend: NestJS, Node.js 26 LTS, `@kubernetes/client-node`.
 - Frontend: Vue 3 (Composition API, `<script setup>`), Vite, Pinia, Vue Router, Vuetify 4 (ADR-0031), Monaco Editor (`monaco-yaml`) for read-only YAML views and Helm values.
 - Validation: Zod, shared by backend and frontend.
 - YAML: `yaml` (npm).

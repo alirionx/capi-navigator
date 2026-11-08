@@ -17,7 +17,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-      - run: corepack enable
+      # Node.js 25 and later ship without corepack: the pnpm version of packageManager.
+      - run: npm install -g "$(node -p 'require("./package.json").packageManager')"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @capi-navigator/shared build
       - run: pnpm lint
@@ -53,7 +54,8 @@ jobs:
       - uses: helm/kind-action@v1
         with:
           install_only: true
-      - run: corepack enable
+      # Node.js 25 and later ship without corepack: the pnpm version of packageManager.
+      - run: npm install -g "$(node -p 'require("./package.json").packageManager')"
       - run: pnpm install --frozen-lockfile
       # Full setup: the FP-3 and FP-4 tests install providers through the CAPI Operator.
       - run: pnpm kind:up
