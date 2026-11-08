@@ -1,0 +1,95 @@
+# Release test matrix (docs/maintenance.md). Copy to release-matrix.local.yaml in the repository
+# root (gitignored) and fill in your environment. Leave out the platforms you do not test.
+# Every `infrastructure` block is a part of spec.infrastructure, merged in this order:
+# platform → images → airGapped.infrastructure → slot or hcp patch.
+app:
+  url: http://localhost:3000
+  connection: kind-home # the management cluster connection in the app
+  namespace: acc # namespace of the test clusters
+  tokenFile: ~/.config/capi-navigator/navigator-token # API token (FP-22), never in this file
+prefix: mt # cluster names: mt-<aw|gc|os|px>-<r|k|a>-<aio|std>[-ag], mt-<..>-hcp[-ag]-host/-ten
+protocol: release-matrix.local.md # results are appended here
+availableMinutes: 30
+
+platforms:
+  aws:
+    infrastructure:
+      provider: aws
+      credentialRef: aws
+      region: eu-central-1
+      image: ami-0123456789abcdef0
+      apiServerLoadBalancer: true
+      network: { availabilityZoneCount: 1, vpcCidr: 10.0.0.0/16 }
+    sizes: { allInOne: t3.large, controlPlane: t3.medium, worker: t3.large }
+    machine: { rootVolumeSizeGB: 50 }
+    hcp: {} # hosted control planes (k0s); leave out to skip
+
+  gcp:
+    infrastructure:
+      provider: gcp
+      credentialRef: gcp
+      project: my-project
+      region: europe-west3
+      image: projects/ubuntu-os-cloud/global/images/ubuntu-2404-noble-amd64-v20261105
+      controlPlaneServiceAccount: capi@my-project.iam.gserviceaccount.com
+    sizes: { allInOne: e2-standard-4, controlPlane: e2-standard-2, worker: e2-standard-2 }
+    # No hcp: Google Cloud has no hosted control planes.
+
+  openstack:
+    infrastructure:
+      provider: openstack
+      credentialRef: openstack
+      externalNetwork: 11111111-2222-4333-8444-555555555555
+      image: 11111111-2222-4333-8444-666666666666
+      apiServerLoadBalancer: true
+      sshKeyName: my-key
+      network: { dnsNameservers: [1.1.1.1, 8.8.8.8] }
+    sizes: { allInOne: a4-ram8-disk0, controlPlane: a2-ram4-disk0, worker: a4-ram8-disk0 }
+    machine: { rootVolumeSizeGB: 50 }
+    parallel: 3
+    # One node network per running case.
+    slots:
+      - network: { nodeCidr: 10.6.20.0/24 }
+      - network: { nodeCidr: 10.6.21.0/24 }
+      - network: { nodeCidr: 10.6.22.0/24 }
+    hcp:
+      host: { network: { nodeCidr: 10.6.40.0/24 } }
+      tenant: { network: { nodeCidr: 10.6.41.0/24 } }
+    airGapped:
+      registry: connection # the internal registry of the connection, or a registry object
+      images: { kubeadm: 11111111-2222-4333-8444-777777777777 } # Cluster API image (ADR-0032)
+      proof: images # write the images the pods run, to compare with the registry's log
+
+  proxmox:
+    infrastructure:
+      provider: proxmox
+      credentialRef: pve
+      sourceNode: pve1
+      image: '9000' # template with the QEMU guest agent
+      storage: local-zfs
+      bootDisk: virtio0
+      network: { nodeCidr: 192.0.2.0/24, gateway: 192.0.2.1 }
+    images: { kubeadm: '9001' } # Cluster API template
+    sizes: { allInOne: medium, controlPlane: small, worker: medium }
+    # Addresses per running case: nodes (one spare for rollouts), API VIP, LoadBalancer range.
+    slots:
+      - network:
+          { addresses: [192.0.2.71-192.0.2.73], loadBalancerAddresses: [192.0.2.75-192.0.2.75] }
+        apiEndpoint: 192.0.2.74
+      - network:
+          { addresses: [192.0.2.76-192.0.2.78], loadBalancerAddresses: [192.0.2.80-192.0.2.80] }
+        apiEndpoint: 192.0.2.79
+    hcp:
+      # The tenant's API address comes from the host's LoadBalancer range.
+      host:
+        network:
+          { addresses: [192.0.2.71-192.0.2.73], loadBalancerAddresses: [192.0.2.75-192.0.2.77] }
+        apiEndpoint: 192.0.2.74
+      tenant:
+        network:
+          { addresses: [192.0.2.78-192.0.2.80], loadBalancerAddresses: [192.0.2.81-192.0.2.81] }
+        apiEndpoint: 192.0.2.76
+    airGapped:
+      # A gateway without internet and the internal DNS: the nodes really have no internet.
+      infrastructure: { network: { gateway: 192.0.2.239, dnsNameservers: [192.0.2.53] } }
+      proof: blocked # a pod must not reach the internet

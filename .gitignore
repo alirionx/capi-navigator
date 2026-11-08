@@ -14,6 +14,9 @@ playwright-report/
 !.env.example
 # Private working notes (backlog, spike plans), e.g. docs/claude-backlog.local.md
 *.local.md
+# Release test matrix: configuration and images lists of one environment (pnpm release:matrix)
+*.local.yaml
+*.images
 .kube/
 *.kubeconfig
 kubeconfig*

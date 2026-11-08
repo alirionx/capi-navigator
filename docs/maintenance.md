@@ -104,6 +104,24 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
   shows it. Say so in the release notes.
 - **Medium and high risk**: `pnpm test:int` on a fresh kind cluster (installs and upgrades the
   providers), then a short live test on a cloud: create a cluster, check CCM and CSI, delete it.
+- **Release test matrix**: for releases with provider or Kubernetes minor jumps, or to recheck a
+  part, `pnpm release:matrix` creates workload clusters through the app's API, checks them and
+  deletes them: all-in-one and one control plane plus one worker for RKE2, k0s and kubeadm, hosted
+  control planes (k0s) where the infrastructure has them, online and air-gapped, on the default
+  versions of the catalog. Per cluster: Available, nodes Ready on the version, provider IDs (CCM),
+  all pods running, a volume bound (CSI), a LoadBalancer Service answering with content from the
+  volume, deletion with cleanup; air-gapped either no internet from a pod (`proof: blocked`) or the
+  images the pods run, to compare with the registry's log (`proof: images`).
+  The environment (credential names, images, addresses, node networks, registry) lives in
+  `release-matrix.local.yaml` (gitignored, from `packages/release-matrix/matrix.example.yaml`).
+  `slots` are the addresses or networks of cases running at the same time; no two running cases
+  share one, hosted control plane pairs run alone. Without flags the command only lists the
+  selected cases; `--preview` builds the previews (blockers, warnings, nothing is created);
+  `--run` creates real resources and costs. Select parts with `--platform`, `--flavor`, `--mode`
+  (`aio`, `std`, `hcp`), `--network` (`online`, `airgap`) or `--case`, e.g.
+  `pnpm release:matrix --platform proxmox --network airgap --run`. Results are appended to the
+  protocol file; `--keep` keeps the clusters for debugging. Not for every release: a full run
+  takes hours and costs money on the clouds; for patch releases one case per platform is enough.
 - **UI**: `pnpm test:e2e` for frontend dependency updates. The provider spec installs and removes
   all providers; it runs only with `E2E_PROVIDERS=1` on a management cluster without providers.
 
@@ -123,5 +141,6 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 - [ ] Infrastructure provider updated: fields marked `day2` still changeable (FP-33)
 - [ ] lint, typecheck, tests, coverage green; snapshot diffs reviewed
 - [ ] kind and live test for medium and high risk updates
+- [ ] Release test matrix (`pnpm release:matrix`) for provider or Kubernetes minor jumps
 - [ ] Report regenerated and committed
 - [ ] `pnpm secrets:scan` clean before pushing
