@@ -11,7 +11,7 @@ export const VERSIONS: VersionsFile = {
         "package": "kubernetes-sigs/cluster-api"
       },
       "verified": "2026-11-08",
-      "note": "CAPI contract v1beta2. v1.14.4 has bug fixes and Go updates only; the CRDs and manifests of core, kubeadm bootstrap and control plane are unchanged from v1.14.3 apart from the images."
+      "note": "CAPI contract v1beta2. v1.14.4 has bug fixes and Go updates only; the CRDs and manifests of core, kubeadm bootstrap and control plane are unchanged from v1.14.3 apart from the images. Verified live on 2026-11-08: upgrade on kind, kubeadm v1.36.6 on Proxmox VE, RKE2 on GCP."
     },
     "rke2": {
       "version": "v0.27.1",
@@ -64,7 +64,7 @@ export const VERSIONS: VersionsFile = {
         "package": "ionos-cloud/cluster-api-provider-proxmox"
       },
       "verified": "2026-11-08",
-      "note": "API v1alpha2, contract v1beta2. v0.9.2: security and bug fixes (among them waiting for the boot disk resize and for running VM tasks); CRDs and manifests unchanged from v0.9.1 apart from the image. Upstream lists CAPI v1.11/v1.12; verified live with CAPI v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false."
+      "note": "API v1alpha2, contract v1beta2. v0.9.2: security and bug fixes (among them waiting for the boot disk resize and for running VM tasks); CRDs and manifests unchanged from v0.9.1 apart from the image. Verified live on 2026-11-08 (kubeadm v1.36.6: CCM, CSI and LoadBalancer). Upstream lists CAPI v1.11/v1.12; verified live with CAPI v1.14.3 (RKE2 and k0s, FP-31 spike). Skips TLS verification unless PROXMOX_INSECURE=false."
     },
     "ipam-in-cluster": {
       "version": "v1.1.1",
@@ -340,7 +340,7 @@ export const VERSIONS: VersionsFile = {
         "registry": "https://registry.k8s.io"
       },
       "verified": "2026-11-08",
-      "note": "The repository has tags but no GitHub releases; the image follows the Kubernetes minor (v36 = 1.36) and supports the minors around it. The manifest is meant for tooling (empty args, cloud config from the host); the app fills both (gcp-addons.ts). v37 for all catalog minors at the user's decision (2026-11-08), as v36 was before: newer than the API server of v1.33 to v1.36, outside the version skew policy. The manifest differs from v36.4.9 only in its image line.",
+      "note": "The repository has tags but no GitHub releases; the image follows the Kubernetes minor (v36 = 1.36) and supports the minors around it. The manifest is meant for tooling (empty args, cloud config from the host); the app fills both (gcp-addons.ts). v37 for all catalog minors at the user's decision (2026-11-08), as v36 was before: newer than the API server of v1.33 to v1.36, outside the version skew policy. The manifest differs from v36.4.9 only in its image line. Verified live on 2026-11-08 with RKE2 v1.36.6: provider IDs, zones, a LoadBalancer Service.",
       "manifest": "gcp-ccm-v37.2.5.yaml",
       "sha256": "5e20f64573d7e83b9a03eca5e2266f013b930b3970e3d2819fd272f62a740d65"
     },
@@ -351,7 +351,7 @@ export const VERSIONS: VersionsFile = {
         "package": "kubernetes-sigs/gcp-compute-persistent-disk-csi-driver"
       },
       "verified": "2026-11-08",
-      "note": "The overlay of v1.27.5 and v1.28.1 renders identically: upstream's stable-master still pins the driver image v1.26.0 and the sidecars. The app pins the driver image to this version (gcp-addons.ts); before 2026-11-08 clusters ran driver v1.26.0.",
+      "note": "The overlay of v1.27.5 and v1.28.1 renders identically: upstream's stable-master still pins the driver image v1.26.0 and the sidecars. The app pins the driver image to this version (gcp-addons.ts); before 2026-11-08 clusters ran driver v1.26.0. Verified live on 2026-11-08 (RKE2 v1.36.6, PVC on pd-balanced bound).",
       "manifest": "gcp-pd-csi-noauth-v1.28.1.yaml",
       "sha256": "72d2f057d3d69bad407cea926e2de62d9ca4e19aef9a0c383e3d6c48500e9b22"
     }
