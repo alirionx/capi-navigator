@@ -35,6 +35,13 @@ const INDEX_TTL_MS = 5 * 60_000;
 const INDEX_CACHE_SIZE = 20;
 const HELM_CHART_LAYER = 'application/vnd.cncf.helm.chart.content.v1.tar+gzip';
 const OCI_MANIFEST = 'application/vnd.oci.image.manifest.v1+json';
+/** Every manifest type an image can have, multi-platform indexes first (as containerd asks). */
+const IMAGE_MANIFESTS = [
+  'application/vnd.oci.image.index.v1+json',
+  'application/vnd.docker.distribution.manifest.list.v2+json',
+  OCI_MANIFEST,
+  'application/vnd.docker.distribution.manifest.v2+json',
+].join(', ');
 
 /** Newest first; prereleases after releases of the same core version. */
 export function compareChartVersions(a: string, b: string): number {
@@ -212,6 +219,18 @@ export class ChartSource {
         ? { title: l.annotations['org.opencontainers.image.title'] }
         : {}),
     }));
+  }
+
+  /**
+   * Reads the manifest of an image by tag or digest, as an anonymous node would (FP29-F-21);
+   * throws a FetchError with the HTTP status when the registry refuses it or does not have it.
+   */
+  async ociImageManifest(repo: RepoAccess, repository: string, reference: string): Promise<void> {
+    await this.oci(
+      repo,
+      `/v2/${repository}/manifests/${encodeURIComponent(reference)}`,
+      IMAGE_MANIFESTS,
+    );
   }
 
   private async ociArchive(repo: RepoAccess, chart: string, version: string): Promise<Buffer> {

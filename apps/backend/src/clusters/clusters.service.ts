@@ -55,6 +55,7 @@ import {
 } from '@capi-navigator/shared';
 import { REGISTRY_CA_HINT, registryCaProblems } from '../common/registry-ca.js';
 import { pinArtifacts } from './air-gap-artifacts.js';
+import { mirrorWarnings } from './air-gap-mirrors.js';
 import { stringify } from 'yaml';
 import { ZodError } from 'zod';
 import { ManagementClusterClients } from '../connections/management-cluster-clients.js';
@@ -1128,6 +1129,10 @@ export class ClustersService {
     const clusterObj = objects.find((o) => o.kind === 'Cluster') as ManifestObject | undefined;
     const overrides = await this.store.addonPresetOverrides();
     const registryContents = registryContentsView(spec, overrides);
+    // FP29-F-21: the nodes can pull through every mirror this cluster uses.
+    if (registryContents && spec.airGapped) {
+      warnings.push(...(await mirrorWarnings(spec.airGapped.registry, registryContents.images)));
+    }
     for (const preset of presetsFor(clusterObj?.metadata.labels ?? {}, overrides)) {
       const hcp = buildAddonPreset(preset, spec.namespace) as unknown as KubernetesObject & {
         spec: unknown;
