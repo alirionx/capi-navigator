@@ -2,7 +2,7 @@ import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
 import { airGapDnsWarnings, publicResolvers } from './air-gap.js';
-import { cidrsOverlap, freeCidr } from './cidr.js';
+import { cidrsOverlap, freeCidr, freeCidrInPool, parseIpv4Cidr } from './cidr.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -274,10 +274,58 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
       );
       return clash
         ? [
-            `Subnet CIDR ${infra.network.nodeCidr} overlaps ${clash.cidr} of cluster ${meta.namespace}/${meta.name} with the same credentials. Some clouds refuse overlapping subnets and the cluster then never comes up; choose another node network if yours does.`,
+            `Subnet CIDR ${infra.network.nodeCidr} overlaps ${clash.cidr} of cluster ${meta.namespace}/${meta.name} with the same credentials. Some clouds refuse overlapping subnets in a project (e.g. with a routed VRF per project) and the cluster then never comes up; choose another node network if yours does.`,
           ]
         : [];
     });
+  },
+
+  // FP34-F-15: a blueprint may carry a pool of node networks; every cluster gets a network of the
+  // base spec's size that neither a subnet of the project nor another OpenStack cluster uses.
+  addressPool: {
+    kind: 'networks',
+    required: false,
+    hosted: true,
+    lookup: 'subnets',
+    exhaustedHint:
+      'Add networks to the node network pool of the blueprint, or delete clusters created from it. A deleted cluster frees its network once CAPO has removed the subnet.',
+    issues(spec, infra, pool) {
+      const prefix = parseIpv4Cidr(infra.network.nodeCidr)?.prefix ?? 24;
+      const out: string[] = [];
+      for (const entry of pool) {
+        const net = parseIpv4Cidr(entry);
+        if (!net) {
+          out.push(`${entry} is no network: give networks like 10.7.0.0/16`);
+        } else if (net.prefix > prefix) {
+          out.push(`${entry} is smaller than the node network of the base spec (/${prefix})`);
+        }
+        for (const [label, cidr] of [
+          ['pod network', spec.kubernetes.podCidr],
+          ['service network', spec.kubernetes.serviceCidr],
+        ] as const) {
+          if (net && cidrsOverlap(entry, cidr)) {
+            out.push(`${entry} overlaps the ${label} (${cidr})`);
+          }
+        }
+      }
+      return out;
+    },
+    // All OpenStack clusters, not only those of the same credentials: at worst a network stays
+    // unused that another project could have had, but two clusters never share one (ADR-0038).
+    used: (others) =>
+      others.flatMap((o) =>
+        (((o.spec ?? {}) as { managedSubnets?: { cidr?: string }[] }).managedSubnets ?? []).flatMap(
+          (s) => (s.cidr ? [s.cidr] : []),
+        ),
+      ),
+    assign(_spec, infra, pool, used) {
+      const prefix = parseIpv4Cidr(infra.network.nodeCidr)?.prefix ?? 24;
+      const nodeCidr = freeCidrInPool(pool, prefix, used);
+      if (!nodeCidr) {
+        return `The node network pool ${pool.join(', ')} has no free /${prefix} network left: every one overlaps a subnet of the project or the node network of another OpenStack cluster.`;
+      }
+      return { ...infra, network: { ...infra.network, nodeCidr } };
+    },
   },
 
   infraFacts: (infra) => [

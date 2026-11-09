@@ -343,7 +343,10 @@ cluster with the default parameters; a blueprint with blockers is not saved. Cre
 blueprint is a pure step before the usual creation: the request's parameters are checked against a
 Zod schema built from the blueprint, the base spec gets the name, the parameters, the additional
 labels and `blueprint: <name>`, and the result goes through `ClustersService.create` without a
-preview (ADR-0035). The permission guard takes connection and namespace of `clusters.create` from
+preview (ADR-0035). With a pool, the infrastructure plugin's `addressPool` hands out the free part
+first: addresses on Proxmox VE, a node network on OpenStack. What counts as used comes from the
+provider's infrastructure clusters in the management cluster and, on OpenStack, from the subnets
+of the project (ADR-0038); orders of a connection run one after another. The permission guard takes connection and namespace of `clusters.create` from
 the blueprint. The transformation writes `blueprint` as annotation on the `Cluster`, so every later
 apply keeps it; the change pipeline refuses changes of such clusters except upgrade and reapply by
 `blueprints.manage`. Details: [blueprints.md](blueprints.md).

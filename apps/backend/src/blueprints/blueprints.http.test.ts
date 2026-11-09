@@ -232,6 +232,42 @@ describe('cluster blueprints over HTTP (FP-34)', () => {
     expect(created).toHaveLength(0);
   });
 
+  it('gives OpenStack clusters a free node network of the pool, 409 when used up (FP34-F-15)', async () => {
+    const openstack = {
+      ...cluster,
+      infrastructure: {
+        provider: 'openstack',
+        credentialRef: 'infomaniak',
+        image: '6f1b2a3c-0d4e-4f5a-8b6c-7d8e9fa0b1c2',
+        externalNetwork: '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d',
+        network: { nodeCidr: '10.7.0.0/24' },
+      },
+    };
+    await send('post', '/api/blueprints', admin, {
+      name: 'net',
+      spec: {
+        ...blueprint().spec,
+        cluster: openstack,
+        addressPool: ['10.7.0.0/23'],
+        parameters: {},
+      },
+    }).expect(201);
+    used = ['10.7.0.0/24'];
+    await send('post', '/api/blueprints/net/clusters', operator, { name: 'os-1' }).expect(201);
+    expect(clusters.usedAddresses).toHaveBeenLastCalledWith('home', 'openstack', 'infomaniak');
+    expect(created[0]!.spec.infrastructure).toMatchObject({
+      network: { nodeCidr: '10.7.1.0/24' },
+    });
+    used = ['10.7.0.0/24', '10.7.1.0/24'];
+    const res = await send('post', '/api/blueprints/net/clusters', operator, {
+      name: 'os-2',
+    }).expect(409);
+    expect(res.body.message).toMatch(/node network pool 10\.7\.0\.0\/23 has no free \/24/);
+    expect(res.body.hint).toContain('CAPO has removed the subnet');
+    expect(created).toHaveLength(1);
+    await send('delete', '/api/blueprints/net', admin).expect(204);
+  });
+
   it('checks the permission in the blueprint namespace and the parameters (FP34-F-05)', async () => {
     await send('post', '/api/blueprints/small/clusters', otherOperator, { name: 'x' }).expect(403);
     await send('post', '/api/blueprints/missing/clusters', operator, { name: 'x' }).expect(404);

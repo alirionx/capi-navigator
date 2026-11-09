@@ -1,4 +1,4 @@
-import type { ProxmoxMachineSize } from '../credentials.js';
+import type { LookupKind, ProxmoxMachineSize } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import type { AirGapArtifact } from './air-gap.js';
 import type { InfraForm } from './infra-form.js';
@@ -92,11 +92,23 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
   /** Overlaps that only some clouds refuse (warnings for new clusters, FP5-F-21). */
   addressWarnings?(spec: ClusterSpec, infra: T, others: Record<string, unknown>[]): string[];
   /**
-   * FP34-F-14: providers where every cluster needs addresses of its own. A blueprint of them
-   * carries an address pool, and each cluster created from it gets free addresses of the pool.
+   * FP34-F-14, FP34-F-15: providers where every cluster may need addresses or a network of its
+   * own. A blueprint of them carries a pool, and each cluster created from it gets a free part.
    */
   addressPool?: {
-    /** Addresses the other infrastructure clusters of the management cluster use. */
+    /** What the pool holds: addresses (Proxmox VE) or node networks (OpenStack). */
+    kind: 'addresses' | 'networks';
+    /** Every blueprint needs a pool (Proxmox VE), or the pool is optional (OpenStack). */
+    required: boolean;
+    /** Blueprints of hosted control planes may use the pool. */
+    hosted: boolean;
+    /** Selection list of the credential whose values count as used, e.g. a project's subnets. */
+    lookup?: LookupKind;
+    /** Hint when the pool is used up (409). */
+    exhaustedHint: string;
+    /** Pool entries the provider cannot use, checked when the blueprint is saved. */
+    issues(spec: ClusterSpec, infra: T, pool: string[]): string[];
+    /** Addresses or networks the other infrastructure clusters of the management cluster use. */
     used(others: Record<string, unknown>[]): string[];
     /** The infrastructure with addresses from the pool, or why the pool does not suffice. */
     assign(spec: ClusterSpec, infra: T, pool: string[], used: string[]): T | string;

@@ -17,9 +17,9 @@ A blueprint takes the spec of a cluster the app created. Everything in it is fix
 
 The cluster name in the base spec is only the example used for the check when saving.
 
-On OpenStack all clusters of a blueprint share its node network. Each has its own network and
-router, so this works on most clouds. A cloud that refuses overlapping subnets needs one blueprint
-per cluster, or clusters from the wizard.
+On OpenStack all clusters of a blueprint share its node network unless the blueprint has a node
+network pool (see below). Each cluster has its own network and router, so a shared network works on
+most clouds.
 
 ## Parameters
 
@@ -57,6 +57,25 @@ the gateway):
 Orders of a connection run one after another, so two orders never get the same addresses. When the
 pool is used up, an order is refused with `409`. Blueprints of hosted control planes are not
 supported on Proxmox VE.
+
+## Node network pool (OpenStack)
+
+Some OpenStack clouds refuse overlapping subnets in a project, e.g. clouds with a routed VRF per
+project: the second cluster of a blueprint then never comes up, and CAPO reports
+`SubnetOverlapInRoutedVRF`. For such clouds a blueprint can carry a **node network pool**, e.g.
+`10.7.0.0/16` ([ADR-0038](adr/0038-node-network-pool-for-openstack-blueprints.md)). For every order
+the app takes the first network of the size of the base spec's node network (e.g. `/24`) that
+neither the node network of another OpenStack cluster of the management cluster nor a subnet of
+the project uses.
+
+- The pool is optional. Without it, all clusters of the blueprint share its node network.
+- The pool must not overlap the pod and service networks of the base spec.
+- When the pool is used up, an order is refused with `409`. A deleted cluster frees its network
+  only when CAPO has removed the subnet, so shortly after a deletion a nearly full pool may still
+  answer `409`.
+- If the app cannot read the subnets of the project, the order is refused with `502` rather than
+  given a network that might be taken.
+- The pool works for blueprints of hosted control planes too.
 
 ## Saving a blueprint
 

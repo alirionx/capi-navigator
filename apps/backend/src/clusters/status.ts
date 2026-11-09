@@ -77,6 +77,7 @@ export function toSummary(
   let airGappedRegistry: string | undefined;
   let credential: string | undefined;
   let location: string | undefined;
+  let nodeNetwork: string | undefined;
   try {
     const parsed = stored
       ? (JSON.parse(stored) as {
@@ -87,6 +88,7 @@ export function toSummary(
             region?: string;
             project?: string;
             sourceNode?: string;
+            network?: { nodeCidr?: string };
           };
         })
       : undefined;
@@ -98,6 +100,7 @@ export function toSummary(
     location =
       infra?.sourceNode ??
       (infra?.project && infra.region ? `${infra.project} / ${infra.region}` : infra?.region);
+    nodeNetwork = infra?.network?.nodeCidr;
   } catch {
     flavor = undefined;
   }
@@ -134,6 +137,7 @@ export function toSummary(
     managed: !!stored,
     ...(credential ? { credential } : {}),
     ...(location ? { location } : {}),
+    ...(nodeNetwork ? { nodeNetwork } : {}),
     ...(airGappedRegistry ? { airGappedRegistry } : {}),
     ...(blueprint ? { blueprint } : {}),
     ...deletionOf(cluster),

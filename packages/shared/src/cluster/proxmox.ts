@@ -5,6 +5,7 @@ import type { InfraTransformPlugin } from './plugins.js';
 import { HOSTED_ON_LABEL, type MachineGroup, type ProxmoxInfra } from './spec.js';
 import {
   formatIpv4,
+  ipv4RangeInCidr,
   ipv4RangesCover,
   ipv4RangesOverlap,
   ipv4StartEndRanges,
@@ -369,6 +370,17 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
 
   // FP34-F-14: blueprint clusters take their API, node and LoadBalancer addresses from a pool.
   addressPool: {
+    kind: 'addresses',
+    required: true,
+    hosted: false,
+    exhaustedHint:
+      'Free addresses in the address pool of the blueprint, or delete clusters created from it.',
+    issues(_spec, infra, pool) {
+      const outside = pool.filter((r) => !ipv4RangeInCidr(r, infra.network.nodeCidr));
+      return outside.length
+        ? [`${outside.join(', ')} not in the node network ${infra.network.nodeCidr}`]
+        : [];
+    },
     used: (others) => others.flatMap((o) => addressesOf(o).theirs),
     assign(spec, infra, pool, used) {
       const hosted = spec.topology.mode === 'hosted';

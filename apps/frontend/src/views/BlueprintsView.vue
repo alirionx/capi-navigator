@@ -88,13 +88,22 @@ const base = ref<ClusterSpec | null>(null);
 const pools = ref<PoolParams[]>([]);
 const versionsOn = ref(false);
 const versions = ref<string[]>([]);
-/** FP34-F-14: address pool for providers where every cluster needs own addresses. */
-// A text field with comma-separated ranges: a combobox lost typed ranges without Enter.
+/**
+ * FP34-F-14, FP34-F-15: pool of addresses (Proxmox VE, required) or node networks (OpenStack,
+ * optional) for providers where every cluster may need its own.
+ */
+// A text field with comma-separated entries: a combobox lost typed ranges without Enter.
 const addressPoolText = ref('');
 const addressPool = computed(() => addressPoolText.value.split(/[\s,]+/).filter(Boolean));
-const needsPool = computed(
-  () => !!base.value && !!INFRA_PLUGINS[base.value.infrastructure.provider].addressPool,
+const poolPlugin = computed(() =>
+  base.value ? INFRA_PLUGINS[base.value.infrastructure.provider].addressPool : undefined,
 );
+/** FP34-F-15: the node network a cluster got from a pool of networks, for the cluster chips. */
+const pooledNetwork = (c: ClusterSummary) => {
+  const plugin = INFRA_PLUGINS[c.provider as keyof typeof INFRA_PLUGINS] as
+    (typeof INFRA_PLUGINS)[keyof typeof INFRA_PLUGINS] | undefined;
+  return plugin?.addressPool?.kind === 'networks' && c.nodeNetwork ? ` · ${c.nodeNetwork}` : '';
+};
 const formError = ref<unknown>(null);
 const preview = ref<ClusterPreview | null>(null);
 const previewedFor = ref('');
@@ -187,7 +196,9 @@ const request = computed((): { name: string; spec: ClusterBlueprintSpecInput } |
           .map((p) => ({ pool: p.name, choices: p.sizes })),
         ...(versionsOn.value ? { kubernetesVersions: versions.value } : {}),
       },
-      ...(needsPool.value ? { addressPool: addressPool.value } : {}),
+      ...(poolPlugin.value && (poolPlugin.value.required || addressPool.value.length)
+        ? { addressPool: addressPool.value }
+        : {}),
     },
   };
 });
@@ -337,7 +348,8 @@ async function confirmDelete(): Promise<void> {
               size="small"
               class="mr-1 mb-1"
               :to="`/clusters/${c.namespace}/${c.name}`"
-              >{{ c.namespace }}/{{ c.name }}</v-chip
+              >{{ c.namespace }}/{{ c.name
+              }}{{ item.spec.addressPool ? pooledNetwork(c) : '' }}</v-chip
             >
             <div class="text-label-large mt-3 mb-1">{{ t('blueprints.schema') }}</div>
             <p class="text-body-small text-medium-emphasis mb-1">
@@ -426,15 +438,26 @@ async function confirmDelete(): Promise<void> {
             }}</v-alert>
 
             <v-text-field
-              v-if="needsPool"
+              v-if="poolPlugin"
               v-model="addressPoolText"
-              :label="t('blueprints.addressPool')"
+              :label="
+                t(
+                  poolPlugin.kind === 'networks'
+                    ? 'blueprints.networkPool'
+                    : 'blueprints.addressPool',
+                )
+              "
               :hint="
-                t('blueprints.addressPoolHint', {
-                  cidr:
-                    (base.infrastructure as { network?: { nodeCidr?: string } }).network
-                      ?.nodeCidr ?? '',
-                })
+                t(
+                  poolPlugin.kind === 'networks'
+                    ? 'blueprints.networkPoolHint'
+                    : 'blueprints.addressPoolHint',
+                  {
+                    cidr:
+                      (base.infrastructure as { network?: { nodeCidr?: string } }).network
+                        ?.nodeCidr ?? '',
+                  },
+                )
               "
               persistent-hint
               class="mb-4"

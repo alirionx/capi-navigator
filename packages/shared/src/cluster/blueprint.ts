@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { distributionCatalog } from '../catalog/kubernetes-versions.js';
 import { ConnectionNameSchema } from '../connections.js';
-import { ipv4RangeInCidr, parseIpv4Range } from './cidr.js';
+import { parseIpv4Range } from './cidr.js';
 import { ClusterSpecSchema, UserLabelsSchema, type ClusterSpec } from './spec.js';
 import { INFRA_PLUGINS } from './transform.js';
 
@@ -53,8 +53,9 @@ const blueprintFields = {
   connection: ConnectionNameSchema,
   parameters: BlueprintParametersSchema.default({ workerCounts: [], machineSizes: [] }),
   /**
-   * FP34-F-14: for providers where every cluster needs its own addresses (Proxmox VE): each
-   * cluster gets its API, node and LoadBalancer addresses from these ranges.
+   * FP34-F-14, FP34-F-15: for providers where every cluster needs its own addresses or network:
+   * on Proxmox VE each cluster gets its API, node and LoadBalancer addresses from these ranges, on
+   * OpenStack a node network of the base spec's size from these networks.
    */
   addressPool: z
     .array(
@@ -189,22 +190,25 @@ function blueprintParameterIssues(
   return issues;
 }
 
-/** FP34-F-14: a pool exactly where clusters need addresses of their own, inside the node network. */
+/**
+ * FP34-F-14, FP34-F-15: a pool only where the provider hands out parts of it, required where every
+ * cluster needs addresses of its own; the provider checks the entries.
+ */
 function addressPoolIssues(spec: ClusterSpec, pool: string[] | undefined): string[] {
   const infra = spec.infrastructure;
-  const needsPool = !!INFRA_PLUGINS[infra.provider].addressPool;
-  if (!needsPool) {
+  const plugin = INFRA_PLUGINS[infra.provider].addressPool;
+  if (!plugin) {
     return pool ? [`Clusters on ${infra.provider} need no address pool`] : [];
   }
-  if (spec.topology.mode === 'hosted') {
+  if (spec.topology.mode === 'hosted' && !plugin.hosted) {
     return ['Blueprints of hosted control planes are not supported on this provider'];
   }
   if (!pool) {
-    return ['Every cluster needs addresses of its own: give an address pool for the blueprint'];
+    return plugin.required
+      ? ['Every cluster needs addresses of its own: give an address pool for the blueprint']
+      : [];
   }
-  const cidr = (infra as { network?: { nodeCidr?: string } }).network?.nodeCidr ?? '';
-  const outside = pool.filter((r) => !ipv4RangeInCidr(r, cidr));
-  return outside.length ? [`${outside.join(', ')} not in the node network ${cidr}`] : [];
+  return plugin.issues(spec, infra as never, pool);
 }
 
 /**
@@ -290,7 +294,7 @@ export type BlueprintClusterRequest = z.input<typeof BlueprintClusterRequestSche
 export function blueprintToSpecSchema(
   blueprintName: string,
   bp: ClusterBlueprintSpec,
-  /** FP34-F-14: addresses other clusters use, for blueprints with an address pool. */
+  /** FP34-F-14, FP34-F-15: addresses or networks in use, for blueprints with a pool. */
   usedAddresses: string[] = [],
 ) {
   const baseLabels = bp.cluster.labels ?? {};

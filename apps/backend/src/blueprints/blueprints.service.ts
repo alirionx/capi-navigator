@@ -8,6 +8,7 @@ import {
   blueprintParametersJsonSchema,
   blueprintToSpecSchema,
   ClusterBlueprintSpecSchema,
+  INFRA_PLUGINS,
   versionsOutsideCatalog,
   type BlueprintClusterRequest,
   type ClusterBlueprint,
@@ -21,9 +22,6 @@ import { z } from 'zod';
 import { ClustersService } from '../clusters/clusters.service.js';
 import { isNotFound } from '../kube/errors.js';
 import { StoreService } from '../store/store.service.js';
-
-const POOL_HINT =
-  'Free addresses in the address pool of the blueprint, or delete clusters created from it.';
 
 const issuesOf = (error: z.ZodError) =>
   error.issues.map((i) => `${i.path.join('.') || '(request)'}: ${i.message}`).join('; ');
@@ -58,8 +56,8 @@ export class BlueprintsService {
 
   /**
    * FP34-F-04: the check when saving, like a new cluster with the default parameters: the YAML,
-   * a dry run on the management cluster and the blockers of the wizard. With an address pool
-   * (FP34-F-14) the example gets free addresses of the pool, like every order.
+   * a dry run on the management cluster and the blockers of the wizard. With a pool (FP34-F-14,
+   * FP34-F-15) the example gets free addresses or a free network of the pool, like every order.
    */
   async preview(name: string, spec: ClusterBlueprintSpec): Promise<ClusterPreview> {
     const outside = versionsOutsideCatalog(spec);
@@ -127,7 +125,8 @@ export class BlueprintsService {
   /** FP34-F-05: builds the spec from blueprint and request and creates it without a preview. */
   async createCluster(name: string, req: BlueprintClusterRequest): Promise<ClusterSummary> {
     const bp = this.spec(name);
-    // FP34-F-14: one order per connection at a time, so two orders never get the same addresses.
+    // FP34-F-14, FP34-F-15: one order per connection at a time, so two orders never get the same
+    // addresses or network.
     const previous = this.orders.get(bp.connection) ?? Promise.resolve();
     const run = previous
       .catch(() => undefined)
@@ -135,7 +134,11 @@ export class BlueprintsService {
         const spec = await this.toSpec(name, bp, req);
         if (!spec.success) {
           const pool = spec.error.issues.find((i) => i.path[0] === 'addressPool');
-          if (pool) throw new ConflictException({ message: pool.message, hint: POOL_HINT });
+          if (pool) {
+            const hint =
+              INFRA_PLUGINS[bp.cluster.infrastructure.provider].addressPool?.exhaustedHint;
+            throw new ConflictException({ message: pool.message, hint });
+          }
           throw new BadRequestException({
             message: 'The request does not fit the blueprint',
             details: issuesOf(spec.error),
@@ -147,10 +150,11 @@ export class BlueprintsService {
     return run;
   }
 
-  /** The cluster spec of an order, with free addresses of the pool if the blueprint has one. */
+  /** The cluster spec of an order, with a free part of the pool if the blueprint has one. */
   private async toSpec(name: string, bp: ClusterBlueprintSpec, req: BlueprintClusterRequest) {
+    const infra = bp.cluster.infrastructure;
     const used = bp.addressPool
-      ? await this.clusterService.usedAddresses(bp.connection, bp.cluster.infrastructure.provider)
+      ? await this.clusterService.usedAddresses(bp.connection, infra.provider, infra.credentialRef)
       : [];
     return blueprintToSpecSchema(name, bp, used).safeParse(req);
   }

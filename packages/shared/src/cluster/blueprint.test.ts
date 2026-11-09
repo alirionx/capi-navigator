@@ -331,7 +331,91 @@ describe('cluster blueprints (FP-34)', () => {
         '10.30.0.1-10.30.0.9 not in the node network 10.20.0.0/24',
       ]);
       expect(issues('aws', POOL)).toEqual(['Clusters on aws need no address pool']);
+      expect(issues('gcp', POOL)).toEqual(['Clusters on gcp need no address pool']);
       expect(issues('proxmox', POOL)).toEqual([]);
+    });
+  });
+
+  describe('node network pool on OpenStack (FP34-F-15)', () => {
+    const NETS = ['10.7.0.0/16'];
+    const issues = (addressPool?: string[], cluster = SPECS.openstack!.cluster) =>
+      ClusterBlueprintSpecSchema.safeParse({
+        displayName: 'x',
+        connection: 'home',
+        cluster,
+        ...(addressPool ? { addressPool } : {}),
+      }).error?.issues.map((i) => i.message) ?? [];
+
+    it('gives every cluster the first network of the base size that nobody uses', () => {
+      const bp = blueprint('openstack', { addressPool: NETS });
+      // A subnet of the project (made by hand) and the network of another cluster.
+      const used = ['10.7.0.0/24', '10.7.1.128/25'];
+      const spec = blueprintToSpecSchema('small', bp, used).parse({ name: 'a' });
+      expect(spec.infrastructure).toMatchObject({ network: { nodeCidr: '10.7.2.0/24' } });
+    });
+
+    it('hands out the size of the base spec and walks the pool in its order', () => {
+      const cluster = structuredClone(SPECS.openstack!.cluster) as {
+        infrastructure: Record<string, unknown>;
+      };
+      cluster.infrastructure.network = { nodeCidr: '10.6.0.0/26' };
+      const bp = blueprint('openstack', {
+        cluster: cluster as ClusterSpecInput,
+        addressPool: ['10.9.0.0/25', '10.8.0.0/24'],
+      });
+      const spec = blueprintToSpecSchema('small', bp, ['10.9.0.0/25']).parse({ name: 'a' });
+      expect(spec.infrastructure).toMatchObject({ network: { nodeCidr: '10.8.0.0/26' } });
+    });
+
+    it('refuses an order when the pool is used up', () => {
+      const bp = blueprint('openstack', { addressPool: ['10.7.0.0/23'] });
+      const r = blueprintToSpecSchema('small', bp, ['10.7.0.0/24', '10.7.1.0/24']).safeParse({
+        name: 'a',
+      });
+      expect(r.error?.issues[0]).toMatchObject({
+        path: ['addressPool'],
+        message:
+          'The node network pool 10.7.0.0/23 has no free /24 network left: every one overlaps a subnet of the project or the node network of another OpenStack cluster.',
+      });
+    });
+
+    it('keeps the fixed network of a blueprint without pool', () => {
+      const bp = blueprint('openstack');
+      const spec = blueprintToSpecSchema('small', bp, ['10.6.0.0/24']).parse({ name: 'a' });
+      expect(spec.infrastructure).toMatchObject({ network: { nodeCidr: '10.6.0.0/24' } });
+      expect(issues()).toEqual([]);
+    });
+
+    it('takes only networks at least as large as the node network, apart from pods and services', () => {
+      expect(issues(NETS)).toEqual([]);
+      expect(issues(['10.7.0.5-10.7.0.9', '10.7.0.0/25', '10.42.0.0/20'])).toEqual([
+        '10.7.0.5-10.7.0.9 is no network: give networks like 10.7.0.0/16',
+        '10.7.0.0/25 is smaller than the node network of the base spec (/24)',
+        '10.42.0.0/20 overlaps the pod network (10.42.0.0/16)',
+      ]);
+    });
+
+    it('applies to hosted control planes too, unlike Proxmox VE', () => {
+      const hosted = (provider: string) => {
+        const cluster = structuredClone(SPECS[provider]!.cluster) as Record<string, unknown>;
+        cluster.kubernetes = { flavor: 'k0s', version: 'v1.35.9+k0s.0' };
+        cluster.topology = {
+          mode: 'hosted',
+          controlPlane: { replicas: 1, machineSize: 'unused' },
+          workerPools: [{ name: 'default', replicas: 2, machineSize: 'medium' }],
+          hosted: { host: 'host' },
+        };
+        return cluster as ClusterSpecInput;
+      };
+      expect(issues(NETS, hosted('openstack'))).toEqual([]);
+      expect(
+        ClusterBlueprintSpecSchema.safeParse({
+          displayName: 'x',
+          connection: 'home',
+          cluster: hosted('proxmox'),
+          addressPool: POOL,
+        }).error?.issues.map((i) => i.message),
+      ).toContain('Blueprints of hosted control planes are not supported on this provider');
     });
   });
 

@@ -43,6 +43,23 @@ export function freeCidr(start: string, used: string[]): string | undefined {
   return undefined;
 }
 
+/**
+ * FP34-F-15: the first network with `prefix` inside the networks of `pool`, in their order, that
+ * overlaps none of `used`; undefined when none is free.
+ */
+export function freeCidrInPool(pool: string[], prefix: number, used: string[]): string | undefined {
+  const size = 2 ** (32 - prefix);
+  for (const entry of pool) {
+    const net = parseIpv4Cidr(entry);
+    if (!net || net.prefix > prefix) continue;
+    for (let start = net.start; start + size - 1 <= net.end; start += size) {
+      const cidr = `${formatIpv4(start)}/${prefix}`;
+      if (!used.some((u) => cidrsOverlap(cidr, u))) return cidr;
+    }
+  }
+  return undefined;
+}
+
 /** An IPv4 address as number, or undefined. */
 export function parseIpv4(ip: string): number | undefined {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip.trim());

@@ -96,6 +96,8 @@ export const ClusterSummarySchema = z.object({
   credential: z.string().optional(),
   /** Where it runs from the spec: AWS/GCP region, Proxmox VE node (UX-08). */
   location: z.string().optional(),
+  /** Node network from the spec, e.g. from the pool of a blueprint (FP34-F-15). */
+  nodeNetwork: z.string().optional(),
   /** Host of the internal registry when the nodes run without internet (FP-29, UX-05). */
   airGappedRegistry: z.string().optional(),
   /** Cluster blueprint the cluster was created from and stays bound to (FP34-F-06). */

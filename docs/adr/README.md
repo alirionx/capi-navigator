@@ -41,3 +41,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0035](0035-clusters-from-blueprints-without-preview.md)    | Clusters from blueprints without a preview per request                           | accepted |
 | [0036](0036-workload-logs-in-the-dashboard.md)              | Workload logs in the dashboard                                                   | accepted |
 | [0037](0037-air-gapped-hosted-control-planes.md)            | Air-gapped hosted control planes                                                 | accepted |
+| [0038](0038-node-network-pool-for-openstack-blueprints.md)  | Node network pool for OpenStack blueprints                                       | accepted |

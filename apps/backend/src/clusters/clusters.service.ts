@@ -261,12 +261,38 @@ export class ClustersService {
     return toSummary(cluster);
   }
 
-  /** FP34-F-14: addresses the infrastructure clusters of a provider use, for address pools. */
-  async usedAddresses(connection: string, provider: Infrastructure['provider']): Promise<string[]> {
+  /**
+   * FP34-F-14, FP34-F-15: addresses or networks in use for the pool of a blueprint: those of the
+   * provider's infrastructure clusters, and for OpenStack the subnets of the credential's project.
+   * Read errors refuse the order instead of handing out what might be taken.
+   */
+  async usedAddresses(
+    connection: string,
+    provider: Infrastructure['provider'],
+    credential: string,
+  ): Promise<string[]> {
     const plugin = INFRA_PLUGINS[provider];
-    if (!plugin.addressPool) return [];
+    const pool = plugin.addressPool;
+    if (!pool) return [];
     const kc = await this.clients.forConnection(connection);
-    return plugin.addressPool.used(await infraClusters(kc, plugin));
+    const used = pool.used(
+      await this.kube('Read the infrastructure clusters', () => infraClusters(kc, plugin, true)),
+    );
+    if (!pool.lookup) return used;
+    try {
+      const res = await this.credentials.lookup(connection, provider, credential, pool.lookup);
+      return [...used, ...res.options.map((o) => o.value)];
+    } catch (err) {
+      const detail = err instanceof HttpException ? ` (${err.message})` : '';
+      throw new HttpException(
+        {
+          statusCode: 502,
+          message: `The ${pool.lookup} of credentials ${credential} could not be read, so no free part of the pool can be chosen${detail}`,
+          hint: 'Check the credentials on the Credentials page and order again.',
+        },
+        502,
+      );
+    }
   }
 
   /** FP34-F-10: optionally only the clusters matching a label selector. */
@@ -1424,15 +1450,22 @@ function safeJson(raw: string): unknown {
   }
 }
 
-/** The infrastructure clusters of a provider in the management cluster; none if unreadable. */
+/**
+ * The infrastructure clusters of a provider in the management cluster; none if unreadable, or with
+ * `strict` (pools, FP34-F-15) none only if the provider is not installed.
+ */
 async function infraClusters(
   kc: KubeConfig,
   plugin: { apiVersion: string; resources: { infraClusterPlural: string } },
+  strict = false,
 ): Promise<Record<string, unknown>[]> {
   const [group, version] = plugin.apiVersion.split('/') as [string, string];
   return kc
     .makeApiClient(CustomObjectsApi)
     .listClusterCustomObject({ group, version, plural: plugin.resources.infraClusterPlural })
     .then((r) => (r as { items: Record<string, unknown>[] }).items)
-    .catch(() => []);
+    .catch((err: unknown) => {
+      if (strict && !isNotFound(err)) throw err;
+      return [];
+    });
 }
