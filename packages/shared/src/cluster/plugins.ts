@@ -104,6 +104,8 @@ export interface InfraTransformPlugin<T extends Infrastructure = Infrastructure>
     hosted: boolean;
     /** Selection list of the credential whose values count as used, e.g. a project's subnets. */
     lookup?: LookupKind;
+    /** Pool suggested for a new blueprint, if the provider recommends one. */
+    suggest?(infra: T): string[];
     /** Hint when the pool is used up (409). */
     exhaustedHint: string;
     /** Pool entries the provider cannot use, checked when the blueprint is saved. */

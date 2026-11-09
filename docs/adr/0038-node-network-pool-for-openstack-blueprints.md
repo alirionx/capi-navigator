@@ -26,8 +26,11 @@ refuses overlaps.
   existing `addressPool` field, e.g. `10.7.0.0/16`. For every order the app takes the first network
   of the size of the base spec's node network (e.g. `/24`) that overlaps nothing in use. The client
   needs no knowledge of networks, and the parameter schema of the blueprint stays the same.
-- **Optional.** A blueprint without a pool keeps its fixed network, as before. On Proxmox VE the
-  address pool stays required.
+- **Optional, but suggested.** A blueprint without a pool keeps its fixed network, as before. The
+  blueprints page suggests the /16 of the node network for a new OpenStack blueprint: separate
+  networks per cluster are good practice beyond strict clouds, because networks of a project (or a
+  VPN) can only be routed to each other without overlaps. On Proxmox VE the address pool stays
+  required.
 - **What counts as used:**
   - the node networks (`managedSubnets`) of all `OpenStackCluster` objects in the management
     cluster. These exist right after an order, before CAPO has created the subnet, so two orders

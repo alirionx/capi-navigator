@@ -10,8 +10,8 @@ import {
   versionsOutsideCatalog,
   type ClusterBlueprintSpecInput,
 } from './blueprint.js';
-import type { ClusterSpecInput } from './spec.js';
-import { transform, type TransformContext } from './transform.js';
+import type { ClusterSpecInput, OpenStackInfra } from './spec.js';
+import { INFRA_PLUGINS, transform, type TransformContext } from './transform.js';
 
 const workers = (machineSize: string) => ({
   mode: 'standard' as const,
@@ -377,6 +377,17 @@ describe('cluster blueprints (FP-34)', () => {
         message:
           'The node network pool 10.7.0.0/23 has no free /24 network left: every one overlaps a subnet of the project or the node network of another OpenStack cluster.',
       });
+    });
+
+    it('suggests the /16 of the node network for a new blueprint, nothing on Proxmox VE', () => {
+      const suggest = (nodeCidr: string) =>
+        INFRA_PLUGINS.openstack.addressPool!.suggest!({
+          ...(blueprint('openstack').cluster.infrastructure as OpenStackInfra),
+          network: { nodeCidr, dnsNameservers: ['1.1.1.1'] },
+        });
+      expect(suggest('10.6.3.0/24')).toEqual(['10.6.0.0/16']);
+      expect(suggest('10.4.0.0/14')).toEqual(['10.4.0.0/14']);
+      expect(INFRA_PLUGINS.proxmox.addressPool!.suggest).toBeUndefined();
     });
 
     it('keeps the fixed network of a blueprint without pool', () => {

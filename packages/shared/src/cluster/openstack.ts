@@ -2,7 +2,7 @@ import { CHECK_NEUTRON_PAGING } from '../credentials.js';
 import type { ManifestObject } from '../operator-manifests.js';
 import { VOLUME_TOPOLOGY_LABEL } from './addons.js';
 import { airGapDnsWarnings, publicResolvers } from './air-gap.js';
-import { cidrsOverlap, freeCidr, freeCidrInPool, parseIpv4Cidr } from './cidr.js';
+import { cidrsOverlap, formatIpv4, freeCidr, freeCidrInPool, parseIpv4Cidr } from './cidr.js';
 import { ubuntuImage } from './infra-form.js';
 import type { InfraTransformPlugin } from './plugins.js';
 import type { ClusterSpec, MachineGroup, OpenStackInfra } from './spec.js';
@@ -280,13 +280,22 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     });
   },
 
-  // FP34-F-15: a blueprint may carry a pool of node networks; every cluster gets a network of the
-  // base spec's size that neither a subnet of the project nor another OpenStack cluster uses.
+  // FP34-F-15: a blueprint may carry a pool of node networks (suggested for new blueprints); every
+  // cluster gets a network of the base spec's size that neither a subnet of the project nor
+  // another OpenStack cluster uses.
   addressPool: {
     kind: 'networks',
     required: false,
     hosted: true,
     lookup: 'subnets',
+    // Separate networks per cluster are good practice: routing between networks of a project (or
+    // to a VPN) needs them, and some clouds require them. Suggested: the /16 of the node network.
+    suggest(infra) {
+      const net = parseIpv4Cidr(infra.network.nodeCidr);
+      if (!net) return [];
+      if (net.prefix <= 16) return [infra.network.nodeCidr];
+      return [`${formatIpv4(net.start - (net.start % 65536))}/16`];
+    },
     exhaustedHint:
       'Add networks to the node network pool of the blueprint, or delete clusters created from it. A deleted cluster frees its network once CAPO has removed the subnet.',
     issues(spec, infra, pool) {

@@ -60,15 +60,22 @@ supported on Proxmox VE.
 
 ## Node network pool (OpenStack)
 
-Some OpenStack clouds refuse overlapping subnets in a project, e.g. clouds with a routed VRF per
-project: the second cluster of a blueprint then never comes up, and CAPO reports
-`SubnetOverlapInRoutedVRF`. For such clouds a blueprint can carry a **node network pool**, e.g.
-`10.7.0.0/16` ([ADR-0038](adr/0038-node-network-pool-for-openstack-blueprints.md)). For every order
-the app takes the first network of the size of the base spec's node network (e.g. `/24`) that
-neither the node network of another OpenStack cluster of the management cluster nor a subnet of
-the project uses.
+On OpenStack, a blueprint should carry a **node network pool**, e.g. `10.7.0.0/16`
+([ADR-0038](adr/0038-node-network-pool-for-openstack-blueprints.md)). For every order the app
+takes the first network of the size of the base spec's node network (e.g. `/24`) that neither the
+node network of another OpenStack cluster of the management cluster nor a subnet of the project
+uses. Separate networks per cluster are good practice:
 
-- The pool is optional. Without it, all clusters of the blueprint share its node network.
+- networks of a project can only be routed to each other (or to a VPN) when they do not overlap,
+  e.g. to reach a database VM in another network of the project;
+- some clouds refuse overlapping subnets in a project, e.g. clouds with a routed VRF per project:
+  the second cluster of a blueprint with a shared network then never comes up, and CAPO reports
+  `SubnetOverlapInRoutedVRF`.
+
+The blueprints page suggests the /16 of the node network as pool for a new blueprint.
+
+- The pool is optional. Without it, all clusters of the blueprint share its node network, which
+  most clouds accept.
 - The pool must not overlap the pod and service networks of the base spec.
 - When the pool is used up, an order is refused with `409`. A deleted cluster frees its network
   only when CAPO has removed the subnet, so shortly after a deletion a nearly full pool may still

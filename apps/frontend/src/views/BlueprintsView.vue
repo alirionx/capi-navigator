@@ -172,7 +172,13 @@ async function takeSpec(key: string | null): Promise<void> {
   const [ns, n] = key.split('/') as [string, string];
   formError.value = null;
   try {
-    setBase(await clusterStore.getSpec(connection.value, ns, n));
+    const spec = await clusterStore.getSpec(connection.value, ns, n);
+    setBase(spec);
+    // FP34-F-15: a new blueprint starts with the pool the provider recommends, if any.
+    const suggested = INFRA_PLUGINS[spec.infrastructure.provider].addressPool?.suggest?.(
+      spec.infrastructure as never,
+    );
+    if (suggested?.length && !addressPoolText.value) addressPoolText.value = suggested.join(', ');
   } catch (err) {
     formError.value = err;
   }
