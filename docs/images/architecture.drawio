@@ -1,0 +1,229 @@
+<mxfile host="capi-navigator">
+  <diagram name="Overview" id="overview">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1740" pageHeight="1110" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;CAPI Navigator – technical overview&lt;/b&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=22;fontFamily=Helvetica;fontColor=#1f1f1f;" vertex="1" parent="1">
+          <mxGeometry x="40" y="18" width="1640" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="The app writes standard Cluster API resources. The controllers in the management cluster do the actual work: VMs, Kubernetes, add-ons." style="text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#555555;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="40" y="50" width="1640" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="clients" value="Clients" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="92" width="580" height="108" as="geometry" />
+        </mxCell>
+        <mxCell id="webui" value="&lt;b&gt;Web UI&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;Vue 3 SPA in the browser&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="clients">
+          <mxGeometry x="20" y="38" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="rest" value="&lt;b&gt;REST clients, CI&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;API tokens · Swagger UI&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="clients">
+          <mxGeometry x="205" y="38" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="osb" value="&lt;b&gt;Open Service Broker&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;separate project, uses blueprints&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="clients">
+          <mxGeometry x="390" y="38" width="170" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="oidc" value="&lt;b&gt;OpenID Connect provider&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;optional sign-in, e.g. Dex or Keycloak&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f5f5f5;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="130" width="250" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="home" value="Home cluster&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;runs the app; can be a management cluster at the same time&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f3f9f1;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="580" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="pod" value="CAPI Navigator pod · NestJS backend, stateless" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="home">
+          <mxGeometry x="20" y="50" width="540" height="235" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;REST API&lt;/b&gt; · SSE for live updates · WebSocket for the node shell" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="20" y="30" width="500" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="guard" value="&lt;b&gt;Permission guard&lt;/b&gt; (roles, scopes)&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;audit event for every change&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="20" y="76" width="240" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="transform" value="&lt;b&gt;Transformation&lt;/b&gt; (pure function)&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;cluster spec → CAPI objects&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="280" y="76" width="240" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="infraplug" value="&lt;b&gt;Infrastructure plugins&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;OpenStack · AWS · GCP · Proxmox VE&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="20" y="134" width="240" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="distplug" value="&lt;b&gt;Distribution plugins&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;RKE2 · k0s (k0smotron) · kubeadm&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="280" y="134" width="240" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="apply" value="&lt;b&gt;Preview&lt;/b&gt; (YAML, diff, dry run) → &lt;b&gt;server-side apply&lt;/b&gt; as capi-navigator" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="pod">
+          <mxGeometry x="20" y="192" width="500" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="state" value="App state – no own database: in etcd, through the Kubernetes API" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffffff;strokeColor=#82b366;fontSize=12;" vertex="1" parent="home">
+          <mxGeometry x="20" y="325" width="540" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="crds" value="&lt;b&gt;CRDs&lt;/b&gt; navigator.capi-navigator.io&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;users, roles, connections, Helm repositories, blueprints, audit events&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="state">
+          <mxGeometry x="20" y="30" width="250" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="secrets" value="&lt;b&gt;Secrets&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;passwords, connection credentials, API tokens&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="state">
+          <mxGeometry x="280" y="30" width="130" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="cms" value="&lt;b&gt;ConfigMaps&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;add-on preset overrides&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="state">
+          <mxGeometry x="420" y="30" width="100" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="mgmt" value="Management cluster(s)&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;one per connection, reached with a kubeconfig or a service account token&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f7f2fa;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="740" y="240" width="960" height="470" as="geometry" />
+        </mxCell>
+        <mxCell id="certm" value="&lt;b&gt;cert-manager&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;webhook certificates&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="mgmt">
+          <mxGeometry x="20" y="50" width="170" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="operator" value="&lt;b&gt;Cluster API Operator&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;installs the providers from Core-, Bootstrap-, ControlPlane-, Infrastructure- and AddonProvider CRs&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="mgmt">
+          <mxGeometry x="205" y="50" width="420" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="orc" value="&lt;b&gt;ORC&lt;/b&gt; · OpenStack Resource Controller&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;images for CAPO&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="mgmt">
+          <mxGeometry x="640" y="50" width="300" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="providers" value="Cluster API providers (controllers)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fff8ef;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="mgmt">
+          <mxGeometry x="20" y="120" width="920" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="p_core" value="&lt;b&gt;Core&lt;/b&gt; (Cluster API)&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;Cluster, MachineDeployment, Machine, ClusterResourceSet&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="providers">
+          <mxGeometry x="15" y="32" width="168" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p_cp" value="&lt;b&gt;Control plane&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;one per distribution&lt;br&gt;creates the control plane Machines&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="providers">
+          <mxGeometry x="195" y="32" width="168" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p_boot" value="&lt;b&gt;Bootstrap&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;one per distribution&lt;br&gt;cloud-init data per Machine&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="providers">
+          <mxGeometry x="375" y="32" width="168" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p_infra" value="&lt;b&gt;Infrastructure&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;CAPO · CAPA · CAPG · CAPMOX&lt;br&gt;VMs, networks, load balancers&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="providers">
+          <mxGeometry x="555" y="32" width="168" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="p_addon" value="&lt;b&gt;Add-on&lt;/b&gt; (CAAPH)&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;HelmChartProxy → one Helm release per cluster&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="providers">
+          <mxGeometry x="735" y="32" width="168" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="res" value="Resources of each workload cluster&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt; – written by the app, reconciled by the providers above&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#ffffff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="mgmt">
+          <mxGeometry x="20" y="290" width="920" height="165" as="geometry" />
+        </mxCell>
+        <mxCell id="r0" value="Cluster&lt;br&gt;MachineDeployment&lt;br&gt;ClusterResourceSet" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="15" y="30" width="168" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="&amp;lt;Distribution&amp;gt;ControlPlane" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="195" y="30" width="168" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="&amp;lt;Distribution&amp;gt;ConfigTemplate" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="375" y="30" width="168" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="&amp;lt;Infrastructure&amp;gt;Cluster&lt;br&gt;&amp;lt;Infrastructure&amp;gt;MachineTemplate" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="555" y="30" width="168" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="HelmChartProxy&lt;br&gt;CCM, CSI, kured,&lt;br&gt;add-ons" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="735" y="30" width="168" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="r_cred" value="&lt;b&gt;Credentials&lt;/b&gt;: Secrets + identities &lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;(cloud access for the providers)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="15" y="102" width="348" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="r_kcfg" value="&lt;b&gt;kubeconfig Secret&lt;/b&gt; of the workload cluster &lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;(written by CAPI)&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="375" y="102" width="348" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="r_spec" value="&lt;b&gt;Cluster spec&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;annotation on the Cluster&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="res">
+          <mxGeometry x="735" y="102" width="168" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="infra" value="Infrastructure – cloud APIs" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fffcef;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="770" width="960" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="i_os" value="&lt;b style=&quot;font-size:14px&quot;&gt;OpenStack&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;e.g. Infomaniak&lt;/span&gt;&lt;div style=&quot;margin-top:10px;font-size:11px;line-height:1.6&quot;&gt;VMs: Nova&lt;br&gt;Networks: Neutron&lt;br&gt;API load balancer: Octavia&lt;br&gt;Volumes: Cinder&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="infra">
+          <mxGeometry x="20" y="40" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="i_aws" value="&lt;b style=&quot;font-size:14px&quot;&gt;AWS&lt;/b&gt;&lt;br&gt;&amp;nbsp;&lt;div style=&quot;margin-top:10px;font-size:11px;line-height:1.6&quot;&gt;VMs: EC2&lt;br&gt;Networks: VPC, security groups&lt;br&gt;API load balancer: ELB&lt;br&gt;Volumes: EBS&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="infra">
+          <mxGeometry x="255" y="40" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="i_gcp" value="&lt;b style=&quot;font-size:14px&quot;&gt;Google Cloud&lt;/b&gt;&lt;br&gt;&amp;nbsp;&lt;div style=&quot;margin-top:10px;font-size:11px;line-height:1.6&quot;&gt;VMs: Compute Engine&lt;br&gt;Networks: VPC, firewall rules&lt;br&gt;API load balancer: Cloud Load Balancing&lt;br&gt;Volumes: Persistent Disk&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="infra">
+          <mxGeometry x="490" y="40" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="i_px" value="&lt;b style=&quot;font-size:14px&quot;&gt;Proxmox VE&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;on premises&lt;/span&gt;&lt;div style=&quot;margin-top:10px;font-size:11px;line-height:1.6&quot;&gt;VMs from templates&lt;br&gt;Node addresses: IP pool&lt;br&gt;API VIP and LoadBalancer&lt;br&gt;Services: kube-vip&lt;br&gt;Volumes: Proxmox CSI&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=middle;" vertex="1" parent="infra">
+          <mxGeometry x="725" y="40" width="220" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="wl" value="Workload cluster(s) – standard upstream CAPI&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;stay manageable with kubectl and clusterctl, even without the app&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=3;container=1;collapsible=0;verticalAlign=top;align=left;spacingLeft=12;spacingTop=4;fontSize=14;fontStyle=1;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#fdf3f3;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="770" width="620" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="w_cp" value="&lt;b&gt;Control plane nodes&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;or hosted: k0smotron pods in a host cluster&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="20" y="55" width="285" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="w_wk" value="&lt;b&gt;Worker nodes&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;one or more MachineDeployments&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="315" y="55" width="285" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="w_img" value="Stock OS images · cloud-init installs &lt;b&gt;RKE2&lt;/b&gt;, &lt;b&gt;k0s&lt;/b&gt; or &lt;b&gt;kubeadm&lt;/b&gt; at first boot" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;fillColor=#ffffff;" vertex="1" parent="wl">
+          <mxGeometry x="20" y="125" width="580" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="w_cni" value="&lt;b&gt;CNI&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;e.g. Calico&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="20" y="171" width="137" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="w_ccm" value="&lt;b&gt;CCM&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;node IDs, load balancers&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="167" y="171" width="137" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="w_csi" value="&lt;b&gt;CSI&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;volumes&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="314" y="171" width="137" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="w_add" value="&lt;b&gt;Add-ons&lt;/b&gt;&lt;br&gt;&lt;span style='font-weight:normal;font-size:11px;color:#555555'&gt;Helm charts, manifests&lt;/span&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fontSize=12;fontFamily=Helvetica;fontColor=#1f1f1f;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="wl">
+          <mxGeometry x="461" y="171" width="139" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e_web" value="HTTPS · REST, SSE" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.64;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="webui" target="api">
+          <mxGeometry relative="1" as="geometry" x="-0.75">
+            <Array as="points">
+              <mxPoint x="145" y="232" />
+              <mxPoint x="400" y="232" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_rest" value="API token" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.76;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="rest" target="api">
+          <mxGeometry relative="1" as="geometry" x="-0.75">
+            <Array as="points">
+              <mxPoint x="330" y="222" />
+              <mxPoint x="460" y="222" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_osb" value="API token" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.87;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="osb" target="api">
+          <mxGeometry relative="1" as="geometry" x="-0.6" />
+        </mxCell>
+        <mxCell id="e_oidc" value="sign-in" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.98;entryY=0;entryDx=0;entryDy=0;dashed=1;startArrow=block;startFill=1;" edge="1" parent="1" source="oidc" target="api">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="157.5" />
+              <mxPoint x="650" y="208" />
+              <mxPoint x="570" y="208" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_install" value="installs cert-manager,&lt;br&gt;CAPI Operator, ORC,&lt;br&gt;provider CRs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=1;exitY=0.1064;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;" edge="1" parent="1" source="pod" target="certm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_operator" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.4293;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="operator" target="providers">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_apply" value="server-side apply,&lt;br&gt;dry run, watches" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=10;" edge="1" parent="1" source="apply" target="res">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="680" y="499" />
+              <mxPoint x="680" y="612" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_state" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="pod" target="state">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cloud" value="providers call the cloud APIs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.1354;exitY=1;exitDx=0;exitDy=0;entryX=0.8646;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="mgmt" target="infra">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_addons" value="CAAPH installs Helm releases · ClusterResourceSets apply manifests" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0.6771;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="mgmt" target="wl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_vms" value="VMs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="infra" target="wl">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dash" value="dashboard, node shell, kubeconfig download – through the API of the workload cluster" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;fontSize=11;strokeColor=#4d4d4d;strokeWidth=1.5;endArrow=block;endFill=1;labelBackgroundColor=#ffffff;fontFamily=Helvetica;fontColor=#1f1f1f;exitX=0;exitY=0.85;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;dashed=1;strokeColor=#b85450;fontColor=#b85450;" edge="1" parent="1" source="home" target="wl">
+          <mxGeometry relative="1" as="geometry" x="0.3">
+            <Array as="points">
+              <mxPoint x="20" y="639.5" />
+              <mxPoint x="20" y="1055" />
+              <mxPoint x="1390" y="1055" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="legend" value="Solid arrows: requests and reconciliation · dashed: optional or read-only access · colors: green app, purple management cluster, orange providers, yellow infrastructure, red workload cluster" style="text;html=1;align=left;verticalAlign=middle;fontSize=11;fontColor=#777777;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1070" width="1660" height="22" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

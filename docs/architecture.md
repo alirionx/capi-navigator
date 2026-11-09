@@ -13,18 +13,11 @@ stay manageable with `kubectl` and `clusterctl` after the app is removed.
 
 ## The three kinds of clusters
 
-```
-┌───────────────────────┐        ┌──────────────────────────────────────┐        ┌──────────────────┐
-│ Home cluster          │        │ Management cluster(s)                │        │ Workload clusters│
-│                       │        │                                      │        │                  │
-│ CAPI Navigator pod    │──API──▶│ cert-manager, CAPI Operator          │──────▶ │ the clusters the │
-│ app state:            │        │ providers: core, RKE2/k0s/kubeadm,   │ cloud  │ users run their  │
-│  CRDs (users,         │        │   CAPO + ORC, CAPA, CAAPH            │  APIs  │ apps on          │
-│  connections, repos,  │        │ CAPI resources of every workload     │        │                  │
-│  audit), Secrets,     │        │   cluster, credentials (Secrets +    │        │ CCM, CSI, CNI,   │
-│  ConfigMaps           │        │   identities), HelmChartProxies      │        │ add-ons          │
-└───────────────────────┘        └──────────────────────────────────────┘        └──────────────────┘
-```
+![CAPI Navigator: clients, home cluster, management cluster with the Cluster API providers, infrastructure and workload clusters](images/architecture.png)
+
+The source of the diagram is [images/architecture.drawio](images/architecture.drawio). After
+changing it in draw.io, export it again as `images/architecture.png` (PNG, zoom 200 %), so that
+the image in this file and in the README stays current.
 
 | Cluster                | Role                                                                                  | What the app does there                                                                                                                                                                |
 | ---------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

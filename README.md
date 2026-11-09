@@ -95,17 +95,7 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 
 ## Architecture
 
-```
-Browser (Vue 3 SPA)  ──REST + SSE──▶  NestJS backend  ──Kubernetes API──▶  Management cluster
-                                       │                                    ├─ cert-manager
-                                       │ own state (CRDs, Secrets,          ├─ CAPI Operator
-                                       │ ConfigMaps) in the home cluster    └─ Providers: core, RKE2 / k0s / kubeadm,
-                                       │                                       CAPO + ORC, CAPA, CAAPH
-                                       ▼                                              │
-                                   Transformation                                     ▼
-                                   cluster spec → CAPI YAML                 OpenStack / AWS / GCP: workload clusters
-                                   (pure functions)                         on stock cloud images
-```
+![CAPI Navigator: clients, home cluster, management cluster with the Cluster API providers, infrastructure and workload clusters](docs/images/architecture.png)
 
 - Only the backend talks to Kubernetes; the browser never sees cluster credentials.
 - A cluster is described by a **cluster spec** (stored as an annotation on the CAPI `Cluster`).
