@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
   ClusterListSchema,
+  currentPatchVersion,
   distributionCatalog,
   INFRA_PLUGINS,
   type BlueprintParameters,
@@ -12,7 +13,7 @@ import {
   type ClusterSpec,
   type ClusterSummary,
 } from '@capi-navigator/shared';
-import { api } from '../api/client.js';
+import { ApiError, api } from '../api/client.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import YamlViewer from '../components/YamlViewer.vue';
 import { useBlueprintsStore } from '../stores/blueprints.js';
@@ -95,6 +96,10 @@ const versions = ref<string[]>([]);
 // A text field with comma-separated entries: a combobox lost typed ranges without Enter.
 const addressPoolText = ref('');
 const addressPool = computed(() => addressPoolText.value.split(/[\s,]+/).filter(Boolean));
+const nodeCidr = computed(
+  () =>
+    (base.value?.infrastructure as { network?: { nodeCidr?: string } })?.network?.nodeCidr ?? '',
+);
 const poolPlugin = computed(() =>
   base.value ? INFRA_PLUGINS[base.value.infrastructure.provider].addressPool : undefined,
 );
@@ -115,8 +120,22 @@ const catalogVersions = computed(() =>
     : [],
 );
 
+/** Versions that left the catalog and were replaced when the form was opened. */
+const replacedVersions = ref<string[]>([]);
+
 function setBase(spec: ClusterSpec, params?: BlueprintParameters): void {
-  base.value = spec;
+  const replaced = new Map<string, string>();
+  const update = (v: string) => {
+    const next = spec.airGapped ? v : currentPatchVersion(spec.kubernetes.flavor, v);
+    if (next && next !== v) replaced.set(v, next);
+    return next ?? v;
+  };
+  base.value = {
+    ...spec,
+    kubernetes: { ...spec.kubernetes, version: update(spec.kubernetes.version) },
+  };
+  const offered = params?.kubernetesVersions?.map(update);
+  replacedVersions.value = [...replaced].map(([from, to]) => `${from} → ${to}`);
   pools.value = spec.topology.workerPools.map((p) => {
     const count = params?.workerCounts.find((w) => w.pool === p.name);
     const size = params?.machineSizes.find((m) => m.pool === p.name);
@@ -131,9 +150,42 @@ function setBase(spec: ClusterSpec, params?: BlueprintParameters): void {
       sizes: size?.choices ?? [p.machineSize],
     };
   });
-  versionsOn.value = !!params?.kubernetesVersions;
-  versions.value = params?.kubernetesVersions ?? [spec.kubernetes.version];
+  versionsOn.value = !!offered;
+  versions.value = offered ? [...new Set(offered)] : [base.value.kubernetes.version];
 }
+
+/** The version of the base spec: clusters ordered without choosing a version get it. */
+const defaultVersion = computed({
+  get: () => base.value?.kubernetes.version ?? '',
+  set: (v: string) => {
+    if (!base.value) return;
+    base.value = { ...base.value, kubernetes: { ...base.value.kubernetes, version: v } };
+    if (!versions.value.includes(v)) versions.value = [...versions.value, v];
+  },
+});
+
+/** Field errors of the last check or save, shown at their fields. */
+const serverFieldErrors = computed(() =>
+  formError.value instanceof ApiError ? (formError.value.fieldErrors ?? {}) : {},
+);
+const SHOWN_AT_FIELD = [
+  'addressPool',
+  'parameters.kubernetesVersions',
+  'cluster.kubernetes.version',
+];
+const fieldError = (path: string) => serverFieldErrors.value[`spec.${path}`] ?? [];
+/** Field errors without a field of their own, e.g. of a worker pool, as readable lines. */
+const otherFieldErrors = computed(() =>
+  Object.entries(serverFieldErrors.value)
+    .filter(([k]) => !SHOWN_AT_FIELD.some((f) => k === `spec.${f}`))
+    .flatMap(([k, messages]) => {
+      const m = /^spec\.parameters\.(workerCounts|machineSizes)\.(\d+)/.exec(k);
+      const list = m ? request.value?.spec.parameters?.[m[1] as 'workerCounts'] : undefined;
+      const pool = list?.[Number(m![2])]?.pool;
+      const where = pool ? t('blueprints.pool', { pool }) : k.replace(/^spec\./, '');
+      return messages.map((msg) => `${where}: ${msg}`);
+    }),
+);
 
 function openForm(b?: ClusterBlueprint): void {
   editing.value = b ?? null;
@@ -145,6 +197,7 @@ function openForm(b?: ClusterBlueprint): void {
   base.value = null;
   pools.value = [];
   addressPoolText.value = (b?.spec.addressPool ?? []).join(', ');
+  replacedVersions.value = [];
   if (b) setBase(b.spec.cluster, b.spec.parameters);
   formError.value = null;
   preview.value = null;
@@ -458,13 +511,10 @@ async function confirmDelete(): Promise<void> {
                   poolPlugin.kind === 'networks'
                     ? 'blueprints.networkPoolHint'
                     : 'blueprints.addressPoolHint',
-                  {
-                    cidr:
-                      (base.infrastructure as { network?: { nodeCidr?: string } }).network
-                        ?.nodeCidr ?? '',
-                  },
+                  { cidr: nodeCidr, size: nodeCidr.slice(nodeCidr.indexOf('/')) },
                 )
               "
+              :error-messages="fieldError('addressPool')"
               persistent-hint
               class="mb-4"
               data-testid="blueprint-address-pool"
@@ -529,6 +579,32 @@ async function confirmDelete(): Promise<void> {
             </v-card>
             <v-card border class="mb-2">
               <v-card-text>
+                <v-alert
+                  v-if="replacedVersions.length"
+                  type="info"
+                  variant="tonal"
+                  density="compact"
+                  class="mb-3"
+                  data-testid="blueprint-versions-replaced"
+                  >{{
+                    t('blueprints.versionsReplaced', { list: replacedVersions.join(', ') })
+                  }}</v-alert
+                >
+                <v-select
+                  v-model="defaultVersion"
+                  :items="catalogVersions"
+                  :label="t('blueprints.defaultVersion')"
+                  :hint="
+                    base.airGapped
+                      ? t('blueprints.versionsAirGapped')
+                      : t('blueprints.defaultVersionHint')
+                  "
+                  :disabled="!!base.airGapped"
+                  :error-messages="fieldError('cluster.kubernetes.version')"
+                  persistent-hint
+                  class="mb-3"
+                  data-testid="blueprint-default-version"
+                />
                 <v-switch
                   v-model="versionsOn"
                   :label="t('blueprints.versionsOn')"
@@ -547,6 +623,7 @@ async function confirmDelete(): Promise<void> {
                   v-model="versions"
                   :items="catalogVersions"
                   :label="t('blueprints.versions')"
+                  :error-messages="fieldError('parameters.kubernetesVersions')"
                   multiple
                   chips
                   closable-chips
@@ -557,6 +634,15 @@ async function confirmDelete(): Promise<void> {
           </template>
 
           <ErrorAlert v-if="formError" :error="formError" class="mt-3" />
+          <v-alert
+            v-for="e in otherFieldErrors"
+            :key="e"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mt-2"
+            >{{ e }}</v-alert
+          >
           <template v-if="preview">
             <v-alert
               v-for="b in preview.blockers"

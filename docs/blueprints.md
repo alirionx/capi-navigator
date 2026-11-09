@@ -43,6 +43,12 @@ Only these parameters exist. Each one has a default (the value of the base spec)
 
 Unknown parameters and values outside the limits are refused with `400`.
 
+The **default Kubernetes version** is the version of the base spec; the blueprints page lets you
+change it. A version update (FP-20) removes old patch versions from the catalog. When you open a
+blueprint whose default or offered versions are no longer in the catalog, the form replaces each
+of them with the current patch of the same minor version and says so; check and save to keep the
+change. Air-gapped blueprints keep their version, because their artifacts are pinned per version.
+
 ## Address pool (Proxmox VE)
 
 On Proxmox VE the API address, the node addresses and the LoadBalancer addresses belong to one

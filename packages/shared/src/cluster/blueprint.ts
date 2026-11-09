@@ -224,6 +224,20 @@ export function versionsOutsideCatalog(bp: ClusterBlueprintSpec): string[] {
 }
 
 /**
+ * The version of the catalog with the same minor version, for a blueprint whose version left the
+ * catalog after a version update (FP-20); the version itself while it is in the catalog.
+ */
+export function currentPatchVersion(
+  flavor: ClusterSpec['kubernetes']['flavor'],
+  version: string,
+): string | undefined {
+  const catalog = distributionCatalog(flavor)?.versions.map((v) => v.version) ?? [];
+  if (catalog.includes(version)) return version;
+  const minor = /^v\d+\.\d+\./.exec(version)?.[0];
+  return minor ? catalog.find((v) => v.startsWith(minor)) : undefined;
+}
+
+/**
  * FP34-F-03: the parameters of one blueprint as strict Zod schema with defaults from the base
  * spec. Its JSON Schema is the plan schema of a service broker; the same schema checks requests.
  */

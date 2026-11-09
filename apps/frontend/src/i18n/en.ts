@@ -557,9 +557,14 @@ export const en = {
       'Required on Proxmox VE: every cluster gets its API address, node addresses (nodes plus one for rollouts) and LoadBalancer addresses from these free ranges in {cidr}, separated by commas, e.g. 192.168.10.100-192.168.10.149. The addresses of the base spec are not used.',
     networkPool: 'Node network pool',
     networkPoolHint:
-      'Recommended: every cluster gets a free network of the size of {cidr} from these networks, separated by commas, e.g. 10.7.0.0/16; networks used by the project or another OpenStack cluster are skipped. Separate networks can be routed to each other and are required by clouds that refuse overlapping subnets in a project. Default for new blueprints: the /16 of the node network; empty: all clusters share {cidr}. Maps to OpenStackCluster.spec.managedSubnets[0].cidr.',
+      'Each cluster gets its own free {size} from these networks, e.g. 10.7.0.0/16. Networks already used in the project are skipped. Empty: all clusters share {cidr}.',
+    defaultVersion: 'Default Kubernetes version',
+    defaultVersionHint:
+      'Clusters get this version unless the order chooses another. Default: the version of the source cluster.',
+    versionsReplaced:
+      'No longer in the version catalog, replaced by the current patch of the same minor version: {list}. Check and save to keep the change.',
     versionsOn: 'Kubernetes version can be chosen',
-    versionsHint: 'Versions from the version catalog; the current version is the default.',
+    versionsHint: 'Versions from the version catalog; one of them must be the default version.',
     versionsAirGapped: 'Not for air-gapped clusters: their artifacts are pinned per version.',
     versions: 'Kubernetes versions',
     check: 'Check',

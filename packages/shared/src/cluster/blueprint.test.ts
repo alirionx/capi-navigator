@@ -7,6 +7,7 @@ import {
   blueprintParametersJsonSchema,
   blueprintToSpecSchema,
   ClusterBlueprintSpecSchema,
+  currentPatchVersion,
   versionsOutsideCatalog,
   type ClusterBlueprintSpecInput,
 } from './blueprint.js';
@@ -428,6 +429,14 @@ describe('cluster blueprints (FP-34)', () => {
         }).error?.issues.map((i) => i.message),
       ).toContain('Blueprints of hosted control planes are not supported on this provider');
     });
+  });
+
+  it('finds the current patch of a version that left the catalog', () => {
+    const [newest] = distributionCatalog('rke2')!.versions.map((v) => v.version);
+    expect(currentPatchVersion('rke2', newest!)).toBe(newest);
+    const minor = /^v\d+\.\d+\./.exec(newest!)![0];
+    expect(currentPatchVersion('rke2', `${minor}0+rke2r1`)).toBe(newest);
+    expect(currentPatchVersion('rke2', 'v1.20.0+rke2r1')).toBeUndefined();
   });
 
   it('stores the cluster spec opaque in the CRD (STATE-02)', () => {
