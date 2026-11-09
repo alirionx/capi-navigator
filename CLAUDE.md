@@ -54,7 +54,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-32 | Services of type LoadBalancer on Proxmox VE with kube-vip (optional) | done |
 | FP-29 | Air-gapped workload clusters (optional) | done (proxy for app and providers, ADR-0029; nodes from an internal registry, ADR-0030; kubeadm on Cluster API images, ADR-0032; NTP servers FP29-F-18 postponed) |
 | FP-24 | Hosted control planes with k0smotron (optional, experimental; OpenStack, Proxmox VE, AWS) | done (experimental, ADR-0034; live acceptance on Proxmox VE, OpenStack and AWS; air-gapped on an air-gapped host since ADR-0037, live on Proxmox VE; Google Cloud not supported) |
-| FP-34 | Cluster blueprints (optional; groundwork for a separate Open Service Broker, ADR-0035) | done (ADR-0035; live acceptance on Proxmox VE with address pool, saving checked on OpenStack, AWS and Google Cloud) |
+| FP-34 | Cluster blueprints (optional; groundwork for a separate Open Service Broker, ADR-0035) | done (ADR-0035; live acceptance on Proxmox VE with address pool, saving checked on OpenStack, AWS and Google Cloud; node network pool for OpenStack since ADR-0038, live acceptance on a cloud that refuses overlapping subnets pending) |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
