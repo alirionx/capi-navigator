@@ -42,3 +42,5 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0036](0036-workload-logs-in-the-dashboard.md)              | Workload logs in the dashboard                                                   | accepted |
 | [0037](0037-air-gapped-hosted-control-planes.md)            | Air-gapped hosted control planes                                                 | accepted |
 | [0038](0038-node-network-pool-for-openstack-blueprints.md)  | Node network pool for OpenStack blueprints                                       | accepted |
+| [0039](0039-namespaces-as-add-ons.md)                       | Managed namespaces as add-ons, isolated with a Calico tier                       | accepted |
+| [0040](0040-tokens-for-namespaces.md)                       | Time-limited tokens for managed namespaces                                       | accepted |
