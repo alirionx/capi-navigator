@@ -74,6 +74,18 @@ export const NamespaceQuotaSchema = z
   });
 export type NamespaceQuota = z.infer<typeof NamespaceQuotaSchema>;
 
+/** Resource names of the quota values in the ResourceQuota. */
+export const NAMESPACE_QUOTA_RESOURCES: Record<keyof NamespaceQuota, string> = {
+  cpuRequests: 'requests.cpu',
+  cpuLimits: 'limits.cpu',
+  memoryRequestsGiB: 'requests.memory',
+  memoryLimitsGiB: 'limits.memory',
+  pods: 'pods',
+  loadBalancers: 'services.loadbalancers',
+  volumes: 'persistentvolumeclaims',
+  storageGiB: 'requests.storage',
+};
+
 export const NAMESPACE_PROFILES = ['small', 'medium', 'large'] as const;
 export type NamespaceProfile = (typeof NAMESPACE_PROFILES)[number];
 
@@ -212,14 +224,14 @@ export function managedNamespaceObjects(spec: ManagedNamespaceSpec): ManifestObj
       metadata: kept(OBJECT_NAME, name),
       spec: {
         hard: {
-          'limits.cpu': cpu(quota.cpuLimits),
-          'limits.memory': `${quota.memoryLimitsGiB}Gi`,
-          persistentvolumeclaims: String(quota.volumes),
-          pods: String(quota.pods),
-          'requests.cpu': cpu(quota.cpuRequests),
-          'requests.memory': `${quota.memoryRequestsGiB}Gi`,
-          'requests.storage': `${quota.storageGiB}Gi`,
-          'services.loadbalancers': String(quota.loadBalancers),
+          [NAMESPACE_QUOTA_RESOURCES.cpuLimits]: cpu(quota.cpuLimits),
+          [NAMESPACE_QUOTA_RESOURCES.memoryLimitsGiB]: `${quota.memoryLimitsGiB}Gi`,
+          [NAMESPACE_QUOTA_RESOURCES.volumes]: String(quota.volumes),
+          [NAMESPACE_QUOTA_RESOURCES.pods]: String(quota.pods),
+          [NAMESPACE_QUOTA_RESOURCES.cpuRequests]: cpu(quota.cpuRequests),
+          [NAMESPACE_QUOTA_RESOURCES.memoryRequestsGiB]: `${quota.memoryRequestsGiB}Gi`,
+          [NAMESPACE_QUOTA_RESOURCES.storageGiB]: `${quota.storageGiB}Gi`,
+          [NAMESPACE_QUOTA_RESOURCES.loadBalancers]: String(quota.loadBalancers),
         },
       },
     },

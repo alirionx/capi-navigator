@@ -34,6 +34,7 @@ import NodeShellDialog from '../components/shell/NodeShellDialog.vue';
 import ResourceTree from '../components/ResourceTree.vue';
 import HostedPanel from '../components/HostedPanel.vue';
 import ClusterAddons from '../components/addons/ClusterAddons.vue';
+import ClusterNamespaces from '../components/namespaces/ClusterNamespaces.vue';
 import ClusterResources from '../components/ClusterResources.vue';
 import ClusterConfiguration from '../components/day2/ClusterConfiguration.vue';
 import YamlButton from '../components/YamlButton.vue';
@@ -395,6 +396,9 @@ const breakable = (kind: string) => kind.replace(/([a-z0-9])([A-Z])/g, '$1\u200b
           t('day2.tab')
         }}</v-tab>
         <v-tab value="addons" data-testid="tab-addons">{{ t('addons.tab') }}</v-tab>
+        <v-tab v-if="s.kubeconfigAvailable" value="namespaces" data-testid="tab-namespaces">{{
+          t('namespaces.tab')
+        }}</v-tab>
         <v-tab value="resources" data-testid="tab-resources">{{ t('yamlView.resources') }}</v-tab>
         <v-tab value="events" data-testid="tab-events">
           {{ t('clusters.events') }}
@@ -810,6 +814,16 @@ const breakable = (kind: string) => kind.replace(/([a-z0-9])([A-Z])/g, '$1\u200b
             :name="name"
             :labels="s.summary.labels"
             :blueprint="s.summary.blueprint"
+          />
+        </v-window-item>
+
+        <!-- FP-36: managed namespaces and their accounts -->
+        <v-window-item value="namespaces">
+          <ClusterNamespaces
+            v-if="tab === 'namespaces'"
+            :connection="conn()"
+            :namespace="namespace"
+            :name="name"
           />
         </v-window-item>
 

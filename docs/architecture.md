@@ -19,11 +19,11 @@ The source of the diagram is [images/architecture.drawio](images/architecture.dr
 changing it in draw.io, export it again as `images/architecture.png` (PNG, zoom 200 %), so that
 the image in this file and in the README stays current.
 
-| Cluster                | Role                                                                                  | What the app does there                                                                                                                                                                |
-| ---------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Home cluster**       | Runs the app and holds its own state (there is no database)                           | Reads and writes the app's CRDs, Secrets and ConfigMaps in its namespace (`NAVIGATOR_NAMESPACE`)                                                                                       |
-| **Management cluster** | Runs Cluster API and the providers; holds the CAPI resources of the workload clusters | Installs providers, stores cloud credentials, writes the CAPI resources of workload clusters and the add-ons                                                                           |
-| **Workload cluster**   | A cluster created through CAPI                                                        | Mostly nothing directly. The app reads it for the dashboard, opens node shells and cleans up before deletion, using the kubeconfig Secret that CAPI writes into the management cluster |
+| Cluster                | Role                                                                                  | What the app does there                                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Home cluster**       | Runs the app and holds its own state (there is no database)                           | Reads and writes the app's CRDs, Secrets and ConfigMaps in its namespace (`NAVIGATOR_NAMESPACE`)                                                                                                                             |
+| **Management cluster** | Runs Cluster API and the providers; holds the CAPI resources of the workload clusters | Installs providers, stores cloud credentials, writes the CAPI resources of workload clusters and the add-ons                                                                                                                 |
+| **Workload cluster**   | A cluster created through CAPI                                                        | Mostly nothing directly. The app reads it for the dashboard, opens node shells, issues tokens for managed namespaces and cleans up before deletion, using the kubeconfig Secret that CAPI writes into the management cluster |
 
 A workload cluster can also be a **host for hosted control planes** (FP-24, experimental): k0smotron
 runs the control planes of other k0s clusters there as pods, reaching it with its Cluster API
@@ -334,6 +334,18 @@ infrastructure and credential, a worker per replica, and on Proxmox VE a free Lo
 as fixed tenant address (kube-vip announces a Service only once it has endpoints). Hosts with
 tenants cannot be deleted or unmarked. Details and limits:
 [hosted-control-planes.md](hosted-control-planes.md).
+
+### Managed namespaces
+
+A managed namespace (FP-36, [ADR-0039](adr/0039-namespaces-as-add-ons.md)) is one `HelmChartProxy`
+for the generic manifest chart, generated from a form model that is kept as annotation on it
+([managed-namespace.ts](../packages/shared/src/namespaces/managed-namespace.ts)). CAAPH installs
+Namespace, quota, LimitRange, Calico tier and policy, service accounts and role bindings. The
+backend ([namespaces](../apps/backend/src/namespaces)) reads the workload cluster with the
+kubeconfig that CAPI writes, compares the generated fields (drift) and issues tokens through the
+TokenRequest API, each bound to a Secret of its own
+([ADR-0040](adr/0040-tokens-for-namespaces.md)). Removing the add-on ends the access and keeps the
+namespace; deleting it is a separate action. Details: [namespaces.md](namespaces.md).
 
 ### Cluster blueprints
 

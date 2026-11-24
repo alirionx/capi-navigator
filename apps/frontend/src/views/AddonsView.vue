@@ -93,7 +93,9 @@ function openEdit(a: AddonStatus): void {
   dialogOpen.value = true;
 }
 /** Form model of the add-on's type; without one the add-on is read-only in the app. */
-const editable = (a: AddonStatus) => (a.type === 'manifests' ? !!a.manifestSpec : !!a.spec);
+const editable = (a: AddonStatus) =>
+  // Managed namespaces are changed on the cluster page (FP-36).
+  a.type === 'manifests' ? !!a.manifestSpec : a.type === 'helm' && !!a.spec;
 const deleting = ref<AddonStatus | null>(null);
 const deleteOpen = ref(false);
 </script>
@@ -209,12 +211,14 @@ const deleteOpen = ref(false);
           </template>
           <template #[`item.chartName`]="{ item }">
             <v-chip
-              v-if="item.type === 'manifests'"
+              v-if="item.type !== 'helm'"
               size="x-small"
               variant="tonal"
               color="secondary"
               class="mr-1"
-              >{{ t('addons.manifestsType') }}</v-chip
+              >{{
+                t(item.type === 'namespace' ? 'addons.namespaceType' : 'addons.manifestsType')
+              }}</v-chip
             >
             {{ item.chartName }}<span class="text-medium-emphasis ml-1">{{ item.version }}</span>
             <div class="text-body-small text-medium-emphasis">
