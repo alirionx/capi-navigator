@@ -62,6 +62,7 @@ spec:
                       - clusters.delete
                       - clusters.kubeconfig
                       - clusters.logs
+                      - clusters.access
                       - nodes.shell
                       - addons.manage
                       - presets.manage

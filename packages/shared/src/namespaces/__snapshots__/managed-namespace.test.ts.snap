@@ -1,0 +1,651 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`managed namespaces (FP-36) > becomes one HelmChartProxy and back (FP36-F-01) 1`] = `
+{
+  "apiVersion": "addons.cluster.x-k8s.io/v1alpha1",
+  "kind": "HelmChartProxy",
+  "metadata": {
+    "annotations": {
+      "capi-navigator.io/managed-namespace": "{"accounts":[{"name":"ci","role":"edit"},{"name":"audit","role":"view"}],"allowFrom":[],"clusterSelector":{"cluster.x-k8s.io/cluster-name":"prod"},"name":"team-a","namespace":"default","profile":"small","quota":{"cpuLimits":4,"cpuRequests":2,"loadBalancers":1,"memoryLimitsGiB":8,"memoryRequestsGiB":4,"pods":20,"storageGiB":20,"volumes":5},"revision":1}",
+    },
+    "labels": {
+      "capi-navigator.io/addon-type": "namespace",
+      "capi-navigator.io/managed-by": "capi-navigator",
+      "capi-navigator.io/namespace": "team-a",
+    },
+    "name": "ns-team-a-fe013ace",
+    "namespace": "default",
+  },
+  "spec": {
+    "chartName": "capi-navigator-manifests",
+    "clusterSelector": {
+      "matchLabels": {
+        "cluster.x-k8s.io/cluster-name": "prod",
+      },
+    },
+    "namespace": "capi-navigator-accounts",
+    "options": {
+      "install": {
+        "createNamespace": true,
+      },
+      "timeout": "5m0s",
+      "wait": true,
+    },
+    "reconcileStrategy": "Continuous",
+    "releaseName": "ns-team-a",
+    "repoURL": "oci://ghcr.io/alirionx/charts",
+    "valuesTemplate": "manifests: |2
+  # Managed namespace team-a, revision 1
+  apiVersion: v1
+  kind: Namespace
+  metadata:
+    name: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+      pod-security.kubernetes.io/audit: restricted
+      pod-security.kubernetes.io/enforce: baseline
+      pod-security.kubernetes.io/warn: restricted
+    annotations:
+      helm.sh/resource-policy: keep
+  ---
+  apiVersion: v1
+  kind: ResourceQuota
+  metadata:
+    name: capi-navigator
+    namespace: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      helm.sh/resource-policy: keep
+  spec:
+    hard:
+      limits.cpu: "4"
+      limits.memory: 8Gi
+      persistentvolumeclaims: "5"
+      pods: "20"
+      requests.cpu: "2"
+      requests.memory: 4Gi
+      requests.storage: 20Gi
+      services.loadbalancers: "1"
+  ---
+  apiVersion: v1
+  kind: LimitRange
+  metadata:
+    name: capi-navigator
+    namespace: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      helm.sh/resource-policy: keep
+  spec:
+    limits:
+      - type: Container
+        default:
+          cpu: 500m
+          memory: 512Mi
+        defaultRequest:
+          cpu: 100m
+          memory: 128Mi
+  ---
+  apiVersion: crd.projectcalico.org/v1
+  kind: Tier
+  metadata:
+    name: capi-navigator-team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      helm.sh/resource-policy: keep
+  spec:
+    order: 500
+    defaultAction: Pass
+  ---
+  apiVersion: crd.projectcalico.org/v1
+  kind: NetworkPolicy
+  metadata:
+    name: capi-navigator-team-a.isolation
+    namespace: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      helm.sh/resource-policy: keep
+  spec:
+    tier: capi-navigator-team-a
+    order: 100
+    selector: all()
+    types:
+      - Ingress
+    ingress:
+      - action: Pass
+        source:
+          namespaceSelector: projectcalico.org/name in {'team-a'}
+      - action: Deny
+        source:
+          namespaceSelector: all()
+      - action: Pass
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: team-a.ci
+    namespace: capi-navigator-accounts
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      capi-navigator.io/role: edit
+  automountServiceAccountToken: false
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: capi-navigator-ci-edit
+    namespace: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: edit
+  subjects:
+    - kind: ServiceAccount
+      name: team-a.ci
+      namespace: capi-navigator-accounts
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: team-a.audit
+    namespace: capi-navigator-accounts
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+    annotations:
+      capi-navigator.io/role: view
+  automountServiceAccountToken: false
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: capi-navigator-audit-view
+    namespace: team-a
+    labels:
+      capi-navigator.io/managed-by: capi-navigator
+      capi-navigator.io/namespace: team-a
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: view
+  subjects:
+    - kind: ServiceAccount
+      name: team-a.audit
+      namespace: capi-navigator-accounts
+",
+    "version": "0.20.0",
+  },
+}
+`;
+
+exports[`managed namespaces (FP-36) > objects per profile (FP36-F-02, hard rule 3) > large 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    helm.sh/resource-policy: keep
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  hard:
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    persistentvolumeclaims: "20"
+    pods: "100"
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    requests.storage: 100Gi
+    services.loadbalancers: "4"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: crd.projectcalico.org/v1
+kind: Tier
+metadata:
+  name: capi-navigator-team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  order: 500
+  defaultAction: Pass
+---
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-navigator-team-a.isolation
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  tier: capi-navigator-team-a
+  order: 100
+  selector: all()
+  types:
+    - Ingress
+  ingress:
+    - action: Pass
+      source:
+        namespaceSelector: projectcalico.org/name in {'ingress-nginx', 'team-a'}
+    - action: Deny
+      source:
+        namespaceSelector: all()
+    - action: Pass
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.ci
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: edit
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-ci-edit
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: team-a.ci
+    namespace: capi-navigator-accounts
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.audit
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: view
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-audit-view
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: team-a.audit
+    namespace: capi-navigator-accounts
+"
+`;
+
+exports[`managed namespaces (FP-36) > objects per profile (FP36-F-02, hard rule 3) > medium 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    helm.sh/resource-policy: keep
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  hard:
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "10"
+    pods: "50"
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    requests.storage: 50Gi
+    services.loadbalancers: "2"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: crd.projectcalico.org/v1
+kind: Tier
+metadata:
+  name: capi-navigator-team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  order: 500
+  defaultAction: Pass
+---
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-navigator-team-a.isolation
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  tier: capi-navigator-team-a
+  order: 100
+  selector: all()
+  types:
+    - Ingress
+  ingress:
+    - action: Pass
+      source:
+        namespaceSelector: projectcalico.org/name in {'ingress-nginx', 'team-a'}
+    - action: Deny
+      source:
+        namespaceSelector: all()
+    - action: Pass
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.ci
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: edit
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-ci-edit
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: team-a.ci
+    namespace: capi-navigator-accounts
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.audit
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: view
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-audit-view
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: team-a.audit
+    namespace: capi-navigator-accounts
+"
+`;
+
+exports[`managed namespaces (FP-36) > objects per profile (FP36-F-02, hard rule 3) > small 1`] = `
+"apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted
+  annotations:
+    helm.sh/resource-policy: keep
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  hard:
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    persistentvolumeclaims: "5"
+    pods: "20"
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    requests.storage: 20Gi
+    services.loadbalancers: "1"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: capi-navigator
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+---
+apiVersion: crd.projectcalico.org/v1
+kind: Tier
+metadata:
+  name: capi-navigator-team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  order: 500
+  defaultAction: Pass
+---
+apiVersion: crd.projectcalico.org/v1
+kind: NetworkPolicy
+metadata:
+  name: capi-navigator-team-a.isolation
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  tier: capi-navigator-team-a
+  order: 100
+  selector: all()
+  types:
+    - Ingress
+  ingress:
+    - action: Pass
+      source:
+        namespaceSelector: projectcalico.org/name in {'team-a'}
+    - action: Deny
+      source:
+        namespaceSelector: all()
+    - action: Pass
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.ci
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: edit
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-ci-edit
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+  - kind: ServiceAccount
+    name: team-a.ci
+    namespace: capi-navigator-accounts
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: team-a.audit
+  namespace: capi-navigator-accounts
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+  annotations:
+    capi-navigator.io/role: view
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: capi-navigator-audit-view
+  namespace: team-a
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    capi-navigator.io/namespace: team-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: team-a.audit
+    namespace: capi-navigator-accounts
+"
+`;

@@ -189,6 +189,7 @@ function bootstrapFields(
 
 export const kubeadmPlugin: BootstrapFlavorPlugin = {
   flavor: 'kubeadm',
+  cni: 'calico',
   displayName: 'kubeadm',
   needsCni: true,
   installsPackages: true,

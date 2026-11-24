@@ -265,6 +265,7 @@ const sortedLabels = (labels: Record<string, string>) =>
 
 export const k0sPlugin: BootstrapFlavorPlugin = {
   flavor: 'k0s',
+  cni: 'calico',
   displayName: 'k0s',
   customizationFields: { preCommands: 'preK0sCommands', postCommands: 'postK0sCommands' },
   // FP29-F-12: the static k0s binary of the release, where k0smotron installs it (k0sInstallDir).

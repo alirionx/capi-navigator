@@ -11350,6 +11350,7 @@
           "clusters.delete",
           "clusters.kubeconfig",
           "clusters.logs",
+          "clusters.access",
           "nodes.shell",
           "addons.manage",
           "presets.manage",
@@ -13330,7 +13331,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 16,
+            "maxItems": 17,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"
@@ -14936,7 +14937,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 16,
+            "maxItems": 17,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"

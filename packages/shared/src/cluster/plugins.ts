@@ -199,6 +199,8 @@ export interface BootstrapFlavorPlugin {
   flavor: ClusterSpec['kubernetes']['flavor'];
   /** Ports and node traffic the distribution needs (ADR-0012). */
   network: FlavorNetwork;
+  /** CNI of the distribution's clusters; managed namespaces need Calico (FP36-F-03a). */
+  cni: 'calico' | 'other';
   /** The distribution ships no CNI; a CNI preset is rolled out unless switched off (FP10-F-04). */
   needsCni?: boolean;
   /**

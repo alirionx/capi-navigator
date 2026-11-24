@@ -20,7 +20,7 @@ cluster all the same.
 - **TokenRequest API**, called with the kubeconfig that CAPI writes, like dashboard and node shell.
   Lifetime 10 minutes to 7 days, default 7 days, checked by the app. The expiry the API server
   grants is shown.
-- **Bound to a Secret per token** in `capi-navigator-access`. The Secret is empty; its annotations
+- **Bound to a Secret per token** in `capi-navigator-accounts`. The Secret is empty; its annotations
   name account, creator and expiry. Deleting it revokes this one token. The list of tokens is read
   from these Secrets.
 - **Returned once**, as token or kubeconfig, with `Cache-Control: no-store`; kept only in the open

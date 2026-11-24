@@ -27,7 +27,7 @@ Helm 3.20.2 as in CAAPH v0.6.4):
 
 - **One `HelmChartProxy` per managed namespace**, generated from a form. The form model is an
   annotation on it; the manifests follow from it by a pure function. The release namespace and the
-  namespace of all service accounts is `capi-navigator-access`, where teams have no rights: so
+  namespace of all service accounts is `capi-navigator-accounts`, where teams have no rights: so
   nobody takes over another account, renews a token or reads the Helm release.
 - **Nothing is lost on removal.** CAAPH uninstalls a release when a cluster no longer matches or
   the add-on is deleted. Namespace, quota, LimitRange and isolation carry
