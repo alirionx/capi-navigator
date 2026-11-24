@@ -3169,6 +3169,524 @@
         ]
       }
     },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces": {
+      "get": {
+        "operationId": "Namespaces_list",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Managed namespaces of a workload cluster with accounts, quota usage and drift",
+        "description": "Defined as add-ons, compared with the cluster through its kubeconfig. Tokens are listed without their content (ADR-0040).\n\nRequires permission `view`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagedNamespaces"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "view"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/{workloadNamespace}": {
+      "delete": {
+        "operationId": "Namespaces_remove",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "End the access to a managed namespace (removes the add-on)",
+        "description": "Accounts and role bindings go on all matching clusters; the namespace stays with data, quota and isolation (FP36-F-04).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      },
+      "put": {
+        "operationId": "Namespaces_apply",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Create or change a managed namespace",
+        "description": "One HelmChartProxy per namespace; applied by server-side apply (FP36-F-01).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedNamespaceApplyRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddonPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/{workloadNamespace}/accounts/{account}/tokens": {
+      "post": {
+        "operationId": "Namespaces_issueToken",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Issue a token or kubeconfig for an account of a managed namespace",
+        "description": "Returned once and never stored; 10 minutes to 7 days, revocable on its own (ADR-0040).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NamespaceTokenRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/{workloadNamespace}/delete": {
+      "post": {
+        "operationId": "Namespaces_deleteNamespace",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Delete a left-over namespace with everything in it",
+        "description": "Only after its add-on is gone and with the name typed (FP36-F-05).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedNamespaceDeleteRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/{workloadNamespace}/tokens/{token}": {
+      "delete": {
+        "operationId": "Namespaces_revokeToken",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Revoke one token of a managed namespace",
+        "description": "The API server refuses it within seconds.\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/preview": {
+      "post": {
+        "operationId": "Namespaces_preview",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "Preview creating or changing a managed namespace",
+        "description": "Dry run on the management cluster; nothing is changed (hard rule 6).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedNamespaceApplyRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddonPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
     "/api/connections/{connection}/clusters/{namespace}/{name}/registry-contents": {
       "get": {
         "operationId": "Clusters_registryContents",
@@ -7439,7 +7957,8 @@
             "type": "string",
             "enum": [
               "helm",
-              "manifests"
+              "manifests",
+              "namespace"
             ]
           },
           "spec": {
@@ -10737,6 +11256,202 @@
         ],
         "additionalProperties": false
       },
+      "ManagedNamespaceSpec": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "namespace": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "clusterSelector": {
+            "$ref": "#/components/schemas/Labels"
+          },
+          "profile": {
+            "default": "small",
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "quota": {
+            "$ref": "#/components/schemas/NamespaceQuota"
+          },
+          "allowFrom": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 63,
+              "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+            }
+          },
+          "accounts": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceAccount"
+            }
+          },
+          "revision": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "namespace",
+          "clusterSelector",
+          "profile",
+          "quota",
+          "allowFrom",
+          "accounts",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "ManagedNamespaceView": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "spec": {
+            "$ref": "#/components/schemas/ManagedNamespaceSpec"
+          },
+          "addon": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "ready": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "ready"
+            ],
+            "additionalProperties": false
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "leftOver": {
+            "type": "boolean"
+          },
+          "drift": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceDrift"
+            }
+          },
+          "quota": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "type": "string"
+                },
+                "used": {
+                  "type": "string"
+                },
+                "hard": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource",
+                "used",
+                "hard"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "edit"
+                  ]
+                },
+                "exists": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "role",
+                "exists"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceToken"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "exists",
+          "leftOver",
+          "drift",
+          "quota",
+          "accounts",
+          "tokens"
+        ],
+        "additionalProperties": false
+      },
+      "ManagedNamespaces": {
+        "type": "object",
+        "properties": {
+          "unsupported": {
+            "type": "string"
+          },
+          "unreachable": {
+            "type": "string"
+          },
+          "namespaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagedNamespaceView"
+            }
+          }
+        },
+        "required": [
+          "namespaces"
+        ],
+        "additionalProperties": false
+      },
       "ManagementClusterStatus": {
         "type": "object",
         "properties": {
@@ -10984,6 +11699,174 @@
         "required": [
           "reference",
           "commands"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceAccount": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30,
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "role": {
+            "default": "view",
+            "type": "string",
+            "enum": [
+              "view",
+              "edit"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceDrift": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "boolean"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "missing",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceQuota": {
+        "type": "object",
+        "properties": {
+          "cpuRequests": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 1000
+          },
+          "cpuLimits": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 1000
+          },
+          "memoryRequestsGiB": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "memoryLimitsGiB": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "pods": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "volumes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500
+          },
+          "storageGiB": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "loadBalancers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "cpuRequests",
+          "cpuLimits",
+          "memoryRequestsGiB",
+          "memoryLimitsGiB",
+          "pods",
+          "volumes",
+          "storageGiB",
+          "loadBalancers"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceToken": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "account": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "expired": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "account",
+          "expired"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceTokenResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "token",
+              "kubeconfig"
+            ]
+          },
+          "content": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "format",
+          "content",
+          "expiresAt",
+          "fileName"
         ],
         "additionalProperties": false
       },
@@ -13605,6 +14488,94 @@
           "password"
         ]
       },
+      "ManagedNamespaceApplyRequestInput": {
+        "type": "object",
+        "properties": {
+          "spec": {
+            "$ref": "#/components/schemas/ManagedNamespaceSpecInput"
+          },
+          "takeOver": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spec"
+        ]
+      },
+      "ManagedNamespaceDeleteRequestInput": {
+        "type": "object",
+        "properties": {
+          "confirmName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmName"
+        ]
+      },
+      "ManagedNamespaceSpecInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40,
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "namespace": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "clusterSelector": {
+            "$ref": "#/components/schemas/Labels"
+          },
+          "profile": {
+            "default": "small",
+            "type": "string",
+            "enum": [
+              "small",
+              "medium",
+              "large"
+            ]
+          },
+          "quota": {
+            "$ref": "#/components/schemas/NamespaceQuotaInput"
+          },
+          "allowFrom": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 63,
+              "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+            }
+          },
+          "accounts": {
+            "default": [],
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespaceAccountInput"
+            }
+          },
+          "revision": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "namespace",
+          "clusterSelector",
+          "quota"
+        ]
+      },
       "ManifestAddonApplyRequestInput": {
         "type": "object",
         "properties": {
@@ -13684,6 +14655,102 @@
           "manifests",
           "clusterSelector"
         ]
+      },
+      "NamespaceAccountInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30,
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$"
+          },
+          "role": {
+            "default": "view",
+            "type": "string",
+            "enum": [
+              "view",
+              "edit"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "NamespaceQuotaInput": {
+        "type": "object",
+        "properties": {
+          "cpuRequests": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 1000
+          },
+          "cpuLimits": {
+            "type": "number",
+            "minimum": 0.1,
+            "maximum": 1000
+          },
+          "memoryRequestsGiB": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "memoryLimitsGiB": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4096
+          },
+          "pods": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "volumes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500
+          },
+          "storageGiB": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000
+          },
+          "loadBalancers": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50
+          }
+        },
+        "required": [
+          "cpuRequests",
+          "cpuLimits",
+          "memoryRequestsGiB",
+          "memoryLimitsGiB",
+          "pods",
+          "volumes",
+          "storageGiB",
+          "loadBalancers"
+        ]
+      },
+      "NamespaceTokenRequestInput": {
+        "type": "object",
+        "properties": {
+          "lifetimeSeconds": {
+            "default": 604800,
+            "type": "integer",
+            "minimum": 600,
+            "maximum": 604800
+          },
+          "format": {
+            "default": "kubeconfig",
+            "type": "string",
+            "enum": [
+              "token",
+              "kubeconfig"
+            ]
+          }
+        }
       },
       "NodeCustomizationInput": {
         "type": "object",

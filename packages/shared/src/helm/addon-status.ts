@@ -3,8 +3,8 @@ import { ConditionSchema } from '../cluster/api.js';
 import { AddonSpecSchema } from './addon.js';
 import { ManifestAddonSpecSchema } from './manifest-addon.js';
 
-/** Helm add-ons of the app's chart browser, or manifest add-ons (FP-30). */
-export const ADDON_TYPES = ['helm', 'manifests'] as const;
+/** Helm add-ons of the chart browser, manifest add-ons (FP-30), managed namespaces (FP-36). */
+export const ADDON_TYPES = ['helm', 'manifests', 'namespace'] as const;
 
 /** Release of an add-on on one cluster (HelmReleaseProxy, FP8-F-11). */
 export const HelmReleaseStatusSchema = z.object({

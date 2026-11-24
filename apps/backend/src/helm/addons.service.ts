@@ -10,6 +10,7 @@ import { CustomObjectsApi, type KubeConfig, type KubernetesObject } from '@kuber
 import {
   addonSpecFromHelmChartProxy,
   buildHelmChartProxy,
+  buildNamespaceHelmChartProxy,
   buildRepositorySecretCopy,
   HELM_CHART_PROXY_NAME_LABEL,
   buildManifestHelmChartProxy,
@@ -17,12 +18,15 @@ import {
   checkManifests,
   HELM_REPOSITORY_ANNOTATION,
   isManifestAddon,
+  isNamespaceAddon,
   MANAGED_BY_LABEL,
   manifestAddonSpecFromHelmChartProxy,
   manifestObjectKey,
   MANAGED_BY_VALUE,
   matchesSelector,
   PRESET_LABEL,
+  managedNamespaceFromHelmChartProxy,
+  namespaceAddonName,
   selectorsCanOverlap,
   stableStringify,
   type AddonDeletePreview,
@@ -34,7 +38,9 @@ import {
   type Condition,
   type Drift,
   type HelmReleaseStatus,
+  type ManagedNamespaceSpec,
   type ManifestAddonSpec,
+  type ManifestChartSource,
   type ObjectDiff,
 } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
@@ -78,6 +84,14 @@ const conditionsOf = (o: Obj): Condition[] =>
     ...(c.lastTransitionTime ? { lastTransitionTime: c.lastTransitionTime } : {}),
   }));
 const isReady = (o: Obj) => conditionsOf(o).some((c) => c.type === 'Ready' && c.status === 'True');
+
+const ADDON_TYPE_NAMES: Record<AddonStatus['type'], string> = {
+  helm: 'a Helm add-on',
+  manifests: 'a manifest add-on',
+  namespace: 'a managed namespace',
+};
+const addonType = (h: Obj): AddonStatus['type'] =>
+  isNamespaceAddon(h) ? 'namespace' : isManifestAddon(h) ? 'manifests' : 'helm';
 
 /** Pure: overview rows from the listed objects (FP8-F-11). */
 export function buildAddonStatuses(hcps: Obj[], hrps: Obj[], clusters: Obj[]): AddonStatus[] {
@@ -131,7 +145,8 @@ export function buildAddonStatuses(hcps: Obj[], hrps: Obj[], clusters: Obj[]): A
             )
             .map((c) => c.metadata.name);
       const manifests = isManifestAddon(h);
-      const parsed = manifests ? undefined : addonSpecFromHelmChartProxy(h);
+      const namespaceAddon = isNamespaceAddon(h);
+      const parsed = manifests || namespaceAddon ? undefined : addonSpecFromHelmChartProxy(h);
       const manifestSpec = manifests ? manifestAddonSpecFromHelmChartProxy(h) : undefined;
       const presetId = h.metadata.labels?.[PRESET_LABEL];
       const repository = h.metadata.annotations?.[HELM_REPOSITORY_ANNOTATION];
@@ -139,7 +154,7 @@ export function buildAddonStatuses(hcps: Obj[], hrps: Obj[], clusters: Obj[]): A
         name: h.metadata.name,
         namespace: h.metadata.namespace,
         managed: h.metadata.labels?.[MANAGED_BY_LABEL] === MANAGED_BY_VALUE,
-        type: manifests ? 'manifests' : 'helm',
+        type: addonType(h),
         ...(presetId ? { presetId } : {}),
         ...(repository ? { repository } : {}),
         ...(parsed && !presetId ? { spec: parsed } : {}),
@@ -310,9 +325,11 @@ export class AddonsService implements OnApplicationShutdown {
         ]
       : status.releases.length
         ? [
-            status.type === 'manifests'
-              ? `The objects of the add-on are deleted from all ${status.releases.length} matching cluster(s) (FP30-F-09).`
-              : `The Helm release is uninstalled from all ${status.releases.length} matching cluster(s).`,
+            status.type === 'namespace'
+              ? `The access to the namespace ends on ${status.releases.length} cluster(s): service accounts and role bindings are removed, all tokens become invalid. The namespace stays with its data, quota and isolation (FP36-F-04).`
+              : status.type === 'manifests'
+                ? `The objects of the add-on are deleted from all ${status.releases.length} matching cluster(s) (FP30-F-09).`
+                : `The Helm release is uninstalled from all ${status.releases.length} matching cluster(s).`,
           ]
         : [];
     return {
@@ -394,23 +411,84 @@ export class AddonsService implements OnApplicationShutdown {
       const message = status.message ?? 'The manifest chart is not available';
       blockers.push(status.hint ? `${message}. ${status.hint}` : message);
     }
-    const objects: KubernetesObject[] = [];
-    if (source?.repository) {
-      const copyData = await this.repositories.copyData(source.repository.name);
-      if (copyData) {
-        objects.push(
-          buildRepositorySecretCopy(
-            source.repository.name,
-            spec.namespace,
-            copyData,
-          ) as KubernetesObject,
-        );
-      }
-    }
+    const objects = await this.chartSecret(source, spec.namespace);
     // Without a source the preview still shows the object, with the version left open.
     objects.push(buildManifestHelmChartProxy(spec, source ?? { version: status.version ?? '' }));
     warnings.push(...(await this.overlaps(connection, spec)));
     return this.compare(connection, kc, spec, objects, 'manifests', blockers, warnings);
+  }
+
+  /** Copy of the registry credentials the chart source needs next to the HelmChartProxy. */
+  private async chartSecret(
+    source: ManifestChartSource | undefined,
+    namespace: string,
+  ): Promise<KubernetesObject[]> {
+    if (!source?.repository) return [];
+    const copyData = await this.repositories.copyData(source.repository.name);
+    return copyData
+      ? [buildRepositorySecretCopy(source.repository.name, namespace, copyData) as KubernetesObject]
+      : [];
+  }
+
+  /** FP36-F-01, F-06: plan of a managed namespace; the caller adds what it knows of the clusters. */
+  async planNamespace(
+    connection: string,
+    spec: ManagedNamespaceSpec,
+    blockers: string[],
+    warnings: string[],
+  ) {
+    const kc = await this.clients.forConnection(connection);
+    const { source, status } = await this.manifestChart.source(connection);
+    if (!source) {
+      const message = status.message ?? 'The manifest chart is not available';
+      blockers.push(status.hint ? `${message}. ${status.hint}` : message);
+    }
+    const objects = await this.chartSecret(source, spec.namespace);
+    objects.push(buildNamespaceHelmChartProxy(spec, source ?? { version: status.version ?? '' }));
+    const name = namespaceAddonName(spec);
+    return this.compare(
+      connection,
+      kc,
+      { ...spec, name, reconcileStrategy: 'Continuous' },
+      objects,
+      'namespace',
+      blockers,
+      warnings,
+    );
+  }
+
+  async applyNamespace(
+    connection: string,
+    spec: ManagedNamespaceSpec,
+    takeOver: boolean,
+    blockers: string[],
+    warnings: string[],
+  ): Promise<AddonPreview> {
+    const plan = await this.planNamespace(connection, spec, blockers, warnings);
+    return this.applyPlan({ name: namespaceAddonName(spec) }, takeOver, plan);
+  }
+
+  /** Managed namespaces of a management cluster namespace, with their add-on status (FP36-F-11). */
+  async namespaceAddons(
+    connection: string,
+    namespace: string,
+  ): Promise<{ spec: ManagedNamespaceSpec; status: AddonStatus }[]> {
+    return this.kube('Read the managed namespaces', async () => {
+      const kc = await this.clients.forConnection(connection);
+      const { addons } = await this.overview(connection);
+      const rows = addons.filter((a) => a.type === 'namespace' && a.namespace === namespace);
+      if (!rows.length) return [];
+      const { items } = (await kc.makeApiClient(CustomObjectsApi).listNamespacedCustomObject({
+        ...ADDONS,
+        namespace,
+        plural: 'helmchartproxies',
+      })) as { items: Obj[] };
+      return rows.flatMap((status) => {
+        const hcp = items.find((i) => i.metadata.name === status.name);
+        const spec = hcp && managedNamespaceFromHelmChartProxy(hcp);
+        return spec ? [{ spec, status }] : [];
+      });
+    });
   }
 
   /** FP30-F-08: objects that another manifest add-on may already install on the same cluster. */
@@ -440,7 +518,7 @@ export class AddonsService implements OnApplicationShutdown {
     kc: KubeConfig,
     spec: Pick<AddonSpec, 'name' | 'namespace' | 'reconcileStrategy' | 'clusterSelector'>,
     objects: KubernetesObject[],
-    type: 'helm' | 'manifests',
+    type: AddonStatus['type'],
     blockers: string[],
     warnings: string[],
   ) {
@@ -460,9 +538,9 @@ export class AddonsService implements OnApplicationShutdown {
           blockers.push(
             `A HelmChartProxy ${spec.namespace}/${spec.name} exists that was not created by the app; choose another name`,
           );
-        } else if (isManifestAddon(live) !== (type === 'manifests')) {
+        } else if (addonType(live) !== type) {
           blockers.push(
-            `${spec.name} is a ${type === 'manifests' ? 'Helm' : 'manifest'} add-on; choose another name`,
+            `${spec.name} is already used by ${ADDON_TYPE_NAMES[addonType(live)]}; choose another name`,
           );
         }
         const liveStrategy = (live.spec?.reconcileStrategy as string | undefined) || 'Continuous';
