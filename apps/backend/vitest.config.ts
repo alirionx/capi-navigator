@@ -19,6 +19,9 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
+    // The cached transform of src/testing/routes.ts keeps its expanded import.meta.glob, so new
+    // controllers were missing from the endpoint tests locally while CI failed.
+    fsModuleCache: false,
     include: ['src/**/*.test.ts'],
     // NF-15: at least 70 % line coverage in the backend.
     coverage: {

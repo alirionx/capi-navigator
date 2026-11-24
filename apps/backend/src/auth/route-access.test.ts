@@ -62,6 +62,19 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'DELETE /api/blueprints/:name': 'admin',
     'GET /api/blueprints/:name/clusters': 'viewer',
     'POST /api/blueprints/:blueprint/clusters': 'operator',
+    // FP-36: managed namespaces; tokens need clusters.access (ADR-0040).
+    'GET /api/connections/:connection/clusters/:namespace/:name/namespaces': 'viewer',
+    'POST /api/connections/:connection/clusters/:namespace/:name/namespaces/preview': 'operator',
+    'PUT /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace':
+      'operator',
+    'DELETE /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace':
+      'operator',
+    'POST /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace/delete':
+      'operator',
+    'POST /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace/accounts/:account/tokens':
+      'operator',
+    'DELETE /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace/tokens/:token':
+      'operator',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 
