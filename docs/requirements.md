@@ -1266,7 +1266,7 @@ Live acceptance on Proxmox VE 9.2 (2026-11-03, through the API of the dev backen
 
 Namespaces as add-ons:
 
-- **FP36-F-01** MUST define a managed namespace as one `HelmChartProxy` for the generic chart `capi-navigator-manifests` (FP-30), created from a form, not from free YAML: name, profile with its values, service accounts with their roles. The form model is kept as annotation on the `HelmChartProxy`; the manifests are generated from it by a pure function (hard rule 3). The cluster selector is preset to the one cluster (`cluster.x-k8s.io/cluster-name`); other labels can roll out the same namespace to several clusters, as for every add-on (FP8-F-07). The reconcile strategy is always `Continuous`, because `InstallOnce` never applies later changes. The backend keeps no state (hard rule 1).
+- **FP36-F-01** MUST define a managed namespace as one `HelmChartProxy` for the generic chart `capi-navigator-manifests` (FP-30), created from a form, not from free YAML: name, profile with its values, service accounts with their roles. The form model is kept as annotation on the `HelmChartProxy` (extensible: FP-37 adds the people of an account); the manifests are generated from it by a pure function (hard rule 3). The cluster selector is preset to the one cluster (`cluster.x-k8s.io/cluster-name`); other labels can roll out the same namespace to several clusters, as for every add-on (FP8-F-07). The reconcile strategy is always `Continuous`, because `InstallOnce` never applies later changes. The backend keeps no state (hard rule 1).
 - **FP36-F-02** MUST generate for every managed namespace: `Namespace` with Pod Security Admission labels (`enforce: baseline`, `warn` and `audit: restricted`), `ResourceQuota`, `LimitRange` with default requests and limits per container, and `NetworkPolicy`. The profiles are presets in `packages/shared` whose values can be adjusted per namespace; changing them later is a day-2 change with preview. Presets (sums per namespace; decided 2026-11-18):
 
 | Profile | CPU requests / limits | Memory requests / limits | Pods | PVCs / storage | LoadBalancer Services |
@@ -1312,6 +1312,31 @@ General:
 - [ ] Viewers cannot use the feature, operators only within their scope (permission test).
 - [ ] Live acceptance with RKE2, k0s and kubeadm on one infrastructure.
 
+### FP-37: Self-service for namespace users (optional, planned)
+
+**Goal:** people who work in a managed namespace (FP-36) sign in to the app and get their token or kubeconfig themselves, instead of the cluster owner issuing and passing on a new one at least every 7 days. They see only their own namespaces. A page of its own beside the existing ones, not a filter on them: reading stays global for everybody with `view` (FP19-F-04). Needs FP-36. Two parts; part 2 only after part 1 is done.
+
+**Requirements, part 1: own page and tokens**
+
+- **FP37-F-01** MUST add a built-in role "namespace user" without `view`: it grants nothing but the endpoints of this pack and the person's own account (sign-in, sign-out, password). Every other endpoint and live stream answers 403. Today every role implies `view` (FP19-F-02 and the permission check); this becomes the one exception, with an ADR and a test over all endpoints.
+- **FP37-F-02** MUST let the cluster owner assign people to a service account in the namespace form (FP-36): local users, OIDC people (by `sub`, FP-14) and OIDC groups. The assignment is stored with the form model on the `HelmChartProxy`, no new CRD. It grants nothing else in the app and works for people of every role.
+- **FP37-F-03** MUST offer a page "My namespaces" to every assigned person: cluster, namespace, role, quota usage, and their own tokens with expiry. The list is filtered in the backend from the assignments, never in the browser; names of other clusters, namespaces, accounts and people do not appear.
+- **FP37-F-04** MUST let them issue a token or kubeconfig for an assigned account under the rules of FP36-F-08 to F-10, and revoke only tokens they issued themselves. Cluster owners see and revoke all (FP36-F-11).
+- **FP37-F-05** MUST check the assignment on every request, so removing a person takes effect at once for new tokens; tokens already issued stay valid until they expire or are revoked, and the form offers to revoke those of a removed person.
+- **FP37-F-06** MUST write an `AuditEvent` for every token issued or revoked (person, cluster, namespace, account; never the token) and limit the number of valid tokens per person and account.
+- **FP37-F-07** MUST describe the endpoints in the OpenAPI document (FP-23). API tokens of the app (FP-22) are not available to namespace users.
+
+**Requirements, part 2: dashboard of the own namespace**
+
+- **FP37-F-08** SHOULD show a read-only dashboard of an assigned namespace: workloads, pods, events, quota. Nothing about nodes, other namespaces or the cluster's infrastructure; built as its own query limited to the namespace, not by filtering the cluster dashboard (FP-18).
+
+**Acceptance criteria**
+
+- [ ] A test over all endpoints and live streams shows that a namespace user gets 403 everywhere except the endpoints of this pack and the own account; viewer, operator and admin keep their access unchanged.
+- [ ] A namespace user with one assignment sees exactly this namespace; guessing names of other clusters, namespaces or accounts in the API gives the same answer as for ones that do not exist.
+- [ ] The person issues a kubeconfig and works with it; a removed person gets no new token.
+- [ ] Assignment by OIDC group works with Dex.
+- [ ] Part 2: the dashboard of one namespace shows nothing of another.
 
 ## 7. Non-functional requirements
 

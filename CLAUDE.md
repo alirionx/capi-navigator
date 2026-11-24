@@ -10,7 +10,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 
 ## Source of truth
 
-- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-34, FP-36, outlook FP-11 to FP-21, FP-27, FP-28 and FP-35, non-functional requirements, decisions). Always follow it.
+- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-34, FP-36, FP-37, outlook FP-11 to FP-21, FP-27, FP-28 and FP-35, non-functional requirements, decisions). Always follow it.
 - **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
@@ -55,7 +55,8 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-29 | Air-gapped workload clusters (optional) | done (proxy for app and providers, ADR-0029; nodes from an internal registry, ADR-0030; kubeadm on Cluster API images, ADR-0032; NTP servers FP29-F-18 postponed) |
 | FP-24 | Hosted control planes with k0smotron (optional, experimental; OpenStack, Proxmox VE, AWS) | done (experimental, ADR-0034; live acceptance on Proxmox VE, OpenStack and AWS; air-gapped on an air-gapped host since ADR-0037, live on Proxmox VE; Google Cloud not supported) |
 | FP-34 | Cluster blueprints (optional; groundwork for a separate Open Service Broker, ADR-0035) | done (ADR-0035; live acceptance on Proxmox VE with address pool, saving checked on OpenStack, AWS and Google Cloud; node network pool for OpenStack since ADR-0038, live acceptance on a cloud that refuses overlapping subnets pending) |
-| FP-36 | Namespaces and service accounts in workload clusters (optional) | planned |
+| FP-36 | Namespaces and service accounts in workload clusters (optional) | in progress |
+| FP-37 | Self-service for namespace users (optional; needs FP-36) | planned |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.
