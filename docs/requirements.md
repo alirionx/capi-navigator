@@ -363,6 +363,8 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-29 | Air-gapped workload clusters; management side behind a proxy (optional) | FP-3, FP-8 |
 | FP-24 | Hosted control planes with k0smotron (optional, experimental) | FP-9, FP-31, FP-32, FP-33 |
 | FP-34 | Cluster blueprints (optional) | FP-7, FP-19, FP-22 |
+| FP-36 | Namespaces and service accounts in workload clusters (optional) | FP-8, FP-19, FP-30 |
+| FP-37 | Self-service for namespace users (optional, planned) | FP-14, FP-36 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -1259,7 +1261,7 @@ Live check on Infomaniak (2026-11-09, through the API of the dev backend; Infoma
 Live acceptance on Proxmox VE 9.2 (2026-11-03, through the API of the dev backend with the token of a technical admin user): blueprint `acc-small` (RKE2 v1.35.9, one control plane node and one worker, workers 1–2, two sizes, two versions) saved after a check without blockers; orders with too many workers, a changed blueprint label or a control plane parameter answered `400`. The order with an instance label created `acc-bp-1`, found by `labelSelector`, with the annotation `capi-navigator.io/blueprint`, Available after 182 s; the kubeconfig from the API worked. Scaling, labels and a scale change were refused with `409`; the admin upgrade to v1.36.5 replaced the control plane and then the worker (325 s), the annotation stayed. Deleting the blueprint was refused while the cluster existed; the cluster was deleted with cleanup in 20 s, then the blueprint, nothing left on Proxmox VE. Found: the fixed addresses of the base spec let a Proxmox VE blueprint serve one cluster only and refused saving it while that cluster ran; fixed with the address pool (FP34-F-14). Retest: an all-in-one blueprint with the pool .71–.80, two concurrent orders got .71–.73 and .74–.76 and were Available after 105 s; changing the blueprint while they ran passed. The scoped permission of a limited technical user is covered by HTTP tests (a token cannot create users). Saving on the other providers (2026-11-03, against the real clouds through dry runs, nothing created): an OpenStack (Infomaniak) RKE2 all-in-one blueprint saved by the user in the UI; an AWS k0s blueprint (eu-central-1, workers 1–3, two instance types, two versions) and a Google Cloud kubeadm blueprint (europe-west3, workers 1–2, two machine types) passed the check without blockers and were saved; a blueprint with a missing credential was refused with `409`, one with a version outside the catalog with `400`. The Playwright test passed on 2026-11-03 against the dev app with a Proxmox VE all-in-one cluster as source and an address pool; it found that a combobox lost a typed range without Enter, so the address pool is now a text field with comma-separated ranges.
 
 
-### FP-36: Namespaces and service accounts in workload clusters (optional, planned)
+### FP-36: Namespaces and service accounts in workload clusters (optional)
 
 **Goal:** the owner of a workload cluster can optionally divide it into namespaces and hand out access to single namespaces, e.g. to sub-teams ("namespace as a service"). Namespaces, guard rails, service accounts and roles are rolled out as add-ons through CAAPH (rewritten 2026-11-24; the first draft wrote them directly into the workload cluster). Only time-limited tokens and kubeconfigs are issued on request through the API of the workload cluster, with the kubeconfig that CAPI writes, as the dashboard and the node shell already do. Ordering whole clusters stays as it is: the admin kubeconfig (FP6-F-04) remains the access to the whole cluster, and the app offers no cluster-wide roles. Not a multi-tenancy platform: no hierarchical tenants and no self-service for tenants.
 
@@ -1303,18 +1305,25 @@ General:
 
 **Acceptance criteria**
 
-- [ ] A namespace with a profile is rolled out as add-on after a preview; quota, LimitRange, network isolation and Pod Security labels are in place, and snapshot tests cover every profile.
-- [ ] With the kubeconfig of a service account with role `edit`, a deployment in its namespace works; other namespaces, cluster-wide resources, quota, LimitRange and the Calico policy are refused, and so are tokens, impersonation and Secrets in `capi-navigator-accounts` (`kubectl auth can-i`).
-- [ ] A pod of one managed namespace cannot reach a pod of another; within the namespace it can. A LoadBalancer Service and, if its namespace is allowed, an ingress controller reach the pods, also through another node. Exceeding the quota is refused by the API server.
-- [ ] A standard NetworkPolicy of the team still takes effect inside its namespace.
-- [ ] A cluster whose distribution plugin declares another CNI cannot be selected and is refused by the backend (tests).
-- [ ] A token stops working after its lifetime and within seconds after it is revoked; other tokens of the account keep working. A second download issues a new token.
-- [ ] Removing the label or the add-on keeps the namespace with its data, quota and isolation and ends the access; a new add-on of the same name takes the namespace over. Only the separate deletion removes it.
-- [ ] A quota deleted in the cluster is shown as drift and restored on request.
-- [ ] No token appears in logs, audit events, live streams or other responses (tests).
-- [ ] After a restart of the app everything is listed again; removing the app leaves namespaces and accounts working.
-- [ ] Viewers cannot use the feature, operators only within their scope (permission test).
-- [ ] Live acceptance with RKE2, k0s and kubeadm on one infrastructure.
+- [x] A namespace with a profile is rolled out as add-on after a preview; quota, LimitRange, network isolation and Pod Security labels are in place, and snapshot tests cover every profile.
+- [x] With the kubeconfig of a service account with role `edit`, a deployment in its namespace works; other namespaces, cluster-wide resources, quota, LimitRange and the Calico policy are refused, and so are tokens, impersonation and Secrets in `capi-navigator-accounts` (`kubectl auth can-i`).
+- [x] A pod of one managed namespace cannot reach a pod of another; within the namespace it can. A LoadBalancer Service and, if its namespace is allowed, an ingress controller reach the pods, also through another node. Exceeding the quota is refused by the API server.
+- [x] A standard NetworkPolicy of the team still takes effect inside its namespace.
+- [x] A cluster whose distribution plugin declares another CNI cannot be selected and is refused by the backend (tests).
+- [x] A token stops working after its lifetime and within seconds after it is revoked; other tokens of the account keep working. A second download issues a new token.
+- [x] Removing the label or the add-on keeps the namespace with its data, quota and isolation and ends the access; a new add-on of the same name takes the namespace over. Only the separate deletion removes it.
+- [x] A quota deleted in the cluster is shown as drift and restored on request.
+- [x] No token appears in logs, audit events, live streams or other responses (tests).
+- [x] After a restart of the app everything is listed again; removing the app leaves namespaces and accounts working.
+- [x] Viewers cannot use the feature, operators only within their scope (permission test).
+- [x] Live acceptance with RKE2, k0s and kubeadm on one infrastructure.
+
+Live acceptance on Proxmox VE (2026-11-24, through the API of the dev backend, CAAPH v0.6.4, Kubernetes v1.36.6): RKE2 with two nodes, k0s and kubeadm as all-in-one clusters, 37 to 39 checks each; on k0s also the selector by label, a restart of the backend and the whole flow in the real UI (create, issue, revoke, end access, delete). Releases were installed within 5 to 20 s, 7 days of lifetime were granted in full. Quota exceeded and the lifetime of a token were checked on kind (v1.37.0, Calico v3.33.0). Findings:
+
+- A token ends up to a minute after the time shown: Kubernetes allows one minute of leeway (measured: valid 55 s, refused 65 s after the expiry; `jwt.DefaultLeeway` in its source). A revoked token is refused within seconds (0 to 16 s).
+- On k0s the first request to a NodePort shortly after the Service was created timed out in three of four runs and worked from the next one on; the LoadBalancer Service always answered. In a direct comparison on a fresh cluster (three namespaces with and three without the policy) all 24 requests answered at once, so the isolation does not cause it permanently; the cause was not found.
+- `kubectl auth can-i list namespaces` says yes with a namespace as default of the kubeconfig, because `view` may read the own namespace object; listing namespaces is refused.
+- Namespaces being deleted were offered for taking over; they are now shown as such.
 
 ### FP-37: Self-service for namespace users (optional, planned)
 

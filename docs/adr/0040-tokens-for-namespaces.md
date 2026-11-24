@@ -32,5 +32,6 @@ cluster all the same.
 
 - Measured on 2026-11-24: a revoked token still worked after 6 seconds and was refused after 16,
   because the API server caches authentication. The dialog says "within seconds".
+- A token is accepted up to one minute after its expiry (leeway of Kubernetes, measured).
 - Removing an account invalidates all its tokens, also when an account of the same name follows.
 - Nobody can read a token again; a lost one is revoked and replaced.

@@ -33,7 +33,7 @@ An account is a service account with the role `view` or `edit` in this one names
 live in the namespace `capi-navigator-accounts`, where teams have no rights.
 
 **Get access** issues a token or a kubeconfig, valid for at most 7 days. It is shown once and not
-stored by the app. Issued access is listed with creator and expiry and can be revoked one by one;
+stored by the app. Kubernetes allows one minute of leeway after the expiry. Issued access is listed with creator and expiry and can be revoked one by one;
 it then stops working within seconds. Needs the permission `clusters.access` (operator and admin).
 
 ## Changes, removal, deletion
