@@ -24,6 +24,7 @@ checked against; they are documentation, not pins, but must be reviewed when tha
 ```sh
 pnpm versions:report   # needs Docker; uses your gh login for GitHub lookups if present
 pnpm outdated -r       # npm packages
+pnpm audit             # npm packages with known vulnerabilities
 ```
 
 `pnpm versions:report` writes [versions-report.md](versions-report.md): every entry of
@@ -55,6 +56,8 @@ Couplings to keep in mind (the tests check most of them):
 - **npm caps** in [renovate.json](../renovate.json): Vuetify `<4`; `typescript` is an alias of
   `@typescript/typescript6` (`<7`) for typescript-eslint and vue-tsc, `tsc` comes from
   `@typescript/native` = TypeScript 7 (ADR-0001).
+  `vue-tsc` stays on 3.3.13: 3.3.14 reports wrong types (vuejs/language-tools#6352); `dompurify` is
+  overridden in `pnpm-workspace.yaml` until monaco-editor 0.58.
   `@types/node` follows the Node.js major in `.nvmrc`, not the newest release.
 
 ## 3. Change
@@ -135,6 +138,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 ## Checklist
 
 - [ ] Report run, updates chosen (minimum release age respected)
+- [ ] `pnpm audit --prod` without findings of severity high or critical
 - [ ] Release notes and upgrade guides read for minor and major updates
 - [ ] `versions.yaml` changed and `pnpm versions:generate` run (or `pnpm up` for npm)
 - [ ] Couplings checked; `verifiedWithProvider` and `verified` updated

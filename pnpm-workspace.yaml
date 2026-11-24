@@ -5,3 +5,7 @@ allowBuilds:
   '@swc/core': true
   # Telemetry install script pulled in by swagger-ui-dist (FP-23); never run it.
   '@scarf/scarf': false
+overrides:
+  # GHSA-mrv2-3pqr-j5jr and others; monaco-editor 0.57 pins 3.4.15. Remove with monaco-editor 0.58,
+  # which brings 3.4.17 itself.
+  dompurify@<3.4.17: 3.4.17

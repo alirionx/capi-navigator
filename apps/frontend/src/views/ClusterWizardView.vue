@@ -1332,8 +1332,7 @@ const canPreview = computed(() => issues.value.length === 0);
       >
         <div v-for="i in issuesFor(step)" :key="i.path">
           <template v-if="i.labelKey">{{ t(i.labelKey) }}</template>
-          <span v-else class="font-monospace text-body-small">{{ i.path }}</span
-          >: {{ i.message }}
+          <span v-else class="font-monospace text-body-small">{{ i.path }}</span>: {{ i.message }}
         </div>
       </v-alert>
       <div class="d-flex">

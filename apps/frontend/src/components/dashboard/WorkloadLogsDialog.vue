@@ -238,8 +238,9 @@ function download(): void {
         </div>
         <div v-if="logs?.text" ref="box" class="log-box" :class="{ wrap }" data-testid="logs-text">
           <div v-for="l in shown" :key="l.n" class="log-line" :class="`level-${l.level}`">
-            <span class="line-no">{{ l.n }}</span
-            ><span v-if="l.time" class="time">{{ l.time }} </span>{{ l.text }}
+            <span class="line-no">{{ l.n }}</span><span v-if="l.time" class="time"
+              >{{ l.time }} </span
+            >{{ l.text }}
           </div>
         </div>
       </v-card-text>
