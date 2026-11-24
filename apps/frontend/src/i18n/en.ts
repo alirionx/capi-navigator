@@ -501,6 +501,7 @@ export const en = {
     drift: 'Changed in the cluster',
     unknown: 'Unknown',
     leftOver: 'No access',
+    terminating: 'Being deleted',
     leftOverText:
       'The access was ended. The namespace still exists with its data, limits and isolation.',
     missing: 'missing',

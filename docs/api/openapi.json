@@ -11357,6 +11357,9 @@
           "leftOver": {
             "type": "boolean"
           },
+          "terminating": {
+            "type": "boolean"
+          },
           "drift": {
             "type": "array",
             "items": {
@@ -11424,6 +11427,7 @@
           "name",
           "exists",
           "leftOver",
+          "terminating",
           "drift",
           "quota",
           "accounts",

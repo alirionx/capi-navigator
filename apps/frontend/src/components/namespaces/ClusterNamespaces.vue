@@ -103,15 +103,17 @@ const confirmAction = () => {
 };
 
 const state = (n: ManagedNamespaceView): { color: string; text: string } =>
-  n.leftOver
-    ? { color: 'grey', text: t('namespaces.leftOver') }
-    : data.value?.unreachable
-      ? { color: 'grey', text: t('namespaces.unknown') }
-      : !n.addon?.ready
-        ? { color: 'info', text: t('namespaces.installing') }
-        : n.drift.length
-          ? { color: 'warning', text: t('namespaces.drift') }
-          : { color: 'success', text: t('namespaces.ready') };
+  n.terminating
+    ? { color: 'error', text: t('namespaces.terminating') }
+    : n.leftOver
+      ? { color: 'grey', text: t('namespaces.leftOver') }
+      : data.value?.unreachable
+        ? { color: 'grey', text: t('namespaces.unknown') }
+        : !n.addon?.ready
+          ? { color: 'info', text: t('namespaces.installing') }
+          : n.drift.length
+            ? { color: 'warning', text: t('namespaces.drift') }
+            : { color: 'success', text: t('namespaces.ready') };
 /** Label of a resource of the quota; the GiB of the form would double the unit here. */
 const quotaLabel = (resource: string) => {
   const key = Object.entries(NAMESPACE_QUOTA_RESOURCES).find(([, r]) => r === resource)?.[0];
@@ -170,7 +172,7 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
               t(`namespaces.profiles.${n.spec.profile}`)
             }}</v-chip>
           </v-card-title>
-          <template v-if="canManage" #append>
+          <template v-if="canManage && !n.terminating" #append>
             <v-btn
               v-if="n.drift.length"
               size="small"
@@ -227,9 +229,14 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
           </template>
         </v-card-item>
         <v-card-text>
-          <v-alert v-if="n.leftOver" type="info" variant="tonal" density="compact" class="mb-3">{{
-            t('namespaces.leftOverText')
-          }}</v-alert>
+          <v-alert
+            v-if="n.leftOver && !n.terminating"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+            >{{ t('namespaces.leftOverText') }}</v-alert
+          >
           <v-alert
             v-if="n.addon?.message"
             type="info"

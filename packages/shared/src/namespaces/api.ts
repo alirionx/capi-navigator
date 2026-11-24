@@ -44,6 +44,8 @@ export const ManagedNamespaceViewSchema = z.object({
   /** The namespace exists in the cluster. */
   exists: z.boolean(),
   leftOver: z.boolean(),
+  /** Being deleted; nothing can be done with it until it is gone. */
+  terminating: z.boolean(),
   drift: z.array(NamespaceDriftSchema),
   quota: z.array(z.object({ resource: z.string(), used: z.string(), hard: z.string() })),
   accounts: z.array(

@@ -90,11 +90,12 @@ export class NamespacesService {
       namespaces: [
         ...defined.map(({ spec, status }) => this.view(ref, spec, status, cluster)),
         ...cluster.managed
-          .filter((n) => !names.has(n))
-          .map((name): ManagedNamespaceView => ({
+          .filter((n) => !names.has(n.name))
+          .map(({ name, terminating }): ManagedNamespaceView => ({
             name,
             exists: true,
             leftOver: true,
+            terminating,
             drift: [],
             quota: [],
             accounts: [],
@@ -144,7 +145,7 @@ export class NamespacesService {
     }
     await this.kube(`Delete namespace ${namespace}`, async () => {
       const access = await this.open(ref);
-      if (!(await access.managedNamespaces()).includes(namespace)) {
+      if (!(await access.managedNamespaces()).some((n) => n.name === namespace)) {
         throw new NotFoundException(
           `Namespace ${namespace} does not exist in ${ref.name} or is not managed by the app`,
         );
@@ -269,8 +270,12 @@ export class NamespacesService {
           await withTimeout(
             (async () => {
               const access = await this.open(ref);
-              const labels = await access.namespaceLabels(spec.name);
-              if (labels && labels[MANAGED_NAMESPACE_LABEL] !== spec.name) {
+              const existing = await access.namespace(spec.name);
+              if (existing?.terminating) {
+                blockers.push(
+                  `Cluster ${name}: namespace ${spec.name} is being deleted; wait until it is gone`,
+                );
+              } else if (existing && existing.labels[MANAGED_NAMESPACE_LABEL] !== spec.name) {
                 blockers.push(
                   `Cluster ${name}: namespace ${spec.name} already exists and is not managed by the app`,
                 );
@@ -344,7 +349,7 @@ export class NamespacesService {
     cluster: ClusterState,
   ): ManagedNamespaceView {
     const expected = managedNamespaceObjects(spec);
-    const exists = cluster.managed.includes(spec.name);
+    const managed = cluster.managed.find((n) => n.name === spec.name);
     const addon = addonOf(ref, status);
     const quota = cluster.live.get(`ResourceQuota/${spec.name}/capi-navigator`) as
       { status?: { hard?: Record<string, string>; used?: Record<string, string> } } | undefined;
@@ -352,8 +357,9 @@ export class NamespacesService {
       name: spec.name,
       spec,
       addon,
-      exists,
+      exists: !!managed,
       leftOver: false,
+      terminating: !!managed?.terminating,
       // While the release is being installed, missing objects are no drift.
       drift: addon.ready
         ? expected.flatMap((o) => {
@@ -416,7 +422,7 @@ export class NamespacesService {
 
 interface ClusterState {
   live: Map<string, KubernetesObject>;
-  managed: string[];
+  managed: { name: string; terminating: boolean }[];
   secrets: V1Secret[];
 }
 
@@ -440,6 +446,7 @@ function emptyView(
     addon: addonOf(ref, status),
     exists: false,
     leftOver: false,
+    terminating: false,
     drift: [],
     quota: [],
     accounts: spec.accounts.map((a) => ({ ...a, exists: false })),

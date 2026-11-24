@@ -29,6 +29,7 @@ const view = (): ManagedNamespaces => ({
       addon: { name: 'ns-team-a-1', ready: true },
       exists: true,
       leftOver: false,
+      terminating: false,
       drift: [],
       quota: [{ resource: 'pods', used: '3', hard: '20' }],
       accounts: [{ name: 'ci', role: 'edit', exists: true }],
@@ -38,6 +39,7 @@ const view = (): ManagedNamespaces => ({
       name: 'old',
       exists: true,
       leftOver: true,
+      terminating: false,
       drift: [],
       quota: [],
       accounts: [],
@@ -92,6 +94,13 @@ describe('ClusterNamespaces (FP36-F-11)', () => {
     await render(['view', 'clusters.access']);
     expect([has('end-namespace-team-a'), has('delete-namespace-team-a')]).toEqual([true, false]);
     expect([has('end-namespace-old'), has('delete-namespace-old')]).toEqual([false, true]);
+  });
+
+  it('offers nothing for a namespace that is being deleted', async () => {
+    data.namespaces[1]!.terminating = true;
+    await render(['view', 'clusters.access']);
+    expect(wrapper.find('[data-testid=namespace-old]').text()).toContain('Being deleted');
+    expect([has('take-over-namespace-old'), has('delete-namespace-old')]).toEqual([false, false]);
   });
 
   it('offers viewers no actions (FP36-F-12)', async () => {

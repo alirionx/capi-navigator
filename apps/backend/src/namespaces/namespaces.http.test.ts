@@ -3,6 +3,7 @@ import { ConflictException } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import {
+  FLAVOR_PLUGINS,
   ManagedNamespaceSpecSchema,
   managedNamespaceObjects,
   NAMESPACE_PROFILE_QUOTAS,
@@ -59,6 +60,7 @@ describe('managed namespaces over HTTP (FP-36)', () => {
   let stored: () => unknown;
   let live: Map<string, KubernetesObject>;
   let managed: string[];
+  let terminating: string[];
   let existing: Record<string, Record<string, string>>;
   let secrets: V1Secret[];
   let calico: boolean;
@@ -99,8 +101,10 @@ describe('managed namespaces over HTTP (FP-36)', () => {
       if (readError) throw readError;
       return live;
     },
-    managedNamespaces: async () => managed,
-    namespaceLabels: async (n) => existing[n],
+    managedNamespaces: async () =>
+      managed.map((name) => ({ name, terminating: terminating.includes(name) })),
+    namespace: async (n) =>
+      existing[n] && { labels: existing[n], terminating: terminating.includes(n) },
     hasCalico: async () => calico,
     tokenSecrets: async () => secrets,
     createTokenSecret: async (s) => {
@@ -201,6 +205,7 @@ describe('managed namespaces over HTTP (FP-36)', () => {
     stored = () => ({ kubernetes: { flavor: 'rke2' } });
     live = new Map(managedNamespaceObjects(spec()).map((o) => [objectKey(o), o]));
     managed = ['team-a'];
+    terminating = [];
     existing = { 'team-a': { 'capi-navigator.io/namespace': 'team-a' } };
     secrets = [];
     calico = true;
@@ -324,6 +329,27 @@ describe('managed namespaces over HTTP (FP-36)', () => {
     it('refuses a namespace that exists and is not managed', async () => {
       existing = { 'team-a': { team: 'x' } };
       expect((await blockers())[0]).toContain('already exists and is not managed');
+    });
+
+    it('refuses a namespace that is being deleted, and shows it as such', async () => {
+      terminating = ['team-a'];
+      expect((await blockers())[0]).toContain('is being deleted');
+      defined = [];
+      const { body } = await send('get', '', viewer).expect(200);
+      expect(body.namespaces).toMatchObject([{ name: 'team-a', terminating: true }]);
+    });
+
+    it('refuses clusters whose distribution has another CNI (FP36-F-03a)', async () => {
+      const plugin = FLAVOR_PLUGINS.rke2!;
+      const cni = plugin.cni;
+      try {
+        plugin.cni = 'other';
+        expect((await blockers())[0]).toContain('needs Calico');
+        expect((await send('get', '', viewer)).body.unsupported).toContain('needs Calico');
+        await send('put', '/team-a', operator, { spec: spec() }).expect(409);
+      } finally {
+        plugin.cni = cni;
+      }
     });
 
     it('refuses a second definition that can match the same cluster', async () => {

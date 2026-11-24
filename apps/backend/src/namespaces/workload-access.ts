@@ -22,8 +22,10 @@ export interface WorkloadAccess {
   /** Live objects of the kinds and namespaces of `expected`, by {@link objectKey}. */
   live(expected: ManifestObject[]): Promise<Map<string, KubernetesObject>>;
   /** Namespaces the app manages, also those left over from removed add-ons. */
-  managedNamespaces(): Promise<string[]>;
-  namespaceLabels(name: string): Promise<Record<string, string> | undefined>;
+  managedNamespaces(): Promise<{ name: string; terminating: boolean }[]>;
+  namespace(
+    name: string,
+  ): Promise<{ labels: Record<string, string>; terminating: boolean } | undefined>;
   /** The Calico resources of the isolation exist (FP36-F-03a). */
   hasCalico(): Promise<boolean>;
   tokenSecrets(): Promise<V1Secret[]>;
@@ -94,11 +96,12 @@ export function workloadAccess(kubeconfig: string): WorkloadAccess {
       const { items } = await core.listNamespace({ labelSelector: byLabel });
       return items
         .filter((n) => n.metadata?.labels?.[MANAGED_NAMESPACE_LABEL] === n.metadata?.name)
-        .map((n) => n.metadata!.name!);
+        .map((n) => ({ name: n.metadata!.name!, terminating: !!n.metadata!.deletionTimestamp }));
     },
-    async namespaceLabels(name) {
+    async namespace(name) {
       try {
-        return (await core.readNamespace({ name })).metadata?.labels ?? {};
+        const { metadata } = await core.readNamespace({ name });
+        return { labels: metadata?.labels ?? {}, terminating: !!metadata?.deletionTimestamp };
       } catch (err) {
         ignoreNotFound(err);
         return undefined;
