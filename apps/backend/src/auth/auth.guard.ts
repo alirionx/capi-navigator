@@ -157,10 +157,14 @@ export class AuthGuard implements CanActivate {
         hint: 'Use the app with a signed-in user for this.',
       });
     }
-    const scope = rule.scopeFromBlueprint
-      ? this.blueprintScope(req, rule.scopeFromBlueprint)
-      : requestScope(req, rule);
-    if (!rule.anyOf.some((p) => allows(principal.bindings, this.store.rolePermissions, p, scope))) {
+    const may = (scope: PermissionScope) =>
+      rule.anyOf.some((p) => allows(principal.bindings, this.store.rolePermissions, p, scope));
+    // Who lacks the permission everywhere gets the same answer for every blueprint (FP37-F-01).
+    const scope =
+      rule.scopeFromBlueprint && may({})
+        ? this.blueprintScope(req, rule.scopeFromBlueprint)
+        : requestScope(req, rule);
+    if (!may(scope)) {
       const where = scope.namespace ? ` in namespace ${scope.namespace}` : '';
       throw new ForbiddenException({
         statusCode: 403,

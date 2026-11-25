@@ -69,8 +69,13 @@ describe('access of namespace users (FP37-F-01)', async () => {
           return guard.canActivate(ctx);
         } catch (err) {
           const status = (err as { getStatus?: () => number }).getStatus?.();
-          // Creating from a blueprint looks the blueprint up first; unknown names answer 404.
-          if (status === 404 || status === 403 || status === 401) return false;
+          if (status === 403 || status === 401) return false;
+          // Creating from a blueprint looks it up, for those who may create somewhere.
+          if (
+            status === 404 &&
+            p?.bindings.some((b) => b.role === 'operator' || b.role === 'admin')
+          )
+            return false;
           throw err;
         }
       })

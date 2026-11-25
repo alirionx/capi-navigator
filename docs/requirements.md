@@ -1325,7 +1325,7 @@ Live acceptance on Proxmox VE (2026-11-24, through the API of the dev backend, C
 - `kubectl auth can-i list namespaces` says yes with a namespace as default of the kubeconfig, because `view` may read the own namespace object; listing namespaces is refused.
 - Namespaces being deleted were offered for taking over; they are now shown as such.
 
-### FP-37: Self-service for namespace users (optional, planned)
+### FP-37: Self-service for namespace users (optional)
 
 **Goal:** people who work in a managed namespace (FP-36) sign in to the app and get their token or kubeconfig themselves, instead of the cluster owner issuing and passing on a new one at least every 7 days. They see only their own namespaces. A page of its own beside the existing ones, not a filter on them: reading stays global for everybody with `view` (FP19-F-04). Needs FP-36. Two parts; part 2 only after part 1 is done.
 
@@ -1345,11 +1345,16 @@ Live acceptance on Proxmox VE (2026-11-24, through the API of the dev backend, C
 
 **Acceptance criteria**
 
-- [ ] A test over all endpoints and live streams shows that a namespace user gets 403 everywhere except the endpoints of this pack and the own account; viewer, operator and admin keep their access unchanged.
-- [ ] A namespace user with one assignment sees exactly this namespace; guessing names of other clusters, namespaces or accounts in the API gives the same answer as for ones that do not exist.
-- [ ] The person issues a kubeconfig and works with it; a removed person gets no new token.
-- [ ] Assignment by OIDC group works with Dex.
+- [x] A test over all endpoints and live streams shows that a namespace user gets 403 everywhere except the endpoints of this pack and the own account; viewer, operator and admin keep their access unchanged.
+- [x] A namespace user with one assignment sees exactly this namespace; guessing names of other clusters, namespaces or accounts in the API gives the same answer as for ones that do not exist.
+- [x] The person issues a kubeconfig and works with it; a removed person gets no new token.
+- [x] Assignment by OIDC group works with Dex.
 - [ ] Part 2: the dashboard of one namespace shows nothing of another.
+
+Live acceptance of part 1 (2026-11-25, Proxmox VE, RKE2 v1.36.6+rke2r2, a second app instance with Dex): 38 checks through the API and the whole flow in the real UI. Findings:
+
+- Creating a cluster from an unknown blueprint answered 404 instead of 403, so anybody signed in could guess blueprint names; fixed in the guard.
+- A revoked token was refused after 11 s; an assignment left the Helm release at its revision.
 
 ## 7. Non-functional requirements
 
