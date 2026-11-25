@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 /**
  * Helm repositories (FP8-F-02, FP8-F-03), stored as `HelmRepository` resources in the home cluster.
- * Credentials and the CA certificate live in a Secret. CAAPH v0.6.4 uses them for OCI registries
+ * Credentials and the CA certificate live in a Secret. CAAPH v0.6.6 uses them for OCI registries
  * only (HelmChartProxy `credentials` and `tlsConfig`), so HTTP repositories have neither.
  */
 export const HELM_REPOSITORY_TYPES = ['http', 'oci'] as const;
@@ -28,12 +28,28 @@ const UrlSchema = z
   .max(512)
   .transform((u) => u.replace(/\/+$/, ''));
 
-function checkUrl(type: HelmRepositoryType, url: string, ctx: z.RefinementCtx): void {
+/** CAAPH v0.6.6 refuses http://; repositories stored before stay readable, so they can be changed. */
+const HTTPS_URL = /^https:\/\//;
+const HTTPS_ONLY = 'An https:// URL; CAAPH does not accept http://';
+
+function checkUrl(
+  type: HelmRepositoryType,
+  url: string,
+  ctx: z.RefinementCtx,
+  requireHttps: boolean,
+): void {
+  if (type === 'http' && requireHttps && HTTP_URL.test(url) && !HTTPS_URL.test(url)) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['url'],
+      message: HTTPS_ONLY,
+    });
+  }
   if (type === 'http' && !HTTP_URL.test(url)) {
     ctx.addIssue({
       code: 'custom',
       path: ['url'],
-      message: 'An http(s):// URL, e.g. https://stefanprodan.github.io/podinfo',
+      message: 'An https:// URL, e.g. https://stefanprodan.github.io/podinfo',
     });
   }
   if (type === 'oci' && !OCI_URL.test(url)) {
@@ -59,7 +75,7 @@ export const HelmRepositorySpecSchema = z
     /** Incremented on every Secret change, so copies in the management clusters are refreshed. */
     credentialsRevision: z.int().min(0).default(0),
   })
-  .superRefine((s, ctx) => checkUrl(s.type, s.url, ctx));
+  .superRefine((s, ctx) => checkUrl(s.type, s.url, ctx, false));
 export type HelmRepositorySpec = z.infer<typeof HelmRepositorySpecSchema>;
 
 const PemSchema = z
@@ -84,7 +100,7 @@ export const CreateHelmRepositoryRequestSchema = z
     caCertificate: PemSchema.optional(),
   })
   .superRefine((r, ctx) => {
-    checkUrl(r.type, r.url, ctx);
+    checkUrl(r.type, r.url, ctx, true);
     if (r.type === 'http' && (r.credentials || r.caCertificate || r.insecureSkipTLSVerify)) {
       ctx.addIssue({
         code: 'custom',
@@ -98,7 +114,7 @@ export type CreateHelmRepositoryRequest = z.input<typeof CreateHelmRepositoryReq
 /** Changes; `null` removes credentials or CA certificate. The type cannot change. */
 export const UpdateHelmRepositoryRequestSchema = z.object({
   displayName: z.string().max(80).optional(),
-  url: UrlSchema.optional(),
+  url: UrlSchema.refine((u) => !u.startsWith('http://'), HTTPS_ONLY).optional(),
   insecureSkipTLSVerify: z.boolean().optional(),
   credentials: RegistryCredentialsSchema.nullable().optional(),
   caCertificate: PemSchema.nullable().optional(),

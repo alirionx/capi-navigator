@@ -181,7 +181,7 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
         // the API load balancer become listeners (ADR-0012).
         // FP24-F-05: a hosted control plane's endpoint is in the host; without load balancer and
         // floating IP, CAPO waits for the one k0smotron writes (reconcileControlPlaneEndpoint,
-        // CAPO v0.15.1).
+        // CAPO v0.15.2).
         apiServer: hosted
           ? { enableFloatingIP: false }
           : infra.apiServerLoadBalancer

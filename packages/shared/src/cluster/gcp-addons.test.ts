@@ -119,7 +119,7 @@ describe('Google Cloud add-on manifests (FP25-F-08, ADR-0023)', () => {
   it('delivers each add-on by a ClusterResourceSet per namespace, selected by label', () => {
     const a = addon('gcp-csi');
     const [cm, crs] = buildManifestAddonResourceSet(a, 'team-a', asset(a.dir, a.file));
-    expect(cm!.metadata.name).toMatch(/^capi-navigator-gcp-csi-v1-28-1-[0-9a-f]{6}$/);
+    expect(cm!.metadata.name).toMatch(/^capi-navigator-gcp-csi-v1-29-1-[0-9a-f]{6}$/);
     expect(crs).toMatchObject({
       kind: 'ClusterResourceSet',
       metadata: { name: cm!.metadata.name, namespace: 'team-a' },

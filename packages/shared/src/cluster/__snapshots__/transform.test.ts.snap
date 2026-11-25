@@ -1043,7 +1043,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -1201,7 +1201,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-aws-kubeadm-default-99e535ed
+  name: demo-aws-kubeadm-default-de8c380c
   namespace: default
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1221,7 +1221,7 @@ spec:
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
             CONTAINERD_VERSION="2.4.2"
-            RUNC_VERSION="1.5.2"
+            RUNC_VERSION="1.5.3"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
             # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -1374,7 +1374,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-aws-kubeadm-default-99e535ed
+          name: demo-aws-kubeadm-default-de8c380c
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: AWSMachineTemplate
@@ -1512,7 +1512,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -1776,7 +1776,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -1925,7 +1925,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-kubeadm-default-db790e72
+  name: demo-kubeadm-default-4f8569a9
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -1945,7 +1945,7 @@ spec:
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
             CONTAINERD_VERSION="2.4.2"
-            RUNC_VERSION="1.5.2"
+            RUNC_VERSION="1.5.3"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
             # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -2098,7 +2098,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-kubeadm-default-db790e72
+          name: demo-kubeadm-default-4f8569a9
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
@@ -2125,7 +2125,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-kubeadm-gpu-61c04521
+  name: demo-kubeadm-gpu-50085eca
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -2145,7 +2145,7 @@ spec:
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
             CONTAINERD_VERSION="2.4.2"
-            RUNC_VERSION="1.5.2"
+            RUNC_VERSION="1.5.3"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
             # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -2300,7 +2300,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-kubeadm-gpu-61c04521
+          name: demo-kubeadm-gpu-50085eca
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: OpenStackMachineTemplate
@@ -2334,7 +2334,7 @@ K8S_VERSION="1.34.12"
 PKGS="https://mirror.example/k8s/core:/stable:/v1.34"
 DOWNLOADS="https://mirror.example/github"
 CONTAINERD_VERSION="2.4.2"
-RUNC_VERSION="1.5.2"
+RUNC_VERSION="1.5.3"
 case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
 # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node

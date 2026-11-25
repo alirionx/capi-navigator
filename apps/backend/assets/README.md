@@ -6,9 +6,9 @@ every adapted manifest starts with a comment that names the source, the license 
 All three are licensed under the Apache License, Version 2.0 (copy: `LICENSE.Apache-2.0` in this
 directory, or https://www.apache.org/licenses/LICENSE-2.0).
 
-## calico/calico-vxlan-v3.33.0.yaml
+## calico/calico-vxlan-v3.33.1.yaml
 
-- Source: Project Calico, `manifests/calico-vxlan.yaml` of release v3.33.0,
+- Source: Project Calico, `manifests/calico-vxlan.yaml` of release v3.33.1,
   https://github.com/projectcalico/calico (Copyright Tigera, Inc. and the Project Calico contributors)
 - License: Apache License 2.0
 - Changes by CAPI Navigator (`calicoManifestForCluster`, packages/shared/src/cluster/cni.ts):
@@ -24,10 +24,10 @@ directory, or https://www.apache.org/licenses/LICENSE-2.0).
   path, API server environment variables removed, a Role and RoleBinding for the `ingress-uid`
   ConfigMap added.
 
-## gcp/gcp-pd-csi-noauth-v1.28.1.yaml
+## gcp/gcp-pd-csi-noauth-v1.29.1.yaml
 
 - Source: Google Compute Engine Persistent Disk CSI Driver, output of
-  `kubectl kustomize deploy/kubernetes/overlays/noauth` at release v1.28.1,
+  `kubectl kustomize deploy/kubernetes/overlays/noauth` at release v1.29.1,
   https://github.com/kubernetes-sigs/gcp-compute-persistent-disk-csi-driver
   (Copyright The Kubernetes Authors)
 - License: Apache License 2.0

@@ -12,6 +12,7 @@ import {
 import {
   CreateHelmRepositoryRequestSchema,
   HelmRepositorySpecSchema,
+  UpdateHelmRepositoryRequestSchema,
   registryConfigJson,
 } from './repository.js';
 
@@ -117,6 +118,20 @@ describe('Helm repositories (FP8-F-02)', () => {
     );
   });
 
+  it('refuses http:// URLs, but reads stored ones (CAAPH v0.6.6)', () => {
+    const url = 'http://charts.local/repo';
+    const base = { name: 'repo', type: 'http', url };
+    expect(CreateHelmRepositoryRequestSchema.safeParse(base).error?.issues).toEqual([
+      expect.objectContaining({
+        path: ['url'],
+        message: 'An https:// URL; CAAPH does not accept http://',
+      }),
+    ]);
+    expect(UpdateHelmRepositoryRequestSchema.safeParse({ url }).success).toBe(false);
+    expect(UpdateHelmRepositoryRequestSchema.safeParse({ displayName: 'x' }).success).toBe(true);
+    expect(HelmRepositorySpecSchema.safeParse({ type: 'http', url }).success).toBe(true);
+  });
+
   it('allows credentials and CA for OCI only (CAAPH)', () => {
     const base = { name: 'repo', url: 'https://x.io', type: 'http' };
     expect(
@@ -197,7 +212,7 @@ describe('Calico via ClusterResourceSet (FP10-F-04, ADR-0014)', () => {
     const content = (cm!.data as Record<string, string>)['calico.yaml']!;
     expect(content).not.toContain('CrossSubnet');
     expect(content.match(/value: "Always"/g)).toHaveLength(2);
-    expect(cm!.metadata.name).toMatch(/^capi-navigator-calico-v3-33-0-[0-9a-f]{6}$/);
+    expect(cm!.metadata.name).toMatch(/^capi-navigator-calico-v3-33-1-[0-9a-f]{6}$/);
     expect(cm!.metadata.labels?.['cluster.x-k8s.io/cluster-name']).toBeUndefined();
     expect(crs!.spec).toEqual({
       clusterSelector: { matchLabels: { 'capi-navigator.io/cni': 'calico' } },

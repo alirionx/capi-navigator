@@ -121,7 +121,7 @@ const CSI_DRIVER_IMAGE =
 export function gcpCsiManifestForCluster(manifest: string): string {
   const objects = parseManifest(manifest);
   // The overlay takes its images from upstream's stable-master transformer, which still names
-  // driver v1.26.0 in the release tags v1.27.5 and v1.28.1: pin the driver of the release.
+  // driver v1.26.0 in the release tags v1.27.5 to v1.29.1: pin the driver of the release.
   let pinned = 0;
   for (const o of objects) {
     for (const c of o.spec?.template?.spec?.containers ?? []) {

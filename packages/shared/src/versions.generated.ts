@@ -14,13 +14,13 @@ export const VERSIONS: VersionsFile = {
       "note": "CAPI contract v1beta2. v1.14.4 has bug fixes and Go updates only; the CRDs and manifests of core, kubeadm bootstrap and control plane are unchanged from v1.14.3 apart from the images. Verified live on 2026-11-08: upgrade on kind, kubeadm v1.36.6 on Proxmox VE, RKE2 on GCP."
     },
     "rke2": {
-      "version": "v0.27.1",
+      "version": "v0.27.2",
       "source": {
         "datasource": "github-releases",
         "package": "rancher/cluster-api-provider-rke2"
       },
-      "verified": "2026-10-28",
-      "note": "v0.27.1 only updates Go (1.27.3). No API changes from v0.26.0; built on CAPI v1.14.3. `airGappedChecksum` is still broken (issue #1128), the app does not set it (ADR-0030)."
+      "verified": "2026-11-25",
+      "note": "v0.27.2 updates Go and CAPI (v1.14.4), fixes a CVE, sets the uninitialized taint of the CAPI contract and changes the base image; CRDs unchanged from v0.27.1. `airGappedChecksum` is still broken (issue #1128), the app does not set it (ADR-0030)."
     },
     "k0smotron": {
       "version": "v2.3.1",
@@ -32,13 +32,13 @@ export const VERSIONS: VersionsFile = {
       "note": "v2.3.1 contains #1705: the scale down waits until deleted control plane machines are gone, so three and five nodes are replaced one at a time (ADR-0013, update 2026-10-31). The control plane's `version` is now required (the app always sets it); the webhook now always copies the deprecated `infrastructureRef` into the nested one (the app writes both, equal). Taken one day before the minimum release age for 0.14.0. The deprecated `version` of the worker config is still honoured."
     },
     "openstack": {
-      "version": "v0.15.1",
+      "version": "v0.15.2",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-provider-openstack"
       },
-      "verified": "2026-10-28",
-      "note": "Needs the ORC version of its minor (prerequisites.orc). v0.15.1 has bug fixes only, no API changes."
+      "verified": "2026-11-25",
+      "note": "Needs the ORC version of its minor (prerequisites.orc). v0.15.2 updates Go and dependencies (CVEs); CRDs unchanged from v0.15.1. Verified live on 2026-11-25 (Infomaniak)."
     },
     "aws": {
       "version": "v2.13.1",
@@ -76,12 +76,13 @@ export const VERSIONS: VersionsFile = {
       "note": "Contract v1beta2 from v1.1. Holds released addresses for a grace period before reuse."
     },
     "helm": {
-      "version": "v0.6.4",
+      "version": "v0.6.6",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-addon-provider-helm"
       },
-      "verified": "2026-10-17"
+      "verified": "2026-11-25",
+      "note": "v0.6.6 restricts: repository URLs only https:// and oci://; Secrets (registry credentials, CA) only from the namespace of the HelmChartProxy (the app always put its copies there); template functions env, expandenv and getHostByName removed (index, dig and default stay). CRDs differ from v0.6.4 only in descriptions. Built against CAPI v1.14.3."
     }
   },
   "prerequisites": {
@@ -95,13 +96,13 @@ export const VERSIONS: VersionsFile = {
       "note": "Install command uses the Helm chart oci://quay.io/jetstack/charts/cert-manager with this version."
     },
     "capi-operator": {
-      "version": "v0.30.0",
+      "version": "v0.30.1",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-operator"
       },
-      "verified": "2026-10-20",
-      "note": "The Helm chart version is this version without the leading \"v\". v0.30.0 taken on its release day together with k0smotron v2.3.0; no API changes."
+      "verified": "2026-11-25",
+      "note": "The Helm chart version is this version without the leading \"v\". v0.30.1 fixes provider versions with build metadata; CRDs unchanged from v0.30.0."
     },
     "orc": {
       "source": {
@@ -123,29 +124,29 @@ export const VERSIONS: VersionsFile = {
         "package": "rancher/rke2"
       },
       "verified": "2026-11-08",
-      "note": "Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28). Patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (containerd 2.2.9 or 2.3.6, chart updates) taken on 2026-11-08, three days after their release, at the user's request. v1.33.13+rke2r3 is a Prime-only release without assets on GitHub (no install, no image lists); v1.33 stays on v1.33.13+rke2r2, the last community release of that minor.",
+      "note": "Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28). Patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (containerd 2.2.9 or 2.3.6, chart updates) taken on 2026-11-08, three days after their release, at the user's request. v1.36.6+rke2r2 (2026-11-20, public) brings Traefik v3.7.19, etcd and ingress-nginx image updates. v1.33.13+rke2r3 is a Prime-only release without assets on GitHub (no install, no image lists); v1.33 stays on v1.33.13+rke2r2, the last community release of that minor.",
       "versions": [
         {
           "version": "v1.37.2+rke2r1",
-          "verifiedWithProvider": "v0.27.1",
+          "verifiedWithProvider": "v0.27.2",
           "untested": true
         },
         {
-          "version": "v1.36.6+rke2r1",
-          "verifiedWithProvider": "v0.27.1",
+          "version": "v1.36.6+rke2r2",
+          "verifiedWithProvider": "v0.27.2",
           "default": true
         },
         {
           "version": "v1.35.10+rke2r1",
-          "verifiedWithProvider": "v0.27.1"
+          "verifiedWithProvider": "v0.27.2"
         },
         {
           "version": "v1.34.13+rke2r1",
-          "verifiedWithProvider": "v0.27.1"
+          "verifiedWithProvider": "v0.27.2"
         },
         {
           "version": "v1.33.13+rke2r2",
-          "verifiedWithProvider": "v0.27.1"
+          "verifiedWithProvider": "v0.27.2"
         }
       ]
     },
@@ -167,7 +168,7 @@ export const VERSIONS: VersionsFile = {
           "default": true
         },
         {
-          "version": "v1.35.10+k0s.0",
+          "version": "v1.35.10+k0s.1",
           "verifiedWithProvider": "v2.3.1"
         },
         {
@@ -242,13 +243,14 @@ export const VERSIONS: VersionsFile = {
       "verified": "2026-10-17"
     },
     "aws-csi": {
-      "version": "2.67.2",
+      "version": "2.68.1",
       "source": {
         "datasource": "helm",
         "package": "aws-ebs-csi-driver",
         "registry": "https://kubernetes-sigs.github.io/aws-ebs-csi-driver"
       },
-      "verified": "2026-10-28"
+      "verified": "2026-11-25",
+      "note": "2.68 adds a ValidatingAdmissionPolicy that limits the service account of the node pods; otherwise only image updates. Verified live on 2026-11-25 (RKE2 v1.36.6+rke2r2, volume bound)."
     },
     "proxmox-ccm": {
       "version": "0.2.32",
@@ -308,27 +310,28 @@ export const VERSIONS: VersionsFile = {
         "package": "containerd/containerd"
       },
       "verified": "2026-10-20",
-      "note": "containerd's compatibility table lists 2.4 for Kubernetes 1.37 and 2.3 for 1.36+; the older catalog minors run on it through CRI v1 as well. Its own runc pin is 1.5.2, like ours."
+      "note": "containerd's compatibility table lists 2.4 for Kubernetes 1.37 and 2.3 for 1.36+; the older catalog minors run on it through CRI v1 as well. Its own runc pin is 1.5.2; ours is newer (CVE fix)."
     },
     "runc": {
-      "version": "1.5.2",
+      "version": "1.5.3",
       "source": {
         "datasource": "github-releases",
         "package": "opencontainers/runc"
       },
-      "verified": "2026-10-18"
+      "verified": "2026-11-25",
+      "note": "1.5.3 fixes CVE-2026-119101 (checkpoint and restore, not used by Kubernetes)."
     }
   },
   "cni": {
     "calico": {
-      "version": "v3.33.0",
+      "version": "v3.33.1",
       "source": {
         "datasource": "github-releases",
         "package": "projectcalico/calico"
       },
-      "verified": "2026-10-18",
-      "manifest": "calico-vxlan-v3.33.0.yaml",
-      "sha256": "202d70b43e38b60ebc60736c96e64e6de683053aab2e89da84ea9d904a9ef24c"
+      "verified": "2026-11-25",
+      "manifest": "calico-vxlan-v3.33.1.yaml",
+      "sha256": "7ef10527bef51afbaa0f1e2fbc8bd572200de51cd86484172bb2202a678d4e1c"
     }
   },
   "addonManifests": {
@@ -345,14 +348,14 @@ export const VERSIONS: VersionsFile = {
       "sha256": "5e20f64573d7e83b9a03eca5e2266f013b930b3970e3d2819fd272f62a740d65"
     },
     "gcp-csi": {
-      "version": "v1.28.1",
+      "version": "v1.29.1",
       "source": {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/gcp-compute-persistent-disk-csi-driver"
       },
-      "verified": "2026-11-08",
-      "note": "The overlay of v1.27.5 and v1.28.1 renders identically: upstream's stable-master still pins the driver image v1.26.0 and the sidecars. The app pins the driver image to this version (gcp-addons.ts); before 2026-11-08 clusters ran driver v1.26.0. Verified live on 2026-11-08 (RKE2 v1.36.6, PVC on pd-balanced bound).",
-      "manifest": "gcp-pd-csi-noauth-v1.28.1.yaml",
+      "verified": "2026-11-25",
+      "note": "The overlay renders identically from v1.27.5 to v1.29.1: upstream's stable-master still pins the driver image v1.26.0 and the sidecars. The app pins the driver image to this version (gcp-addons.ts). v1.29.1 verified live on 2026-11-25 (RKE2 v1.36.6+rke2r2, volume bound).",
+      "manifest": "gcp-pd-csi-noauth-v1.29.1.yaml",
       "sha256": "72d2f057d3d69bad407cea926e2de62d9ca4e19aef9a0c383e3d6c48500e9b22"
     }
   },

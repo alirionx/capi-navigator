@@ -134,6 +134,10 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:coverage
 - Write an ADR if an update changes behaviour or needs a workaround.
 - Release as described in the README ("Releases"); if CRDs of the app changed, say so in the
   release notes.
+- **Before every release**, also a patch release: run steps 1 and 2 and decide on every newer
+  version, so a release is never published with known outdated or vulnerable dependencies.
+- **CAPI Operator on an existing management cluster:** upgrade its Helm chart without
+  `--reuse-values`, which keeps the image of the old chart. Check the image of the Deployment.
 
 ## Checklist
 

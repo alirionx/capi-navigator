@@ -286,7 +286,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node

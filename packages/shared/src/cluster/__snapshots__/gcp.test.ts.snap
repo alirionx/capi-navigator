@@ -437,7 +437,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -680,7 +680,7 @@ spec:
           PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
           DOWNLOADS="https://github.com"
           CONTAINERD_VERSION="2.4.2"
-          RUNC_VERSION="1.5.2"
+          RUNC_VERSION="1.5.3"
           case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
           # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -829,7 +829,7 @@ spec:
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
 metadata:
-  name: demo-gcp-kubeadm-default-a3b88c7c
+  name: demo-gcp-kubeadm-default-f065c409
   namespace: team-a
   labels:
     capi-navigator.io/managed-by: capi-navigator
@@ -849,7 +849,7 @@ spec:
             PKGS="https://pkgs.k8s.io/core:/stable:/v1.35"
             DOWNLOADS="https://github.com"
             CONTAINERD_VERSION="2.4.2"
-            RUNC_VERSION="1.5.2"
+            RUNC_VERSION="1.5.3"
             case "$(uname -m)" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; *) echo "unsupported architecture" >&2; exit 1 ;; esac
 
             # Cluster API image (ADR-0032): kubeadm of exactly this version, kubelet, containerd and the node
@@ -1003,7 +1003,7 @@ spec:
         configRef:
           apiGroup: bootstrap.cluster.x-k8s.io
           kind: KubeadmConfigTemplate
-          name: demo-gcp-kubeadm-default-a3b88c7c
+          name: demo-gcp-kubeadm-default-f065c409
       infrastructureRef:
         apiGroup: infrastructure.cluster.x-k8s.io
         kind: GCPMachineTemplate
