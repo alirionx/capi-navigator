@@ -93,11 +93,13 @@ describe('ProviderGraph with the nodes of each cluster (UX-02)', () => {
       },
       global,
     });
-    const shape = w.get('[data-testid="cluster-shape"]');
-    const node = w.findAll('.node').at(-1)!;
-    expect(shape.attributes('style')).toContain(
-      `top: ${/top: (\d+)px/.exec(node.attributes('style')!)![1]}px`,
+    // Row 1 is the header, row 2 the offset that centers the clusters, then one row per cluster.
+    const top = /top: (\d+)px/.exec(w.findAll('.node').at(-1)!.attributes('style')!)![1];
+    expect(w.get('.shapes').attributes('style')).toContain(
+      `grid-template-rows: 28px ${top}px repeat(1, 62px)`,
     );
+    expect(w.get('.shape').attributes('style')).toContain('grid-row: 3');
+    expect(w.get('.shape').find('[data-testid="cluster-shape"]').exists()).toBe(true);
     expect(w.text()).toContain('Nodes: control plane and worker pools');
     expect(w.text()).toContain('Starting or not ready');
   });
@@ -105,6 +107,6 @@ describe('ProviderGraph with the nodes of each cluster (UX-02)', () => {
   it('shows neither nodes column nor legend without clusters', () => {
     const w = mount(ProviderGraph, { props: { providers: [core], clusters: [] }, global });
     expect(w.find('[data-testid="cluster-shape"]').exists()).toBe(false);
-    expect(w.text()).not.toContain('Node ready');
+    expect(w.text()).not.toContain('Starting or not ready');
   });
 });

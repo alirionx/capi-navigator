@@ -13,6 +13,7 @@ import {
   NAMESPACE_PROFILE_QUOTAS,
   NAMESPACE_PROFILES,
   namespaceAddonName,
+  namespacesByCluster,
   namespacesUnsupported,
   nextRevision,
   singleClusterSelector,
@@ -224,6 +225,33 @@ describe('managed namespaces (FP-36)', () => {
     spec2.hard.pods = '99';
     expect(changedFields(quota, { ...live, spec: spec2 })).toEqual(['spec.hard.pods']);
     expect(changedFields(quota, undefined).length).toBeGreaterThan(3);
+  });
+
+  it('lists the namespaces per cluster from the add-on overview (UX-17)', () => {
+    const release = (cluster: string, ready: boolean) => ({
+      name: 'r',
+      cluster,
+      ready,
+      conditions: [],
+    });
+    const addon = (releaseName: string, type: 'namespace' | 'helm' = 'namespace') => ({
+      type,
+      namespace: 'default',
+      releaseName,
+      matchingClusters: ['prod', 'stage'],
+      releases: [release('prod', true), release('stage', false)],
+    });
+    const map = namespacesByCluster([addon('ns-web'), addon('ns-api'), addon('ns-x', 'helm')]);
+    expect(Object.fromEntries(map)).toEqual({
+      'default/prod': [
+        { name: 'api', ready: true },
+        { name: 'web', ready: true },
+      ],
+      'default/stage': [
+        { name: 'api', ready: false },
+        { name: 'web', ready: false },
+      ],
+    });
   });
 
   it('is offered only for distributions with Calico (FP36-F-03a)', () => {

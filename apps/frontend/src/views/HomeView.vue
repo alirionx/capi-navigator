@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue';
+import { namespacesByCluster } from '@capi-navigator/shared';
 import { useI18n } from 'vue-i18n';
 import ProviderGraph from '../components/ProviderGraph.vue';
+import { useAddonsStore } from '../stores/addons.js';
 import { useClustersStore } from '../stores/clusters.js';
 import { useConnectionsStore } from '../stores/connections.js';
 import { useHealthStore } from '../stores/health.js';
@@ -12,6 +14,11 @@ const store = useHealthStore();
 const connections = useConnectionsStore();
 const operator = useOperatorStore();
 const clusters = useClustersStore();
+const addons = useAddonsStore();
+
+/** UX-17: managed namespaces next to the nodes of each cluster. */
+const namespaces = computed(() => namespacesByCluster(addons.overview?.addons ?? []));
+let releaseAddons: (() => void) | undefined;
 
 onMounted(() => {
   void store.load();
@@ -21,6 +28,8 @@ onMounted(() => {
 watch(
   () => connections.activeName,
   (name) => {
+    releaseAddons?.();
+    releaseAddons = name ? addons.watch(name) : undefined;
     if (name) {
       operator.connect(name);
       clusters.watchList(name);
@@ -32,6 +41,7 @@ watch(
   { immediate: true },
 );
 onBeforeUnmount(() => {
+  releaseAddons?.();
   operator.disconnect();
   clusters.unwatchList();
 });
@@ -104,7 +114,12 @@ onBeforeUnmount(() => {
       />
       <v-card-text>
         <v-progress-linear v-if="!operator.state" indeterminate />
-        <ProviderGraph v-else :providers="operator.state.providers" :clusters="clusters.clusters" />
+        <ProviderGraph
+          v-else
+          :providers="operator.state.providers"
+          :clusters="clusters.clusters"
+          :namespaces="namespaces"
+        />
       </v-card-text>
     </v-card>
   </v-container>

@@ -123,15 +123,18 @@ export const en = {
   },
   overview: {
     title: 'Management cluster {name}',
-    subtitle: 'Installed providers, the workload clusters that use them and their nodes.',
+    subtitle:
+      'Installed providers, the workload clusters that use them, their nodes and managed namespaces.',
     providers: 'Providers',
     clusters: 'Workload clusters',
     nodes: 'Nodes: control plane and worker pools',
+    namespaces: 'Namespaces',
+    namespaceCount: '{n} namespace | {n} namespaces',
   },
   shapes: {
     controlPlane: 'Control plane',
     workers: 'Workers',
-    ready: 'Node ready',
+    ready: 'Ready',
     pending: 'Starting or not ready',
     deleting: 'Being deleted',
     failed: 'Failed',
@@ -491,7 +494,7 @@ export const en = {
     allowFromInvalid: 'Only names of namespaces',
     accounts: 'Accounts',
     accountsHint:
-      'One account per team or tool. "Edit" may deploy, "View" only reads (no Secrets). Default: view.',
+      'One account per team or tool. "edit" may deploy, "view" only reads (no Secrets). Default: view.',
     account: 'Account',
     addAccount: 'Add account',
     assigned: 'Who may get access themselves',
@@ -503,7 +506,7 @@ export const en = {
       '{count} access was issued by someone who is no longer assigned. | {count} accesses were issued by people who are no longer assigned.',
     revokeUnassigned: 'Revoke',
     role: 'Role',
-    roles: { view: 'View', edit: 'Edit' },
+    roles: { view: 'view (read only)', edit: 'edit (read and write)' },
     clusters: 'Roll out to several clusters',
     clustersHint: 'Default: only this cluster. Other labels select more clusters.',
     ready: 'Ready',

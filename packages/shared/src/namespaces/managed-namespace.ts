@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { AddonStatus } from '../helm/addon-status.js';
 import { LabelsSchema, type ClusterSpec } from '../cluster/spec.js';
 import { FLAVOR_PLUGINS } from '../cluster/transform.js';
 import { shortHash, stableStringify } from '../cluster/util.js';
@@ -193,7 +194,38 @@ export const singleClusterSelector = (cluster: string) => ({ [CLUSTER_NAME_LABEL
 /** With a dot, because two pairs could share a name with a hyphen (FP36-F-07). */
 export const namespaceAccountName = (namespace: string, account: string) =>
   `${namespace}.${account}`;
-export const namespaceReleaseName = (name: string) => `ns-${name}`;
+const RELEASE_PREFIX = 'ns-';
+export const namespaceReleaseName = (name: string) => `${RELEASE_PREFIX}${name}`;
+
+/** A managed namespace on one cluster, for the overview of the home page (UX-17). */
+export interface ClusterNamespace {
+  name: string;
+  /** The release on this cluster is installed. */
+  ready: boolean;
+}
+
+/** Pure: managed namespaces per cluster ("namespace/name") from the add-on overview (UX-17). */
+export function namespacesByCluster(
+  addons: readonly Pick<
+    AddonStatus,
+    'type' | 'namespace' | 'releaseName' | 'matchingClusters' | 'releases'
+  >[],
+): Map<string, ClusterNamespace[]> {
+  const result = new Map<string, ClusterNamespace[]>();
+  for (const a of addons) {
+    if (a.type !== NAMESPACE_ADDON_TYPE || !a.releaseName?.startsWith(RELEASE_PREFIX)) continue;
+    const name = a.releaseName.slice(RELEASE_PREFIX.length);
+    for (const cluster of a.matchingClusters) {
+      const key = `${a.namespace}/${cluster}`;
+      const ready = a.releases.some((r) => r.cluster === cluster && r.ready);
+      result.set(
+        key,
+        [...(result.get(key) ?? []), { name, ready }].sort((x, y) => x.name.localeCompare(y.name)),
+      );
+    }
+  }
+  return result;
+}
 /** The selector is part of the name: the same namespace can be defined for several clusters. */
 export const namespaceAddonName = (spec: Pick<ManagedNamespaceSpec, 'name' | 'clusterSelector'>) =>
   `ns-${spec.name}-${shortHash(spec.clusterSelector).slice(0, 8)}`;

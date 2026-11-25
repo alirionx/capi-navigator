@@ -5,17 +5,25 @@ import {
   catalogEntry,
   clustersUsing,
   PROVIDER_KINDS,
+  type ClusterNamespace,
   type ClusterSummary,
   type InstalledProvider,
 } from '@capi-navigator/shared';
 import MachineBoxes from './MachineBoxes.vue';
+import NamespaceBoxes from './NamespaceBoxes.vue';
 
 /**
  * Which providers are installed and which clusters use them (FP6-F-08, US-10): providers on the
- * left, clusters in the middle, connected per usage, and next to each cluster its nodes (UX-02).
+ * left, clusters in the middle, connected per usage, and next to each cluster its nodes (UX-02) and
+ * managed namespaces (UX-17).
  * Hovering a node highlights its connections.
  */
-const props = defineProps<{ providers: InstalledProvider[]; clusters: ClusterSummary[] }>();
+const props = defineProps<{
+  providers: InstalledProvider[];
+  clusters: ClusterSummary[];
+  /** Managed namespaces per cluster ("namespace/name"). */
+  namespaces?: Map<string, ClusterNamespace[]>;
+}>();
 const { t } = useI18n();
 
 const NODE_W = 260;
@@ -23,7 +31,7 @@ const NODE_H = 52;
 const GAP = 10;
 const COL_GAP = 160;
 const SHAPE_GAP = 40;
-const SHAPE_W = 420;
+const HEADER_H = 28;
 
 const providers = computed(() =>
   [...props.providers].sort(
@@ -38,7 +46,14 @@ const rows = computed(() => Math.max(providers.value.length, props.clusters.leng
 const height = computed(() => rows.value * (NODE_H + GAP) - GAP);
 const clusterX = NODE_W + COL_GAP;
 const shapeX = clusterX + NODE_W + SHAPE_GAP;
-const width = computed(() => (props.clusters.length ? shapeX + SHAPE_W : clusterX + NODE_W));
+const width = computed(() => (props.clusters.length ? shapeX : clusterX + NODE_W));
+const namespacesOf = (c: ClusterSummary) => props.namespaces?.get(key(c)) ?? [];
+const anyNamespaces = computed(() => props.clusters.some((c) => namespacesOf(c).length > 0));
+/** Header, the offset that centers the clusters, and one row per cluster. */
+const gridRows = computed(
+  () =>
+    `${HEADER_H}px ${offset(props.clusters.length)}px repeat(${props.clusters.length}, ${NODE_H + GAP}px)`,
+);
 /** Vertical offset that centers the shorter column. */
 const offset = (count: number) => ((rows.value - count) * (NODE_H + GAP)) / 2;
 const providerY = (i: number) => offset(providers.value.length) + i * (NODE_H + GAP);
@@ -83,10 +98,12 @@ const kindLabel = (k: string) => k.replace('Provider', '');
 
 <template>
   <div class="graph-scroll" data-testid="provider-graph">
-    <div class="d-flex text-body-small text-medium-emphasis mb-2" :style="{ width: `${width}px` }">
+    <div
+      class="d-flex text-body-small text-medium-emphasis"
+      :style="{ width: `${width}px`, height: `${HEADER_H}px` }"
+    >
       <span :style="{ width: `${clusterX}px` }">{{ t('overview.providers') }}</span>
       <span :style="{ width: `${NODE_W + SHAPE_GAP}px` }">{{ t('overview.clusters') }}</span>
-      <span v-if="clusters.length">{{ t('overview.nodes') }}</span>
     </div>
     <div class="graph" :style="{ width: `${width}px`, height: `${height}px` }">
       <svg :width="width" :height="height" class="edges" aria-hidden="true">
@@ -165,20 +182,42 @@ const kindLabel = (k: string) => k.replace('Provider', '');
           >
         </span>
       </router-link>
-      <MachineBoxes
-        v-for="(c, j) in clusters"
-        :key="`shape-${key(c)}`"
-        :cluster="c"
-        class="shape"
-        :style="{
-          left: `${shapeX}px`,
-          top: `${clusterY(j)}px`,
-          width: `${SHAPE_W}px`,
-          height: `${NODE_H}px`,
-        }"
-        @mouseenter="hover = key(c)"
-        @mouseleave="hover = null"
-      />
+      <!-- The columns are as wide as their widest card, so the namespaces line up (UX-17). -->
+      <div
+        v-if="clusters.length"
+        class="shapes"
+        :style="{ left: `${shapeX}px`, top: `-${HEADER_H}px`, gridTemplateRows: gridRows }"
+      >
+        <span class="text-body-small text-medium-emphasis header">{{ t('overview.nodes') }}</span>
+        <span v-if="anyNamespaces" class="text-body-small text-medium-emphasis header namespaces">{{
+          t('overview.namespaces')
+        }}</span>
+        <template v-for="(c, j) in clusters" :key="`shape-${key(c)}`">
+          <div
+            class="shape"
+            :style="{ gridRow: j + 3, height: `${NODE_H}px` }"
+            @mouseenter="hover = key(c)"
+            @mouseleave="hover = null"
+          >
+            <MachineBoxes :cluster="c" />
+            <span
+              v-if="namespacesOf(c).length"
+              class="link"
+              :class="{ 'link--active': hover === key(c), 'link--dim': hover && hover !== key(c) }"
+              aria-hidden="true"
+            />
+          </div>
+          <NamespaceBoxes
+            v-if="namespacesOf(c).length"
+            :cluster="c"
+            :namespaces="namespacesOf(c)"
+            class="namespaces"
+            :style="{ gridRow: j + 3, height: `${NODE_H}px` }"
+            @mouseenter="hover = key(c)"
+            @mouseleave="hover = null"
+          />
+        </template>
+      </div>
       <div
         v-if="clusters.length === 0"
         class="empty text-medium-emphasis text-body-medium"
@@ -302,8 +341,39 @@ const kindLabel = (k: string) => k.replace('Provider', '');
   top: 0;
   padding: 16px 12px;
 }
-.shape {
+.shapes {
   position: absolute;
+  display: grid;
+  grid-template-columns: max-content max-content;
+}
+/* The links between nodes and namespaces need some room next to a long header, too. */
+.header {
+  grid-row: 1;
+  padding-right: 48px;
+  white-space: nowrap;
+}
+.shape {
+  grid-column: 1;
+  display: flex;
+  align-items: stretch;
+}
+.namespaces {
+  grid-column: 2;
+  justify-self: start;
+}
+.link {
+  flex: 1;
+  align-self: center;
+  min-width: 40px;
+  height: 1.5px;
+  margin: 0 8px 0 0;
+  background: rgba(var(--v-theme-primary), 0.35);
+}
+.link--active {
+  background: rgb(var(--v-theme-primary));
+}
+.link--dim {
+  opacity: 0.15;
 }
 .legend {
   display: flex;

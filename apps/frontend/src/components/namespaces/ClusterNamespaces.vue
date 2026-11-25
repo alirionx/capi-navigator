@@ -292,11 +292,19 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
           <template v-if="n.accounts.length">
             <div class="text-title-small mb-1">{{ t('namespaces.accounts') }}</div>
             <v-table density="compact" class="mb-4">
+              <thead>
+                <tr>
+                  <th>{{ t('namespaces.account') }}</th>
+                  <th>{{ t('namespaces.role') }}</th>
+                  <th v-if="canManage">{{ t('namespaces.assigned') }}</th>
+                  <th />
+                </tr>
+              </thead>
               <tbody>
                 <tr v-for="a in n.accounts" :key="a.name">
                   <td class="font-weight-medium">{{ a.name }}</td>
                   <td>{{ t(`namespaces.roles.${a.role}`) }}</td>
-                  <td :data-testid="`people-${n.name}-${a.name}`">
+                  <td v-if="canManage" :data-testid="`people-${n.name}-${a.name}`">
                     <v-chip
                       v-for="p in peopleOf(n, a.name)"
                       :key="personKey(p)"

@@ -131,6 +131,13 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
 
           <div class="text-title-small mb-1">{{ t('namespaces.accounts') }}</div>
           <v-table density="compact" class="mb-4">
+            <thead>
+              <tr>
+                <th>{{ t('namespaces.account') }}</th>
+                <th>{{ t('namespaces.role') }}</th>
+                <th />
+              </tr>
+            </thead>
             <tbody>
               <tr v-for="a in n.accounts" :key="a.name">
                 <td class="font-weight-medium">{{ a.name }}</td>
