@@ -31,15 +31,17 @@ providers:
       Verified live on 2026-11-08: upgrade on kind, kubeadm v1.36.6 on Proxmox VE, RKE2 on GCP.
   rke2:
     # One release for the RKE2 bootstrap and control plane providers.
-    version: v0.27.2
+    version: v0.27.3
     source:
       datasource: github-releases
       package: rancher/cluster-api-provider-rke2
     verified: 2026-11-25
     note: >-
-      v0.27.2 updates Go and CAPI (v1.14.4), fixes a CVE, sets the uninitialized taint of the CAPI
-      contract and changes the base image; CRDs unchanged from v0.27.1. `airGappedChecksum` is still
-      broken (issue #1128), the app does not set it (ADR-0030).
+      v0.27.3 lets joining nodes take the control plane addresses in turn (registrationMethod
+      internal-first, which the app uses) and updates dependencies (security); CRDs and objects
+      unchanged from v0.27.2. Taken one day after its release at the user's request; verified live on 2026-11-25 (Proxmox VE, one
+      control plane node and one worker; not with several control plane nodes). `airGappedChecksum`
+      is still broken (issue #1128), the app does not set it (ADR-0030).
   k0smotron:
     # One release for the k0smotron bootstrap and control plane providers.
     version: v2.3.1
@@ -152,11 +154,11 @@ kubernetes:
     verified: 2026-11-08
     note: Latest patch per minor from the rancher/rke2 releases. The RKE2 provider runs its e2e tests with Kubernetes v1.35; v1.36 was verified live in FP-29 (upgrade from v1.35, 2026-10-28). Patches v1.34.13, v1.35.10, v1.36.6 and v1.37.2 (containerd 2.2.9 or 2.3.6, chart updates) taken on 2026-11-08, three days after their release, at the user's request. v1.36.6+rke2r2 (2026-11-20, public) brings Traefik v3.7.19, etcd and ingress-nginx image updates. v1.33.13+rke2r3 is a Prime-only release without assets on GitHub (no install, no image lists); v1.33 stays on v1.33.13+rke2r2, the last community release of that minor.
     versions:
-      - { version: v1.37.2+rke2r1, verifiedWithProvider: v0.27.2, untested: true }
-      - { version: v1.36.6+rke2r2, verifiedWithProvider: v0.27.2, default: true }
-      - { version: v1.35.10+rke2r1, verifiedWithProvider: v0.27.2 }
-      - { version: v1.34.13+rke2r1, verifiedWithProvider: v0.27.2 }
-      - { version: v1.33.13+rke2r2, verifiedWithProvider: v0.27.2 }
+      - { version: v1.37.2+rke2r1, verifiedWithProvider: v0.27.3, untested: true }
+      - { version: v1.36.6+rke2r2, verifiedWithProvider: v0.27.3, default: true }
+      - { version: v1.35.10+rke2r1, verifiedWithProvider: v0.27.3 }
+      - { version: v1.34.13+rke2r1, verifiedWithProvider: v0.27.3 }
+      - { version: v1.33.13+rke2r2, verifiedWithProvider: v0.27.3 }
   k0s:
     source:
       datasource: github-releases

@@ -14,13 +14,13 @@ export const VERSIONS: VersionsFile = {
       "note": "CAPI contract v1beta2. v1.14.4 has bug fixes and Go updates only; the CRDs and manifests of core, kubeadm bootstrap and control plane are unchanged from v1.14.3 apart from the images. Verified live on 2026-11-08: upgrade on kind, kubeadm v1.36.6 on Proxmox VE, RKE2 on GCP."
     },
     "rke2": {
-      "version": "v0.27.2",
+      "version": "v0.27.3",
       "source": {
         "datasource": "github-releases",
         "package": "rancher/cluster-api-provider-rke2"
       },
       "verified": "2026-11-25",
-      "note": "v0.27.2 updates Go and CAPI (v1.14.4), fixes a CVE, sets the uninitialized taint of the CAPI contract and changes the base image; CRDs unchanged from v0.27.1. `airGappedChecksum` is still broken (issue #1128), the app does not set it (ADR-0030)."
+      "note": "v0.27.3 lets joining nodes take the control plane addresses in turn (registrationMethod internal-first, which the app uses) and updates dependencies (security); CRDs and objects unchanged from v0.27.2. Taken one day after its release at the user's request; verified live on 2026-11-25 (Proxmox VE, one control plane node and one worker; not with several control plane nodes). `airGappedChecksum` is still broken (issue #1128), the app does not set it (ADR-0030)."
     },
     "k0smotron": {
       "version": "v2.3.1",
@@ -128,25 +128,25 @@ export const VERSIONS: VersionsFile = {
       "versions": [
         {
           "version": "v1.37.2+rke2r1",
-          "verifiedWithProvider": "v0.27.2",
+          "verifiedWithProvider": "v0.27.3",
           "untested": true
         },
         {
           "version": "v1.36.6+rke2r2",
-          "verifiedWithProvider": "v0.27.2",
+          "verifiedWithProvider": "v0.27.3",
           "default": true
         },
         {
           "version": "v1.35.10+rke2r1",
-          "verifiedWithProvider": "v0.27.2"
+          "verifiedWithProvider": "v0.27.3"
         },
         {
           "version": "v1.34.13+rke2r1",
-          "verifiedWithProvider": "v0.27.2"
+          "verifiedWithProvider": "v0.27.3"
         },
         {
           "version": "v1.33.13+rke2r2",
-          "verifiedWithProvider": "v0.27.2"
+          "verifiedWithProvider": "v0.27.3"
         }
       ]
     },

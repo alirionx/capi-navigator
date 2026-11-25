@@ -2,7 +2,7 @@
 
 Generated on 2026-11-25 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
-**48 app versions** in [versions.yaml](../versions.yaml): 1 with a newer version (0 major, 0 minor, 1 patch).
+**48 app versions** in [versions.yaml](../versions.yaml): 0 with a newer version (0 major, 0 minor, 0 patch).
 
 npm packages are not part of this report: run `pnpm outdated -r`.
 
@@ -10,17 +10,17 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### Cluster API providers
 
-| Entry                     | Current | Newest  | Update                                                       | Change in                                 |
-| ------------------------- | ------- | ------- | ------------------------------------------------------------ | ----------------------------------------- |
-| providers.cluster-api     | v1.14.4 | –       | up to date                                                   | versions.yaml → providers.cluster-api     |
-| providers.rke2            | v0.27.2 | v0.27.3 | **patch** (released today; wait for the minimum release age) | versions.yaml → providers.rke2            |
-| providers.k0smotron       | v2.3.1  | –       | up to date                                                   | versions.yaml → providers.k0smotron       |
-| providers.openstack       | v0.15.2 | –       | up to date                                                   | versions.yaml → providers.openstack       |
-| providers.aws             | v2.13.1 | –       | up to date                                                   | versions.yaml → providers.aws             |
-| providers.gcp             | v1.13.1 | –       | up to date                                                   | versions.yaml → providers.gcp             |
-| providers.proxmox         | v0.9.2  | –       | up to date                                                   | versions.yaml → providers.proxmox         |
-| providers.ipam-in-cluster | v1.1.1  | –       | up to date                                                   | versions.yaml → providers.ipam-in-cluster |
-| providers.helm            | v0.6.6  | –       | up to date                                                   | versions.yaml → providers.helm            |
+| Entry                     | Current | Newest | Update     | Change in                                 |
+| ------------------------- | ------- | ------ | ---------- | ----------------------------------------- |
+| providers.cluster-api     | v1.14.4 | –      | up to date | versions.yaml → providers.cluster-api     |
+| providers.rke2            | v0.27.3 | –      | up to date | versions.yaml → providers.rke2            |
+| providers.k0smotron       | v2.3.1  | –      | up to date | versions.yaml → providers.k0smotron       |
+| providers.openstack       | v0.15.2 | –      | up to date | versions.yaml → providers.openstack       |
+| providers.aws             | v2.13.1 | –      | up to date | versions.yaml → providers.aws             |
+| providers.gcp             | v1.13.1 | –      | up to date | versions.yaml → providers.gcp             |
+| providers.proxmox         | v0.9.2  | –      | up to date | versions.yaml → providers.proxmox         |
+| providers.ipam-in-cluster | v1.1.1  | –      | up to date | versions.yaml → providers.ipam-in-cluster |
+| providers.helm            | v0.6.6  | –      | up to date | versions.yaml → providers.helm            |
 
 ### Prerequisites
 
