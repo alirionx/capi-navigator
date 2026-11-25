@@ -34,12 +34,14 @@ import {
   type ManagedNamespaceSpec,
   type ManagedNamespaceView,
   type MyNamespace,
+  type NamespaceDashboard,
   type NamespaceToken,
   type NamespaceTokenResponse,
 } from '@capi-navigator/shared';
 import { ClustersService } from '../clusters/clusters.service.js';
 import { AddonsService } from '../helm/addons.service.js';
 import { toHttpException } from '../kube/errors.js';
+import { asServiceAccount, buildNamespaceDashboard, readNamespace } from './namespace-dashboard.js';
 import { PeopleService } from './people.service.js';
 import { objectKey, workloadAccess, type WorkloadAccess } from './workload-access.js';
 
@@ -468,6 +470,23 @@ export class NamespacesService {
       return { ...base, unreachable: true, quota: [], tokens: [] };
     }
   }
+
+  /** FP37-F-08: read as the service account, so Kubernetes itself limits it to the namespace. */
+  async dashboard(
+    ref: ClusterRef,
+    namespace: string,
+    account: string,
+  ): Promise<NamespaceDashboard> {
+    const kubeconfig = await this.clusters.kubeconfig(ref.connection, ref.namespace, ref.name);
+    const kc = asServiceAccount(kubeconfig, namespaceAccountName(namespace, account));
+    return buildNamespaceDashboard(
+      await withTimeout(this.readNamespace(kc, namespace), READ_TIMEOUT_MS),
+      namespace,
+    );
+  }
+
+  /** Replaced in tests. */
+  readNamespace = readNamespace;
 
   private readonly running = new Map<string, Promise<unknown>>();
 

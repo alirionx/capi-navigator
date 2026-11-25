@@ -71,6 +71,41 @@ describe('MyNamespacesView (FP37-F-03)', () => {
     ]);
   });
 
+  it('reads the dashboard only when it is opened (FP37-F-08)', async () => {
+    await render();
+    expect(calls.some(([, u]) => u.endsWith('/dashboard'))).toBe(false);
+    vi.mocked(fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            generatedAt: 'x',
+            workloads: [
+              { kind: 'Deployment', name: 'web', desired: 2, ready: 1, status: 'progressing' },
+            ],
+            pods: [
+              {
+                name: 'web-1',
+                phase: 'Running',
+                ready: 0,
+                containers: 1,
+                restarts: 7,
+                reason: 'CrashLoopBackOff',
+              },
+            ],
+            events: [],
+          }),
+          { status: 200 },
+        ),
+    );
+    await find('my-dashboard-toggle-team-a').trigger('click');
+    await flushPromises();
+    const text = find('my-dashboard-team-a').text();
+    expect(text).toContain('1 of 2 ready');
+    expect(text).toContain('CrashLoopBackOff');
+    await find('my-dashboard-toggle-team-a').trigger('click');
+    expect(find('my-dashboard-team-a').exists()).toBe(false);
+  });
+
   it('explains an empty list and what is missing', async () => {
     data = { incomplete: true, namespaces: [] };
     await render();

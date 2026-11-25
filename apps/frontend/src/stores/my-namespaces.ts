@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import {
   MyNamespacesSchema,
+  NamespaceDashboardSchema,
   NamespaceTokenResponseSchema,
   type MyNamespace,
   type NamespaceTokenRequest,
@@ -17,6 +18,7 @@ const item = (n: MyNamespace) =>
 /** The namespaces assigned to the signed-in person (FP-37). Holds no tokens (ADR-0040). */
 export const useMyNamespacesStore = defineStore('my-namespaces', () => ({
   list: () => api('GET', BASE, MyNamespacesSchema),
+  dashboard: (n: MyNamespace) => api('GET', `${item(n)}/dashboard`, NamespaceDashboardSchema),
   issueToken: (n: MyNamespace, account: string, req: NamespaceTokenRequest) =>
     api(
       'POST',

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import type { MyNamespace, MyNamespaces } from '@capi-navigator/shared';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import { quotaKey, withoutUnit } from '../components/namespaces/quota.js';
+import NamespaceDashboardPanel from '../components/namespaces/NamespaceDashboardPanel.vue';
 import TokenDialog from '../components/namespaces/TokenDialog.vue';
 import { useMyNamespacesStore } from '../stores/my-namespaces.js';
 
@@ -43,6 +44,11 @@ async function revoke(entry: MyNamespace, id: string): Promise<void> {
   await load();
 }
 
+const shown = ref<string[]>([]);
+function toggleDashboard(n: MyNamespace): void {
+  const k = key(n);
+  shown.value = shown.value.includes(k) ? shown.value.filter((x) => x !== k) : [...shown.value, k];
+}
 const key = (n: MyNamespace) =>
   [n.connection, n.clusterNamespace, n.cluster, n.namespace].join('/');
 const quotaLabel = (resource: string) => {
@@ -92,6 +98,21 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
           <v-card-subtitle>{{
             t('myNamespaces.inCluster', { cluster: n.cluster })
           }}</v-card-subtitle>
+          <template #append>
+            <v-btn
+              size="small"
+              variant="text"
+              :prepend-icon="
+                shown.includes(key(n)) ? 'mdi-chevron-up' : 'mdi-view-dashboard-outline'
+              "
+              :disabled="!n.ready || n.unreachable"
+              :data-testid="`my-dashboard-toggle-${n.namespace}`"
+              @click="toggleDashboard(n)"
+              >{{
+                t(shown.includes(key(n)) ? 'myNamespaces.hideDashboard' : 'myNamespaces.dashboard')
+              }}</v-btn
+            >
+          </template>
         </v-card-item>
         <v-card-text>
           <template v-if="n.quota.length">
@@ -167,6 +188,7 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
               {{ t('namespaces.revokeHint') }}
             </p>
           </template>
+          <NamespaceDashboardPanel v-if="shown.includes(key(n))" class="mt-4" :entry="n" />
         </v-card-text>
       </v-card>
     </template>

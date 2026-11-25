@@ -78,6 +78,7 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
       'operator',
     // FP-37: for every signed-in person; what is returned follows from the assignments (ADR-0041).
     'GET /api/my/namespaces': 'viewer',
+    'GET /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/dashboard': 'viewer',
     'POST /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/accounts/:account/tokens':
       'viewer',
     'DELETE /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/tokens/:token':

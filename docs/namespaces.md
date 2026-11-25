@@ -43,7 +43,8 @@ People can get their access themselves (FP-37, [ADR-0041](adr/0041-namespace-use
 1. **Assign** them in the namespace form, per account: local users, groups or single sign-on people.
    Groups must be mapped in the app. Assigning does not change anything in the cluster.
 2. They open **My namespaces** and issue a kubeconfig or token, at most five valid ones per account.
-   They see only their own namespaces and their own access, and can revoke it.
+   They see only their own namespaces, their workloads, pods and events, and their own access, which
+   they can revoke.
 
 People who should see nothing else get the built-in role **Namespace user**. It is the only role that
 cannot read: no clusters, no add-ons, no settings. Self-service works with every other role too. For

@@ -40,11 +40,29 @@ const TOKEN = 'eyJ-secret-token-of-the-workload-cluster';
 const MINE = '/api/my/namespaces';
 const OWNER = '/api/connections/home/clusters/team/prod/namespaces';
 
+const EMPTY = {
+  pods: [],
+  deployments: [],
+  statefulSets: [],
+  daemonSets: [],
+  jobs: [],
+  events: [],
+};
+const KUBECONFIG = JSON.stringify({
+  apiVersion: 'v1',
+  kind: 'Config',
+  clusters: [{ name: 'c', cluster: { server: 'https://prod.example.com:6443' } }],
+  users: [{ name: 'admin', user: {} }],
+  contexts: [{ name: 'x', context: { cluster: 'c', user: 'admin' } }],
+  'current-context': 'x',
+});
+
 describe('self-service of namespace users over HTTP (FP-37)', () => {
   let app: NestExpressApplication;
   let fake: ReturnType<typeof createFakeStore>;
   let admin: string;
   let viewer: string;
+  let service: NamespacesService;
   let max: string;
   let eva: string;
   let nobody: string;
@@ -178,7 +196,7 @@ describe('self-service of namespace users over HTTP (FP-37)', () => {
         {
           provide: ClustersService,
           useValue: {
-            kubeconfig: async () => 'kubeconfig',
+            kubeconfig: async () => KUBECONFIG,
             storedSpec: async () => ({ kubernetes: { flavor: 'rke2' } }),
           },
         },
@@ -198,7 +216,8 @@ describe('self-service of namespace users over HTTP (FP-37)', () => {
     });
     configureApp(app, config);
     await app.init();
-    moduleRef.get(NamespacesService).access = () => access;
+    service = moduleRef.get(NamespacesService);
+    service.access = () => access;
     for (const name of ['home', 'other']) {
       await fake.store.connections.create({ name }, {} as never);
     }
@@ -403,6 +422,27 @@ describe('self-service of namespace users over HTTP (FP-37)', () => {
     const people = await send('get', `${OWNER}/people`, admin).expect(200);
     expect(people.body).toContainEqual(person('max'));
     expect(JSON.stringify(people.body)).not.toContain('robot');
+  });
+
+  it('shows the dashboard of an assigned namespace, read as its account (FP37-F-08)', async () => {
+    const seen: string[] = [];
+    service.readNamespace = async (kc, namespace) => {
+      seen.push(`${namespace} as ${kc.getCurrentUser()!.impersonateUser}`);
+      return { ...EMPTY, pods: [{ metadata: { name: 'web', namespace: 'team-a' } }] };
+    };
+    const path = `${MINE}/home/team/prod/team-a/dashboard`;
+    const { body } = await send('get', path, max).expect(200);
+    expect(body.pods).toMatchObject([{ name: 'web' }]);
+    expect(seen).toEqual(['team-a as system:serviceaccount:capi-navigator-accounts:team-a.ci']);
+    const other = await send('get', path.replace('team-a', 'team-b'), max).expect(404);
+    const missing = await send('get', path.replace('team-a', 'missing'), max).expect(404);
+    expect(other.body).toEqual(missing.body);
+    await send('get', path, admin).expect(404);
+    service.readNamespace = async () => {
+      throw new Error('connect ECONNREFUSED prod.internal');
+    };
+    const failed = await send('get', path, max).expect(502);
+    expect(JSON.stringify(failed.body)).not.toContain('prod.internal');
   });
 
   it('renders the same objects with and without people', () => {

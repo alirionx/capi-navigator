@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   personKey,
   type ManagedNamespaceSpec,
   type MyNamespace,
   type MyNamespaces,
+  type NamespaceDashboard,
   type NamespaceTokenResponse,
 } from '@capi-navigator/shared';
 import type { Principal } from '../auth/principal.js';
@@ -94,6 +95,25 @@ export class MyNamespacesService {
       id: self,
       grant,
     });
+  }
+
+  /** FP37-F-08: dashboard of an assigned namespace, with the rights of the assigned account. */
+  async dashboard(principal: Principal, ref: MyNamespaceRef): Promise<NamespaceDashboard> {
+    const { spec, keys } = await this.assigned(principal, ref);
+    try {
+      return await this.namespaces.dashboard(
+        ref,
+        ref.workloadNamespace,
+        assignedAccounts(spec, keys)[0]!.name,
+      );
+    } catch {
+      // Without the reason: it may name the cluster's address.
+      throw new BadGatewayException({
+        statusCode: 502,
+        message: 'The cluster cannot be read right now',
+        hint: 'Try again later.',
+      });
+    }
   }
 
   /** FP37-F-04: only tokens the person issued. */

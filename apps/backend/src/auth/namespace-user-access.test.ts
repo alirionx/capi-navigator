@@ -16,6 +16,7 @@ const ALLOWED = [
   'GET /api/auth/me',
   'POST /api/auth/change-password',
   'GET /api/my/namespaces',
+  'GET /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/dashboard',
   'POST /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/accounts/:account/tokens',
   'DELETE /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/tokens/:token',
 ];

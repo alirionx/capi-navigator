@@ -1349,12 +1349,14 @@ Live acceptance on Proxmox VE (2026-11-24, through the API of the dev backend, C
 - [x] A namespace user with one assignment sees exactly this namespace; guessing names of other clusters, namespaces or accounts in the API gives the same answer as for ones that do not exist.
 - [x] The person issues a kubeconfig and works with it; a removed person gets no new token.
 - [x] Assignment by OIDC group works with Dex.
-- [ ] Part 2: the dashboard of one namespace shows nothing of another.
+- [x] Part 2: the dashboard of one namespace shows nothing of another.
 
 Live acceptance of part 1 (2026-11-25, Proxmox VE, RKE2 v1.36.6+rke2r2, a second app instance with Dex): 38 checks through the API and the whole flow in the real UI. Findings:
 
 - Creating a cluster from an unknown blueprint answered 404 instead of 403, so anybody signed in could guess blueprint names; fixed in the guard.
 - A revoked token was refused after 11 s; an assignment left the Helm release at its revision.
+
+Part 2 (same day and cluster): the dashboard is read by impersonating the assigned service account, so Kubernetes itself limits it to the namespace. None of 29 pods of other namespaces and no node name or address appeared.
 
 ## 7. Non-functional requirements
 

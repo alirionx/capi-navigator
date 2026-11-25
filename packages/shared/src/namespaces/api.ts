@@ -1,5 +1,6 @@
 import { stringify } from 'yaml';
 import { z } from 'zod';
+import { DashboardEventSchema, DashboardWorkloadSchema } from '../cluster/dashboard.js';
 import { ManagedNamespaceSpecSchema, NAMESPACE_ROLES } from './managed-namespace.js';
 
 /** API of the managed namespaces of one workload cluster (FP-36). */
@@ -129,6 +130,27 @@ export const MyNamespacesSchema = z.object({
   incomplete: z.boolean(),
 });
 export type MyNamespaces = z.infer<typeof MyNamespacesSchema>;
+
+/** Read-only dashboard of one assigned namespace (FP37-F-08): nothing about nodes. */
+export const NamespaceDashboardSchema = z.object({
+  generatedAt: z.string(),
+  workloads: z.array(DashboardWorkloadSchema.omit({ namespace: true })),
+  pods: z.array(
+    z.object({
+      name: z.string(),
+      phase: z.string(),
+      /** Ready containers of all. */
+      ready: z.number(),
+      containers: z.number(),
+      restarts: z.number(),
+      reason: z.string().optional(),
+      message: z.string().optional(),
+      createdAt: z.string().optional(),
+    }),
+  ),
+  events: z.array(DashboardEventSchema.omit({ namespace: true })),
+});
+export type NamespaceDashboard = z.infer<typeof NamespaceDashboardSchema>;
 
 /** Pure: kubeconfig of a service account with the managed namespace as default (FP36-F-10). */
 export function namespaceKubeconfig(args: {

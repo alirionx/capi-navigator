@@ -29,6 +29,8 @@ and cross references would still reveal names. So namespace users get a page of 
 - **Groups must be mapped in the app** (FP-14), because the session keeps only mapped groups.
 - **The owner picks from a reduced list** (names, mapped groups and persons; no roles, no technical
   users), available with `clusters.access`.
+- **The dashboard of a namespace is read as the assigned service account** (impersonation with the
+  kubeconfig that CAPI writes), with namespaced requests only. Kubernetes enforces the limit too.
 - **Assigned people are only shown to `clusters.access`**, not to everybody who may read.
 
 ## Consequences

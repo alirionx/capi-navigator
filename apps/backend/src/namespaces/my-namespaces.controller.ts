@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Header, HttpCode, Param, Post } from '@nestjs/common';
 import {
   MyNamespacesSchema,
+  NamespaceDashboardSchema,
   NamespaceTokenRequestSchema,
   NamespaceTokenResponseSchema,
   type MyNamespaces,
+  type NamespaceDashboard,
   type NamespaceTokenResponse,
 } from '@capi-navigator/shared';
 import type { z } from 'zod';
@@ -34,6 +36,25 @@ export class MyNamespacesController {
   @Header('Cache-Control', 'no-store')
   list(@CurrentUser() user: Principal): Promise<MyNamespaces> {
     return this.mine.list(user);
+  }
+
+  @SignedIn({ peopleOnly: true })
+  @Api({
+    summary: 'Read-only dashboard of an assigned namespace',
+    description:
+      'Workloads, pods and events, read with the rights of the assigned account; nothing about nodes or other namespaces (FP37-F-08).',
+    response: NamespaceDashboardSchema,
+  })
+  @Get(`${ONE}/dashboard`)
+  @Header('Cache-Control', 'no-store')
+  dashboard(
+    @Param('connection') connection: string,
+    @Param('namespace') namespace: string,
+    @Param('name') name: string,
+    @Param('workloadNamespace') workloadNamespace: string,
+    @CurrentUser() user: Principal,
+  ): Promise<NamespaceDashboard> {
+    return this.mine.dashboard(user, { connection, namespace, name, workloadNamespace });
   }
 
   @SignedIn({ peopleOnly: true })

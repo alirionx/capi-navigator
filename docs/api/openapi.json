@@ -6824,6 +6824,73 @@
         "x-permission": "signed-in"
       }
     },
+    "/api/my/namespaces/{connection}/{namespace}/{name}/{workloadNamespace}/dashboard": {
+      "get": {
+        "operationId": "MyNamespaces_dashboard",
+        "tags": [
+          "MyNamespaces"
+        ],
+        "summary": "Read-only dashboard of an assigned namespace",
+        "description": "Workloads, pods and events, read with the rights of the assigned account; nothing about nodes or other namespaces (FP37-F-08).\n\nAny signed-in person; no API tokens.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceDashboard"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "signed-in"
+      }
+    },
     "/api/my/namespaces/{connection}/{namespace}/{name}/{workloadNamespace}/tokens/{token}": {
       "delete": {
         "operationId": "MyNamespaces_revokeToken",
@@ -12133,6 +12200,150 @@
           "name",
           "role",
           "people"
+        ],
+        "additionalProperties": false
+      },
+      "NamespaceDashboard": {
+        "type": "object",
+        "properties": {
+          "generatedAt": {
+            "type": "string"
+          },
+          "workloads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "Deployment",
+                    "StatefulSet",
+                    "DaemonSet",
+                    "Job"
+                  ]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "desired": {
+                  "type": "number"
+                },
+                "ready": {
+                  "type": "number"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ok",
+                    "progressing",
+                    "degraded"
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "name",
+                "desired",
+                "ready",
+                "status"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "pods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "phase": {
+                  "type": "string"
+                },
+                "ready": {
+                  "type": "number"
+                },
+                "containers": {
+                  "type": "number"
+                },
+                "restarts": {
+                  "type": "number"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "phase",
+                "ready",
+                "containers",
+                "restarts"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                },
+                "object": {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                },
+                "count": {
+                  "type": "number"
+                },
+                "lastSeen": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type",
+                "reason",
+                "message",
+                "object",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "generatedAt",
+          "workloads",
+          "pods",
+          "events"
         ],
         "additionalProperties": false
       },
