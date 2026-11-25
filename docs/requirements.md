@@ -1084,6 +1084,7 @@ Requirements:
 - **UX-13** (done, review 2026-11-04) Cluster list: with long generated names and labels (e.g. from a service broker) the list is wider than the page and status and age are cut off. The namespace goes below the name and the distribution below the version; location, labels (two, the rest behind "+n" with a tooltip) and node counts stay on one line.
 - **UX-14** (done, review 2026-11-04) Wizard, air-gapped (FP-29): the public DNS default is only flagged in the preview. The DNS field warns at once.
 - **UX-15** (done, review 2026-11-04) Blueprint list (FP-34): name and display name are shown twice when they are the same.
+- **UX-16** (done, user request 2026-11-25) Wizard: the image of the cluster (Infrastructure) and "Image for this group" (Topology) looked like the same input twice, and the exception came before the default. Image, and what its list depends on (region on AWS and Google Cloud, boot disk on Proxmox VE), are now asked for at the top of Topology as "All nodes"; the groups have "Other image (optional)".
 
 **Review log**
 

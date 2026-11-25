@@ -1,18 +1,24 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { InfraForm, InfraValues, LookupOption } from '@capi-navigator/shared';
 import FieldHelp from '../FieldHelp.vue';
 
-/** Infrastructure step of the wizard, rendered from the provider's form description (FP25-F-05). */
+/** Infrastructure fields of the wizard, rendered from the provider's form description (FP25-F-05). */
 const values = defineModel<InfraValues>({ required: true });
 const props = defineProps<{
   form: InfraForm;
+  /** Only these fields, e.g. those of one step (UX-16); default: all. */
+  fields?: InfraForm['fields'];
   lists: Record<string, LookupOption[]>;
   loading?: boolean;
   /** FP-29: fields warn about values that need the internet. */
   airGapped?: boolean;
 }>();
 const { t } = useI18n();
+const notes = computed(() =>
+  props.fields?.every((f) => f.step === 'topology') ? [] : (props.form.notes ?? []),
+);
 
 /**
  * Warning of a list entry from the cloud (e.g. a Proxmox template with the guest agent disabled,
@@ -28,7 +34,7 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
 
 <template>
   <v-row>
-    <v-col v-for="f in form.fields" :key="f.path" cols="12" :md="f.cols ?? 6">
+    <v-col v-for="f in fields ?? form.fields" :key="f.path" cols="12" :md="f.cols ?? 6">
       <v-switch
         v-if="f.kind === 'switch'"
         v-model="values[f.path]"
@@ -109,7 +115,7 @@ const chosenWarning = (f: InfraForm['fields'][number]) =>
         >{{ t(f.airGapWarning(values[f.path])!) }}</v-alert
       >
     </v-col>
-    <v-col v-for="n in form.notes ?? []" :key="n" cols="12">
+    <v-col v-for="n in notes" :key="n" cols="12">
       <v-alert type="info" variant="tonal" density="compact">{{ t(n) }}</v-alert>
     </v-col>
   </v-row>

@@ -63,15 +63,16 @@ version catalog, infrastructure provider and credentials.
 
 ![Wizard: basics](images/ui-tour/20-wizard-basics.png)
 
-**Topology**: standard (control plane plus worker pools) or all-in-one, the number of control plane
-nodes (1, 3 or 5 for etcd quorum), machine sizes, root disks and node labels.
+**Topology**: standard (control plane plus worker pools) or all-in-one, the image of all nodes,
+the number of control plane nodes (1, 3 or 5 for etcd quorum), machine sizes, root disks and node
+labels.
 
 ![Wizard: topology](images/ui-tour/21-wizard-topology.png)
 
-**Infrastructure**: images, flavors, networks and key pairs are looked up live in the cloud with
+**Infrastructure**: networks and key pairs, like images and machine sizes before, are looked up live in the cloud with
 the selected credentials, so there is nothing to copy from the cloud console.
 
-![Wizard: infrastructure with images from the cloud](images/ui-tour/22-wizard-infrastructure.png)
+![Wizard: infrastructure](images/ui-tour/22-wizard-infrastructure.png)
 
 **Add-ons**: the cloud controller manager and the CSI driver are rolled out as Helm charts through
 CAAPH; a reboot daemon (kured) is optional.

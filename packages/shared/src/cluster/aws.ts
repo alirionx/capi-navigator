@@ -46,6 +46,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
     fields: [
       {
         path: 'region',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'regions',
         label: 'wizard.region',
@@ -56,6 +57,7 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
       },
       {
         path: 'image',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'images',
         label: 'wizard.ami',

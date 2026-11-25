@@ -38,6 +38,7 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
       },
       {
         path: 'region',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'regions',
         label: 'wizard.region',
@@ -57,6 +58,7 @@ export const gcpPlugin: InfraTransformPlugin<GcpInfra> = {
       },
       {
         path: 'image',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'images',
         label: 'wizard.image',

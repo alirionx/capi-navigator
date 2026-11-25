@@ -78,6 +78,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       },
       {
         path: 'image',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'templates',
         label: 'wizard.pveTemplate',
@@ -91,6 +92,7 @@ export const proxmoxPlugin: InfraTransformPlugin<ProxmoxInfra> = {
       },
       {
         path: 'bootDisk',
+        step: 'topology',
         kind: 'select',
         options: PROXMOX_BOOT_DISKS,
         label: 'wizard.pveBootDisk',

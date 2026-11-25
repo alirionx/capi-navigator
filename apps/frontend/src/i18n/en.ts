@@ -1113,8 +1113,11 @@ export const en = {
     sameRootDisk: 'Same root disk for all groups',
     sameRootDiskHint:
       'Applies size and type of the control plane root disk to all worker pools. Default: off.',
-    imageOverride: 'Image for this group',
-    imageOverrideHint: 'Optional; default: the cluster image (Infrastructure step).',
+    allNodes: 'All nodes',
+    imageSame: 'Same as all nodes',
+    imageOverride: 'Other image (optional)',
+    imageOverrideHint:
+      'Only for this group, e.g. an image with GPU drivers. Default: the image of all nodes.',
     image: 'Image',
     imageHint:
       'Stock cloud image, e.g. Ubuntu 24.04 (default). Maps to OpenStackMachineTemplate image.id.',

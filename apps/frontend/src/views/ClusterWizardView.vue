@@ -9,6 +9,7 @@ import {
   FLAVOR_PLUGINS,
   HOST_LABEL,
   INFRA_PLUGINS,
+  stepFields,
   tenantRequests,
   type HostView,
   infraFromValues,
@@ -346,8 +347,14 @@ function applyDefaults(): void {
   }
 }
 
+/** Other images of single groups come from the same list as the image of all nodes. */
+function clearGroupImages(): void {
+  for (const g of [draft.cp, ...draft.pools]) delete g.image;
+}
+
 /** Values that come from the credential or its lists start over with another credential. */
 function resetCredentialFields(): void {
+  clearGroupImages();
   for (const f of form.value.fields) {
     if (f.lookup || f.fromCredential) infraValues.value[f.path] = f.default ?? '';
   }
@@ -383,6 +390,7 @@ watch(
       .filter((_, i) => !isEmpty(old[i]) && now[i] !== old[i]);
     if (changed.length === 0) return;
     for (const f of changed) for (const p of f.resets!) infraValues.value[p] = '';
+    if (changed.some((f) => f.resets!.includes('image'))) clearGroupImages();
     void loadLists();
   },
 );
@@ -841,6 +849,18 @@ const canPreview = computed(() => issues.value.length === 0);
             <FieldHelp :text="t('wizard.controlPlaneHostHint')" />
           </template>
         </v-switch>
+        <!-- UX-16: the image of all nodes before the groups that may have another one -->
+        <v-card border class="mt-4 pa-4" data-testid="wizard-all-nodes">
+          <div class="text-body-large mb-2">{{ t('wizard.allNodes') }}</div>
+          <InfraFields
+            v-model="draft.infra[draft.provider]"
+            :form="form"
+            :fields="stepFields(form, 'topology')"
+            :lists="lists"
+            :loading="listLoading"
+            :air-gapped="airGapped"
+          />
+        </v-card>
         <!-- FP-24: the control plane as pods in a host -->
         <v-card v-if="draft.mode === 'hosted'" border class="mt-4 pa-4" data-testid="hosted-card">
           <v-alert type="warning" variant="tonal" density="compact" class="mb-3">
@@ -1062,6 +1082,7 @@ const canPreview = computed(() => issues.value.length === 0);
         <InfraFields
           v-model="draft.infra[draft.provider]"
           :form="form"
+          :fields="stepFields(form, 'infrastructure')"
           :lists="lists"
           :loading="listLoading"
           :air-gapped="airGapped"

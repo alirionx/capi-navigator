@@ -75,7 +75,10 @@ describe('cluster wizard issues (FP5-F-02)', () => {
 
   it('takes the labels of infrastructure fields from the provider form (FP25-F-05)', () => {
     const issue = { path: ['infrastructure', 'image'], message: 'Required' };
-    expect(stepIssues([issue], INFRA_PLUGINS.aws.form)[0]?.labelKey).toBe('wizard.ami');
+    expect(stepIssues([issue], INFRA_PLUGINS.aws.form)[0]).toMatchObject({
+      labelKey: 'wizard.ami',
+      step: 2,
+    });
     expect(stepIssues([issue], INFRA_PLUGINS.openstack.form)[0]?.labelKey).toBe('wizard.image');
   });
 });

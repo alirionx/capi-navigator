@@ -41,6 +41,7 @@ export const openstackPlugin: InfraTransformPlugin<OpenStackInfra> = {
     fields: [
       {
         path: 'image',
+        step: 'topology',
         kind: 'autocomplete',
         lookup: 'images',
         label: 'wizard.image',

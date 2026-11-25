@@ -178,14 +178,12 @@ test.describe('UI tour screenshots', () => {
     await shot(page, '20-wizard-basics');
     await page.getByTestId('next').click();
 
+    await pick(page, page.getByTestId('image'), /Ubuntu 24/);
     await pick(page, page.getByTestId('size-control-plane'), /a2-ram4/);
     await pick(page, page.getByTestId('size-worker'), /a2-ram4/);
     await shot(page, '21-wizard-topology');
     await page.getByTestId('next').click();
 
-    await pick(page, page.getByTestId('image'), /Ubuntu 24/);
-    await page.getByTestId('image').click(); // show the images looked up from the cloud
-    await expect(page.locator('.v-overlay--active .v-list-item').first()).toBeVisible();
     await shot(page, '22-wizard-infrastructure');
     await page.keyboard.press('Escape');
     await page.getByTestId('next').click();

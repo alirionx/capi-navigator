@@ -100,6 +100,8 @@ const rootRules = [
       item-title="label"
       item-value="value"
       clearable
+      persistent-placeholder
+      :placeholder="t('wizard.imageSame')"
       :label="t('wizard.imageOverride')"
       style="min-width: 260px; flex: 1"
     >

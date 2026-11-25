@@ -58,13 +58,12 @@ export function stepIssues(
     const path = i.path.map(String).join('.');
     if (seen.has(path)) continue;
     seen.add(path);
-    const labelKey =
-      form?.fields.find((f) => path === `infrastructure.${f.path}`)?.label ??
-      LABELS.find(([re]) => re.test(path))?.[1];
+    const field = form?.fields.find((f) => path === `infrastructure.${f.path}`);
+    const labelKey = field?.label ?? LABELS.find(([re]) => re.test(path))?.[1];
     result.push({
       path,
       message: i.message,
-      step: STEP_OF.find(([re]) => re.test(path))?.[1] ?? 1,
+      step: field?.step === 'topology' ? 2 : (STEP_OF.find(([re]) => re.test(path))?.[1] ?? 1),
       ...(labelKey ? { labelKey } : {}),
     });
   }

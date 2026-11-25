@@ -4,6 +4,7 @@ import {
   bastionRequest,
   infraFromValues,
   initialInfraValues,
+  stepFields,
 } from './infra-form.js';
 import { InfrastructureSchema, type ClusterSpec, type OpenStackInfra } from './spec.js';
 import { INFRA_PLUGINS } from './transform.js';
@@ -139,5 +140,20 @@ describe('node network of OpenStack clusters (FP5-F-21)', () => {
     ]);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain('overlaps 10.6.0.0/23 of cluster default/a');
+  });
+
+  it('asks for the image of all nodes, and what its list depends on, in the topology step (UX-16)', () => {
+    for (const [provider, plugin] of Object.entries(INFRA_PLUGINS)) {
+      const first = stepFields(plugin.form, 'topology').map((f) => f.path);
+      const later = stepFields(plugin.form, 'infrastructure').map((f) => f.path);
+      expect(first, provider).toContain('image');
+      expect([...first, ...later].sort()).toEqual(plugin.form.fields.map((f) => f.path).sort());
+      // Nothing in a later step may empty a choice of an earlier one.
+      for (const f of stepFields(plugin.form, 'infrastructure')) {
+        for (const p of [...(f.resets ?? []), ...Object.values(f.fills ?? {})]) {
+          expect(first, `${provider}: ${f.path} changes ${p}`).not.toContain(p);
+        }
+      }
+    }
   });
 });

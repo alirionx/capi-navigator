@@ -7,7 +7,7 @@ import type { Infrastructure } from './spec.js';
  * keys; hints name the default and the CAPI resource and field a value maps to (POS-04).
  */
 
-/** One input of the infrastructure step of the wizard. */
+/** One input of the infrastructure or topology step of the wizard. */
 export interface InfraField {
   /** Dotted path in the spec's `infrastructure`, e.g. "network.nodeCidr". */
   path: string;
@@ -18,6 +18,11 @@ export interface InfraField {
   kind: 'text' | 'number' | 'switch' | 'select' | 'autocomplete' | 'list';
   label: string;
   hint: string;
+  /**
+   * Shown in the topology step instead of the infrastructure step (UX-16): the image of all nodes
+   * and what its list depends on, before the machine groups.
+   */
+  step?: 'topology';
   /** Selection list of the credential (FP4-F-05, FP4-F-10, FP25-F-04). */
   lookup?: LookupKind;
   /** Fixed choices. */
@@ -58,6 +63,10 @@ export interface InfraField {
    */
   day2?: { note?: string; check?: (before: unknown, after: unknown) => string | undefined };
 }
+
+/** Fields of one wizard step (UX-16). */
+export const stepFields = (form: InfraForm, step: 'topology' | 'infrastructure'): InfraField[] =>
+  form.fields.filter((f) => (f.step ?? 'infrastructure') === step);
 
 export interface InfraForm {
   /** Name in the wizard's provider switch. */
