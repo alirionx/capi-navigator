@@ -3,8 +3,11 @@ import { expect, test, type Page } from '@playwright/test';
 // Screenshots for docs/ui-tour.md: `pnpm docs:screenshots` against the running app.
 // Read-only: it opens pages and dialogs but never applies anything.
 //   E2E_ADMIN_PASSWORD=... TOUR_OPENSTACK=<cluster> TOUR_AWS=<cluster> pnpm docs:screenshots
+// Some pages also with an API token (FP-22; not the user management), e.g. the wizard:
+//   E2E_API_TOKEN=... pnpm docs:screenshots -g wizard
 // Names of real users, credentials and accounts are replaced in the page before each screenshot.
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
+const apiToken = process.env.E2E_API_TOKEN;
 const openstackCluster = process.env.TOUR_OPENSTACK ?? 'infomaniak-demo-1';
 const awsCluster = process.env.TOUR_AWS ?? 'aws-demo-1';
 const namespace = process.env.TOUR_NAMESPACE ?? 'default';
@@ -79,9 +82,15 @@ async function tab(page: Page, id: string): Promise<void> {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('UI tour screenshots', () => {
-  test.skip(!adminPassword, 'set E2E_ADMIN_PASSWORD to run');
+  test.skip(!adminPassword && !apiToken, 'set E2E_ADMIN_PASSWORD or E2E_API_TOKEN to run');
 
   test.beforeEach(async ({ page }) => {
+    if (apiToken) {
+      await page.route('**/api/**', (r) =>
+        r.continue({ headers: { ...r.request().headers(), authorization: `Bearer ${apiToken}` } }),
+      );
+      return;
+    }
     await page.goto('/login');
     await page.getByLabel('Username').fill(process.env.E2E_ADMIN_USER ?? 'admin');
     await page.getByLabel('Password', { exact: true }).fill(adminPassword!);
@@ -174,18 +183,17 @@ test.describe('UI tour screenshots', () => {
     await page.goto('/clusters/new');
     await page.getByTestId('name').locator('input:not([type=hidden])').fill('demo-openstack');
     await page.getByTestId('provider-openstack').click();
-    await pick(page, page.getByTestId('credential'), /Infomaniak|OpenStack/);
+    await pick(page, page.getByTestId('credential'), /infomaniak|openstack/i);
     await shot(page, '20-wizard-basics');
     await page.getByTestId('next').click();
 
     await pick(page, page.getByTestId('image'), /Ubuntu 24/);
     await pick(page, page.getByTestId('size-control-plane'), /a2-ram4/);
     await pick(page, page.getByTestId('size-worker'), /a2-ram4/);
-    await shot(page, '21-wizard-topology');
+    await shot(page, '21-wizard-topology', true);
     await page.getByTestId('next').click();
 
     await shot(page, '22-wizard-infrastructure');
-    await page.keyboard.press('Escape');
     await page.getByTestId('next').click();
 
     await shot(page, '23-wizard-addons');
