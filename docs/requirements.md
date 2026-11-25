@@ -560,6 +560,8 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 - [x] Scaling from 2 to 3 workers creates a new machine that appears in the view.
 - [x] After deletion, all OpenStack resources of the cluster are removed and the cluster disappears from the list.
 
+A deletion survives a restart of the backend: its progress and a sign of life are in an annotation on the `Cluster`, and the background controller continues one that nobody works on (within 90 seconds and one controller run). It never skips the cleanup then; if the workload cluster does not come back within ten minutes, it stops with "Cleanup did not finish". Verified on 2026-11-25 by killing the backend during the cleanup (0.20.0 left such a cluster behind).
+
 Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs and volumes that the OpenStack CCM and Cinder CSI created for `LoadBalancer` services and PVCs; they block the deletion of the cluster's router. The delete flow therefore removes workloads, these services and PVCs in the workload cluster first, while CCM and CSI still run (ADR-0006). CAPA removes the CCM's load balancers itself, but not EBS volumes with a `Retain` policy.
 - [x] A viewer sees no kubeconfig download and no delete or scale buttons.
 

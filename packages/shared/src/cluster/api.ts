@@ -74,6 +74,8 @@ export const DELETION_ANNOTATION = 'capi-navigator.io/deletion';
 export const DeletionStatusSchema = z.object({
   phase: z.enum(['cleanup', 'cleanup-timeout', 'deleting']),
   startedAt: z.string(),
+  /** Last sign of life of the backend working on it; a stale one is taken over (BL-19). */
+  heartbeatAt: z.string().optional(),
   message: z.string().optional(),
 });
 export type DeletionStatus = z.infer<typeof DeletionStatusSchema>;

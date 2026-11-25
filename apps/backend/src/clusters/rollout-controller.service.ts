@@ -16,6 +16,7 @@ import {
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
   type ClusterSpec,
+  type DeletionStatus,
 } from '@capi-navigator/shared';
 import { AuditService } from '../audit/audit.service.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
@@ -24,8 +25,9 @@ import { deleteObjects } from '../kube/apply.js';
 import { KubeClientFactory } from '../kube/kube-client.factory.js';
 import { acquireLease } from '../kube/lease.js';
 import { StoreService } from '../store/store.service.js';
+import { ClusterDeletionService } from './cluster-deletion.service.js';
 import { ClustersService, CONTROL_PLANE_RESOURCES } from './clusters.service.js';
-import type { K8sObj } from './status.js';
+import { deletionOf, type K8sObj } from './status.js';
 
 const LEASE_NAME = 'capi-navigator-rollout-controller';
 const INTERVAL_MS = 20_000;
@@ -76,7 +78,8 @@ export function unusedTemplates(
 /**
  * Background rollout controller (FP7-F-08, FP7-F-15; ADR-0010): lets the worker pools follow
  * an upgrade once the control plane runs the new version, and deletes machine and bootstrap
- * templates no longer referenced after a rollout. One replica at a time (Lease); the state
+ * templates no longer referenced after a rollout. It also continues deletions a restart has
+ * interrupted (FP6-F-06). One replica at a time (Lease); the state
  * lives in the stored cluster spec, so the backend stays stateless.
  */
 @Injectable()
@@ -93,6 +96,7 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
     private readonly clusters: ClustersService,
     private readonly audit: AuditService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly deletion: ClusterDeletionService,
   ) {
     this.leases = kube.homeCluster().makeApiClient(CoordinationV1Api);
   }
@@ -140,8 +144,12 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
         })) as { items: K8sObj[] };
         for (const cluster of list.items) {
           const raw = cluster.metadata.annotations?.[CLUSTER_SPEC_ANNOTATION];
-          if (!raw || (cluster.metadata as { deletionTimestamp?: string }).deletionTimestamp)
-            continue;
+          if (!raw) continue;
+          const removed = !!(cluster.metadata as { deletionTimestamp?: string }).deletionTimestamp;
+          const deletion = deletionOf(cluster).deletion;
+          if (deletion) await this.resumeDeletion(connection, cluster, deletion, removed, now);
+          // No rollouts in a cluster that is being deleted; after a timeout the user decides.
+          if (removed || (deletion && deletion.phase !== 'cleanup-timeout')) continue;
           const parsed = ClusterSpecSchema.safeParse(JSON.parse(raw));
           if (!parsed.success) continue;
           await this.reconcile(connection, kc, parsed.data, now).catch((err: unknown) =>
@@ -153,6 +161,21 @@ export class RolloutControllerService implements OnApplicationBootstrap, OnAppli
       } catch (err) {
         this.logger.debug(`Connection ${connection} skipped: ${String(err)}`);
       }
+    }
+  }
+
+  /** A restart must not leave a deletion behind (FP6-F-06, STATE-04). */
+  private async resumeDeletion(
+    connection: string,
+    cluster: K8sObj,
+    status: DeletionStatus,
+    removed: boolean,
+    now: Date,
+  ): Promise<void> {
+    const { name } = cluster.metadata;
+    const namespace = cluster.metadata.namespace ?? '';
+    if (this.deletion.resume(connection, namespace, name, status, removed, now.getTime())) {
+      await this.record(connection, name, 'cluster.delete.resume', 'success');
     }
   }
 

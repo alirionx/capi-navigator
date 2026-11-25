@@ -167,7 +167,7 @@ const byRoleAndName = (
   a.role === b.role ? a.name.localeCompare(b.name) : a.role === 'control-plane' ? -1 : 1;
 
 /** Deletion progress from the annotation the app sets (FP6-F-06). */
-function deletionOf(cluster: K8sObj): { deletion?: DeletionStatus } {
+export function deletionOf(cluster: K8sObj): { deletion?: DeletionStatus } {
   const raw = cluster.metadata.annotations?.[DELETION_ANNOTATION];
   if (!raw) return {};
   try {

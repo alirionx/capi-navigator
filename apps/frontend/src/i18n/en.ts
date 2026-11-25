@@ -1216,7 +1216,7 @@ export const en = {
     addon: 'Add-on',
     chartVersion: 'Version',
     addonValuesLater:
-      'Rolled out via HelmChartProxy presets (CAAPH). Values become editable with FP-8.',
+      'Rolled out via HelmChartProxy presets (CAAPH). Their values can be changed on the Add-ons page.',
     customWarning:
       'Commands and files run as root on every node of the group. Do not put secrets into inline content; reference a Secret instead.',
     custom: {

@@ -318,8 +318,9 @@ Deleting the `Cluster` alone would leave cloud resources behind: load balancers 
 the CCM and CSI created inside the workload cluster are unknown to CAPO/CAPA. With cleanup (the
 default), the backend first deletes workloads, `LoadBalancer` services and PVCs in the workload
 cluster while CCM and CSI still run, waits until the cloud resources are gone, and then deletes
-the `Cluster`; CAPI cascades to machines and infrastructure. Progress is kept in an annotation on
-the `Cluster` ([cluster-deletion.service.ts](../apps/backend/src/clusters/cluster-deletion.service.ts),
+the `Cluster`; CAPI cascades to machines and infrastructure. Progress and a sign of life are
+kept in an annotation on the `Cluster`; after a restart the rollout controller continues a deletion
+that no backend works on ([cluster-deletion.service.ts](../apps/backend/src/clusters/cluster-deletion.service.ts),
 [ADR-0006](adr/0006-cluster-deletion-with-cleanup.md)).
 
 ### Hosted control planes

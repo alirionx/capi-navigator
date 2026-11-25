@@ -70,6 +70,7 @@ function setup(objects: { clusters: unknown[]; byPlural?: Record<string, unknown
   };
   const applyChange = vi.fn(async () => undefined);
   const record = vi.fn(async () => undefined);
+  const resume = vi.fn(() => true);
   const controller = new RolloutControllerService(
     { homeCluster: () => ({ makeApiClient: () => ({}) }) } as never,
     {
@@ -80,8 +81,9 @@ function setup(objects: { clusters: unknown[]; byPlural?: Record<string, unknown
     { applyChange } as never,
     { record } as never,
     { POD_NAME: 'pod-a' } as never,
+    { resume } as never,
   );
-  return { api, applyChange, record, controller };
+  return { api, applyChange, record, resume, controller };
 }
 
 describe('rollout controller run (FP7-F-08, FP7-F-15, ADR-0010)', () => {
@@ -95,6 +97,62 @@ describe('rollout controller run (FP7-F-08, FP7-F-15, ADR-0010)', () => {
     const { api, controller } = setup({ clusters: [cluster(SPEC)] });
     await controller.runOnce(NOW);
     expect(api.listClusterCustomObject).not.toHaveBeenCalled();
+  });
+
+  it('continues interrupted deletions and starts no rollout in them (FP6-F-06)', async () => {
+    const upgrading = {
+      ...SPEC,
+      kubernetes: { ...SPEC.kubernetes, workerVersion: 'v1.34.12+rke2r1' },
+    };
+    const status = { phase: 'cleanup', startedAt: OLD };
+    const being = (phase: string, extra: Record<string, unknown> = {}) => {
+      const c = cluster(upgrading, extra);
+      (c.metadata.annotations as Record<string, string>)['capi-navigator.io/deletion'] =
+        JSON.stringify({ ...status, phase });
+      return c;
+    };
+    const byPlural = {
+      [flavor.controlPlaneResource.plural]: [
+        controlPlane({
+          version: SPEC.kubernetes.version,
+          replicas: 1,
+          upToDateReplicas: 1,
+          readyReplicas: 1,
+        }),
+      ],
+    };
+    const cleaning = setup({ clusters: [being('cleanup')], byPlural });
+    await cleaning.controller.runOnce(NOW);
+    expect(cleaning.resume).toHaveBeenCalledWith(
+      'home',
+      'team-a',
+      'demo',
+      status,
+      false,
+      NOW.getTime(),
+    );
+    expect(cleaning.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'cluster.delete.resume' }),
+    );
+    expect(cleaning.applyChange).not.toHaveBeenCalled();
+
+    const removed = setup({
+      clusters: [being('deleting', { deletionTimestamp: OLD })],
+      byPlural,
+    });
+    await removed.controller.runOnce(NOW);
+    expect(removed.resume).toHaveBeenCalledWith(
+      'home',
+      'team-a',
+      'demo',
+      { ...status, phase: 'deleting' },
+      true,
+      NOW.getTime(),
+    );
+
+    const idle = setup({ clusters: [cluster(SPEC)] });
+    await idle.controller.runOnce(NOW);
+    expect(idle.resume).not.toHaveBeenCalled();
   });
 
   it('lets the workers follow once the control plane runs the new version', async () => {

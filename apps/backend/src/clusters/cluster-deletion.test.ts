@@ -100,6 +100,9 @@ describe('workload cleanup (FP6-F-06)', () => {
   });
 });
 
+/** Without the signs of life in between. */
+const phases = (events: string[]) => events.filter((e) => e !== 'heartbeat');
+
 describe('cluster deletion (FP6-F-06)', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -107,6 +110,7 @@ describe('cluster deletion (FP6-F-06)', () => {
     DELETION_TIMING.timeoutMs = 600_000;
     DELETION_TIMING.startMs = 60_000;
     DELETION_TIMING.startRetryMs = 5_000;
+    DELETION_TIMING.heartbeatMs = 30_000;
   });
 
   function service(
@@ -129,8 +133,13 @@ describe('cluster deletion (FP6-F-06)', () => {
           opts.managed === false ? {} : { 'capi-navigator.io/cluster-spec': '{"name":"demo"}' },
       },
     });
-    internals.annotate = async (_kc: unknown, _ns: string, _n: string, s: { phase: string }) => {
-      events.push(`phase:${s.phase}`);
+    internals.annotate = async (
+      _kc: unknown,
+      _ns: string,
+      _n: string,
+      s: { phase: string; heartbeatAt?: string },
+    ) => {
+      events.push(s.heartbeatAt ? 'heartbeat' : `phase:${s.phase}`);
     };
     internals.deleteObjects = async () => {
       events.push('deleted');
@@ -173,7 +182,9 @@ describe('cluster deletion (FP6-F-06)', () => {
       cleanup: true,
     });
     expect(status.phase).toBe('cleanup');
-    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
+    await vi.waitFor(() =>
+      expect(phases(events)).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']),
+    );
   });
 
   it('retries the start of the cleanup after a failed request', async () => {
@@ -192,7 +203,9 @@ describe('cluster deletion (FP6-F-06)', () => {
       cleanup: true,
     });
     expect(status.phase).toBe('cleanup');
-    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
+    await vi.waitFor(() =>
+      expect(phases(events)).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']),
+    );
   });
 
   it('answers at once and deletes without cleanup when the workload cluster stays unreachable (CNR-05)', async () => {
@@ -210,7 +223,9 @@ describe('cluster deletion (FP6-F-06)', () => {
     // Recorded before the first attempt to start the cleanup; the retries run in the background.
     expect(status.phase).toBe('cleanup');
     expect(events).toEqual(['phase:cleanup']);
-    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']));
+    await vi.waitFor(() =>
+      expect(phases(events)).toEqual(['phase:cleanup', 'phase:deleting', 'deleted']),
+    );
   });
 
   it('stops with cleanup-timeout while resources remain', async () => {
@@ -220,7 +235,9 @@ describe('cluster deletion (FP6-F-06)', () => {
     stuck.api.deleteService = async () => undefined; // the CCM never releases the load balancer
     const { svc, events } = service({ workload: stuck.api });
     await svc.delete('home', 'team-a', 'demo', { confirmName: 'demo', cleanup: true });
-    await vi.waitFor(() => expect(events).toEqual(['phase:cleanup', 'phase:cleanup-timeout']));
+    await vi.waitFor(() =>
+      expect(phases(events)).toEqual(['phase:cleanup', 'phase:cleanup-timeout']),
+    );
   });
 
   it('deletes right away without cleanup or without a reachable workload cluster', async () => {
@@ -231,6 +248,92 @@ describe('cluster deletion (FP6-F-06)', () => {
     });
     expect(status.phase).toBe('deleting');
     expect(events).toEqual(['phase:deleting', 'deleted']);
+  });
+
+  describe('continuing after a restart (STATE-04)', () => {
+    const startedAt = '2026-11-25T00:00:00.000Z';
+    const later = Date.parse(startedAt) + 10 * 60_000;
+    const resume = (
+      svc: ClusterDeletionService,
+      over: { phase?: 'cleanup' | 'cleanup-timeout' | 'deleting'; heartbeatAt?: string } = {},
+      removed = false,
+      now = later,
+    ) =>
+      svc.resume('home', 'team-a', 'demo', { phase: 'cleanup', startedAt, ...over }, removed, now);
+
+    it('continues the cleanup and deletes', async () => {
+      DELETION_TIMING.pollMs = 5;
+      const { svc, events } = service();
+      expect(resume(svc)).toBe(true);
+      await vi.waitFor(() => expect(events.at(-1)).toBe('deleted'));
+      expect(phases(events)).toEqual(['phase:deleting', 'deleted']);
+      expect(events[0]).toBe('heartbeat');
+    });
+
+    it('leaves it to a backend that works on it, to the user, and to others', async () => {
+      const { svc, events } = service();
+      // Started or alive a moment ago, perhaps in another replica.
+      expect(resume(svc, {}, false, Date.parse(startedAt) + 60_000)).toBe(false);
+      const heartbeatAt = new Date(later - 60_000).toISOString();
+      expect(resume(svc, { heartbeatAt })).toBe(false);
+      expect(resume(svc, { phase: 'cleanup-timeout' })).toBe(false);
+      expect(resume(svc, {}, true)).toBe(false);
+      expect(events).toEqual([]);
+    });
+
+    it('runs once at a time in this process', async () => {
+      DELETION_TIMING.pollMs = 5;
+      const stuck = fakeWorkload();
+      stuck.api.deleteService = async () => undefined;
+      DELETION_TIMING.timeoutMs = 20;
+      const { svc, events } = service({ workload: stuck.api });
+      expect(resume(svc)).toBe(true);
+      expect(resume(svc)).toBe(false);
+      await vi.waitFor(() => expect(events.at(-1)).toBe('phase:cleanup-timeout'));
+    });
+
+    it('never deletes without the cleanup: waits for the workload cluster', async () => {
+      DELETION_TIMING.pollMs = 5;
+      const booting = fakeWorkload();
+      const list = booting.api.listNamespaces.bind(booting.api);
+      let failures = 3;
+      booting.api.listNamespaces = async () => {
+        if (failures-- > 0) throw new TypeError('fetch failed');
+        return list();
+      };
+      const { svc, events } = service({ workload: booting.api });
+      resume(svc);
+      await vi.waitFor(() => expect(events.at(-1)).toBe('deleted'));
+      expect(booting.state.calls).toContain('svc:shop/web');
+    });
+
+    it('stops and reports when the workload cluster does not come back', async () => {
+      DELETION_TIMING.pollMs = 5;
+      DELETION_TIMING.timeoutMs = 20;
+      const { svc, events } = service({ workload: null });
+      resume(svc);
+      await vi.waitFor(() => expect(events.at(-1)).toBe('phase:cleanup-timeout'));
+      expect(events).not.toContain('deleted');
+    });
+
+    it('repeats an interrupted deletion of the objects once', async () => {
+      const { svc, events } = service();
+      expect(resume(svc, { phase: 'deleting' }, true)).toBe(true);
+      await vi.waitFor(() => expect(events).toEqual(['deleted']));
+      expect(resume(svc, { phase: 'deleting' }, true)).toBe(false);
+    });
+
+    it('writes a sign of life while it waits', async () => {
+      DELETION_TIMING.pollMs = 5;
+      DELETION_TIMING.heartbeatMs = 5;
+      DELETION_TIMING.timeoutMs = 60;
+      const stuck = fakeWorkload();
+      stuck.api.deleteService = async () => undefined;
+      const { svc, events } = service({ workload: stuck.api });
+      await svc.delete('home', 'team-a', 'demo', { confirmName: 'demo', cleanup: true });
+      await vi.waitFor(() => expect(events.at(-1)).toBe('phase:cleanup-timeout'));
+      expect(events.filter((e) => e === 'heartbeat').length).toBeGreaterThan(2);
+    });
   });
 
   it('skips draining before deleting when asked, e.g. for an unreachable cluster', async () => {

@@ -40,6 +40,9 @@ export const DELETION_TIMING = {
   timeoutMs: 10 * 60_000,
   startMs: 60_000,
   startRetryMs: 5_000,
+  heartbeatMs: 30_000,
+  /** Without a sign of life for this long, another backend takes the deletion over. */
+  staleMs: 90_000,
 };
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -60,6 +63,10 @@ export class ClusterDeletionService {
   private readonly logger = new Logger(ClusterDeletionService.name);
   /** Factory for the workload API; replaced in tests. */
   workloadApiFor: (kubeconfig: string) => WorkloadApi = workloadApi;
+
+  /** Deletions this process works on, and those it has finished taking over. */
+  private readonly active = new Set<string>();
+  private readonly finished = new Set<string>();
 
   constructor(
     private readonly clients: ManagementClusterClients,
@@ -138,9 +145,116 @@ export class ClusterDeletionService {
     };
     await this.annotate(kc, namespace, name, status);
     if (req.skipDrain) await this.skipDrain(kc, namespace, name);
-    if (api) void this.cleanUpThenDelete(connection, namespace, name, api, status.startedAt);
-    else await this.deleteObjects(kc, namespace, name);
+    if (api) {
+      void this.track(connection, namespace, name, () =>
+        this.cleanUpThenDelete(connection, namespace, name, api, status.startedAt),
+      );
+    } else await this.deleteObjects(kc, namespace, name);
     return status;
+  }
+
+  /**
+   * Takes over a deletion that no backend works on any more, e.g. after a restart (STATE-04). The
+   * annotation is the only state. Returns true if it started; the work runs in the background.
+   */
+  resume(
+    connection: string,
+    namespace: string,
+    name: string,
+    status: DeletionStatus,
+    /** The Cluster already carries a deletion timestamp. */
+    removed: boolean,
+    now = Date.now(),
+  ): boolean {
+    const key = `${connection}/${namespace}/${name}`;
+    const run = `${key}@${status.startedAt}`;
+    if (status.phase === 'cleanup-timeout') return false; // the user decides
+    if (status.phase === 'cleanup' && removed) return false; // deleted elsewhere
+    if (this.active.has(key) || this.finished.has(run)) return false;
+    const last = Date.parse(status.heartbeatAt ?? status.startedAt);
+    if (now - last < DELETION_TIMING.staleMs) return false;
+    this.logger.log(`Continuing the deletion of ${key} (${status.phase})`);
+    void this.track(connection, namespace, name, async () => {
+      if (status.phase === 'cleanup') {
+        await this.resumeCleanup(connection, namespace, name, status.startedAt);
+      } else {
+        const kc = await this.clients.forConnection(connection);
+        await this.deleteObjects(kc, namespace, name);
+        this.finished.add(run);
+      }
+    });
+    return true;
+  }
+
+  /**
+   * Unlike a new deletion, a taken over one never skips the cleanup: after an outage the workload
+   * cluster may answer later than the backend, and its load balancers would stay behind.
+   */
+  private async resumeCleanup(
+    connection: string,
+    namespace: string,
+    name: string,
+    startedAt: string,
+  ): Promise<void> {
+    const deadline = Date.now() + DELETION_TIMING.timeoutMs;
+    const beat = this.heartbeat(connection, namespace, name, startedAt);
+    for (;;) {
+      await beat();
+      const api = await this.workload(connection, namespace, name);
+      try {
+        if (!api) throw new Error('the kubeconfig cannot be read');
+        await withTimeout(startCleanup(api), DELETION_TIMING.startMs);
+        return await this.finishAfterCleanup(connection, namespace, name, api, startedAt);
+      } catch (err) {
+        if (Date.now() > deadline) {
+          const kc = await this.clients.forConnection(connection);
+          await this.annotate(kc, namespace, name, {
+            phase: 'cleanup-timeout',
+            startedAt,
+            message: 'The workload cluster does not answer.',
+          });
+          return;
+        }
+        this.logger.debug(`Cleanup of ${namespace}/${name} waits: ${String(err)}`);
+        await new Promise((r) => setTimeout(r, DELETION_TIMING.pollMs));
+      }
+    }
+  }
+
+  /** Writes a sign of life at most every `heartbeatMs`; a failed one only means a later takeover. */
+  private heartbeat(connection: string, namespace: string, name: string, startedAt: string) {
+    let last = 0;
+    return async () => {
+      if (Date.now() - last < DELETION_TIMING.heartbeatMs) return;
+      last = Date.now();
+      try {
+        const kc = await this.clients.forConnection(connection);
+        await this.annotate(kc, namespace, name, {
+          phase: 'cleanup',
+          startedAt,
+          heartbeatAt: new Date(last).toISOString(),
+        });
+      } catch (err) {
+        this.logger.debug(`Heartbeat of ${namespace}/${name} failed: ${String(err)}`);
+      }
+    };
+  }
+
+  private async track(
+    connection: string,
+    namespace: string,
+    name: string,
+    work: () => Promise<void>,
+  ): Promise<void> {
+    const key = `${connection}/${namespace}/${name}`;
+    this.active.add(key);
+    try {
+      await work();
+    } catch (err) {
+      this.logger.error(`Deletion of ${key} failed: ${String(err)}`);
+    } finally {
+      this.active.delete(key);
+    }
   }
 
   /** Starts the cleanup in the background; without it the cluster is deleted right away. */
@@ -197,8 +311,10 @@ export class ClusterDeletionService {
     startedAt: string,
   ): Promise<void> {
     const deadline = Date.now() + DELETION_TIMING.timeoutMs;
+    const beat = this.heartbeat(connection, namespace, name, startedAt);
     try {
       for (;;) {
+        await beat();
         const left = await remaining(api).catch(() => ['(workload cluster not reachable)']);
         if (left.length === 0) break;
         if (Date.now() > deadline) {

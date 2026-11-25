@@ -10643,6 +10643,9 @@
           "startedAt": {
             "type": "string"
           },
+          "heartbeatAt": {
+            "type": "string"
+          },
           "message": {
             "type": "string"
           }
