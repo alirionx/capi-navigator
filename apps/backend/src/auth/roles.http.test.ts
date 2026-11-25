@@ -120,12 +120,14 @@ describe('custom roles and scoped assignments over HTTP (FP-19)', () => {
     });
     const list = await http().get('/api/roles').set('Cookie', admin).expect(200);
     expect(list.body.map((r: { name: string }) => r.name)).toEqual([
+      'namespace-user',
       'viewer',
       'operator',
       'admin',
       'day2',
     ]);
-    expect(list.body[2]).toMatchObject({ builtin: true, users: ['admin'] });
+    expect(list.body[0]).toMatchObject({ builtin: true, permissions: [] });
+    expect(list.body[3]).toMatchObject({ builtin: true, users: ['admin'] });
   });
 
   it('refuses changing, deleting or shadowing built-in roles', async () => {

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
+  NAMESPACE_USER_ROLE,
   isScopable,
   PERMISSION_GROUPS,
   RoleNameSchema,
@@ -143,7 +144,9 @@ async function confirm(): Promise<void> {
         </template>
         <template #[`item.actions`]="{ item }">
           <div class="d-inline-flex text-no-wrap">
+            <!-- A copy would be a custom role, which always reads (FP37-F-01). -->
             <v-btn
+              v-if="item.name !== NAMESPACE_USER_ROLE"
               icon="mdi-content-copy"
               variant="text"
               size="small"

@@ -5,10 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  BUILTIN_ROLE_NAMES,
   BUILTIN_ROLES,
   hasUserManager,
   isBuiltinRole,
-  ROLES,
   userBindings,
   type CreateRoleRequest,
   type NavigatorResource,
@@ -34,7 +34,7 @@ export class RolesService {
   ) {}
 
   list(): RoleInfo[] {
-    const builtin = ROLES.map((name) => ({
+    const builtin = BUILTIN_ROLE_NAMES.map((name) => ({
       name,
       ...BUILTIN_ROLES[name],
       permissions: [...BUILTIN_ROLES[name].permissions],

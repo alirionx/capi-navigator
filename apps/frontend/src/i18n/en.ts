@@ -41,6 +41,7 @@ export const en = {
     },
   },
   roles: {
+    'namespace-user': 'Namespace user',
     viewer: 'Viewer',
     operator: 'Operator',
     admin: 'Admin',

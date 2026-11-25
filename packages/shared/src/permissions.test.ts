@@ -3,7 +3,11 @@ import {
   allows,
   BUILTIN_ROLES,
   bindingProblems,
+  CreateRoleRequestSchema,
+  displayRole,
+  hasUserManager,
   isBuiltinRole,
+  NAMESPACE_USER_ROLE,
   PERMISSION_GROUPS,
   PERMISSIONS,
   userBindings,
@@ -15,7 +19,7 @@ const roles: RolePermissions = (name) =>
   isBuiltinRole(name)
     ? BUILTIN_ROLES[name].permissions
     : (
-        { day2: ['clusters.change'], platform: ['providers.manage'] } as Record<
+        { day2: ['view', 'clusters.change'], platform: ['view', 'providers.manage'] } as Record<
           string,
           Permission[]
         >
@@ -80,6 +84,32 @@ describe('permissions (FP-19, ADR-0015)', () => {
     expect(
       allows(teamA, roles, 'clusters.delete', { connection: 'home', namespace: 'team-a' }),
     ).toBe(false);
+  });
+
+  it('gives namespace users no permission at all, not even view (FP37-F-01)', () => {
+    const user = [{ role: NAMESPACE_USER_ROLE }];
+    for (const p of PERMISSIONS) {
+      expect(allows(user, roles, p), p).toBe(false);
+      expect(allows(user, roles, p, { connection: 'home', namespace: 'team-a' }), p).toBe(false);
+    }
+    expect(bindingProblems(user, roles)).toEqual([]);
+    expect(hasUserManager([{ disabled: false, bindings: user }], roles)).toBe(false);
+    // Together with another role, that role counts.
+    expect(allows([...user, { role: 'viewer' }], roles, 'view')).toBe(true);
+  });
+
+  it('keeps the name of the namespace user role and shows it only without other roles', () => {
+    expect(isBuiltinRole(NAMESPACE_USER_ROLE)).toBe(true);
+    expect(
+      CreateRoleRequestSchema.safeParse({
+        name: NAMESPACE_USER_ROLE,
+        displayName: 'x',
+        permissions: [],
+      }).success,
+    ).toBe(false);
+    expect(displayRole([{ role: NAMESPACE_USER_ROLE }])).toBe(NAMESPACE_USER_ROLE);
+    expect(displayRole([{ role: NAMESPACE_USER_ROLE }, { role: 'operator' }])).toBe('operator');
+    expect(displayRole([])).toBe('viewer');
   });
 
   it('combines several assignments', () => {

@@ -44,3 +44,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0038](0038-node-network-pool-for-openstack-blueprints.md)  | Node network pool for OpenStack blueprints                                       | accepted |
 | [0039](0039-namespaces-as-add-ons.md)                       | Managed namespaces as add-ons, isolated with a Calico tier                       | accepted |
 | [0040](0040-tokens-for-namespaces.md)                       | Time-limited tokens for managed namespaces                                       | accepted |
+| [0041](0041-namespace-users-without-view.md)                | Namespace users, a role without reading                                          | accepted |

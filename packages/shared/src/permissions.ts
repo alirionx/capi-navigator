@@ -5,6 +5,16 @@ export const ROLES = ['viewer', 'operator', 'admin'] as const;
 export const RoleSchema = z.enum(ROLES);
 export type Role = z.infer<typeof RoleSchema>;
 
+/**
+ * Namespace users (FP37-F-01, ADR-0041): the only role without `view`. It grants no permission at
+ * all; people with it reach their own account and the namespaces they are assigned to (FP37-F-02).
+ */
+export const NAMESPACE_USER_ROLE = 'namespace-user';
+/** All built-in roles; `ROLES` are those with a rank. */
+export const BUILTIN_ROLE_NAMES = [NAMESPACE_USER_ROLE, ...ROLES] as const;
+export const BuiltinRoleSchema = z.enum(BUILTIN_ROLE_NAMES);
+export type BuiltinRole = z.infer<typeof BuiltinRoleSchema>;
+
 /** Permissions of FP-19 (requirements section 6, ADR-0015). */
 export const PERMISSIONS = [
   'view',
@@ -72,11 +82,16 @@ export const PERMISSION_GROUPS: { group: string; permissions: Permission[] }[] =
   { group: 'Administration', permissions: ['blueprints.manage', 'users.manage'] },
 ];
 
-/** Built-in roles: fixed, not changeable, exactly the access of FP-1 (FP19-F-01). */
+/** Built-in roles: fixed, not changeable; those with a rank have the access of FP-1 (FP19-F-01). */
 export const BUILTIN_ROLES: Record<
-  Role,
+  BuiltinRole,
   { displayName: string; description: string; permissions: readonly Permission[] }
 > = {
+  [NAMESPACE_USER_ROLE]: {
+    displayName: 'Namespace user',
+    description: 'Only the own account and the assigned namespaces; reads nothing else.',
+    permissions: [],
+  },
   viewer: {
     displayName: 'Viewer',
     description: 'Reads everything; no changes.',
@@ -103,8 +118,8 @@ export const BUILTIN_ROLES: Record<
     permissions: PERMISSIONS,
   },
 };
-export const isBuiltinRole = (name: string): name is Role =>
-  (ROLES as readonly string[]).includes(name);
+export const isBuiltinRole = (name: string): name is BuiltinRole =>
+  (BUILTIN_ROLE_NAMES as readonly string[]).includes(name);
 
 /** Name of a custom role: a DNS label, also the name of its `NavigatorRole` resource. */
 export const RoleNameSchema = z
@@ -151,7 +166,10 @@ export function effectiveBindings(
 }
 
 /** Highest built-in role among the unlimited assignments (display only, see MeSchema). */
-export function displayRole(bindings: readonly RoleBinding[]): Role {
+export function displayRole(bindings: readonly RoleBinding[]): BuiltinRole {
+  if (bindings.length && bindings.every((b) => b.role === NAMESPACE_USER_ROLE)) {
+    return NAMESPACE_USER_ROLE;
+  }
   const builtin = bindings
     .filter(isUnlimited)
     .map((b) => b.role)
@@ -165,7 +183,10 @@ export interface PermissionScope {
   namespace?: string;
 }
 
-/** Resolves the permissions of a role; `undefined` for an unknown role (grants nothing). */
+/**
+ * Resolves the permissions of a role, `view` included where the role grants it; `undefined` for an
+ * unknown role (grants nothing).
+ */
 export type RolePermissions = (role: string) => readonly Permission[] | undefined;
 
 /**
@@ -182,7 +203,7 @@ export function allows(
 ): boolean {
   return bindings.some((b) => {
     const granted = rolePermissions(b.role);
-    if (!granted?.includes(permission) && !(permission === 'view' && granted)) return false;
+    if (!granted?.includes(permission)) return false;
     if (isUnlimited(b) || permission === 'view') return true;
     if (!isScopable(permission)) return false;
     // `undefined` means "somewhere"; any given value, also an empty one, must match exactly.

@@ -8446,6 +8446,15 @@
         ],
         "additionalProperties": false
       },
+      "BuiltinRole": {
+        "type": "string",
+        "enum": [
+          "namespace-user",
+          "viewer",
+          "operator",
+          "admin"
+        ]
+      },
       "CaaphStatus": {
         "type": "object",
         "properties": {
@@ -11653,7 +11662,7 @@
             "type": "string"
           },
           "role": {
-            "$ref": "#/components/schemas/Role"
+            "$ref": "#/components/schemas/BuiltinRole"
           },
           "bindings": {
             "type": "array",
@@ -12707,14 +12716,6 @@
         ],
         "additionalProperties": false
       },
-      "Role": {
-        "type": "string",
-        "enum": [
-          "viewer",
-          "operator",
-          "admin"
-        ]
-      },
       "RoleBinding": {
         "type": "object",
         "properties": {
@@ -12991,7 +12992,7 @@
             "type": "string"
           },
           "role": {
-            "$ref": "#/components/schemas/Role"
+            "$ref": "#/components/schemas/BuiltinRole"
           },
           "bindings": {
             "type": "array",
@@ -14262,7 +14263,7 @@
             "$ref": "#/components/schemas/UsernameInput"
           },
           "role": {
-            "$ref": "#/components/schemas/Role"
+            "$ref": "#/components/schemas/RoleInput"
           },
           "bindings": {
             "maxItems": 50,
@@ -15412,6 +15413,14 @@
           "password"
         ]
       },
+      "RoleInput": {
+        "type": "string",
+        "enum": [
+          "viewer",
+          "operator",
+          "admin"
+        ]
+      },
       "RoleBindingInput": {
         "type": "object",
         "properties": {
@@ -16024,7 +16033,7 @@
         "type": "object",
         "properties": {
           "role": {
-            "$ref": "#/components/schemas/Role"
+            "$ref": "#/components/schemas/RoleInput"
           },
           "bindings": {
             "maxItems": 50,

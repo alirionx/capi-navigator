@@ -5,6 +5,7 @@ import {
   RoleBindingSchema,
   ROLES,
   RoleSchema,
+  BuiltinRoleSchema,
   type Role,
 } from './permissions.js';
 
@@ -52,10 +53,10 @@ export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;
 export const MeSchema = z.object({
   username: z.string(),
   /**
-   * Highest built-in role among the unlimited assignments, for display until the frontend checks
-   * permissions (FP-19 step 5); "viewer" otherwise.
+   * Highest built-in role among the unlimited assignments, for display; "viewer" otherwise,
+   * "namespace-user" if there is no other assignment (FP37-F-01).
    */
-  role: RoleSchema,
+  role: BuiltinRoleSchema,
   /** Role assignments with the permissions they grant (FP19-F-10). */
   bindings: z.array(EffectiveBindingSchema),
   mustChangePassword: z.boolean(),
@@ -72,7 +73,7 @@ export type Me = z.infer<typeof MeSchema>;
 export const UserSchema = z.object({
   username: z.string(),
   /** Highest built-in role among the unlimited assignments (display, see MeSchema). */
-  role: RoleSchema,
+  role: BuiltinRoleSchema,
   /** Role assignments (FP19-F-03). */
   bindings: z.array(RoleBindingSchema),
   disabled: z.boolean(),
