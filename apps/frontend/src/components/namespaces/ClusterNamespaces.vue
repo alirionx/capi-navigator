@@ -2,7 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import {
-  NAMESPACE_QUOTA_RESOURCES,
+  personKey,
+  personLabel,
   type ManagedNamespaces,
   type ManagedNamespaceView,
   type NamespaceAccount,
@@ -14,6 +15,7 @@ import { useAuthStore } from '../../stores/auth.js';
 import { useNamespacesStore } from '../../stores/namespaces.js';
 import ConfirmNamespaceDialog from './ConfirmNamespaceDialog.vue';
 import NamespaceDialog from './NamespaceDialog.vue';
+import { quotaKey, withoutUnit } from './quota.js';
 import TokenDialog from './TokenDialog.vue';
 
 /** Managed namespaces of one cluster with accounts, tokens, quota and drift (FP36-F-11). */
@@ -73,8 +75,9 @@ const restored = () => ({
 });
 
 const tokenOpen = ref(false);
-const tokenFor = ref<{ namespace: string; account: NamespaceAccount } | null>(null);
-function openToken(namespace: string, account: NamespaceAccount): void {
+type Account = Pick<NamespaceAccount, 'name' | 'role'>;
+const tokenFor = ref<{ namespace: string; account: Account } | null>(null);
+function openToken(namespace: string, account: Account): void {
   tokenFor.value = { namespace, account };
   tokenOpen.value = true;
 }
@@ -88,6 +91,20 @@ async function revoke(namespace: string, token: NamespaceToken): Promise<void> {
   }
   await load();
 }
+
+/** FP37-F-05: access that people issued whose assignment is gone. */
+const unassigned = (n: ManagedNamespaceView) => n.tokens.filter((k) => k.unassigned && !k.expired);
+async function revokeUnassigned(n: ManagedNamespaceView): Promise<void> {
+  revokeError.value = null;
+  try {
+    for (const k of unassigned(n)) await store.revokeToken(cluster.value, n.name, k.id);
+  } catch (err) {
+    revokeError.value = err;
+  }
+  await load();
+}
+const peopleOf = (n: ManagedNamespaceView, account: string) =>
+  n.spec?.accounts.find((a) => a.name === account)?.people ?? [];
 
 const confirmOpen = ref(false);
 const confirming = ref<{ view: ManagedNamespaceView; kind: 'end' | 'delete' } | null>(null);
@@ -114,10 +131,9 @@ const state = (n: ManagedNamespaceView): { color: string; text: string } =>
           : n.drift.length
             ? { color: 'warning', text: t('namespaces.drift') }
             : { color: 'success', text: t('namespaces.ready') };
-/** Label of a resource of the quota; the GiB of the form would double the unit here. */
 const quotaLabel = (resource: string) => {
-  const key = Object.entries(NAMESPACE_QUOTA_RESOURCES).find(([, r]) => r === resource)?.[0];
-  return key ? t(`namespaces.quota.${key}`).replace(/ \(GiB\)$/, '') : resource;
+  const key = quotaKey(resource);
+  return key ? withoutUnit(t(`namespaces.quota.${key}`)) : resource;
 };
 const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€“');
 </script>
@@ -280,6 +296,17 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
                 <tr v-for="a in n.accounts" :key="a.name">
                   <td class="font-weight-medium">{{ a.name }}</td>
                   <td>{{ t(`namespaces.roles.${a.role}`) }}</td>
+                  <td :data-testid="`people-${n.name}-${a.name}`">
+                    <v-chip
+                      v-for="p in peopleOf(n, a.name)"
+                      :key="personKey(p)"
+                      size="x-small"
+                      variant="tonal"
+                      class="mr-1"
+                      :prepend-icon="p.kind === 'group' ? 'mdi-account-group' : 'mdi-account'"
+                      >{{ personLabel(p) }}</v-chip
+                    >
+                  </td>
                   <td class="text-right">
                     <v-btn
                       v-if="canManage"
@@ -297,6 +324,27 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
             </v-table>
           </template>
 
+          <v-alert
+            v-if="canManage && unassigned(n).length"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mb-3"
+            :data-testid="`unassigned-${n.name}`"
+          >
+            {{
+              t('namespaces.unassignedText', { count: unassigned(n).length }, unassigned(n).length)
+            }}
+            <template #append>
+              <v-btn
+                size="small"
+                variant="text"
+                :data-testid="`revoke-unassigned-${n.name}`"
+                @click="revokeUnassigned(n)"
+                >{{ t('namespaces.revokeUnassigned') }}</v-btn
+              >
+            </template>
+          </v-alert>
           <template v-if="n.tokens.length">
             <div class="text-title-small mb-1">{{ t('namespaces.tokens') }}</div>
             <v-table density="compact">
@@ -312,7 +360,17 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
               <tbody>
                 <tr v-for="k in n.tokens" :key="k.id" :data-testid="`token-${k.id}`">
                   <td>{{ k.account }}</td>
-                  <td>{{ k.createdBy ?? 'â€“' }}</td>
+                  <td>
+                    {{ k.createdBy ?? 'â€“' }}
+                    <v-chip
+                      v-if="k.unassigned"
+                      size="x-small"
+                      variant="tonal"
+                      color="warning"
+                      class="ml-1"
+                      >{{ t('namespaces.unassigned') }}</v-chip
+                    >
+                  </td>
                   <td class="text-no-wrap">{{ date(k.createdAt) }}</td>
                   <td class="text-no-wrap">
                     {{ date(k.expiresAt) }}
@@ -363,9 +421,9 @@ const date = (value?: string) => (value ? new Date(value).toLocaleString() : 'â€
     <TokenDialog
       v-if="tokenFor"
       v-model="tokenOpen"
-      :cluster="cluster"
       :namespace="tokenFor.namespace"
       :account="tokenFor.account"
+      :issue="(req) => store.issueToken(cluster, tokenFor!.namespace, tokenFor!.account.name, req)"
       @issued="load"
     />
     <ConfirmNamespaceDialog

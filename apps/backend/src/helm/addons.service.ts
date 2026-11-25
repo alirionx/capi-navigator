@@ -49,6 +49,7 @@ import {
   deleteObjects,
   dryRunApply,
   normalizeForDiff,
+  withoutAssignments,
   readLive,
   serverSideApply,
 } from '../kube/apply.js';
@@ -339,7 +340,9 @@ export class AddonsService implements OnApplicationShutdown {
       })),
       uninstalls: !installOnce,
       warnings,
-      yaml: stringify(normalizeForDiff(hcp as unknown as KubernetesObject), { lineWidth: 0 }),
+      yaml: stringify(withoutAssignments(normalizeForDiff(hcp as unknown as KubernetesObject)), {
+        lineWidth: 0,
+      }),
     };
   }
 
@@ -468,23 +471,30 @@ export class AddonsService implements OnApplicationShutdown {
     return this.applyPlan({ name: namespaceAddonName(spec) }, takeOver, plan);
   }
 
-  /** Managed namespaces of a management cluster namespace, with their add-on status (FP36-F-11). */
+  /**
+   * Managed namespaces of a management cluster namespace, or of all of them (FP37-F-03), with their
+   * add-on status (FP36-F-11).
+   */
   async namespaceAddons(
     connection: string,
-    namespace: string,
+    namespace?: string,
   ): Promise<{ spec: ManagedNamespaceSpec; status: AddonStatus }[]> {
     return this.kube('Read the managed namespaces', async () => {
       const kc = await this.clients.forConnection(connection);
       const { addons } = await this.overview(connection);
-      const rows = addons.filter((a) => a.type === 'namespace' && a.namespace === namespace);
+      const rows = addons.filter(
+        (a) => a.type === 'namespace' && (namespace === undefined || a.namespace === namespace),
+      );
       if (!rows.length) return [];
-      const { items } = (await kc.makeApiClient(CustomObjectsApi).listNamespacedCustomObject({
-        ...ADDONS,
-        namespace,
-        plural: 'helmchartproxies',
-      })) as { items: Obj[] };
+      const custom = kc.makeApiClient(CustomObjectsApi);
+      const plural = { ...ADDONS, plural: 'helmchartproxies' };
+      const { items } = (await (namespace === undefined
+        ? custom.listClusterCustomObject(plural)
+        : custom.listNamespacedCustomObject({ ...plural, namespace }))) as { items: Obj[] };
       return rows.flatMap((status) => {
-        const hcp = items.find((i) => i.metadata.name === status.name);
+        const hcp = items.find(
+          (i) => i.metadata.name === status.name && i.metadata.namespace === status.namespace,
+        );
         const spec = hcp && managedNamespaceFromHelmChartProxy(hcp);
         return spec ? [{ spec, status }] : [];
       });

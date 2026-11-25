@@ -141,6 +141,13 @@ export class AuthGuard implements CanActivate {
         hint: 'Change your password before using the app.',
       });
     }
+    if (rule.peopleOnly && principal.token) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'API tokens cannot use this endpoint',
+        hint: 'Use the app with a signed-in user for this.',
+      });
+    }
     if (rule.signedIn) return true;
     // A token can never extend its own access: no users, roles or tokens (FP22-F-05).
     if (principal.token && rule.anyOf.includes('users.manage')) {

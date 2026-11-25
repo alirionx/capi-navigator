@@ -11,6 +11,7 @@ import {
   ACCOUNTS_NAMESPACE,
   changedFields,
   MANAGED_BY_LABEL,
+  MAX_TOKENS_PER_PERSON,
   MANAGED_BY_VALUE,
   MANAGED_NAMESPACE_LABEL,
   managedNamespaceObjects,
@@ -18,22 +19,28 @@ import {
   namespaceAddonName,
   namespaceKubeconfig,
   namespacesUnsupported,
+  personKey,
   selectorsCanOverlap,
   TOKEN_ACCOUNT_ANNOTATION,
   TOKEN_CREATOR_ANNOTATION,
+  TOKEN_CREATOR_ID_ANNOTATION,
+  TOKEN_GRANT_ANNOTATION,
   TOKEN_EXPIRY_ANNOTATION,
   TOKEN_LABEL,
+  withoutPeople,
   type AddonPreview,
   type AddonStatus,
   type ManagedNamespaces,
   type ManagedNamespaceSpec,
   type ManagedNamespaceView,
+  type MyNamespace,
   type NamespaceToken,
   type NamespaceTokenResponse,
 } from '@capi-navigator/shared';
 import { ClustersService } from '../clusters/clusters.service.js';
 import { AddonsService } from '../helm/addons.service.js';
 import { toHttpException } from '../kube/errors.js';
+import { PeopleService } from './people.service.js';
 import { objectKey, workloadAccess, type WorkloadAccess } from './workload-access.js';
 
 const READ_TIMEOUT_MS = 10_000;
@@ -54,14 +61,23 @@ export class NamespacesService {
   constructor(
     private readonly clusters: ClustersService,
     private readonly addons: AddonsService,
+    private readonly people: PeopleService,
   ) {}
 
   /** Replaced in tests. */
   access: (kubeconfig: string) => WorkloadAccess = workloadAccess;
   now: () => number = Date.now;
 
-  /** FP36-F-11: add-ons of the cluster plus what is left over in it. */
-  async list(ref: ClusterRef): Promise<ManagedNamespaces> {
+  /**
+   * FP36-F-11: add-ons of the cluster plus what is left over in it. Who is assigned and who issued a
+   * token is only for those who manage the access (FP37-F-02, ADR-0041).
+   */
+  async list(ref: ClusterRef, withAccess: boolean): Promise<ManagedNamespaces> {
+    const all = await this.listAll(ref);
+    return withAccess ? all : { ...all, namespaces: all.namespaces.map(forReaders) };
+  }
+
+  private async listAll(ref: ClusterRef): Promise<ManagedNamespaces> {
     const unsupported = await this.unsupported(ref.connection, ref.namespace, ref.name);
     const defined = (await this.addons.namespaceAddons(ref.connection, ref.namespace)).filter((a) =>
       a.status.matchingClusters.includes(ref.name),
@@ -165,7 +181,21 @@ export class NamespacesService {
     namespace: string,
     account: string,
     req: { lifetimeSeconds: number; format: 'token' | 'kubeconfig' },
-    creator: string,
+    creator: TokenCreator,
+  ): Promise<NamespaceTokenResponse> {
+    // One after another per person and account, so the limit holds (FP37-F-06).
+    return this.serialized(
+      [ref.connection, ref.namespace, ref.name, namespace, account, creator.id].join('\n'),
+      () => this.issue(ref, namespace, account, req, creator),
+    );
+  }
+
+  private async issue(
+    ref: ClusterRef,
+    namespace: string,
+    account: string,
+    req: { lifetimeSeconds: number; format: 'token' | 'kubeconfig' },
+    creator: TokenCreator,
   ): Promise<NamespaceTokenResponse> {
     const { spec } = await this.defined(ref, namespace);
     if (!spec.accounts.some((a) => a.name === account)) {
@@ -174,8 +204,20 @@ export class NamespacesService {
     const serviceAccount = namespaceAccountName(namespace, account);
     return this.kube(`Issue a token for ${serviceAccount}`, async () => {
       const access = await this.open(ref);
-      for (const t of this.tokensOf(namespace, await access.tokenSecrets())) {
+      const existing = await access.tokenSecrets();
+      for (const t of this.tokensOf(namespace, existing)) {
         if (t.expired) await access.deleteTokenSecret(t.id);
+      }
+      if (creator.grant) {
+        const valid = this.tokensOf(namespace, ownedBy(creator.id, existing)).filter(
+          (t) => t.account === account && !t.expired,
+        );
+        if (valid.length >= MAX_TOKENS_PER_PERSON) {
+          throw new ConflictException({
+            message: `You already have ${valid.length} valid tokens for this account`,
+            hint: 'Revoke one you no longer need.',
+          });
+        }
       }
       const secret = await access.createTokenSecret({
         metadata: {
@@ -188,7 +230,9 @@ export class NamespacesService {
           },
           annotations: {
             [TOKEN_ACCOUNT_ANNOTATION]: account,
-            [TOKEN_CREATOR_ANNOTATION]: creator,
+            [TOKEN_CREATOR_ANNOTATION]: creator.name,
+            ...(creator.id ? { [TOKEN_CREATOR_ID_ANNOTATION]: creator.id } : {}),
+            ...(creator.grant ? { [TOKEN_GRANT_ANNOTATION]: creator.grant } : {}),
             [TOKEN_EXPIRY_ANNOTATION]: new Date(
               this.now() + req.lifetimeSeconds * 1000,
             ).toISOString(),
@@ -227,12 +271,14 @@ export class NamespacesService {
     });
   }
 
-  /** FP36-F-09: the API server refuses the token within seconds. */
-  async revokeToken(ref: ClusterRef, namespace: string, id: string): Promise<void> {
+  /** FP36-F-09: the API server refuses the token within seconds. With `owner` only own tokens. */
+  async revokeToken(ref: ClusterRef, namespace: string, id: string, owner?: string): Promise<void> {
     await this.kube(`Revoke token ${id}`, async () => {
       const access = await this.open(ref);
       // Only Secrets the app created for tokens of this namespace.
-      if (!this.tokensOf(namespace, await access.tokenSecrets()).some((t) => t.id === id)) {
+      const all = await access.tokenSecrets();
+      const tokens = owner === undefined ? all : ownedBy(owner, all);
+      if (!this.tokensOf(namespace, tokens).some((t) => t.id === id)) {
         throw new NotFoundException(`Token ${id} of namespace ${namespace} not found`);
       }
       await access.deleteTokenSecret(id);
@@ -246,7 +292,10 @@ export class NamespacesService {
   ): Promise<{ blockers: string[]; warnings: string[] }> {
     const blockers: string[] = [];
     const warnings: string[] = [];
-    for (const other of await this.addons.namespaceAddons(connection, spec.namespace)) {
+    const defined = await this.addons.namespaceAddons(connection, spec.namespace);
+    const current = defined.find((d) => d.status.name === namespaceAddonName(spec))?.spec;
+    blockers.push(...this.people.problems(spec, current));
+    for (const other of defined) {
       if (
         other.spec.name === spec.name &&
         other.status.name !== namespaceAddonName(spec) &&
@@ -351,8 +400,6 @@ export class NamespacesService {
     const expected = managedNamespaceObjects(spec);
     const managed = cluster.managed.find((n) => n.name === spec.name);
     const addon = addonOf(ref, status);
-    const quota = cluster.live.get(`ResourceQuota/${spec.name}/capi-navigator`) as
-      { status?: { hard?: Record<string, string>; used?: Record<string, string> } } | undefined;
     return {
       name: spec.name,
       spec,
@@ -370,24 +417,77 @@ export class NamespacesService {
               : [{ kind: o.kind, name: o.metadata.name, missing: !live, fields }];
           })
         : [],
-      quota: Object.entries(quota?.status?.hard ?? {})
-        .map(([resource, hard]) => ({
-          resource,
-          hard,
-          used: quota?.status?.used?.[resource] ?? '0',
-        }))
-        .sort((a, b) => a.resource.localeCompare(b.resource)),
+      quota: quotaUsage(cluster.live.get(`ResourceQuota/${spec.name}/capi-navigator`)),
       accounts: spec.accounts.map((a) => ({
-        ...a,
+        name: a.name,
+        role: a.role,
         exists: cluster.live.has(
           `ServiceAccount/${ACCOUNTS_NAMESPACE}/${namespaceAccountName(spec.name, a.name)}`,
         ),
       })),
-      tokens: this.tokensOf(spec.name, cluster.secrets),
+      tokens: this.tokensOf(spec.name, cluster.secrets, spec),
     };
   }
 
-  private tokensOf(namespace: string, secrets: V1Secret[]): NamespaceToken[] {
+  /** FP37-F-03: one namespace as an assigned person sees it. */
+  async forPerson(
+    ref: ClusterRef,
+    spec: ManagedNamespaceSpec,
+    status: AddonStatus,
+    accounts: ManagedNamespaceSpec['accounts'],
+    owner: string,
+  ): Promise<MyNamespace> {
+    const base = {
+      connection: ref.connection,
+      clusterNamespace: ref.namespace,
+      cluster: ref.name,
+      namespace: spec.name,
+      accounts: accounts.map(({ name, role }) => ({ name, role })),
+      ready: addonOf(ref, status).ready,
+    };
+    try {
+      const { quota, secrets } = await withTimeout(
+        (async () => {
+          const access = await this.open(ref);
+          const expected = managedNamespaceObjects(spec).filter((o) => o.kind === 'ResourceQuota');
+          const [live, all] = await Promise.all([access.live(expected), access.tokenSecrets()]);
+          return { quota: live.get(objectKey(expected[0]!)), secrets: all };
+        })(),
+        READ_TIMEOUT_MS,
+      );
+      return {
+        ...base,
+        unreachable: false,
+        quota: quotaUsage(quota),
+        tokens: this.tokensOf(spec.name, ownedBy(owner, secrets)).map(
+          ({ createdBy: _by, unassigned: _un, ...t }) => t,
+        ),
+      };
+    } catch {
+      // Without the reason: it may name the cluster's address.
+      return { ...base, unreachable: true, quota: [], tokens: [] };
+    }
+  }
+
+  private readonly running = new Map<string, Promise<unknown>>();
+
+  private async serialized<T>(key: string, fn: () => Promise<T>): Promise<T> {
+    const before = this.running.get(key) ?? Promise.resolve();
+    const next = before.catch(() => undefined).then(fn);
+    this.running.set(key, next);
+    try {
+      return await next;
+    } finally {
+      if (this.running.get(key) === next) this.running.delete(key);
+    }
+  }
+
+  private tokensOf(
+    namespace: string,
+    secrets: V1Secret[],
+    spec?: ManagedNamespaceSpec,
+  ): NamespaceToken[] {
+    const assigned = new Map(spec?.accounts.map((a) => [a.name, a.people.map(personKey)]));
     return secrets
       .filter(
         (s) =>
@@ -397,6 +497,7 @@ export class NamespacesService {
       .map((s): NamespaceToken => {
         const a = s.metadata?.annotations ?? {};
         const expiresAt = a[TOKEN_EXPIRY_ANNOTATION];
+        const grant = a[TOKEN_GRANT_ANNOTATION];
         const created = s.metadata?.creationTimestamp;
         return {
           id: s.metadata!.name!,
@@ -405,6 +506,10 @@ export class NamespacesService {
           ...(created ? { createdAt: new Date(created).toISOString() } : {}),
           ...(expiresAt ? { expiresAt } : {}),
           expired: !!expiresAt && Date.parse(expiresAt) <= this.now(),
+          // FP37-F-05: still valid, although the assignment it was issued under is gone.
+          ...(spec && grant && !assigned.get(a[TOKEN_ACCOUNT_ANNOTATION] ?? '')?.includes(grant)
+            ? { unassigned: true }
+            : {}),
         };
       })
       .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
@@ -419,6 +524,35 @@ export class NamespacesService {
     }
   }
 }
+
+/** Who issues a token: shown name, identity, and for assigned people the assignment (FP37-F-04). */
+export interface TokenCreator {
+  name: string;
+  id?: string | undefined;
+  grant?: string;
+}
+
+const ownedBy = (id: string | undefined, secrets: V1Secret[]) =>
+  id === undefined
+    ? []
+    : secrets.filter((s) => s.metadata?.annotations?.[TOKEN_CREATOR_ID_ANNOTATION] === id);
+
+function quotaUsage(quota: KubernetesObject | undefined) {
+  const status = (
+    quota as
+      { status?: { hard?: Record<string, string>; used?: Record<string, string> } } | undefined
+  )?.status;
+  return Object.entries(status?.hard ?? {})
+    .map(([resource, hard]) => ({ resource, hard, used: status?.used?.[resource] ?? '0' }))
+    .sort((a, b) => a.resource.localeCompare(b.resource));
+}
+
+/** Without who is assigned and who issued a token. */
+const forReaders = (n: ManagedNamespaceView): ManagedNamespaceView => ({
+  ...n,
+  ...(n.spec ? { spec: withoutPeople(n.spec) } : {}),
+  tokens: n.tokens.map(({ createdBy: _by, unassigned: _un, ...t }) => t),
+});
 
 interface ClusterState {
   live: Map<string, KubernetesObject>;
@@ -449,12 +583,12 @@ function emptyView(
     terminating: false,
     drift: [],
     quota: [],
-    accounts: spec.accounts.map((a) => ({ ...a, exists: false })),
+    accounts: spec.accounts.map(({ name, role }) => ({ name, role, exists: false })),
     tokens: [],
   };
 }
 
-async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+export async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   try {
     return await Promise.race([

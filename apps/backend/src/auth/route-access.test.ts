@@ -64,6 +64,7 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'POST /api/blueprints/:blueprint/clusters': 'operator',
     // FP-36: managed namespaces; tokens need clusters.access (ADR-0040).
     'GET /api/connections/:connection/clusters/:namespace/:name/namespaces': 'viewer',
+    'GET /api/connections/:connection/clusters/:namespace/:name/namespaces/people': 'operator',
     'POST /api/connections/:connection/clusters/:namespace/:name/namespaces/preview': 'operator',
     'PUT /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace':
       'operator',
@@ -75,6 +76,12 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
       'operator',
     'DELETE /api/connections/:connection/clusters/:namespace/:name/namespaces/:workloadNamespace/tokens/:token':
       'operator',
+    // FP-37: for every signed-in person; what is returned follows from the assignments (ADR-0041).
+    'GET /api/my/namespaces': 'viewer',
+    'POST /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/accounts/:account/tokens':
+      'viewer',
+    'DELETE /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/tokens/:token':
+      'viewer',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

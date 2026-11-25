@@ -23,6 +23,7 @@ export const en = {
     apiDocsHint: 'REST API documentation (Swagger UI) in a new tab',
   },
   nav: {
+    myNamespaces: 'My namespaces',
     home: 'Home',
     connections: 'Connections',
     providers: 'Providers',
@@ -493,6 +494,14 @@ export const en = {
       'One account per team or tool. "Edit" may deploy, "View" only reads (no Secrets). Default: view.',
     account: 'Account',
     addAccount: 'Add account',
+    assigned: 'Who may get access themselves',
+    assignedHint:
+      'These people find the namespace under "My namespaces" and issue their own access. Default: nobody.',
+    people: { user: 'Local user', person: 'Single sign-on', group: 'Group' },
+    unassigned: 'no longer assigned',
+    unassignedText:
+      '{count} access was issued by someone who is no longer assigned. | {count} accesses were issued by people who are no longer assigned.',
+    revokeUnassigned: 'Revoke',
     role: 'Role',
     roles: { view: 'View', edit: 'Edit' },
     clusters: 'Roll out to several clusters',
@@ -537,6 +546,15 @@ export const en = {
     formatToken: 'Token only',
     issue: 'Issue',
     tokenOnce: 'Shown only once. Copy or download it now. Valid until {date}.',
+  },
+  myNamespaces: {
+    title: 'My namespaces',
+    subtitle: 'Namespaces assigned to you. Get a kubeconfig or token here.',
+    none: 'No namespace is assigned to you. Ask the owner of the cluster.',
+    incomplete: 'Not everything could be read right now. Namespaces may be missing.',
+    unreachable: 'Cluster not reachable',
+    inCluster: 'Cluster {cluster}',
+    tokens: 'My access',
   },
   manifestAddons: {
     newTitle: 'New manifest add-on',

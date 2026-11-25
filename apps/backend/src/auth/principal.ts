@@ -6,10 +6,17 @@ export interface Principal {
   /** Role assignments (FP19-F-03), read fresh from the user cache on every request. */
   bindings: RoleBinding[];
   mustChangePassword: boolean;
+  /** Local users: UID of the `NavigatorUser`; a name can be used again (ADR-0041). */
+  uid?: string;
   /** Set when the request authenticated with an API token (FP-22). */
   token?: { id: string; name: string };
   /** Set for people signed in with the OpenID Connect provider (FP-14). */
-  oidc?: { subject: string; groups: string[] };
+  oidc?: {
+    subject: string;
+    groups: string[];
+    /** Provider that signed the person in; missing in sessions from before FP-37. */
+    issuer?: string;
+  };
 }
 
 /** Fields the auth guard attaches to the Express request. */

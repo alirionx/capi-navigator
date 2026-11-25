@@ -12,12 +12,15 @@ import {
 } from '@nestjs/common';
 import {
   AddonPreviewSchema,
+  allows,
+  AssignablePeopleSchema,
   ManagedNamespaceApplyRequestSchema,
   ManagedNamespaceDeleteRequestSchema,
   ManagedNamespacesSchema,
   NamespaceTokenRequestSchema,
   NamespaceTokenResponseSchema,
   type AddonPreview,
+  type AssignablePeople,
   type ManagedNamespaces,
   type ManagedNamespaceSpec,
   type NamespaceTokenResponse,
@@ -27,14 +30,20 @@ import { Audit, CurrentUser, Requires } from '../auth/decorators.js';
 import type { Principal } from '../auth/principal.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { Api } from '../openapi/api.decorator.js';
+import { StoreService } from '../store/store.service.js';
 import { NamespacesService } from './namespaces.service.js';
+import { PeopleService } from './people.service.js';
 
 const AUDIT = { managementClusterParam: 'connection', targetParam: 'workloadNamespace' };
 
 /** Managed namespaces of a workload cluster, their accounts and tokens (FP-36). */
 @Controller('api/connections/:connection/clusters/:namespace/:name/namespaces')
 export class NamespacesController {
-  constructor(private readonly namespaces: NamespacesService) {}
+  constructor(
+    private readonly namespaces: NamespacesService,
+    private readonly people: PeopleService,
+    private readonly store: StoreService,
+  ) {}
 
   @Requires('view')
   @Api({
@@ -48,8 +57,26 @@ export class NamespacesController {
     @Param('connection') connection: string,
     @Param('namespace') namespace: string,
     @Param('name') name: string,
+    @CurrentUser() user: Principal,
   ): Promise<ManagedNamespaces> {
-    return this.namespaces.list({ connection, namespace, name });
+    // FP37-F-02: assigned people only for those who manage the access.
+    const withAccess = allows(user.bindings, this.store.rolePermissions, 'clusters.access', {
+      connection,
+      namespace,
+    });
+    return this.namespaces.list({ connection, namespace, name }, withAccess);
+  }
+
+  @Requires('clusters.access')
+  @Api({
+    summary: 'People and groups that can be assigned to accounts',
+    description:
+      'Names of local users, mapped groups and OpenID Connect people; no roles and no technical users (FP37-F-02).',
+    response: AssignablePeopleSchema,
+  })
+  @Get('people')
+  assignable(): Promise<AssignablePeople> {
+    return this.people.assignable();
   }
 
   @Requires('clusters.access')
@@ -165,7 +192,7 @@ export class NamespacesController {
       workloadNamespace,
       account,
       body,
-      user.username,
+      { name: user.username, id: this.people.identity(user) },
     );
   }
 

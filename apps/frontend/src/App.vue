@@ -49,7 +49,8 @@ const navGroups = computed(() =>
 
 // Load the connections for the selector once the user may use the app.
 watch(
-  () => fullLayout.value && !auth.me?.mustChangePassword,
+  // Namespace users may not read anything else (FP37-F-01).
+  () => fullLayout.value && !auth.me?.mustChangePassword && auth.can('view'),
   (ready) => {
     if (ready) void connections.load().catch(() => undefined);
   },
@@ -127,10 +128,10 @@ async function signOut(): Promise<void> {
     <v-app-bar v-if="fullLayout" flat density="comfortable" class="topbar">
       <v-app-bar-nav-icon v-if="!mdAndUp" @click="drawer = !drawer" />
       <v-spacer />
-      <ConnectionSelector v-if="!auth.me?.mustChangePassword" />
+      <ConnectionSelector v-if="auth.can('view')" />
       <!-- FP23-F-07: Swagger UI of the REST API in a new tab; on small screens in the user menu. -->
       <v-btn
-        v-if="mdAndUp && auth.me && !auth.me.mustChangePassword"
+        v-if="mdAndUp && auth.can('view')"
         href="/api/docs/"
         target="_blank"
         rel="noopener"
@@ -199,6 +200,7 @@ async function signOut(): Promise<void> {
           />
           <!-- FP23-F-07: Swagger UI of the REST API, served by the backend. -->
           <v-list-item
+            v-if="auth.can('view')"
             prepend-icon="mdi-code-braces"
             :title="t('app.apiDocs')"
             href="/api/docs/"

@@ -123,6 +123,33 @@ describe('ClusterNamespaces (FP36-F-11)', () => {
     expect(wrapper.find('[data-testid=namespaces-unsupported]').text()).toContain('needs Calico');
   });
 
+  it('shows assigned people and offers to revoke what removed people issued (FP37-F-05)', async () => {
+    const n = data.namespaces[0]!;
+    n.spec = {
+      ...spec,
+      accounts: [{ ...spec.accounts[0]!, people: [{ kind: 'user', name: 'max', uid: 'u' }] }],
+    };
+    n.tokens = [
+      { id: 'token-1', account: 'ci', createdBy: 'max', expired: false },
+      { id: 'token-2', account: 'ci', createdBy: 'old', expired: false, unassigned: true },
+      { id: 'token-3', account: 'ci', createdBy: 'old', expired: true, unassigned: true },
+    ];
+    await render(['view', 'clusters.access']);
+    expect(wrapper.find('[data-testid=people-team-a-ci]').text()).toContain('max');
+    expect(wrapper.find('[data-testid=unassigned-team-a]').text()).toContain('1 access was issued');
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockClear();
+    fetchMock.mockImplementation(async (_url, init) =>
+      init?.method === 'DELETE'
+        ? new Response(null, { status: 204 })
+        : new Response(JSON.stringify(data), { status: 200 }),
+    );
+    await wrapper.find('[data-testid=revoke-unassigned-team-a]').trigger('click');
+    await flushPromises();
+    const deleted = fetchMock.mock.calls.filter(([, i]) => i?.method === 'DELETE').map(([u]) => u);
+    expect(deleted).toEqual([expect.stringMatching(/\/team-a\/tokens\/token-2$/)]);
+  });
+
   it('offers to restore changed objects (FP36-F-06)', async () => {
     data.namespaces[0]!.drift = [
       { kind: 'ResourceQuota', name: 'capi-navigator', missing: false, fields: ['spec.hard.pods'] },

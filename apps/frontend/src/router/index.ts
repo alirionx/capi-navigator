@@ -14,6 +14,7 @@ import CredentialsView from '../views/CredentialsView.vue';
 import HelmRepositoriesView from '../views/HelmRepositoriesView.vue';
 import HomeView from '../views/HomeView.vue';
 import LoginView from '../views/LoginView.vue';
+import MyNamespacesView from '../views/MyNamespacesView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
 import AuthSettingsView from '../views/AuthSettingsView.vue';
 import RolesView from '../views/RolesView.vue';
@@ -47,8 +48,7 @@ export const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'home',
     component: HomeView,
-    // Signed-in only: the fallback for pages without permission (no redirect loop).
-    meta: { titleKey: 'nav.home', icon: 'mdi-home', navGroup: 'overview' },
+    meta: { permission: 'view', titleKey: 'nav.home', icon: 'mdi-home', navGroup: 'overview' },
   },
   {
     path: '/clusters',
@@ -84,6 +84,13 @@ export const routes: RouteRecordRaw[] = [
       icon: 'mdi-package-variant-closed',
       navGroup: 'overview',
     },
+  },
+  {
+    path: '/my-namespaces',
+    name: 'my-namespaces',
+    component: MyNamespacesView,
+    // Signed-in only (FP37-F-03): the fallback for people who may not read (no redirect loop).
+    meta: { titleKey: 'nav.myNamespaces', icon: 'mdi-account-box-outline', navGroup: 'overview' },
   },
   {
     path: '/connections',
@@ -192,7 +199,9 @@ export function createAppRouter(pinia: Pinia) {
     if (auth.me.mustChangePassword && to.name !== 'change-password') {
       return { name: 'change-password' };
     }
-    if (to.meta.permission && !auth.can(to.meta.permission)) return { name: 'home' };
+    if (to.meta.permission && !auth.can(to.meta.permission)) {
+      return { name: auth.can('view') ? 'home' : 'my-namespaces' };
+    }
     return true;
   });
 

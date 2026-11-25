@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type {
   AuditEventSpec,
   ClusterBlueprintStorage,
@@ -49,7 +50,8 @@ export function createFakeStore() {
         const obj = {
           apiVersion: 'navigator.capi-navigator.io/v1alpha1',
           kind: 'NavigatorUser',
-          metadata: { name: meta.name, resourceVersion: String(rv++) },
+          // A new UID on every creation, like the API server.
+          metadata: { name: meta.name, uid: randomUUID(), resourceVersion: String(rv++) },
           spec,
         };
         users.set(meta.name, obj);

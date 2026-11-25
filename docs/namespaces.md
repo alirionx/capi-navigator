@@ -36,6 +36,24 @@ live in the namespace `capi-navigator-accounts`, where teams have no rights.
 stored by the app. Kubernetes allows one minute of leeway after the expiry. Issued access is listed with creator and expiry and can be revoked one by one;
 it then stops working within seconds. Needs the permission `clusters.access` (operator and admin).
 
+## Self-service
+
+People can get their access themselves (FP-37, [ADR-0041](adr/0041-namespace-users-without-view.md)).
+
+1. **Assign** them in the namespace form, per account: local users, groups or single sign-on people.
+   Groups must be mapped in the app. Assigning does not change anything in the cluster.
+2. They open **My namespaces** and issue a kubeconfig or token, at most five valid ones per account.
+   They see only their own namespaces and their own access, and can revoke it.
+
+People who should see nothing else get the built-in role **Namespace user**. It is the only role that
+cannot read: no clusters, no add-ons, no settings. Self-service works with every other role too. For
+single sign-on, set Namespace user as role of a group or as default role; the default role is Viewer
+otherwise.
+
+**Removing a person** takes effect at once for new access. Access already issued stays valid until
+it expires; the Namespaces tab shows it and offers to revoke it. Group membership comes from the
+sign-in, so a person removed from a group at the provider keeps it until the session ends.
+
 ## Changes, removal, deletion
 
 - **Edit** changes size, exceptions and accounts after a preview. Name and clusters are fixed.

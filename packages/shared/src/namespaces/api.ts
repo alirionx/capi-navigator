@@ -12,6 +12,12 @@ export const TOKEN_LABEL = 'capi-navigator.io/namespace-token';
 export const TOKEN_ACCOUNT_ANNOTATION = 'capi-navigator.io/account';
 export const TOKEN_CREATOR_ANNOTATION = 'capi-navigator.io/created-by';
 export const TOKEN_EXPIRY_ANNOTATION = 'capi-navigator.io/expires-at';
+/** Identity that issued the token (FP37-F-04), a {@link personKey}; names can be reused. */
+export const TOKEN_CREATOR_ID_ANNOTATION = 'capi-navigator.io/created-by-id';
+/** Assignment the token was issued under (FP37-F-05), a {@link personKey}. */
+export const TOKEN_GRANT_ANNOTATION = 'capi-navigator.io/issued-for';
+/** FP37-F-06: valid tokens per person and account. */
+export const MAX_TOKENS_PER_PERSON = 5;
 
 /** An issued token, from its Secret; the token itself is never kept. */
 export const NamespaceTokenSchema = z.object({
@@ -21,6 +27,8 @@ export const NamespaceTokenSchema = z.object({
   createdAt: z.string().optional(),
   expiresAt: z.string().optional(),
   expired: z.boolean(),
+  /** Issued by an assigned person whose assignment is gone (FP37-F-05). */
+  unassigned: z.boolean().optional(),
 });
 export type NamespaceToken = z.infer<typeof NamespaceTokenSchema>;
 
@@ -95,6 +103,32 @@ export const NamespaceTokenResponseSchema = z.object({
   fileName: z.string(),
 });
 export type NamespaceTokenResponse = z.infer<typeof NamespaceTokenResponseSchema>;
+
+/** One namespace on "My namespaces" (FP37-F-03): nothing about other people or the cluster. */
+export const MyNamespaceSchema = z.object({
+  connection: z.string(),
+  /** Namespace of the cluster in the management cluster. */
+  clusterNamespace: z.string(),
+  cluster: z.string(),
+  namespace: z.string(),
+  /** Accounts the person is assigned to. */
+  accounts: z.array(z.object({ name: z.string(), role: z.enum(NAMESPACE_ROLES) })),
+  /** The namespace is installed; otherwise no token can be issued yet. */
+  ready: z.boolean(),
+  /** The cluster does not answer right now; quota and tokens are unknown. */
+  unreachable: z.boolean(),
+  quota: z.array(z.object({ resource: z.string(), used: z.string(), hard: z.string() })),
+  /** Only the person's own tokens. */
+  tokens: z.array(NamespaceTokenSchema.omit({ createdBy: true, unassigned: true })),
+});
+export type MyNamespace = z.infer<typeof MyNamespaceSchema>;
+
+export const MyNamespacesSchema = z.object({
+  namespaces: z.array(MyNamespaceSchema),
+  /** Something could not be read, so namespaces may be missing; no names on purpose. */
+  incomplete: z.boolean(),
+});
+export type MyNamespaces = z.infer<typeof MyNamespacesSchema>;
 
 /** Pure: kubeconfig of a service account with the managed namespace as default (FP36-F-10). */
 export function namespaceKubeconfig(args: {

@@ -8,6 +8,7 @@ import {
   manifestValuesTemplate,
   type ManifestChartSource,
 } from '../helm/manifest-addon.js';
+import { NamespacePersonSchema, personKey, type NamespacePerson } from './people.js';
 import {
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
@@ -27,6 +28,11 @@ import {
 export const ACCOUNTS_NAMESPACE = 'capi-navigator-accounts';
 /** Form model on the HelmChartProxy (FP36-F-01). */
 export const MANAGED_NAMESPACE_ANNOTATION = 'capi-navigator.io/managed-namespace';
+/**
+ * Assigned people per account (FP37-F-02). An annotation of its own, so everything that shows the
+ * HelmChartProxy to readers can leave it out (ADR-0041).
+ */
+export const NAMESPACE_PEOPLE_ANNOTATION = 'capi-navigator.io/managed-namespace-people';
 /** Value of {@link ADDON_TYPE_LABEL}. */
 export const NAMESPACE_ADDON_TYPE = 'namespace';
 /** On every object of a managed namespace: the namespace it belongs to. */
@@ -122,6 +128,8 @@ export const NamespaceAccountSchema = z.object({
     .max(30, 'At most 30 characters')
     .regex(DNS_LABEL, 'Lowercase letters, digits and "-"; must start with a letter'),
   role: z.enum(NAMESPACE_ROLES).default('view'),
+  /** People who issue tokens for this account themselves (FP37-F-02); not part of the manifests. */
+  people: z.array(NamespacePersonSchema).max(50, 'At most 50 people').default([]),
 });
 export type NamespaceAccount = z.infer<typeof NamespaceAccountSchema>;
 
@@ -167,6 +175,13 @@ export const ManagedNamespaceSpecSchema = z
         });
       }
       seen.add(a.name);
+      if (new Set(a.people.map(personKey)).size !== a.people.length) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['accounts', i, 'people'],
+          message: 'The same person or group is listed twice',
+        });
+      }
     });
   });
 export type ManagedNamespaceSpec = z.infer<typeof ManagedNamespaceSpecSchema>;
@@ -325,6 +340,9 @@ export function buildNamespaceHelmChartProxy(
     },
     source,
   );
+  const people = Object.fromEntries(
+    spec.accounts.filter((a) => a.people.length).map((a) => [a.name, a.people]),
+  );
   return {
     ...hcp,
     metadata: {
@@ -336,7 +354,10 @@ export function buildNamespaceHelmChartProxy(
       },
       annotations: {
         ...hcp.metadata.annotations,
-        [MANAGED_NAMESPACE_ANNOTATION]: stableStringify(spec),
+        [MANAGED_NAMESPACE_ANNOTATION]: stableStringify(formModel(spec)),
+        ...(Object.keys(people).length
+          ? { [NAMESPACE_PEOPLE_ANNOTATION]: stableStringify(people) }
+          : {}),
       },
     },
     spec: {
@@ -345,6 +366,34 @@ export function buildNamespaceHelmChartProxy(
       valuesTemplate: manifestValuesTemplate(manifests),
     },
   };
+}
+
+/** The form model without the people, as it is shown to everybody who may read (ADR-0041). */
+const formModel = (spec: ManagedNamespaceSpec) => ({
+  ...spec,
+  accounts: spec.accounts.map(({ name, role }) => ({ name, role })),
+});
+
+/** The spec without the assigned people, for readers without `clusters.access`. */
+export const withoutPeople = (spec: ManagedNamespaceSpec): ManagedNamespaceSpec => ({
+  ...spec,
+  accounts: spec.accounts.map((a) => ({ ...a, people: [] })),
+});
+
+/**
+ * Pure: revision of a changed spec. Every change of the objects is a new one, so CAAPH upgrades the
+ * release (FP36-F-06); people are not part of the objects and keep it (FP37-F-02).
+ */
+export function nextRevision(
+  next: ManagedNamespaceSpecInput,
+  current: ManagedNamespaceSpec | undefined,
+): number {
+  if (!current) return 1;
+  const same = ManagedNamespaceSpecSchema.safeParse({ ...next, revision: current.revision });
+  const unchanged =
+    same.success &&
+    stableStringify(withoutPeople(same.data)) === stableStringify(withoutPeople(current));
+  return current.revision + (unchanged ? 0 : 1);
 }
 
 interface HcpLike {
@@ -371,11 +420,30 @@ export function managedNamespaceFromHelmChartProxy(hcp: HcpLike): ManagedNamespa
   }
   const parsed = ManagedNamespaceSpecSchema.safeParse(value);
   // The annotation must describe this object, not one copied from elsewhere.
-  return parsed.success &&
-    parsed.data.namespace === hcp.metadata.namespace &&
-    namespaceAddonName(parsed.data) === hcp.metadata.name
-    ? parsed.data
-    : undefined;
+  if (
+    !parsed.success ||
+    parsed.data.namespace !== hcp.metadata.namespace ||
+    namespaceAddonName(parsed.data) !== hcp.metadata.name
+  ) {
+    return undefined;
+  }
+  const people = assignedPeople(hcp.metadata.annotations?.[NAMESPACE_PEOPLE_ANNOTATION]);
+  return {
+    ...parsed.data,
+    accounts: parsed.data.accounts.map((a) => ({ ...a, people: people.get(a.name) ?? [] })),
+  };
+}
+
+const PeopleAnnotationSchema = z.record(z.string(), z.array(NamespacePersonSchema));
+
+/** Fails closed: an annotation that cannot be read assigns nobody. */
+function assignedPeople(raw: string | undefined): Map<string, NamespacePerson[]> {
+  try {
+    const parsed = PeopleAnnotationSchema.safeParse(JSON.parse(raw ?? '{}'));
+    return new Map(parsed.success ? Object.entries(parsed.data) : []);
+  } catch {
+    return new Map();
+  }
 }
 
 /** Paths of generated fields that differ from the live object (FP36-F-06). */

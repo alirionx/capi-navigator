@@ -60,6 +60,21 @@ describe('router guards (FP1-F-07)', () => {
     expect(router.currentRoute.value.name).toBe('home');
   });
 
+  it('sends namespace users to their namespaces, whatever they open (FP37-F-01)', async () => {
+    for (const path of ['/', '/clusters', '/users', '/clusters/team/prod']) {
+      mockMe(200, {
+        username: 'nina',
+        role: 'namespace-user',
+        bindings: [{ role: 'namespace-user', permissions: [] }],
+        mustChangePassword: false,
+        source: 'local',
+      });
+      const router = createAppRouter(createPinia());
+      await router.push(path);
+      expect(router.currentRoute.value.name, path).toBe('my-namespaces');
+    }
+  });
+
   it('lets admins open the user management', async () => {
     mockMe(200, {
       username: 'admin',

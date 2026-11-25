@@ -4,21 +4,24 @@ import { useI18n } from 'vue-i18n';
 import {
   TOKEN_LIFETIME_SECONDS,
   type NamespaceAccount,
+  type NamespaceTokenRequest,
   type NamespaceTokenResponse,
 } from '@capi-navigator/shared';
 import ErrorAlert from '../ErrorAlert.vue';
 import YamlViewer from '../YamlViewer.vue';
-import { useNamespacesStore, type ClusterKey } from '../../stores/namespaces.js';
 
 /**
  * Issues one token (FP36-F-08 to F-10, ADR-0040). The answer stays in this component only and is
  * dropped when the dialog closes.
  */
-const props = defineProps<{ cluster: ClusterKey; namespace: string; account: NamespaceAccount }>();
+const props = defineProps<{
+  namespace: string;
+  account: Pick<NamespaceAccount, 'name' | 'role'>;
+  issue: (req: NamespaceTokenRequest) => Promise<NamespaceTokenResponse>;
+}>();
 const open = defineModel<boolean>({ required: true });
 const emit = defineEmits<{ issued: [] }>();
 const { t } = useI18n();
-const store = useNamespacesStore();
 
 const HOUR = 3600;
 const LIFETIMES = [1, 8, 24, 72, 168].map((h) => ({
@@ -44,11 +47,11 @@ watch(
   { immediate: true },
 );
 
-async function issue(): Promise<void> {
+async function submit(): Promise<void> {
   busy.value = true;
   error.value = null;
   try {
-    result.value = await store.issueToken(props.cluster, props.namespace, props.account.name, {
+    result.value = await props.issue({
       lifetimeSeconds: lifetime.value,
       format: format.value,
     });
@@ -113,7 +116,7 @@ async function issue(): Promise<void> {
           variant="flat"
           :loading="busy"
           data-testid="token-issue"
-          @click="issue"
+          @click="submit"
           >{{ t('namespaces.issue') }}</v-btn
         >
       </v-card-actions>

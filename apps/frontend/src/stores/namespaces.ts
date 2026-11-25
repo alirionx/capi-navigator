@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import {
   AddonPreviewSchema,
+  AssignablePeopleSchema,
   ManagedNamespacesSchema,
   NamespaceTokenResponseSchema,
   type ManagedNamespaceApplyRequest,
@@ -21,6 +22,8 @@ const item = (c: ClusterKey, namespace: string) => `${base(c)}/${enc(namespace)}
 /** Managed namespaces of workload clusters (FP-36). Holds no tokens (ADR-0040). */
 export const useNamespacesStore = defineStore('namespaces', () => ({
   list: (c: ClusterKey) => api('GET', base(c), ManagedNamespacesSchema),
+  /** Who can be assigned to accounts (FP37-F-02). */
+  people: (c: ClusterKey) => api('GET', `${base(c)}/people`, AssignablePeopleSchema),
   preview: (c: ClusterKey, req: ManagedNamespaceApplyRequest) =>
     api('POST', `${base(c)}/preview`, AddonPreviewSchema, req),
   apply: (c: ClusterKey, req: ManagedNamespaceApplyRequest) =>

@@ -240,6 +240,7 @@ function accessText(route: Route): string {
   if (route.isPublic) return 'Public: no session needed.';
   const rule = route.rule;
   if (!rule) return 'Not reachable: the endpoint has no access rule.';
+  if (rule.peopleOnly) return 'Any signed-in person; no API tokens.';
   if (rule.signedIn) return 'Any signed-in user.';
   const perms = rule.anyOf.map((p) => `\`${p}\``).join(' or ');
   const scoped = rule.anyOf.some(shared.isScopable);

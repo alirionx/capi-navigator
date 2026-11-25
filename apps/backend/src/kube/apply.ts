@@ -4,6 +4,7 @@ import {
   type KubeConfig,
   type KubernetesObject,
 } from '@kubernetes/client-node';
+import { NAMESPACE_PEOPLE_ANNOTATION } from '@capi-navigator/shared';
 import { FIELD_MANAGER } from '../store/custom-resource.client.js';
 import { kubeMessage, kubeStatus } from './errors.js';
 
@@ -107,6 +108,15 @@ export async function dryRunApply(
 }
 
 const LARGE_VALUE = 64 * 1024;
+
+/** Without the people assigned to a managed namespace, for readers (FP37-F-02, ADR-0041). */
+export function withoutAssignments<T extends { metadata?: unknown }>(obj: T): T {
+  const metadata = obj.metadata as { annotations?: Record<string, string> } | undefined;
+  if (!metadata?.annotations || !(NAMESPACE_PEOPLE_ANNOTATION in metadata.annotations)) return obj;
+  const annotations = { ...metadata.annotations };
+  delete annotations[NAMESPACE_PEOPLE_ANNOTATION];
+  return { ...obj, metadata: { ...metadata, annotations } };
+}
 
 /** Strips server-managed metadata and status for comparisons and diffs. */
 export function normalizeForDiff(obj: KubernetesObject): Record<string, unknown> {

@@ -13,9 +13,9 @@ const SessionPayloadSchema = z.object({
   exp: z.int(),
   /**
    * OpenID Connect sessions (FP14-F-06): subject and the person's groups that were mapped at
-   * sign-in. `u` then holds the display name and `g` is 0.
+   * sign-in, and the issuer (FP-37). `u` then holds the display name and `g` is 0.
    */
-  o: z.object({ s: z.string(), gr: z.array(z.string()) }).optional(),
+  o: z.object({ s: z.string(), gr: z.array(z.string()), i: z.string().optional() }).optional(),
 });
 export type SessionPayload = z.infer<typeof SessionPayloadSchema>;
 

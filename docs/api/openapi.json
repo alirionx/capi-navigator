@@ -3613,6 +3613,67 @@
         ]
       }
     },
+    "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/people": {
+      "get": {
+        "operationId": "Namespaces_assignable",
+        "tags": [
+          "Namespaces"
+        ],
+        "summary": "People and groups that can be assigned to accounts",
+        "description": "Names of local users, mapped groups and OpenID Connect people; no roles and no technical users (FP37-F-02).\n\nRequires permission `clusters.access`. Checked in the connection and namespace of the route.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignablePeople"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "clusters.access"
+        ]
+      }
+    },
     "/api/connections/{connection}/clusters/{namespace}/{name}/namespaces/preview": {
       "post": {
         "operationId": "Namespaces_preview",
@@ -6642,6 +6703,198 @@
         ]
       }
     },
+    "/api/my/namespaces": {
+      "get": {
+        "operationId": "MyNamespaces_list",
+        "tags": [
+          "MyNamespaces"
+        ],
+        "summary": "Namespaces assigned to the signed-in person",
+        "description": "Only the assigned namespaces, the accounts of the person and the tokens issued by the person (FP37-F-03).\n\nAny signed-in person; no API tokens.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyNamespaces"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "signed-in"
+      }
+    },
+    "/api/my/namespaces/{connection}/{namespace}/{name}/{workloadNamespace}/accounts/{account}/tokens": {
+      "post": {
+        "operationId": "MyNamespaces_issueToken",
+        "tags": [
+          "MyNamespaces"
+        ],
+        "summary": "Issue a token or kubeconfig for an assigned account",
+        "description": "Returned once and never stored; 10 minutes to 7 days, at most five valid tokens per person and account (FP37-F-04, F-06).\n\nAny signed-in person; no API tokens.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NamespaceTokenRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NamespaceTokenResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "signed-in"
+      }
+    },
+    "/api/my/namespaces/{connection}/{namespace}/{name}/{workloadNamespace}/tokens/{token}": {
+      "delete": {
+        "operationId": "MyNamespaces_revokeToken",
+        "tags": [
+          "MyNamespaces"
+        ],
+        "summary": "Revoke a token the signed-in person issued",
+        "description": "The API server refuses it within seconds.\n\nAny signed-in person; no API tokens.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "namespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workloadNamespace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Done; no body."
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": "signed-in"
+      }
+    },
     "/api/oidc-groups": {
       "get": {
         "operationId": "Groups_list",
@@ -8140,6 +8393,12 @@
           "files"
         ],
         "additionalProperties": false
+      },
+      "AssignablePeople": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/NamespacePerson"
+        }
       },
       "AuthOptions": {
         "type": "object",
@@ -11715,6 +11974,135 @@
         ],
         "additionalProperties": false
       },
+      "MyNamespace": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string"
+          },
+          "clusterNamespace": {
+            "type": "string"
+          },
+          "cluster": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "accounts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "view",
+                    "edit"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "role"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "unreachable": {
+            "type": "boolean"
+          },
+          "quota": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "resource": {
+                  "type": "string"
+                },
+                "used": {
+                  "type": "string"
+                },
+                "hard": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "resource",
+                "used",
+                "hard"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "account": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "expiresAt": {
+                  "type": "string"
+                },
+                "expired": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "account",
+                "expired"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "connection",
+          "clusterNamespace",
+          "cluster",
+          "namespace",
+          "accounts",
+          "ready",
+          "unreachable",
+          "quota",
+          "tokens"
+        ],
+        "additionalProperties": false
+      },
+      "MyNamespaces": {
+        "type": "object",
+        "properties": {
+          "namespaces": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MyNamespace"
+            }
+          },
+          "incomplete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "namespaces",
+          "incomplete"
+        ],
+        "additionalProperties": false
+      },
       "NamespaceAccount": {
         "type": "object",
         "properties": {
@@ -11731,11 +12119,20 @@
               "view",
               "edit"
             ]
+          },
+          "people": {
+            "default": [],
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespacePerson"
+            }
           }
         },
         "required": [
           "name",
-          "role"
+          "role",
+          "people"
         ],
         "additionalProperties": false
       },
@@ -11765,6 +12162,85 @@
           "fields"
         ],
         "additionalProperties": false
+      },
+      "NamespacePerson": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "user"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 63
+              },
+              "uid": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "name",
+              "uid"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "person"
+              },
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "subject": {
+                "$ref": "#/components/schemas/OidcSubject"
+              },
+              "displayName": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "kind",
+              "issuer",
+              "subject"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "group"
+              },
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "group": {
+                "$ref": "#/components/schemas/OidcGroupName"
+              }
+            },
+            "required": [
+              "kind",
+              "issuer",
+              "group"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "NamespaceQuota": {
         "type": "object",
@@ -11841,6 +12317,9 @@
             "type": "string"
           },
           "expired": {
+            "type": "boolean"
+          },
+          "unassigned": {
             "type": "boolean"
           }
         },
@@ -11998,6 +12477,11 @@
         ],
         "additionalProperties": false
       },
+      "OidcGroupName": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
+      },
       "OidcSignIn": {
         "type": "object",
         "properties": {
@@ -12061,6 +12545,11 @@
         "items": {
           "$ref": "#/components/schemas/OidcSignIn"
         }
+      },
+      "OidcSubject": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 256
       },
       "OidcTestResult": {
         "type": "object",
@@ -14130,7 +14619,7 @@
                 }
               },
               "group": {
-                "$ref": "#/components/schemas/OidcGroupNameInput"
+                "$ref": "#/components/schemas/OidcGroupName"
               }
             },
             "required": [
@@ -14155,7 +14644,7 @@
                 }
               },
               "subject": {
-                "$ref": "#/components/schemas/OidcSubjectInput"
+                "$ref": "#/components/schemas/OidcSubject"
               },
               "displayName": {
                 "type": "string",
@@ -14677,10 +15166,94 @@
               "view",
               "edit"
             ]
+          },
+          "people": {
+            "default": [],
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NamespacePersonInput"
+            }
           }
         },
         "required": [
           "name"
+        ]
+      },
+      "NamespacePersonInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "user"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 63
+              },
+              "uid": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "name",
+              "uid"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "person"
+              },
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "subject": {
+                "$ref": "#/components/schemas/OidcSubject"
+              },
+              "displayName": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "kind",
+              "issuer",
+              "subject"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "group"
+              },
+              "issuer": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "group": {
+                "$ref": "#/components/schemas/OidcGroupName"
+              }
+            },
+            "required": [
+              "kind",
+              "issuer",
+              "group"
+            ]
+          }
         ]
       },
       "NamespaceQuotaInput": {
@@ -14827,16 +15400,6 @@
             }
           }
         }
-      },
-      "OidcGroupNameInput": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 256
-      },
-      "OidcSubjectInput": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 256
       },
       "OidcTestRequestInput": {
         "type": "object",

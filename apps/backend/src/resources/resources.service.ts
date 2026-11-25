@@ -1,3 +1,4 @@
+import { withoutAssignments } from '../kube/apply.js';
 import {
   BadRequestException,
   Injectable,
@@ -59,7 +60,8 @@ export function sanitize(
     }
   }
   out.metadata = metadata;
-  return { obj: out, masked };
+  const shown = withoutAssignments(out);
+  return { obj: shown, masked: masked || shown !== out };
 }
 
 interface Resolved {

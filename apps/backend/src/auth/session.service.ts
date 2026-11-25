@@ -100,7 +100,11 @@ export class SessionService implements OnModuleInit {
         username: `${payload.u} (oidc)`,
         bindings: this.groups.bindings(payload.o.gr, payload.o.s),
         mustChangePassword: false,
-        oidc: { subject: payload.o.s, groups: payload.o.gr },
+        oidc: {
+          subject: payload.o.s,
+          groups: payload.o.gr,
+          ...(payload.o.i ? { issuer: payload.o.i } : {}),
+        },
       };
     }
     const user = this.store.userCache.get(payload.u);
@@ -109,6 +113,7 @@ export class SessionService implements OnModuleInit {
       username: payload.u,
       bindings: userBindings(user.spec),
       mustChangePassword: user.spec.mustChangePassword,
+      ...(user.metadata.uid ? { uid: user.metadata.uid } : {}),
     };
   }
 
@@ -123,7 +128,10 @@ export class SessionService implements OnModuleInit {
   }
 
   /** Session of a person signed in with OpenID Connect; holds only the mapped groups (FP14-F-06). */
-  issueOidc(res: Response, person: { subject: string; name: string; groups: string[] }): void {
+  issueOidc(
+    res: Response,
+    person: { subject: string; name: string; groups: string[]; issuer?: string },
+  ): void {
     const now = Math.floor(Date.now() / 1000);
     const ttl = Math.round(this.config.SESSION_TTL_HOURS * 3600);
     const token = signSession(
@@ -132,7 +140,11 @@ export class SessionService implements OnModuleInit {
         g: 0,
         iat: now,
         exp: now + ttl,
-        o: { s: person.subject, gr: person.groups },
+        o: {
+          s: person.subject,
+          gr: person.groups,
+          ...(person.issuer ? { i: person.issuer } : {}),
+        },
       },
       this.signingKey,
     );

@@ -12,7 +12,13 @@ import type { Principal } from './principal.js';
 import type { SessionService } from './session.service.js';
 
 /** Everything a namespace user reaches besides the public endpoints (FP37-F-01, ADR-0041). */
-const ALLOWED = ['GET /api/auth/me', 'POST /api/auth/change-password'];
+const ALLOWED = [
+  'GET /api/auth/me',
+  'POST /api/auth/change-password',
+  'GET /api/my/namespaces',
+  'POST /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/accounts/:account/tokens',
+  'DELETE /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/tokens/:token',
+];
 
 const PUBLIC = [
   'GET /api/auth/oidc/callback',
@@ -88,6 +94,11 @@ describe('access of namespace users (FP37-F-01)', async () => {
       expect(reachable(principal(role)), role).toContain('GET /api/connections');
     }
     expect(reachable(undefined)).toEqual(PUBLIC);
+  });
+
+  it('refuses API tokens at the self-service (FP37-F-07)', () => {
+    const token = { ...principal('admin'), token: { id: 't', name: 't' } };
+    expect(reachable(token).filter((r) => r.includes('/api/my/'))).toEqual([]);
   });
 
   it('is refused at the node shell', () => {

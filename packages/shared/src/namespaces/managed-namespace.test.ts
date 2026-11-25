@@ -9,13 +9,17 @@ import {
   managedNamespaceFromHelmChartProxy,
   managedNamespaceObjects,
   ManagedNamespaceSpecSchema,
+  NAMESPACE_PEOPLE_ANNOTATION,
   NAMESPACE_PROFILE_QUOTAS,
   NAMESPACE_PROFILES,
   namespaceAddonName,
   namespacesUnsupported,
+  nextRevision,
   singleClusterSelector,
+  withoutPeople,
   type ManagedNamespaceSpecInput,
 } from './managed-namespace.js';
+import { personKey, type NamespacePerson } from './people.js';
 
 const spec = (over: Partial<ManagedNamespaceSpecInput> = {}) =>
   ManagedNamespaceSpecSchema.parse({
@@ -113,6 +117,74 @@ describe('managed namespaces (FP-36)', () => {
     // FP30-F-06 stays: nothing secret in the HelmChartProxy.
     expect(manifests).not.toContain('kind: Secret');
     expect(values).not.toContain('{{');
+  });
+
+  describe('assigned people (FP37-F-02, ADR-0041)', () => {
+    const max: NamespacePerson = { kind: 'user', name: 'max', uid: 'uid-1' };
+    const eva: NamespacePerson = {
+      kind: 'person',
+      issuer: 'https://idp',
+      subject: 's-1',
+      displayName: 'Eva',
+    };
+    const devs: NamespacePerson = { kind: 'group', issuer: 'https://idp', group: 'devs' };
+    const assigned = spec({
+      accounts: [{ name: 'ci', role: 'edit', people: [max, eva, devs] }, { name: 'audit' }],
+    });
+
+    it('keeps them in an annotation of their own and reads them back', () => {
+      const hcp = buildNamespaceHelmChartProxy(assigned, { version: '0.20.0' });
+      expect(managedNamespaceFromHelmChartProxy(hcp)).toEqual(assigned);
+      const { [NAMESPACE_PEOPLE_ANNOTATION]: people, ...others } = hcp.metadata.annotations!;
+      expect(JSON.parse(people!)).toEqual({ ci: [max, eva, devs] });
+      expect(JSON.stringify(others)).not.toMatch(/max|Eva|devs|s-1/);
+    });
+
+    it('does not touch the manifests, so an assignment causes no Helm upgrade', () => {
+      const without = buildNamespaceHelmChartProxy(withoutPeople(assigned), { version: '0.20.0' });
+      const hcp = buildNamespaceHelmChartProxy(assigned, { version: '0.20.0' });
+      expect(hcp.spec).toEqual(without.spec);
+      expect(without.metadata.annotations).not.toHaveProperty(NAMESPACE_PEOPLE_ANNOTATION);
+      expect(JSON.stringify(withoutPeople(assigned))).not.toContain('max');
+    });
+
+    it('assigns nobody when the annotation cannot be read', () => {
+      const hcp = buildNamespaceHelmChartProxy(assigned, { version: '0.20.0' });
+      for (const broken of ['{', '[]', '{"ci":[{"kind":"user","name":"max"}]}']) {
+        const read = managedNamespaceFromHelmChartProxy({
+          metadata: {
+            ...hcp.metadata,
+            annotations: { ...hcp.metadata.annotations, [NAMESPACE_PEOPLE_ANNOTATION]: broken },
+          },
+        });
+        expect(read?.accounts.map((a) => a.people)).toEqual([[], []]);
+      }
+    });
+
+    it('identifies local users by UID and OIDC people by issuer and subject', () => {
+      expect(personKey(max)).not.toBe(personKey({ ...max, uid: 'uid-2' }));
+      expect(personKey(eva)).not.toBe(personKey({ ...eva, issuer: 'https://other' }));
+      expect(personKey(eva)).toBe(personKey({ ...eva, displayName: 'renamed' }));
+      expect(personKey(devs)).not.toBe(
+        personKey({ kind: 'person', issuer: 'https://idp', subject: 'devs' }),
+      );
+    });
+
+    it('keeps the revision when only people change', () => {
+      expect(nextRevision(assigned, undefined)).toBe(1);
+      const current = spec({ revision: 4 });
+      const form = { ...current, revision: undefined };
+      const people = [{ ...form.accounts[0]!, people: [max] }, form.accounts[1]!];
+      expect(nextRevision({ ...form, accounts: people }, current)).toBe(4);
+      expect(nextRevision({ ...form, accounts: [people[0]!] }, current)).toBe(5);
+      expect(nextRevision({ ...form, allowFrom: ['x'] }, current)).toBe(5);
+    });
+
+    it('refuses the same person twice', () => {
+      expect(
+        issues({ accounts: [{ name: 'ci', people: [max, { ...max, name: 'renamed' }] }] }),
+      ).toEqual(['accounts.0.people: The same person or group is listed twice']);
+    });
   });
 
   it('ignores a form model copied to another HelmChartProxy', () => {

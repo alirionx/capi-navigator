@@ -7,15 +7,20 @@ import {
   NAMESPACE_PROFILES,
   NAMESPACE_QUOTA_RESOURCES,
   NAMESPACE_ROLES,
+  nextRevision,
+  personKey,
+  personLabel,
   singleClusterSelector,
   type AddonPreview,
   type ManagedNamespaceSpec,
   type ManagedNamespaceSpecInput,
   type NamespaceAccount,
+  type NamespacePerson,
   type NamespaceProfile,
   type NamespaceQuota,
 } from '@capi-navigator/shared';
 import ChangeDialog from '../ChangeDialog.vue';
+import ErrorAlert from '../ErrorAlert.vue';
 import FieldHelp from '../FieldHelp.vue';
 import ClusterSelectorField from '../addons/ClusterSelectorField.vue';
 import { selectorLabels, selectorRows, type SelectorRow } from '../addons/selector.js';
@@ -51,11 +56,40 @@ watch(
     profile.value = i?.profile ?? 'small';
     quota.value = { ...(i?.quota ?? NAMESPACE_PROFILE_QUOTAS.small) };
     allowFrom.value = [...(i?.allowFrom ?? [])];
-    accounts.value = i ? i.accounts.map((a) => ({ ...a })) : [{ name: 'team', role: 'edit' }];
+    accounts.value = i
+      ? i.accounts.map((a) => ({ ...a, people: [...a.people] }))
+      : [{ name: 'team', role: 'edit', people: [] }];
+    void loadPeople();
     selector.value = selectorRows(i?.clusterSelector ?? singleClusterSelector(props.cluster.name));
   },
   { immediate: true },
 );
+
+/** FP37-F-02: the reduced list, plus stored people that are no longer in it. */
+const people = ref<NamespacePerson[]>([]);
+const peopleError = ref<unknown>(null);
+async function loadPeople(): Promise<void> {
+  peopleError.value = null;
+  try {
+    people.value = await store.people(props.cluster);
+  } catch (err) {
+    people.value = [];
+    peopleError.value = err;
+  }
+}
+const ICONS = { user: 'mdi-account', person: 'mdi-account-key', group: 'mdi-account-group' };
+const peopleItems = computed(() => {
+  const known = new Map(people.value.map((p) => [personKey(p), p]));
+  for (const p of props.initial?.accounts.flatMap((a) => a.people) ?? []) {
+    if (!known.has(personKey(p))) known.set(personKey(p), p);
+  }
+  return [...known.values()].map((p) => ({
+    value: p,
+    title: personLabel(p),
+    props: { prependIcon: ICONS[p.kind], subtitle: t(`namespaces.people.${p.kind}`) },
+  }));
+});
+
 function selectProfile(p: NamespaceProfile): void {
   profile.value = p;
   quota.value = { ...NAMESPACE_PROFILE_QUOTAS[p] };
@@ -63,7 +97,7 @@ function selectProfile(p: NamespaceProfile): void {
 
 const QUOTA_FIELDS = Object.keys(NAMESPACE_QUOTA_RESOURCES) as (keyof NamespaceQuota)[];
 
-const spec = (): ManagedNamespaceSpecInput => ({
+const form = (): ManagedNamespaceSpecInput => ({
   name: name.value.trim(),
   namespace: props.cluster.namespace,
   clusterSelector: selectorLabels(selector.value),
@@ -71,9 +105,11 @@ const spec = (): ManagedNamespaceSpecInput => ({
   quota: quota.value,
   allowFrom: allowFrom.value,
   accounts: accounts.value,
-  // Every change is a new revision, so CAAPH always upgrades the release.
-  revision: (props.initial?.revision ?? 0) + 1,
 });
+const spec = (): ManagedNamespaceSpecInput => {
+  const next = form();
+  return { ...next, revision: nextRevision(next, props.initial) };
+};
 const parsed = computed(() => ManagedNamespaceSpecSchema.safeParse(spec()));
 const errors = (path: string) =>
   parsed.value.success
@@ -184,36 +220,56 @@ const maps = (field: string) => t('addons.mapsTo', { field });
         :text="`${t('namespaces.accountsHint')} ${maps('ServiceAccount, RoleBinding.roleRef')}`"
       />
     </div>
-    <div v-for="(a, i) in accounts" :key="i" class="d-flex ga-2 align-start">
-      <v-text-field
-        v-model="a.name"
-        :label="t('namespaces.account')"
+    <div v-for="(a, i) in accounts" :key="i" class="mb-2">
+      <div class="d-flex ga-2 align-start">
+        <v-text-field
+          v-model="a.name"
+          :label="t('namespaces.account')"
+          density="compact"
+          :error-messages="a.name ? errors(`accounts.${i}.name`) : []"
+          :data-testid="`namespace-account-${i}`"
+        />
+        <v-select
+          v-model="a.role"
+          :items="NAMESPACE_ROLES.map((r) => ({ value: r, title: t(`namespaces.roles.${r}`) }))"
+          :label="t('namespaces.role')"
+          density="compact"
+          :data-testid="`namespace-role-${i}`"
+        />
+        <v-btn
+          icon="mdi-close"
+          size="small"
+          variant="text"
+          class="mt-1"
+          :aria-label="t('common.delete')"
+          @click="accounts.splice(i, 1)"
+        />
+      </div>
+      <v-autocomplete
+        v-model="a.people"
+        :items="peopleItems"
+        :value-comparator="(x, y) => !!x && !!y && personKey(x) === personKey(y)"
+        :label="t('namespaces.assigned')"
+        :error-messages="errors(`accounts.${i}.people`)"
         density="compact"
-        :error-messages="a.name ? errors(`accounts.${i}.name`) : []"
-        :data-testid="`namespace-account-${i}`"
-      />
-      <v-select
-        v-model="a.role"
-        :items="NAMESPACE_ROLES.map((r) => ({ value: r, title: t(`namespaces.roles.${r}`) }))"
-        :label="t('namespaces.role')"
-        density="compact"
-        :data-testid="`namespace-role-${i}`"
-      />
-      <v-btn
-        icon="mdi-close"
-        size="small"
-        variant="text"
-        class="mt-1"
-        :aria-label="t('common.delete')"
-        @click="accounts.splice(i, 1)"
-      />
+        multiple
+        chips
+        closable-chips
+        clear-on-select
+        :data-testid="`namespace-people-${i}`"
+      >
+        <template #append-inner>
+          <FieldHelp :text="`${t('namespaces.assignedHint')} ${maps('metadata.annotations')}`" />
+        </template>
+      </v-autocomplete>
     </div>
+    <ErrorAlert v-if="peopleError" :error="peopleError" class="mb-2" />
     <v-btn
       size="small"
       variant="text"
       prepend-icon="mdi-plus"
       data-testid="namespace-add-account"
-      @click="accounts.push({ name: '', role: 'view' })"
+      @click="accounts.push({ name: '', role: 'view', people: [] })"
       >{{ t('namespaces.addAccount') }}</v-btn
     >
 

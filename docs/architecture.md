@@ -164,7 +164,7 @@ subscriber of that channel. Watches stop when nobody listens
    and the roles from the cache on every request, so changes apply immediately, and checks them
    in the scope of the request: connection and namespace from the route, or the namespace in the
    body when something is created. Assignments limited to connections and namespaces restrict
-   actions only; every user can read everything. The built-in roles viewer, operator and admin
+   actions only; everybody except namespace users (FP-37, ADR-0041) can read everything. The built-in roles viewer, operator and admin
    live in code; custom roles are `NavigatorRole` resources
    ([ADR-0015](adr/0015-permissions-and-scoped-role-assignments.md)). An endpoint without a rule
    is denied. The frontend runs the same check to hide buttons, which is cosmetic only.

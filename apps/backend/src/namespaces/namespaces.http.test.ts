@@ -28,6 +28,7 @@ import { StoreService } from '../store/store.service.js';
 import { createFakeStore } from '../testing/fake-store.js';
 import { NamespacesController } from './namespaces.controller.js';
 import { NamespacesService } from './namespaces.service.js';
+import { PeopleService } from './people.service.js';
 import { objectKey, type WorkloadAccess } from './workload-access.js';
 
 const ADMIN_PW = 'Initial-Admin-Pw-1';
@@ -171,6 +172,7 @@ describe('managed namespaces over HTTP (FP-36)', () => {
       controllers: [NamespacesController],
       providers: [
         NamespacesService,
+        PeopleService,
         { provide: ClustersService, useValue: clusters },
         { provide: AddonsService, useValue: addons },
       ],

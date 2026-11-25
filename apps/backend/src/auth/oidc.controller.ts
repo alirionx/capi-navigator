@@ -100,7 +100,13 @@ export class OidcController {
       res.redirect(302, loginPage('oidc_no_access'));
       return;
     }
-    this.sessions.issueOidc(res, { subject: person.subject, name: person.name, groups: mapped });
+    const issuer = this.oidc.issuer;
+    this.sessions.issueOidc(res, {
+      subject: person.subject,
+      name: person.name,
+      groups: mapped,
+      ...(issuer ? { issuer } : {}),
+    });
     await this.record(actor, 'success', undefined, person.subject, mapped);
     res.redirect(302, flow.r);
   }

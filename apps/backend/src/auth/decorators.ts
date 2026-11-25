@@ -17,6 +17,8 @@ export interface PermissionRule {
   anyOf: Permission[];
   /** Any signed-in user (own session and password), no permission needed. */
   signedIn?: boolean;
+  /** With `signedIn`: no API tokens (FP37-F-07). */
+  peopleOnly?: boolean;
   /**
    * Dotted path of the body field naming the namespace, for endpoints that create something
    * (e.g. "spec.namespace"); otherwise the route parameter `namespace` is used.
@@ -44,8 +46,8 @@ export const Requires = (
   } satisfies PermissionRule);
 
 /** Endpoint for every signed-in user, e.g. the own profile and password (FP19-F-05). */
-export const SignedIn = () =>
-  SetMetadata(PERMISSION_KEY, { anyOf: [], signedIn: true } satisfies PermissionRule);
+export const SignedIn = (opts: { peopleOnly?: boolean } = {}) =>
+  SetMetadata(PERMISSION_KEY, { anyOf: [], signedIn: true, ...opts } satisfies PermissionRule);
 
 /** Endpoint stays usable while the user still has to change the password (FP1-F-02). */
 export const AllowPendingPasswordChange = () => SetMetadata(PASSWORD_CHANGE_PENDING_KEY, true);

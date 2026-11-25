@@ -40,6 +40,6 @@ import { UsersService } from './users.service.js';
     { provide: AUTH_PROVIDER, useClass: LocalAuthProvider },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
-  exports: [SessionService, UsersService],
+  exports: [AuthSettingsService, GroupsService, SessionService, UsersService],
 })
 export class AuthModule {}
