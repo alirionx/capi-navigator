@@ -369,6 +369,30 @@ describe('AWS specifics', () => {
     }
   });
 
+  it('allows all traffic between the nodes, as on OpenStack and Google Cloud (ADR-0042)', () => {
+    for (const flavor of [
+      { flavor: 'rke2', version: 'v1.35.9+rke2r1' },
+      { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+      { flavor: 'kubeadm', version: 'v1.35.9' },
+    ] as const) {
+      const objects = transform(ClusterSpecSchema.parse({ ...aws(), kubernetes: flavor }), ctx);
+      const network = (
+        objects.find((o) => o.kind === 'AWSCluster')!.spec as {
+          network: { cni: { cniIngressRules: unknown[] } };
+        }
+      ).network;
+      // CAPA uses CNI rules in the control plane and node groups, with both as source.
+      expect(network.cni.cniIngressRules, flavor.flavor).toEqual([
+        {
+          description: 'All traffic between the nodes of the cluster',
+          protocol: '-1',
+          fromPort: -1,
+          toPort: -1,
+        },
+      ]);
+    }
+  });
+
   it('never repeats a rule CAPA already creates in the node security group', () => {
     // CAPA v2.13.1 (securitygroups.go) gives the node group "Kubelet API" tcp/10250 from control
     // plane and nodes; CNI rules go into both groups, and AWS rejects a permission given twice.

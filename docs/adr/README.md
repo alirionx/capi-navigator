@@ -45,3 +45,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0039](0039-namespaces-as-add-ons.md)                       | Managed namespaces as add-ons, isolated with a Calico tier                       | accepted |
 | [0040](0040-tokens-for-namespaces.md)                       | Time-limited tokens for managed namespaces                                       | accepted |
 | [0041](0041-namespace-users-without-view.md)                | Namespace users, a role without reading                                          | accepted |
+| [0042](0042-all-traffic-between-aws-nodes.md)               | All traffic between the nodes of an AWS cluster                                  | accepted |

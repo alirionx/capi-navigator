@@ -159,16 +159,19 @@ export const awsPlugin: InfraTransformPlugin<AwsInfra> = {
             cidrBlock: infra.network.vpcCidr,
             availabilityZoneUsageLimit: infra.network.availabilityZoneCount,
           },
-          // CNI traffic of the distribution between nodes (ADR-0012).
+          // ADR-0042: all traffic between the nodes of the cluster, as on OpenStack
+          // (allowAllInClusterTraffic) and Google Cloud. Services in the host network, such as the
+          // node exporter on 9100, are reachable from the other nodes. CAPA applies CNI rules to
+          // the control plane and node groups, with both as source, and keeps them in sync.
           cni: {
-            cniIngressRules: network.nodeTraffic
-              .filter((r) => !inNodeGroup(r))
-              .map((r) => ({
-                description: r.description,
-                fromPort: r.fromPort,
-                toPort: r.toPort,
-                protocol: r.protocol,
-              })),
+            cniIngressRules: [
+              {
+                description: 'All traffic between the nodes of the cluster',
+                protocol: '-1',
+                fromPort: -1,
+                toPort: -1,
+              },
+            ],
           },
           // Control plane ports reached directly: CAPA already allows etcd and the API between
           // control plane nodes, and AWS rejects duplicate permissions in one security group.

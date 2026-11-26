@@ -52,10 +52,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: k0s Konnectivity (load balancer and controllers)
         fromPort: 8132

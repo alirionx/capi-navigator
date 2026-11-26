@@ -21,22 +21,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
-        - description: Calico Typha
-          fromPort: 5473
-          toPort: 5473
-          protocol: tcp
-        - description: Calico Typha health check
-          fromPort: 9098
-          toPort: 9098
-          protocol: tcp
-        - description: Calico health check
-          fromPort: 9099
-          toPort: 9099
-          protocol: tcp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: RKE2 supervisor
         fromPort: 9345
@@ -152,10 +140,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: k0s Konnectivity (load balancer and controllers)
         fromPort: 8132
@@ -953,14 +941,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
-        - description: Calico Typha
-          fromPort: 5473
-          toPort: 5473
-          protocol: tcp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: Kubelet API
         fromPort: 10250
@@ -2614,22 +2598,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
-        - description: Calico Typha
-          fromPort: 5473
-          toPort: 5473
-          protocol: tcp
-        - description: Calico Typha health check
-          fromPort: 9098
-          toPort: 9098
-          protocol: tcp
-        - description: Calico health check
-          fromPort: 9099
-          toPort: 9099
-          protocol: tcp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: RKE2 supervisor
         fromPort: 9345
@@ -2791,22 +2763,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
-        - description: Calico Typha
-          fromPort: 5473
-          toPort: 5473
-          protocol: tcp
-        - description: Calico Typha health check
-          fromPort: 9098
-          toPort: 9098
-          protocol: tcp
-        - description: Calico health check
-          fromPort: 9099
-          toPort: 9099
-          protocol: tcp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: RKE2 supervisor
         fromPort: 9345
@@ -3057,22 +3017,10 @@ spec:
       availabilityZoneUsageLimit: 1
     cni:
       cniIngressRules:
-        - description: Calico VXLAN
-          fromPort: 4789
-          toPort: 4789
-          protocol: udp
-        - description: Calico Typha
-          fromPort: 5473
-          toPort: 5473
-          protocol: tcp
-        - description: Calico Typha health check
-          fromPort: 9098
-          toPort: 9098
-          protocol: tcp
-        - description: Calico health check
-          fromPort: 9099
-          toPort: 9099
-          protocol: tcp
+        - description: All traffic between the nodes of the cluster
+          protocol: "-1"
+          fromPort: -1
+          toPort: -1
     additionalControlPlaneIngressRules:
       - description: RKE2 supervisor
         fromPort: 9345

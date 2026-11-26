@@ -22,7 +22,7 @@ as soon as a second distribution exists.
     node traffic needs no rules because of `allowAllInClusterTraffic`.
   - AWS: ports behind the load balancer become NLB listeners plus ingress rules from the nodes;
     direct ports become `additionalControlPlaneIngressRules`; node traffic becomes
-    `cniIngressRules`. CAPA puts CNI rules into the node and control plane security groups and
+    `cniIngressRules` (since ADR-0042 one rule for all traffic between the nodes). CAPA puts CNI rules into the node and control plane security groups and
     already allows the kubelet port (tcp/10250) in the node group; AWS rejects a permission given
     twice, so the kubelet port goes to `additionalControlPlaneIngressRules` instead (found live
     on 2026-10-20 with kubeadm on AWS). The NLB is internet-facing, so nodes in private subnets
