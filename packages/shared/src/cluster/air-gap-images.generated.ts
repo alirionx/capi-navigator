@@ -316,6 +316,7 @@ export const AIR_GAP_IMAGES = {
         'public.ecr.aws/csi-components/csi-node-driver-registrar:v2.18.0-eksbuild.6',
         'public.ecr.aws/csi-components/csi-provisioner:v6.4.0-eksbuild.6',
         'public.ecr.aws/csi-components/csi-resizer:v2.3.0-eksbuild.6',
+        'public.ecr.aws/csi-components/csi-snapshotter:v8.7.0-eksbuild.5',
         'public.ecr.aws/csi-components/livenessprobe:v2.20.0-eksbuild.6',
         'public.ecr.aws/ebs-csi-driver/aws-ebs-csi-driver:v1.68.1',
       ],

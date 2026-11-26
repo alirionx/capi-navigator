@@ -643,6 +643,8 @@ Note from the FP-5 live tests: CAPO does not remove load balancers, floating IPs
 
 Verified on 2026-10-18 with podinfo 6.15.0 instead of ingress-nginx (retired in March 2026) on two OpenStack clusters and an AWS cluster in one namespace, plus a private OCI registry with credentials and a custom CA (ADR-0011). Deferred: admin-defined presets (SHOULD part of FP8-F-14).
 
+Volume snapshots (2026-11-26, user request for Velero): the AWS EBS CSI chart adds its snapshot sidecar only when the snapshot CRDs exist at install time, and RKE2 installs them after the CSI driver. The preset therefore sets `sidecars.snapshotter.forceEnable` per cluster from the label `capi-navigator.io/volume-snapshots`. A distribution that brings the snapshot CRDs and controller (RKE2) sets it; for k0s and kubeadm the wizard offers a switch, and the CRDs and controller come from the user's own tooling. The app creates no VolumeSnapshotClass. Existing clusters get the label with "Reapply from spec". The image list of air-gapped clusters includes the sidecar.
+
 ### FP-9: k0s as second Kubernetes distribution
 
 **Goal:** k0s becomes an alternative to RKE2. Like RKE2, it is installed via cloud-init on official cloud images, using the k0smotron bootstrap and control plane providers with the control plane running on regular machines (not hosted).

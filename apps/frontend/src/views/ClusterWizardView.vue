@@ -115,7 +115,7 @@ const draft = reactive({
   ) as Record<Infrastructure['provider'], InfraValues>,
   /** FP5-F-20: bastion host. */
   bastion: { enabled: false, machineSize: '', allowedCidrs: [] as string[] },
-  addons: { ccm: true, csi: true, reboot: false },
+  addons: { ccm: true, csi: true, reboot: false, snapshots: false },
   /** FP10-F-04: CNI preset for distributions without one; FP10-F-09: mirrors. */
   cni: true,
   packageRepository: '',
@@ -501,6 +501,7 @@ const spec = computed<ClusterSpecInput>(() => ({
     cloudControllerManager: draft.addons.ccm,
     csiDriver: draft.addons.csi,
     ...(draft.addons.reboot ? { rebootDaemon: true } : {}),
+    ...(snapshotSwitch.value && draft.addons.snapshots ? { volumeSnapshots: true } : {}),
     ...(flavorPlugin.value?.needsCni && !draft.cni ? { cni: 'none' as const } : {}),
   },
   sshPublicKeys: draft.sshKeys
@@ -607,6 +608,18 @@ const presets = computed(() => [
     version: a.version,
   })),
 ]);
+/** The provider's CSI preset can take snapshots (e.g. AWS EBS); it needs the snapshot CRDs. */
+const snapshotPreset = computed(
+  () =>
+    draft.addons.csi &&
+    ADDON_PRESETS.some(
+      (p) => p.provider === draft.provider && p.kind === 'csi' && p.volumeSnapshots,
+    ),
+);
+const snapshotsBuiltIn = computed(
+  () => snapshotPreset.value && !!flavorPlugin.value?.volumeSnapshots,
+);
+const snapshotSwitch = computed(() => snapshotPreset.value && !flavorPlugin.value?.volumeSnapshots);
 const canPreview = computed(() => issues.value.length === 0);
 </script>
 
@@ -1125,6 +1138,26 @@ const canPreview = computed(() => issues.value.length === 0);
             <FieldHelp :text="t('wizard.cniHint')" />
           </template>
         </v-switch>
+        <!-- Snapshots of the CSI driver: RKE2 brings CRDs and controller, others need their own -->
+        <v-switch
+          v-if="snapshotSwitch"
+          v-model="draft.addons.snapshots"
+          color="primary"
+          class="mt-2"
+          data-testid="wizard-volume-snapshots"
+        >
+          <template #label>
+            {{ t('wizard.volumeSnapshots') }}
+            <FieldHelp :text="t('wizard.volumeSnapshotsHint')" />
+          </template>
+        </v-switch>
+        <div
+          v-else-if="snapshotsBuiltIn"
+          class="text-body-small text-medium-emphasis mt-2"
+          data-testid="wizard-volume-snapshots-builtin"
+        >
+          {{ t('wizard.volumeSnapshotsBuiltIn', { flavor: flavorPlugin!.displayName }) }}
+        </div>
         <v-switch
           v-model="draft.addons.reboot"
           color="primary"

@@ -369,6 +369,27 @@ describe('AWS specifics', () => {
     }
   });
 
+  it('marks clusters with snapshot CRDs and controller for the CSI snapshot sidecar', () => {
+    const label = (kubernetes: object, addons: object = {}) =>
+      transform(ClusterSpecSchema.parse({ ...aws(), kubernetes, addons }), ctx).find(
+        (o) => o.kind === 'Cluster',
+      )!.metadata.labels?.['capi-navigator.io/volume-snapshots'];
+    // RKE2 brings them; k0s and kubeadm only when the cluster's own tooling installs them.
+    expect(label({ flavor: 'rke2', version: 'v1.35.9+rke2r1' })).toBe('true');
+    expect(label({ flavor: 'k0s', version: 'v1.35.8+k0s.1' })).toBeUndefined();
+    expect(label({ flavor: 'kubeadm', version: 'v1.35.9' })).toBeUndefined();
+    expect(
+      label(
+        { flavor: 'k0s', version: 'v1.35.8+k0s.1' },
+        { csiDriver: true, volumeSnapshots: true },
+      ),
+    ).toBe('true');
+    // Without a CSI driver there is nothing to take snapshots.
+    expect(label({ flavor: 'rke2', version: 'v1.35.9+rke2r1' }, { csiDriver: false })).toBe(
+      undefined,
+    );
+  });
+
   it('allows all traffic between the nodes, as on OpenStack and Google Cloud (ADR-0042)', () => {
     for (const flavor of [
       { flavor: 'rke2', version: 'v1.35.9+rke2r1' },

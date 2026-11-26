@@ -448,6 +448,11 @@ export const ClusterSpecSchema = z
          * "none" to bring your own.
          */
         cni: z.enum(['calico', 'none']).optional(),
+        /**
+         * The CSI driver takes volume snapshots, for distributions that do not bring the snapshot
+         * CRDs and controller themselves; they must then come from elsewhere, e.g. GitOps.
+         */
+        volumeSnapshots: z.boolean().optional(),
       })
       .default({ cloudControllerManager: true, csiDriver: true }),
     sshPublicKeys: z

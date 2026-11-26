@@ -9334,6 +9334,9 @@
                   "calico",
                   "none"
                 ]
+              },
+              "volumeSnapshots": {
+                "type": "boolean"
               }
             },
             "required": [
@@ -14493,6 +14496,9 @@
                   "calico",
                   "none"
                 ]
+              },
+              "volumeSnapshots": {
+                "type": "boolean"
               }
             }
           },

@@ -1213,6 +1213,11 @@ export const en = {
     ccmHint: 'Initializes nodes and provides LoadBalancer services. Default: on.',
     csi: 'CSI driver',
     csiHint: 'Persistent volumes (Cinder or EBS) with a default storage class. Default: on.',
+    volumeSnapshots: 'Volume snapshots',
+    volumeSnapshotsHint:
+      'Lets the CSI driver take volume snapshots, e.g. for Velero. Install the snapshot CRDs and the snapshot controller yourself, e.g. with GitOps. Default: off.',
+    volumeSnapshotsBuiltIn:
+      'Volume snapshots: on, {flavor} brings the snapshot CRDs and controller. Create the VolumeSnapshotClass yourself.',
     reboot: 'Reboot daemon (kured)',
     rebootHint:
       'Reboots nodes one at a time after OS updates (unattended-upgrades), with drain; applies OS updates between image rebuilds. Default: off.',

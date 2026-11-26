@@ -11,6 +11,12 @@ import type { ManifestAddon } from './manifest-addons.js';
 export const VOLUME_TOPOLOGY_LABEL = 'capi-navigator.io/volume-topology';
 
 /**
+ * Cluster label: the snapshot CRDs and controller exist, from the distribution or the cluster's own
+ * tooling, so CSI presets enable their snapshot sidecar. Read per cluster by the preset template.
+ */
+export const VOLUME_SNAPSHOTS_LABEL = 'capi-navigator.io/volume-snapshots';
+
+/**
  * CCM and CSI presets as HelmChartProxy (CAAPH, addons.cluster.x-k8s.io/v1alpha1), one set per
  * namespace, selecting clusters by add-on label (FP5-F-09, FP5-F-17). Charts and versions live in
  * versions.yaml (addonPresets); value keys were verified against the charts' values.yaml.
@@ -32,6 +38,8 @@ export interface AddonPreset {
   selector?: [string, string];
   /** CAAPH Go template; `{{ .Cluster.metadata.name }}` is the workload cluster name, `.InfraCluster` its infra cluster. */
   valuesTemplate: string;
+  /** CSI presets: the snapshot sidecar follows {@link VOLUME_SNAPSHOTS_LABEL}. */
+  volumeSnapshots?: true;
 }
 
 /** Tenants of hosted control planes have no control plane nodes (FP24-F-07, ADR-0034). */
@@ -156,12 +164,16 @@ export const ADDON_PRESETS: AddonPreset[] = [
     repoURL: VERSIONS.addonPresets['aws-csi'].source.registry!,
     chartName: VERSIONS.addonPresets['aws-csi'].source.package,
     version: VERSIONS.addonPresets['aws-csi'].version,
+    volumeSnapshots: true,
     releaseNamespace: 'kube-system',
     valuesTemplate: [
       // The controller runs on control plane nodes, whose instance profile may manage volumes.
       // The region comes from the AWSCluster instead of an IMDS lookup.
       `controller:\n  region: {{ .InfraCluster.spec.region }}\n${cpSelectorOrNone('  ')}`,
       '  tolerations:\n    - key: node-role.kubernetes.io/control-plane\n      operator: Exists\n      effect: NoSchedule\n',
+      // The chart adds the snapshot sidecar only when the snapshot CRDs exist at install time; RKE2
+      // installs them after the CSI driver. No VolumeSnapshotClass: users bring their own.
+      `sidecars:\n  snapshotter:\n    forceEnable: {{ if eq (index .Cluster.metadata.labels "${VOLUME_SNAPSHOTS_LABEL}") "true" }}true{{ else }}false{{ end }}\n`,
       'storageClasses:\n  - name: ebs-gp3\n    annotations:\n      storageclass.kubernetes.io/is-default-class: "true"\n',
       '    volumeBindingMode: WaitForFirstConsumer\n    allowVolumeExpansion: true\n    parameters:\n      type: gp3\n',
     ].join(''),

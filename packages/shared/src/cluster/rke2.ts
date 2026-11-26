@@ -117,6 +117,8 @@ function customizationFields(
 export const rke2Plugin: BootstrapFlavorPlugin = {
   flavor: 'rke2',
   cni: 'calico',
+  // rke2-snapshot-controller and rke2-snapshot-controller-crd are packaged components.
+  volumeSnapshots: true,
   displayName: 'RKE2',
   customizationFields: { preCommands: 'preRKE2Commands', postCommands: 'postRKE2Commands' },
   // FP29-F-12: the files RKE2's air-gapped installation takes (docs: install/airgap, tarball

@@ -1020,6 +1020,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: gcp
     capi-navigator.io/csi: gcp
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-rke2-aio
   annotations:
@@ -1160,6 +1161,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: gcp
     capi-navigator.io/csi: gcp
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-gcp-rke2
   annotations:

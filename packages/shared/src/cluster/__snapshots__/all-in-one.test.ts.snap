@@ -446,6 +446,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: openstack
     capi-navigator.io/csi: openstack
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: aio-rke2
   annotations:

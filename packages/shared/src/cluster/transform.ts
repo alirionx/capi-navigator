@@ -1,5 +1,5 @@
 import { MANAGED_BY_LABEL, MANAGED_BY_VALUE, type ManifestObject } from '../operator-manifests.js';
-import { CNI_LABEL, REBOOT_DAEMON_LABEL } from './addons.js';
+import { CNI_LABEL, REBOOT_DAEMON_LABEL, VOLUME_SNAPSHOTS_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
 import { gcpPlugin } from './gcp.js';
 import { openstackPlugin } from './openstack.js';
@@ -91,6 +91,9 @@ export function transform(spec: ClusterSpec, ctx: TransformContext): ManifestObj
         ...infra.addonLabels(spec),
         ...(spec.addons.rebootDaemon ? Object.fromEntries([REBOOT_DAEMON_LABEL]) : {}),
         ...(flavor.needsCni && spec.addons.cni !== 'none' ? Object.fromEntries([CNI_LABEL]) : {}),
+        ...(spec.addons.csiDriver && (flavor.volumeSnapshots || spec.addons.volumeSnapshots)
+          ? { [VOLUME_SNAPSHOTS_LABEL]: 'true' }
+          : {}),
         ...(hosted ? { [HOSTED_ON_LABEL]: spec.topology.hosted!.host } : {}),
         ...(spec.controlPlaneHost ? { [HOST_LABEL]: 'true' } : {}),
         ...labels,

@@ -2557,6 +2557,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: aws
     capi-navigator.io/csi: aws
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-aws-aio
   annotations:
@@ -2722,6 +2723,7 @@ metadata:
   labels:
     capi-navigator.io/ccm: aws
     capi-navigator.io/csi: aws
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-aws
   annotations:
@@ -3228,6 +3230,7 @@ metadata:
     env: test
     capi-navigator.io/ccm: openstack
     capi-navigator.io/csi: openstack
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo-aio
   annotations:
@@ -3401,6 +3404,7 @@ metadata:
     env: test
     capi-navigator.io/ccm: openstack
     capi-navigator.io/csi: openstack
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo
   annotations:
@@ -4012,6 +4016,7 @@ metadata:
     env: test
     capi-navigator.io/ccm: openstack
     capi-navigator.io/csi: openstack
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: demo
   annotations:

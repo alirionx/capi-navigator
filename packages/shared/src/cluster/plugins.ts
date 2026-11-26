@@ -204,6 +204,12 @@ export interface BootstrapFlavorPlugin {
   /** The distribution ships no CNI; a CNI preset is rolled out unless switched off (FP10-F-04). */
   needsCni?: boolean;
   /**
+   * The distribution brings the CSI snapshot CRDs and the snapshot controller (RKE2), so CSI drivers
+   * can take volume snapshots, e.g. for Velero. Otherwise a cluster may switch it on when its own
+   * tooling installs them (`addons.volumeSnapshots`).
+   */
+  volumeSnapshots?: boolean;
+  /**
    * Installs Kubernetes from packages and release binaries at first boot; mirrors apply (FP10-F-09).
    * The wizard explains the trade-offs (FP10-F-08).
    */

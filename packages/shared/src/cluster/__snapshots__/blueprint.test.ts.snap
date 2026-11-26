@@ -733,6 +733,7 @@ metadata:
     osb.example.com/instance-id: b5a3f0c2-1d7e-4c51-9a8e-2f6b3c4d5e6f
     capi-navigator.io/ccm: openstack
     capi-navigator.io/csi: openstack
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:
@@ -969,6 +970,7 @@ metadata:
     capi-navigator.io/ccm: proxmox
     capi-navigator.io/csi: proxmox
     capi-navigator.io/proxmox-storage: local-zfs
+    capi-navigator.io/volume-snapshots: "true"
     capi-navigator.io/managed-by: capi-navigator
     cluster.x-k8s.io/cluster-name: ordered
   annotations:

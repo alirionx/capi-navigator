@@ -119,25 +119,36 @@ function calicoImages(): string[] {
   return imagesInManifests(readFileSync(manifest, 'utf8'));
 }
 
-/** Replaces `{{ if … }}a{{ else }}b{{ end }}` by b, innermost conditions first. */
-function elseBranches(template: string): string {
+/** Replaces `{{ if … }}a{{ else }}b{{ end }}` by a or b, innermost conditions first. */
+function branches(template: string, take: 'then' | 'else'): string {
   const innermost =
     /\{\{ if [^}]*\}\}((?:(?!\{\{ if )[\s\S])*?)\{\{ else \}\}((?:(?!\{\{ if )[\s\S])*?)\{\{ end \}\}/;
   let out = template;
-  while (innermost.test(out)) out = out.replace(innermost, '$2');
+  while (innermost.test(out)) out = out.replace(innermost, take === 'then' ? '$1' : '$2');
   return out;
 }
 
 /**
- * Renders a preset's chart with its values. CAAPH's Go templates get placeholders, conditions take
- * their else branch (a cluster with its own control plane nodes). Test hooks are left out: CAAPH
+ * Images of a preset's chart: rendered once with the "then" and once with the "else" branch of every
+ * condition, so images that only some clusters need are listed too (e.g. the snapshot sidecar of
+ * the EBS CSI driver). CAAPH's other Go templates get placeholders. Test hooks are left out: CAAPH
  * never runs them.
  */
 function presetImages(preset: (typeof ADDON_PRESETS)[number], work: string): string[] {
-  const values = join(work, `${preset.id}.yaml`);
+  return [
+    ...new Set([...renderPreset(preset, work, 'else'), ...renderPreset(preset, work, 'then')]),
+  ].sort();
+}
+
+function renderPreset(
+  preset: (typeof ADDON_PRESETS)[number],
+  work: string,
+  take: 'then' | 'else',
+): string[] {
+  const values = join(work, `${preset.id}-${take}.yaml`);
   writeFileSync(
     values,
-    elseBranches(preset.valuesTemplate).replace(/\{\{[^}]*\}\}/g, 'placeholder'),
+    branches(preset.valuesTemplate, take).replace(/\{\{[^}]*\}\}/g, 'placeholder'),
   );
   const chart = preset.repoURL.startsWith('oci://')
     ? [`${preset.repoURL}/${preset.chartName}`]

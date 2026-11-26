@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { DEFAULT_PROXMOX_MACHINE_SIZES } from '../credentials.js';
 import { renderManifests } from '../operator-manifests.js';
-import { ADDON_PRESETS } from './addons.js';
+import { ADDON_PRESETS, VOLUME_SNAPSHOTS_LABEL } from './addons.js';
 import { awsPlugin } from './aws.js';
 import { hostedK0sImage } from './k0s.js';
 import { proxmoxPlugin } from './proxmox.js';
@@ -311,10 +311,10 @@ describe('hosted control planes (FP-24)', () => {
 });
 
 /**
- * Evaluates the `{{ if eq .ControlPlane.kind "…" }}` conditions of a CAAPH values template for one
- * control plane kind; other template expressions become a placeholder.
+ * Evaluates the `{{ if eq .ControlPlane.kind "…" }}` and cluster label conditions of a CAAPH values
+ * template for one control plane kind; other template expressions become a placeholder.
  */
-function renderFor(template: string, kind: string): string {
+function renderFor(template: string, kind: string, labels: Record<string, string> = {}): string {
   const tokens = template.split(/({{[^}]*}})/);
   let i = 0;
   const block = (): string => {
@@ -338,8 +338,10 @@ function renderFor(template: string, kind: string): string {
   };
   const holds = (cond: string) => {
     const m = /^eq \.ControlPlane\.kind "([A-Za-z0-9]+)"$/.exec(cond);
-    if (!m) throw new Error(`unsupported condition ${cond}`);
-    return m[1] === kind;
+    if (m) return m[1] === kind;
+    const label = /^eq \(index \.Cluster\.metadata\.labels "([^"]+)"\) "([^"]*)"$/.exec(cond);
+    if (label) return (labels[label[1]!] ?? '') === label[2];
+    throw new Error(`unsupported condition ${cond}`);
   };
   const conditional = (cond: string): string => {
     i++;
@@ -362,6 +364,20 @@ function renderFor(template: string, kind: string): string {
   };
   return block();
 }
+
+describe('snapshot sidecar of the AWS EBS CSI preset', () => {
+  it('follows the volume snapshots label of the cluster', () => {
+    const preset = ADDON_PRESETS.find((p) => p.id === 'aws-csi')!;
+    const sidecar = (labels: Record<string, string>) =>
+      (parse(renderFor(preset.valuesTemplate, 'RKE2ControlPlane', labels)) as Manifest).sidecars;
+    expect(sidecar({ [VOLUME_SNAPSHOTS_LABEL]: 'true' })).toEqual({
+      snapshotter: { forceEnable: true },
+    });
+    expect(sidecar({})).toEqual({ snapshotter: { forceEnable: false } });
+    // Users bring their own VolumeSnapshotClass (e.g. from GitOps).
+    expect(preset.valuesTemplate).not.toContain('volumeSnapshotClasses');
+  });
+});
 
 describe('CCM and CSI presets for hosted tenants (FP24-F-07)', () => {
   const selector = (id: string, kind: string, path: string[]) => {
