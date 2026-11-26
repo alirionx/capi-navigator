@@ -1089,6 +1089,7 @@ Requirements:
 - **UX-16** (done, user request 2026-11-25) Wizard: the image of the cluster (Infrastructure) and "Image for this group" (Topology) looked like the same input twice, and the exception came before the default. Image, and what its list depends on (region on AWS and Google Cloud, boot disk on Proxmox VE), are now asked for at the top of Topology as "All nodes"; the groups have "Other image (optional)".
 - **UX-17** (done, user request 2026-11-25) Home page: the graph shows the managed namespaces (FP-36) next to the nodes of each cluster, one card per cluster with up to three names and the number; a name leads to the cluster's namespaces. The column appears only when there are any.
 - **UX-18** (done, user request 2026-11-25) Managed namespaces: the role "Edit" of an account looked like a button. The accounts have column headings, the roles read "edit (read and write)" and "view (read only)".
+- **UX-19** (done, user request 2026-11-26) Node customization (wizard and configuration tab): file contents and the commands before and after the installation are edited in the code editor of the add-on values, highlighted by file name (YAML, shell, INI) and as shell. Highlighting only; the content is not checked.
 
 **Review log**
 

@@ -16,6 +16,8 @@ export default defineConfig({
     include: [
       'monaco-editor/editor/editor.api',
       'monaco-editor/languages/definitions/yaml/register',
+      'monaco-editor/languages/definitions/shell/register',
+      'monaco-editor/languages/definitions/ini/register',
       'monaco-editor/features/codicon/register',
       '@xterm/xterm',
       '@xterm/addon-fit',

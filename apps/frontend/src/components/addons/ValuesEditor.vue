@@ -5,14 +5,19 @@ import { useTheme } from 'vuetify';
 import type * as Monaco from 'monaco-editor/editor/editor.api';
 
 /**
- * Editor for Helm values (FP8-F-06) and the manifests of manifest add-ons (FP30-F-04). The only
- * editable YAML in the app: both are inputs of a HelmChartProxy, not generated manifests (those
+ * Editor for Helm values (FP8-F-06), the manifests of manifest add-ons (FP30-F-04) and the files
+ * and commands of the node customization (UX-19). These are inputs, not generated manifests (those
  * stay read-only, hard rule 4).
  */
-const props = withDefaults(defineProps<{ height?: string; label?: string }>(), {
-  height: '320px',
-  label: undefined,
-});
+const props = withDefaults(
+  defineProps<{
+    height?: string;
+    label?: string;
+    /** Monaco language: yaml (default), shell, ini or plaintext. */
+    language?: string;
+  }>(),
+  { height: '320px', label: undefined, language: 'yaml' },
+);
 const model = defineModel<string>({ required: true });
 const { t } = useI18n();
 const theme = useTheme();
@@ -28,7 +33,7 @@ onMounted(async () => {
     if (!container.value) return;
     editor.value = monaco.editor.create(container.value, {
       value: model.value,
-      language: 'yaml',
+      language: props.language,
       theme: monacoTheme(),
       minimap: { enabled: false },
       automaticLayout: true,
@@ -48,6 +53,15 @@ onMounted(async () => {
 watch(model, (value) => {
   if (editor.value && editor.value.getValue() !== value) editor.value.setValue(value);
 });
+watch(
+  () => props.language,
+  async (language) => {
+    const model = editor.value?.getModel();
+    if (!model) return;
+    const { monaco } = await import('../../monaco/setup.js');
+    monaco.editor.setModelLanguage(model, language);
+  },
+);
 watch(
   () => theme.global.current.value.dark,
   async () => {
