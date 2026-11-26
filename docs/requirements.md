@@ -477,7 +477,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 
 - **FP4-F-07** MUST capture AWS credentials of a dedicated IAM user (access key ID and secret access key) plus a default region via a form, and recommend a dedicated IAM user with only the CAPA permissions instead of personal or root credentials.
 - **FP4-F-08** MUST store the access key in a Secret in the format CAPA expects and create an `AWSClusterStaticIdentity` that references it; `allowedNamespaces` lists the namespaces that may use the credentials.
-- **FP4-F-09** MUST test the credentials (identity of the caller) and check that the IAM prerequisites of CAPA (roles, policies and instance profiles as created by `clusterawsadm bootstrap iam create-cloudformation-stack`) exist. If they are missing, MUST show the `clusterawsadm` command instead of creating IAM resources itself.
+- **FP4-F-09** MUST test the credentials (identity of the caller) and check that the IAM prerequisites of CAPA (roles, policies and instance profiles as created by `clusterawsadm bootstrap iam create-cloudformation-stack`) exist. If they are missing, MUST show the `clusterawsadm` command instead of creating IAM resources itself. Refined by ADR-0043: the command attaches the EBS CSI driver policy to the control plane role, and the test warns if that role cannot take EBS snapshots.
 - **FP4-F-10** MUST use the AWS credentials to populate selection lists for cluster creation: regions, availability zones, instance types, the official OS AMIs of the region (Ubuntu LTS as default; Rocky Linux and Debian from their publishers' accounts, with the RKE2 support level), and EC2 key pairs.
 - **FP4-F-06** applies to AWS credentials as well.
 

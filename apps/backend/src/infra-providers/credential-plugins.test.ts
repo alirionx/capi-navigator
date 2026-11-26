@@ -281,7 +281,13 @@ describe('OpenStack plugin (FP4-F-04, FP4-F-05)', () => {
 
 /** Fake AWS SDK clients dispatching on the command class. */
 function fakeAws(
-  opts: { stsError?: string; missing?: string[]; iamDenied?: boolean } = {},
+  opts: {
+    stsError?: string;
+    missing?: string[];
+    iamDenied?: boolean;
+    /** Decision of the simulated snapshot call, or 'error' when the simulation is denied. */
+    snapshots?: 'allowed' | 'implicitDeny' | 'error';
+  } = {},
 ): AwsClients {
   const err = (name: string) => Object.assign(new Error(name), { name });
   const send = async (cmd: { constructor: { name: string }; input: Record<string, unknown> }) => {
@@ -294,7 +300,16 @@ function fakeAws(
         if (opts.iamDenied) throw err('AccessDenied');
         const name = String(cmd.input.RoleName ?? cmd.input.InstanceProfileName);
         if (opts.missing?.some((m) => name.startsWith(m))) throw err('NoSuchEntity');
-        return {};
+        return { Role: { Arn: `arn:aws:iam::123456789012:role/${name}` } };
+      }
+      case 'SimulatePrincipalPolicyCommand': {
+        if (opts.snapshots === 'error') throw err('AccessDenied');
+        expect(cmd.input).toEqual({
+          PolicySourceArn:
+            'arn:aws:iam::123456789012:role/control-plane.cluster-api-provider-aws.sigs.k8s.io',
+          ActionNames: ['ec2:DescribeSnapshots'],
+        });
+        return { EvaluationResults: [{ EvalDecision: opts.snapshots ?? 'allowed' }] };
       }
       case 'DescribeAvailabilityZonesCommand':
         return {
@@ -392,7 +407,12 @@ describe('AWS plugin (FP4-F-07..10)', () => {
       ok: true,
       identity: 'Account 123456789012 (arn:aws:iam::123456789012:user/capi)',
     });
-    expect(r.checks).toHaveLength(8);
+    expect(r.checks).toHaveLength(9);
+    expect(r.checks.at(-1)).toEqual({
+      name: 'EBS snapshot permissions of the control plane role',
+      ok: true,
+    });
+    expect(r.fixCommand).toBeUndefined();
   });
 
   it('shows the clusterawsadm command when IAM prerequisites are missing (FP4-F-09)', async () => {
@@ -400,8 +420,58 @@ describe('AWS plugin (FP4-F-07..10)', () => {
     const { data, summary } = plugin.normalize(input);
     const r = await plugin.test(data, summary);
     expect(r.ok).toBe(false);
+    // The stack is created with the EBS CSI policy on the control plane role right away.
     expect(r.fixCommand).toBe(
-      'clusterawsadm bootstrap iam create-cloudformation-stack --region eu-central-1',
+      [
+        "cat > bootstrap-config.yaml <<'EOF'",
+        'apiVersion: bootstrap.aws.infrastructure.cluster.x-k8s.io/v1beta1',
+        'kind: AWSIAMConfiguration',
+        'spec:',
+        '  controlPlane:',
+        '    extraPolicyAttachments:',
+        '      - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy',
+        'EOF',
+        'clusterawsadm bootstrap iam create-cloudformation-stack --config bootstrap-config.yaml --region eu-central-1',
+      ].join('\n'),
+    );
+  });
+
+  it('warns when the control plane role cannot take EBS snapshots (FP4-F-09)', async () => {
+    const plugin = new AwsCredentialPlugin(() => fakeAws({ snapshots: 'implicitDeny' }));
+    const { data, summary } = plugin.normalize(input);
+    const r = await plugin.test(data, summary);
+    // Volumes work without the policy: a passed test with the clusterawsadm command.
+    expect(r.ok).toBe(true);
+    expect(r.message).toMatch(/Volume snapshots will fail/);
+    expect(r.hint).toMatch(/removed by the next stack update/);
+    expect(r.fixCommand).toContain('AmazonEBSCSIDriverPolicy');
+    expect(r.checks.at(-1)).toEqual({
+      name: 'EBS snapshot permissions of the control plane role',
+      ok: false,
+      warning: true,
+      message: 'ec2:DescribeSnapshots is denied',
+    });
+  });
+
+  it('marks the snapshot check as not verified without iam:SimulatePrincipalPolicy', async () => {
+    const plugin = new AwsCredentialPlugin(() => fakeAws({ snapshots: 'error' }));
+    const { data, summary } = plugin.normalize(input);
+    const r = await plugin.test(data, summary);
+    expect(r).toMatchObject({ ok: true });
+    expect(r.message).toBeUndefined();
+    expect(r.checks.at(-1)).toMatchObject({
+      ok: false,
+      warning: true,
+      message: expect.stringMatching(/^Not verified: .*iam:SimulatePrincipalPolicy/),
+    });
+  });
+
+  it('skips the snapshot check when the control plane role is missing', async () => {
+    const plugin = new AwsCredentialPlugin(() => fakeAws({ missing: ['control-plane'] }));
+    const { data, summary } = plugin.normalize(input);
+    const r = await plugin.test(data, summary);
+    expect(r.checks.map((c) => c.name)).not.toContain(
+      'EBS snapshot permissions of the control plane role',
     );
   });
 

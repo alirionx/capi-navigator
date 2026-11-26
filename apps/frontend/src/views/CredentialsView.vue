@@ -45,10 +45,13 @@ watch(() => connections.activeName, reload, { immediate: true });
 
 const key = (c: Credential) => `${c.provider}/${c.name}`;
 
-/** Valid credentials with missing one-time setup (e.g. CAPA IAM) are not "failed". */
+/**
+ * Valid credentials with missing one-time setup (e.g. CAPA IAM, or the EBS snapshot permissions of
+ * a passed test) are not "failed".
+ */
 function testState(c: Credential): { key: 'ok' | 'setup' | 'failed'; color: string; icon: string } {
   const r = c.lastTest;
-  if (r?.ok) return { key: 'ok', color: 'success', icon: 'mdi-check-circle' };
+  if (r?.ok && !r.fixCommand) return { key: 'ok', color: 'success', icon: 'mdi-check-circle' };
   if (r?.fixCommand && r.checks[0]?.ok)
     return { key: 'setup', color: 'warning', icon: 'mdi-wrench' };
   return { key: 'failed', color: 'error', icon: 'mdi-alert-circle' };

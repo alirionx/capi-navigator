@@ -7,7 +7,12 @@ import {
   EC2Client,
   type InstanceTypeInfo,
 } from '@aws-sdk/client-ec2';
-import { GetInstanceProfileCommand, GetRoleCommand, IAMClient } from '@aws-sdk/client-iam';
+import {
+  GetInstanceProfileCommand,
+  GetRoleCommand,
+  IAMClient,
+  SimulatePrincipalPolicyCommand,
+} from '@aws-sdk/client-iam';
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { Agent } from 'node:https';
 import {
@@ -211,9 +216,15 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
       checks.push({ name: `Region ${region}`, ok: false, message: explain(err).message });
     }
     let iamMissing = false;
+    let controlPlaneRole: string | undefined;
     for (const role of CAPA_IAM.roles) {
       const name = `${role}${CAPA_IAM.suffix}`;
-      const check = await probe(() => c.iam.send(new GetRoleCommand({ RoleName: name })));
+      const check = await probe(async () => {
+        const res = (await c.iam.send(new GetRoleCommand({ RoleName: name }))) as {
+          Role?: { Arn?: string };
+        };
+        if (role === 'control-plane') controlPlaneRole = res.Role?.Arn;
+      });
       if (check === 'missing') iamMissing = true;
       checks.push(iamCheck(`IAM role ${name}`, check));
     }
@@ -225,7 +236,10 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
       if (check === 'missing') iamMissing = true;
       checks.push(iamCheck(`IAM instance profile ${name}`, check));
     }
-    const failed = checks.filter((x) => !x.ok);
+    const snapshots = controlPlaneRole ? await snapshotCheck(c, controlPlaneRole) : undefined;
+    if (snapshots) checks.push(snapshots);
+    const failed = checks.filter((x) => !x.ok && !x.warning);
+    const fixCommand = CAPA_IAM.fixCommand.replace('<region>', region);
     return {
       ok: failed.length === 0,
       testedAt,
@@ -235,14 +249,21 @@ export class AwsCredentialPlugin implements CredentialPlugin<AwsCredentialInput>
         ? {
             message: 'The IAM prerequisites of CAPA are missing',
             hint: 'Create them once per AWS account with clusterawsadm (CAPI Navigator does not create IAM resources).',
-            fixCommand: CAPA_IAM.fixCommand.replace('<region>', region),
+            fixCommand,
           }
         : failed.length > 0
           ? {
               message: `${failed.length} check(s) failed`,
-              hint: 'Allow iam:GetRole and iam:GetInstanceProfile for the IAM user to verify the prerequisites.',
+              hint: 'Allow iam:GetRole, iam:GetInstanceProfile and iam:SimulatePrincipalPolicy for the IAM user to verify the prerequisites.',
             }
-          : {}),
+          : snapshots?.message === SNAPSHOTS_DENIED
+            ? {
+                message:
+                  'Volume snapshots will fail: the control plane role lacks EBS snapshot permissions',
+                hint: 'Attach the EBS CSI driver policy to the control plane role through clusterawsadm; a policy attached by hand is removed by the next stack update. Use the region of the existing stack and keep the settings of an earlier bootstrap configuration. Running instances get the permissions without a restart.',
+                fixCommand,
+              }
+            : {}),
     };
   }
 
@@ -396,6 +417,37 @@ async function probe(fn: () => Promise<unknown>): Promise<ProbeResult> {
     if (awsErrorName(err) === 'NoSuchEntity' || awsErrorName(err) === 'NoSuchEntityException')
       return 'missing';
     return { error: explain(err).message };
+  }
+}
+
+const SNAPSHOTS_DENIED = `${CAPA_IAM.csiProbeAction} is denied`;
+
+/**
+ * FP4-F-09: the EBS CSI driver needs snapshot permissions on the control plane role for volume
+ * snapshots (Velero, VolumeSnapshots); clusterawsadm does not attach them by default. Simulated,
+ * so the result also covers inline policies and permission boundaries. A warning only: volumes work
+ * without it.
+ */
+async function snapshotCheck(c: AwsClients, roleArn: string) {
+  const name = 'EBS snapshot permissions of the control plane role';
+  try {
+    const res = (await c.iam.send(
+      new SimulatePrincipalPolicyCommand({
+        PolicySourceArn: roleArn,
+        ActionNames: [CAPA_IAM.csiProbeAction],
+      }),
+    )) as { EvaluationResults?: { EvalDecision?: string }[] };
+    const allowed = res.EvaluationResults?.[0]?.EvalDecision === 'allowed';
+    return allowed
+      ? { name, ok: true }
+      : { name, ok: false, warning: true, message: SNAPSHOTS_DENIED };
+  } catch (err) {
+    return {
+      name,
+      ok: false,
+      warning: true,
+      message: `Not verified: ${explain(err).message}. Allow iam:SimulatePrincipalPolicy for the IAM user.`,
+    };
   }
 }
 

@@ -363,13 +363,34 @@ export const AWS_IDENTITY = {
   plural: 'awsclusterstaticidentities',
 };
 
+/**
+ * The EBS CSI controller runs on the control plane nodes (aws-csi preset). The role's default
+ * cloud provider policy manages volumes but not snapshots, so the AWS managed policy for the
+ * driver is attached to the control plane role only: on the nodes every pod could use it via IMDS.
+ */
+const EBS_CSI_POLICY = 'arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy';
+
 /** IAM resources created by `clusterawsadm bootstrap iam create-cloudformation-stack` (v2.13.1). */
 export const CAPA_IAM = {
   suffix: '.cluster-api-provider-aws.sigs.k8s.io',
   roles: ['control-plane', 'controllers', 'nodes'],
   instanceProfiles: ['control-plane', 'controllers', 'nodes'],
   stackName: 'cluster-api-provider-aws-sigs-k8s-io',
-  fixCommand: 'clusterawsadm bootstrap iam create-cloudformation-stack --region <region>',
+  csiPolicyArn: EBS_CSI_POLICY,
+  /** Action the snapshot check simulates: the driver's first snapshot call. */
+  csiProbeAction: 'ec2:DescribeSnapshots',
+  /** AWSIAMConfiguration (cmd/clusterawsadm/api/bootstrap/v1beta1) plus create-or-update. */
+  fixCommand: [
+    "cat > bootstrap-config.yaml <<'EOF'",
+    'apiVersion: bootstrap.aws.infrastructure.cluster.x-k8s.io/v1beta1',
+    'kind: AWSIAMConfiguration',
+    'spec:',
+    '  controlPlane:',
+    '    extraPolicyAttachments:',
+    `      - ${EBS_CSI_POLICY}`,
+    'EOF',
+    'clusterawsadm bootstrap iam create-cloudformation-stack --config bootstrap-config.yaml --region <region>',
+  ].join('\n'),
   docsUrl:
     'https://cluster-api-aws.sigs.k8s.io/topics/using-clusterawsadm-to-fulfill-prerequisites',
 };

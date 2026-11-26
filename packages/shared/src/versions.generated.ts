@@ -46,7 +46,8 @@ export const VERSIONS: VersionsFile = {
         "datasource": "github-releases",
         "package": "kubernetes-sigs/cluster-api-provider-aws"
       },
-      "verified": "2026-10-17"
+      "verified": "2026-11-26",
+      "note": "clusterawsadm AWSIAMConfiguration (bootstrap.aws.infrastructure.cluster.x-k8s.io/v1beta1) checked on 2026-11-26 for ADR-0043: spec.controlPlane.extraPolicyAttachments exists, and create-cloudformation-stack creates or updates the stack."
     },
     "gcp": {
       "version": "v1.13.1",
