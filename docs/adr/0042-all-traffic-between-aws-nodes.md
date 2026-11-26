@@ -32,3 +32,8 @@ on every reconcile and revokes rules that are not in it.
 - A compromised node can reach every port of the other nodes of its cluster, as on the other clouds.
 - CAPA adds the rule to existing security groups when the `AWSCluster` changes. Existing clusters get
   it with "Reapply from spec"; no machine is replaced for it.
+- Verified live on 2026-11-26 (AWS, RKE2 v1.36.6+rke2r2, one control plane node and one worker):
+  a service in the host network on TCP 9100 answered from both nodes on both nodes. With the former
+  rules written into the `AWSCluster`, CAPA revoked the rule within seconds and the other node timed
+  out. "Reapply from spec" changed only the `AWSCluster`, replaced no machine, and 9100 answered again
+  within seconds.
