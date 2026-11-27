@@ -56,17 +56,18 @@ export function backupStore() {
       },
     },
     secrets: {
-      listRaw: async () => [
-        secret('management-cluster-aws-credentials', 'KUBECONFIG-OF-AWS'),
-        secret('navigator-user-admin-password', 'HASH-OF-ADMIN'),
-        secret('navigator-user-zoe-password', 'HASH-OF-ZOE'),
-        secret('helm-repository-bitnami', 'REPO-PASSWORD'),
-        secret('capi-navigator-session-key', 'SESSION-KEY'),
-        secret('capi-navigator-oidc-client', 'OIDC-CLIENT-SECRET'),
-        // Not part of a backup:
-        secret('capi-navigator-initial-admin', 'INITIAL-ADMIN-PASSWORD'),
-        secret('navigator-user-gone-password', 'ORPHANED-HASH'),
-      ],
+      getRaw: async (name: string) =>
+        [
+          secret('management-cluster-aws-credentials', 'KUBECONFIG-OF-AWS'),
+          secret('navigator-user-admin-password', 'HASH-OF-ADMIN'),
+          secret('navigator-user-zoe-password', 'HASH-OF-ZOE'),
+          secret('helm-repository-bitnami', 'REPO-PASSWORD'),
+          secret('capi-navigator-session-key', 'SESSION-KEY'),
+          secret('capi-navigator-oidc-client', 'OIDC-CLIENT-SECRET'),
+          // Not part of a backup:
+          secret('capi-navigator-initial-admin', 'INITIAL-ADMIN-PASSWORD'),
+          secret('navigator-user-gone-password', 'ORPHANED-HASH'),
+        ].find((x) => x.metadata?.name === name),
     },
     addonPresetOverridesConfigMap: async () => ({
       metadata: { name: 'capi-navigator-addon-presets', resourceVersion: '3' },

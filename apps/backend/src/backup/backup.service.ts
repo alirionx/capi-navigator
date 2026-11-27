@@ -165,9 +165,10 @@ export class BackupService {
   }
 
   /**
-   * FP38-F-03: the app's objects in restore order. Secrets are taken by the names the app gives
-   * them (from its own resources), never "every Secret in the namespace"; the initial admin
-   * password, Leases and the chart's objects are not part of it.
+   * FP38-F-03: the app's objects in restore order. Secrets are read one by one by the names the app
+   * gives them (from its own resources), never "every Secret in the namespace", which the app's
+   * Role does not allow either; the initial admin password, Leases and the chart's objects are not
+   * part of it.
    */
   private async collect(includeAuditEvents: boolean): Promise<BackupGroup[]> {
     try {
@@ -192,9 +193,9 @@ export class BackupService {
         ...users.map((u) => passwordSecretName(u.metadata.name)),
         ...repositories.map((r) => helmRepositorySecretName(r.metadata.name)),
       ]);
-      const secrets = (await s.secrets.listRaw()).filter((x) =>
-        secretNames.has(x.metadata?.name ?? ''),
-      );
+      const secrets = (
+        await Promise.all([...secretNames].map((name) => s.secrets.getRaw(name)))
+      ).filter((x) => x !== undefined);
       const presets = await s.addonPresetOverridesConfigMap();
       const cr = (
         kind: string,

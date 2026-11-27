@@ -39,7 +39,7 @@ function store() {
     merged[k] = { ...merged[k], list: backup[k]!.list };
   }
   merged.backupSettings = backup.backupSettings!;
-  merged.secrets = { ...merged.secrets, listRaw: backup.secrets!.listRaw };
+  merged.secrets = { ...merged.secrets, getRaw: backup.secrets!.getRaw };
   Object.assign(merged, { addonPresetOverridesConfigMap: backup.addonPresetOverridesConfigMap });
   return { fake, store: merged as unknown as StoreService };
 }
