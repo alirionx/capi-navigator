@@ -98,7 +98,7 @@ One NestJS module per domain:
 
 Nothing is kept in the backend process beyond caches. Any replica can serve any request, and a
 restarted pod continues where the previous one stopped. Background jobs (rollout controller,
-audit cleanup) run on one replica at a time, elected with a `Lease`
+audit cleanup, scheduled backups) run on one replica at a time, elected with a `Lease`
 ([lease.ts](../apps/backend/src/kube/lease.ts)).
 
 ## Who does the work: resources and their controllers
@@ -374,7 +374,10 @@ the app gives them (from its own resources) and the preset ConfigMap; a pure fun
 for `kubectl apply` (no namespace, status or server-set metadata) and adds `manifest.json` and
 `RESTORE.md`. tar-stream and zlib pack them in memory, openpgp.js encrypts the archive to every
 recipient key, and only ciphertext leaves the backend (ADR-0044). Restoring needs no app: `gpg -d`,
-`kubectl apply --server-side`. Details: [backup.md](backup.md).
+`kubectl apply --server-side`. A schedule writes the same file to S3: every replica checks every
+30 seconds, the one holding the Lease `capi-navigator-backup` runs a due time once it is later than
+`status.lastScheduledAt` and records it first, then uploads and deletes beyond the retention
+(ADR-0046). Details: [backup.md](backup.md).
 
 ### OpenAPI description and Swagger UI
 

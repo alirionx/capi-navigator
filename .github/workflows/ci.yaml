@@ -99,6 +99,9 @@ jobs:
           kubectl -n capi-navigator-system port-forward svc/capi-navigator 8080:80 &
           for _ in $(seq 1 15); do curl -fsS -m 2 http://localhost:8080/readyz && break; sleep 2; done
           curl -fsS http://localhost:8080/api/health
+      # FP-38: a backup with the chart's own RBAC (the app reads Secrets by name only, no list).
+      - name: Backup works with the chart's permissions
+        run: scripts/backup-smoke.sh
       - name: Show the app on failure
         if: failure()
         run: |

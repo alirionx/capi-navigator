@@ -49,3 +49,4 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0043](0043-ebs-snapshot-permissions-on-aws.md)             | EBS snapshot permissions on AWS                                                  | accepted |
 | [0044](0044-encrypted-backup-download.md)                   | Encrypted backup of the home cluster                                             | accepted |
 | [0045](0045-openpgp-license-exception.md)                   | openpgp.js as named license exception                                            | accepted |
+| [0046](0046-scheduled-backups-to-s3.md)                     | Scheduled backups to S3                                                          | accepted |

@@ -48,6 +48,28 @@ The archive holds `manifest.json` (app version, namespace, number of objects and
 file), `RESTORE.md` and the resources in `resources/`, numbered in restore order. The decrypted
 files contain the credentials in plain text: decrypt only when you need to.
 
+## Scheduled backups to S3
+
+Under **Scheduled backups to S3** the app writes the same encrypted backup to a bucket on a
+schedule ([ADR-0046](adr/0046-scheduled-backups-to-s3.md)):
+
+- **Target:** bucket (it must exist), prefix (default `capi-navigator/`), region, and for
+  S3-compatible storage such as Ceph or SeaweedFS the endpoint and path-style addressing. An
+  internal CA can be added. Calls go through the outbound proxy of the app; put an internal
+  endpoint into `NO_PROXY`.
+- **Access key:** stored in the Secret `capi-navigator-backup-s3`, never shown again. It needs
+  `s3:PutObject`, `s3:GetObject`, `s3:ListBucket` and `s3:DeleteObject` on the prefix. **Test
+  connection** writes, reads, lists and deletes a test object.
+- **Schedule:** a cron expression in UTC, e.g. `0 3 * * *` for 03:00 every day; the page shows
+  the next runs in your time zone. One replica runs each backup. A time missed while the app was
+  not running is not repeated.
+- **Retention:** after each upload the app keeps the newest backups (default 14) and deletes older
+  ones, but only objects named `capi-navigator-home-<time>.tar.gz.gpg` directly below the prefix.
+- **Back up to S3 now** runs one at once. The last ten runs are listed with their result; every
+  run is in the audit log.
+
+A restored app writes to the same target, because the access key is part of the backup.
+
 ## Restore
 
 `RESTORE.md` in the archive has the commands with the namespace filled in. In short:
