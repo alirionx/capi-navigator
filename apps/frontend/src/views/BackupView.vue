@@ -137,6 +137,28 @@ async function download(): Promise<void> {
   }
 }
 
+/**
+ * How to create a fitting key (FP38-F-02): gpg's defaults (ed25519 with a cv25519 encryption
+ * subkey), one command per step, each with a copy button. The private key never leaves the host.
+ */
+const HOWTO_EMAIL = 'ops-backup@example.com';
+const howTo = computed(() => [
+  {
+    text: t('backup.howToCreate'),
+    command: `gpg --quick-gen-key ${HOWTO_EMAIL} future-default default never`,
+  },
+  { text: t('backup.howToExport'), command: `gpg --armor --export ${HOWTO_EMAIL}` },
+  {
+    text: t('backup.howToKeepPrivate'),
+    command: `gpg --armor --export-secret-keys ${HOWTO_EMAIL} > capi-navigator-backup-key.asc`,
+  },
+]);
+const copied = ref<number | null>(null);
+async function copy(i: number, text: string): Promise<void> {
+  await navigator.clipboard?.writeText(text);
+  copied.value = i;
+}
+
 /** Fingerprint in blocks of four, as gpg prints it. */
 function fingerprint(fp: string): string {
   return fp.replace(/(.{4})/g, '$1 ').trim();
@@ -243,6 +265,34 @@ function fingerprint(fp: string): string {
             >{{ t('backup.addKey') }}</v-btn
           >
         </div>
+        <v-expansion-panels variant="accordion" class="mb-4" data-testid="backup-howto">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon icon="mdi-help-circle-outline" size="small" class="me-2" />
+              {{ t('backup.howToTitle') }}
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <ol class="howto">
+                <li v-for="(step, i) in howTo" :key="i" class="mb-3">
+                  <div class="text-body-medium mb-1">{{ step.text }}</div>
+                  <div class="d-flex align-center ga-1">
+                    <pre class="command flex-grow-1" data-testid="backup-howto-command">{{
+                      step.command
+                    }}</pre>
+                    <v-btn
+                      :icon="copied === i ? 'mdi-check' : 'mdi-content-copy'"
+                      size="small"
+                      variant="text"
+                      :aria-label="t('common.copy')"
+                      @click="copy(i, step.command)"
+                    />
+                  </div>
+                </li>
+              </ol>
+              <div class="text-body-small text-medium-emphasis">{{ t('backup.howToNote') }}</div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
 
         <v-switch v-model="includeAuditEvents" color="primary" data-testid="backup-audit">
           <template #label>
@@ -336,6 +386,18 @@ function fingerprint(fp: string): string {
 <style scoped>
 .settings {
   max-width: 960px;
+}
+.howto {
+  padding-left: 1.25rem;
+}
+.command {
+  font-family: monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: rgba(var(--v-theme-on-surface), 0.06);
 }
 .key-input :deep(textarea) {
   font-family: monospace;

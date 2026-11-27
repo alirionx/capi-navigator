@@ -1588,8 +1588,17 @@ export const en = {
     removeKey: 'Remove key',
     pasteKey: 'Public key (ASCII-armored)',
     pasteKeyHint:
-      'Export it with gpg --armor --export KEY-ID. Only public keys that can encrypt are accepted; never paste a private key. At most 10 keys.',
+      'The output of gpg --armor --export KEY-ID; see "How do I create a key?" below. Only public keys that can encrypt are accepted; never paste a private key. At most 10 keys.',
     addKey: 'Add key',
+    howToTitle: 'How do I create a key?',
+    howToCreate:
+      'Create a key on your own machine, not in the cluster. gpg asks for a passphrase that protects the private key; the defaults give a signing key with an encryption subkey, as needed here.',
+    howToExport:
+      'Export the public key and paste the whole output, including the BEGIN and END lines, above.',
+    howToKeepPrivate:
+      'Keep a copy of the private key in a safe place, e.g. a password manager. Without it, no backup encrypted to this key can be restored.',
+    howToNote:
+      'Replace the e-mail address with your own. An existing key works too, if it has an encryption subkey (gpg --list-keys shows [E]).',
     includeAuditEvents: 'Include audit events',
     includeAuditEventsHint:
       'The audit log of the retention period (AUDIT_RETENTION_DAYS) goes into the backup. Stored in spec.includeAuditEvents. Default: on.',
