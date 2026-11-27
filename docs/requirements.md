@@ -365,6 +365,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-34 | Cluster blueprints (optional) | FP-7, FP-19, FP-22 |
 | FP-36 | Namespaces and service accounts in workload clusters (optional) | FP-8, FP-19, FP-30 |
 | FP-37 | Self-service for namespace users (optional, planned) | FP-14, FP-36 |
+| FP-38 | Backup of the home cluster (optional, planned) | FP-19, FP-29 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -1367,6 +1368,38 @@ Live acceptance of part 1 (2026-11-25, Proxmox VE, RKE2 v1.36.6+rke2r2, a second
 
 Part 2 (same day and cluster): the dashboard is read by impersonating the assigned service account, so Kubernetes itself limits it to the namespace. None of 29 pods of other namespaces and no node name or address appeared.
 
+### FP-38: Backup of the home cluster (optional)
+
+**Goal:** an admin backs up the whole state of the app in the home cluster and can restore it into a new home cluster, for example after losing the cluster or moving the app. The backup is an encrypted archive: first downloaded by hand, later written to S3 on a schedule. Backing up the management clusters (CAPI objects, CA secrets, hosted etcd) is a separate pack. Two parts; part 2 only after part 1 is done.
+
+**Requirements, part 1: manual backup and download**
+
+- **FP38-F-01** MUST store the backup settings in one `NavigatorBackupSettings` resource named `default` in the app namespace: the OpenPGP public keys of the recipients and whether audit events are included (default: yes). No new state outside the home cluster (hard rule 1).
+- **FP38-F-02** MUST accept only OpenPGP public keys that can encrypt: private keys, expired or revoked keys and keys without an encryption subkey are refused with an understandable message. The settings show fingerprint, user ID and expiry of each key and warn 30 days before a key expires. A backup needs at least one key; it is encrypted to all of them, so each recipient can decrypt it alone.
+- **FP38-F-03** MUST include all resources of the app's CRDs in the app namespace, the app's Secrets (management cluster credentials, password hashes, OIDC client secret, Helm repository credentials, session key) and the ConfigMap of the preset overrides. It MUST leave out Leases, the Secret of the initial admin password, Events and the objects of the Helm chart (they come back with `helm install`). The content is selected by the app's labels and known names, never by "everything in the namespace".
+- **FP38-F-04** MUST write a `tar.gz` archive, encrypted with OpenPGP (`capi-navigator-home-<UTC time>.tar.gz.gpg`), that can be restored without the app: after `gpg -d`, the YAML files can be applied with `kubectl apply`, numbered in restore order (Secrets and ConfigMaps first). They are cleaned of `uid`, `resourceVersion`, `creationTimestamp`, `managedFields`, `generation` and `namespace`, so they can be restored into another namespace. The archive contains a `manifest.json` (app version, namespace, time, who created it, number of objects per kind, SHA-256 of every file) and a `RESTORE.md`.
+- **FP38-F-05** MUST stream the archive and encrypt it in the backend before the first byte leaves it: nothing is written to disk, nothing of the content is logged, and the HTTP response carries only ciphertext. The app never holds a private key (ADR for hard rule 8). The OpenPGP library is openpgp.js (LGPL-3.0+), allowed as a named exception in the license gate (ADR).
+- **FP38-F-06** MUST require a new platform permission `backup.manage` (not scopable) for the settings and for every backup. The built-in admin has it; viewer and operator do not (pinned test, hard rule 9).
+- **FP38-F-07** MUST write an `AuditEvent` for every backup (who, number of objects, fingerprints of the keys; never the content) and for every change of the settings.
+- **FP38-F-08** MUST document the restore and test it: install the chart of the same version into an empty home cluster, scale the backend to zero, decrypt and apply the archive, scale up. Afterwards users, roles, tokens, connections, blueprints and settings work as before. A restore into a newer app version is supported while the CRD version (`v1alpha1`) is the same.
+- **FP38-F-09** MUST offer a page "Backup" for admins (keys, content, "Download backup") and describe the endpoints in the OpenAPI document (FP-23).
+
+**Requirements, part 2: scheduled backup to S3**
+
+- **FP38-F-10** MUST add a schedule (cron expression in UTC) and an S3 target to the settings: bucket, prefix, region, optional endpoint and path-style addressing for S3-compatible storage (MinIO, Ceph), optional CA certificate. The access key lives in the Secret `capi-navigator-backup-s3` and is never returned (hard rule 8); this Secret is part of the backup content (FP38-F-03), so a restored app writes to the same target.
+- **FP38-F-11** MUST run a scheduled backup in exactly one backend replica (a Lease, as for the audit cleanup). A run missed while the app was down is not repeated; the next one runs on schedule. The upload goes through the app's proxy settings (FP29-F-01).
+- **FP38-F-12** MUST keep the last N backups (default 14) and delete only older objects under the prefix whose names the app wrote; other objects in the bucket are never touched.
+- **FP38-F-13** MUST show the result of the last runs (time, result, object key, size, error with hint) in the status of the settings and on the page, and write an `AuditEvent` for every run.
+- **FP38-F-14** MUST offer "Test connection" (write, read and delete a test object) and "Back up now" to S3.
+
+**Acceptance criteria**
+
+- [ ] Part 1: a downloaded backup decrypts with `gpg -d` and the key of every recipient, and contains no plaintext secret before decryption.
+- [ ] Part 1: restored into a new kind cluster, the app signs in local users with their passwords, accepts the existing API tokens, and reaches its management clusters; the archive contains no Lease, no initial admin password and nothing outside the app's objects.
+- [ ] Part 1: viewer and operator get 403 on every backup endpoint; every backup writes an `AuditEvent`.
+- [ ] Part 2: with two backend replicas, a schedule writes exactly one backup per run to MinIO, and the oldest is deleted beyond the retention; other objects in the bucket remain.
+- [ ] Part 2: a failed upload is shown with its reason on the page and in the audit log.
+
 ## 7. Non-functional requirements
 
 These requirements apply to all feature packs and are checked in every pack.
@@ -1433,6 +1466,7 @@ These requirements apply to all feature packs and are checked in every pack.
   - App changes: a topology mode "hosted" (k0s first), the transformation without control plane machine templates and without the infrastructure cluster's API load balancer, wizard fields for replicas and etcd storage, overview, tree and dashboard showing the control plane as pods and service in the management cluster, day 2 (version upgrade, scaling), deletion including the etcd PVCs, pre-checks of the management cluster (StorageClass, LoadBalancer), separation and resource limits of tenant control planes.
   - Start with OpenStack, one replica; AWS and highly available control planes later. Effort about the size of FP-9, plus a management cluster in the cloud for live tests.
 - **FP-27: k3s as distribution** (optional, lowest priority; not started). Bootstrap and control plane provider [k3s-io/cluster-api-k3s](https://github.com/k3s-io/cluster-api-k3s) (`KThreesControlPlane`, `KThreesConfigTemplate`). **The provider is immature** (checked 2026-10-21, v0.4.0 of May 2026): it implements only the CAPI v1beta1 contract and is built against CAPI v1.11/v1.12 (the app runs v1.14 with v1beta2); it is not in the clusterctl provider registry, so the CAPI Operator needs a fetch URL; upgrade support is listed as unfinished upstream (#35, #179, #83) and the control plane has no rollout strategy (#187). What would fit: servers join through the API port 6443 (one port, as Google Cloud's load balancer needs), embedded etcd, `files`, `preK3sCommands`/`postK3sCommands`, kubelet arguments, node name and external cloud provider. To decide with it: Flannel (built in) or Calico, and switching off Traefik and ServiceLB. Start only after a spike that measures upgrade, control plane replacement and rebuild live, as for k0smotron (ADR-0013). Rechecked 2026-11-02: still v0.4.0 with the v1beta1 contract only (CAPI plans to drop v1beta1 providers in v1.16, which would block the app's CAPI upgrades); deferred until a release with the v1beta2 contract.
+- **FP-39: Backup of the management clusters** (outlook, after FP-38): the CAPI objects of the workload clusters with their status and the CA secrets CAPI generated (`<cluster>-ca`, `-etcd`, `-sa`, `-proxy`), the app's objects there (credentials, identities, provider installations, add-ons) and the etcd of hosted control planes (PVCs, FP-24). The restore must follow `clusterctl move` (paused clusters, status, order); without the CA secrets a restored cluster gets new CAs and is lost to management.
 - **FP-35: Open Service Broker for Cloud Foundry** (outlook; a separate project, not part of this app). A stateless broker that uses only the REST API of the app with a token of a technical user (FP-22): the catalog lists the cluster blueprints (FP-34, one plan per blueprint, plan schemas from FP34-F-03); provisioning creates a cluster from a blueprint asynchronously (`last_operation` reads the cluster status), the instance ID becomes a cluster label (FP34-F-10); deprovisioning deletes the cluster with cleanup; a binding returns the cluster's admin kubeconfig (FP6-F-04; every developer of the space sees it, unbinding revokes nothing, the credential ends with the cluster). One instance is one cluster; the first version offers no updates (`plan_updateable: false`, no `maintenance_info`). The broker gets its own CLAUDE.md and requirements as a handover: [docs/handover/osb-broker/](handover/osb-broker/README.md).
 - **k3k as CAPI provider** (outlook, related to FP-24): a Cluster API provider for k3k, Rancher's virtual clusters (k3s control planes as pods in a host cluster), is expected (as of 2026-10-21; no public release yet); when it is published, evaluate it for hosted or virtual control planes (FP-24) and for k3s workers (FP-27).
 - **FP-28: Floating IP per node for outbound traffic** (experimental outlook; not decided; an optional extension of the OpenStack infrastructure plugin, not in the core; **less suitable fallback** where FP-29 is not possible). Some OpenStack setups give instances no shared SNAT: each instance needs its own floating IP to reach anything outside, including an HTTP proxy (FP-16), and outbound traffic is attributed by that address. Findings of 2026-10-21, checked against the source of CAPO v0.15.1 on 2026-11-11:
