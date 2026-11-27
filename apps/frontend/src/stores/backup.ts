@@ -2,8 +2,13 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import {
   BackupPreviewSchema,
+  BackupRunSchema,
+  BackupS3TestResultSchema,
   BackupSettingsSchema,
   type BackupPreview,
+  type BackupRun,
+  type BackupS3TestRequest,
+  type BackupS3TestResult,
   type BackupSettings,
   type BackupSettingsInput,
 } from '@capi-navigator/shared';
@@ -33,5 +38,19 @@ export const useBackupStore = defineStore('backup', () => {
     return apiDownload('/api/backup', 'capi-navigator-home.tar.gz.gpg');
   }
 
-  return { settings, preview, load, save, download };
+  /** FP38-F-14: test the target as entered. */
+  function testS3(req: BackupS3TestRequest): Promise<BackupS3TestResult> {
+    return api('POST', '/api/backup/s3/test', BackupS3TestResultSchema, req);
+  }
+
+  /** FP38-F-14: back up to S3 now; the runs are reloaded either way. */
+  async function runS3(): Promise<BackupRun> {
+    try {
+      return await api('POST', '/api/backup/s3/run', BackupRunSchema);
+    } finally {
+      settings.value = await api('GET', '/api/backup/settings', BackupSettingsSchema);
+    }
+  }
+
+  return { settings, preview, load, save, download, testS3, runS3 };
 });

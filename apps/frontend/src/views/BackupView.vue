@@ -6,6 +6,8 @@ import {
   MAX_BACKUP_RECIPIENTS,
   type BackupKey,
 } from '@capi-navigator/shared';
+import BackupS3Card from '../components/backup/BackupS3Card.vue';
+import { s3Body, s3Dirty, s3Draft, s3Target, type S3Draft } from '../components/backup/s3-draft.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import FieldHelp from '../components/FieldHelp.vue';
 import { zodRule } from '../forms/zod-rules.js';
@@ -31,9 +33,11 @@ const newKey = ref('');
 /** Edited state: stored keys stay as BackupKey, pasted ones as armored text until saved. */
 const keys = ref<{ publicKey: string; info?: BackupKey }[]>([]);
 const includeAuditEvents = ref(true);
+const s3 = ref<S3Draft>(s3Draft(null));
 
 function reset(): void {
   const s = store.settings;
+  s3.value = s3Draft(s);
   keys.value = (s?.recipients ?? []).map((info) => ({ publicKey: info.publicKey, info }));
   includeAuditEvents.value = s?.includeAuditEvents ?? true;
   newKey.value = '';
@@ -54,7 +58,9 @@ const dirty = computed(() => {
   if (!s) return false;
   const before = s.recipients.map((r) => r.publicKey).join('\n');
   const after = keys.value.map((k) => k.publicKey).join('\n');
-  return before !== after || s.includeAuditEvents !== includeAuditEvents.value;
+  return (
+    before !== after || s.includeAuditEvents !== includeAuditEvents.value || s3Dirty(s3.value, s)
+  );
 });
 const keyRule = zodRule(BackupPublicKeySchema);
 const canAdd = computed(
@@ -94,6 +100,24 @@ const changes = computed(() => {
       what: includeAuditEvents.value ? t('common.yes') : t('common.no'),
     });
   }
+  const d3 = s3.value;
+  const before3 = s3Draft(s);
+  if (!d3.enabled && before3.enabled)
+    rows.push({ change: t('backup.s3.title'), what: t('backup.s3.removed') });
+  if (d3.enabled) {
+    const target = `${d3.endpoint || 'AWS'} · ${d3.bucket}/${d3.prefix}`;
+    const changed = JSON.stringify(s3Target(d3)) !== JSON.stringify(s3Target(before3));
+    if (changed || !before3.enabled) rows.push({ change: t('backup.s3.title'), what: target });
+    if (d3.accessKeyId || d3.secretAccessKey)
+      rows.push({ change: t('backup.s3.accessKeyId'), what: t('backup.s3.keyReplaced') });
+    if (JSON.stringify(d3.schedule) !== JSON.stringify(before3.schedule))
+      rows.push({
+        change: t('backup.s3.schedule'),
+        what: d3.schedule.enabled
+          ? `${d3.schedule.cron} (UTC), ${t('backup.s3.keep')}: ${d3.schedule.keep}`
+          : t('common.no'),
+      });
+  }
   return rows;
 });
 
@@ -114,6 +138,7 @@ async function save(): Promise<void> {
     await store.save({
       recipients: keys.value.map((k) => ({ publicKey: k.publicKey })),
       includeAuditEvents: includeAuditEvents.value,
+      ...s3Body(s3.value),
     });
     reset();
   } catch (err) {
@@ -339,6 +364,14 @@ function fingerprint(fp: string): string {
           <v-btn variant="text" :disabled="!dirty" @click="reset">{{ t('common.reset') }}</v-btn>
         </div>
       </v-card>
+
+      <BackupS3Card
+        v-model="s3"
+        :stored="store.settings"
+        :dirty="dirty"
+        :saving="saving"
+        @save="confirmOpen = true"
+      />
 
       <v-card border class="pa-6" data-testid="backup-download">
         <h2 class="text-title-large mb-1">{{ t('backup.download') }}</h2>

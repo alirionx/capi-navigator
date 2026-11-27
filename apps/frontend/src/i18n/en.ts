@@ -1615,6 +1615,53 @@ export const en = {
       'The file contains all credentials of the app, encrypted. Store it where only people allowed to restore the app can reach it. Every backup is recorded in the audit log.',
     saveFirst: 'Save or reset the changes to the keys first.',
     downloadButton: 'Download backup',
+    s3: {
+      title: 'Scheduled backups to S3',
+      titleHint:
+        'Stored in spec.s3 and spec.schedule of the NavigatorBackupSettings resource "default"; the access key in the Secret capi-navigator-backup-s3. Default: off.',
+      intro:
+        'The app writes the same encrypted backup to an S3 bucket on a schedule and keeps the newest ones. AWS S3 and S3-compatible storage (MinIO, Ceph) work. The bucket must exist.',
+      enabled: 'Back up to S3',
+      bucket: 'Bucket',
+      bucketHint: 'Name of an existing bucket; the app does not create buckets.',
+      prefix: 'Prefix',
+      prefixHint:
+        'Path in the bucket, ending with /. The app writes and deletes only objects below it whose names it wrote. Default: capi-navigator/.',
+      endpoint: 'Endpoint (S3-compatible storage)',
+      endpointHint:
+        'URL of S3-compatible storage, e.g. https://minio.example.com:9000. Empty for AWS S3. Calls go through the outbound proxy of the app; add internal endpoints to NO_PROXY.',
+      region: 'Region',
+      regionHint:
+        'Region of the bucket, e.g. eu-central-1. MinIO accepts us-east-1. Default: us-east-1.',
+      accessKeyId: 'Access key ID',
+      accessKeyHint:
+        'Write-only: stored in a Secret and never shown again; leave both fields empty to keep the stored key. Needs s3:PutObject, s3:GetObject, s3:ListBucket and s3:DeleteObject on the prefix.',
+      secretAccessKey: 'Secret access key',
+      keyReplaced: 'replaced',
+      removed: 'removed, with its access key',
+      forcePathStyle: 'Path-style addressing',
+      forcePathStyleHint:
+        'bucket in the path (endpoint/bucket/key) instead of the host name; needed by most S3-compatible storage, e.g. MinIO. Default: off.',
+      caCertificate: 'CA certificate of the endpoint (PEM, optional)',
+      caCertificateHint:
+        'Only if the endpoint uses a certificate that is not publicly trusted, e.g. an internal CA.',
+      test: 'Test connection',
+      schedule: 'Scheduled backups',
+      scheduleHint:
+        'One replica of the app runs the backup at the given times (a Lease decides which). A time missed while the app was not running is not repeated. Default: off.',
+      cron: 'Schedule (cron, UTC)',
+      cronHint:
+        'Five fields: minute hour day-of-month month day-of-week, in UTC. Examples: 0 3 * * * (03:00 every day), 0 */6 * * * (every 6 hours), 30 2 * * 0 (Sundays 02:30). Default: 0 3 * * *.',
+      nextRuns: 'Next runs (your time zone)',
+      keep: 'Keep backups',
+      keepHint:
+        'The newest this many backups stay; older ones the app wrote are deleted after each upload. Default: 14.',
+      runNow: 'Back up to S3 now',
+      nextRun: 'Next scheduled backup: {at}',
+      runs: 'Last runs',
+      trigger: { schedule: 'scheduled', manual: 'by hand' },
+      deleted: '{n} older deleted',
+    },
     restoreTitle: 'How do I restore a backup?',
     restoreIntro:
       'Restoring runs outside the app, into a new or emptied home cluster, with gpg, helm and kubectl. The same steps, with this namespace, are in RESTORE.md inside the archive.',
