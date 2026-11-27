@@ -23,7 +23,7 @@ rules:
     resources: [navigatorusers, navigatorroles, navigatortokens, navigatorgroups, navigatorauthsettings, navigatorbackupsettings, auditevents, managementclusters, helmrepositories, clusterblueprints]
     verbs: [get, list, watch, create, update, patch, delete]
   - apiGroups: [navigator.capi-navigator.io]
-    resources: [managementclusters/status, navigatortokens/status]
+    resources: [managementclusters/status, navigatortokens/status, navigatorbackupsettings/status]
     verbs: [get, update, patch]
   - apiGroups: ['']
     resources: [secrets]

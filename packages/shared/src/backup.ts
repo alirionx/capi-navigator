@@ -1,5 +1,10 @@
 import { z } from 'zod';
-import { NavigatorBackupSettingsSpecSchema } from './crds/navigator-backup-settings.js';
+import {
+  BackupRunSchema,
+  BackupS3TargetSchema,
+  BackupScheduleSchema,
+  NavigatorBackupSettingsSpecSchema,
+} from './crds/navigator-backup-settings.js';
 
 /** A recipient key as shown on the backup page (FP38-F-02); public data only. */
 export const BackupKeySchema = z.object({
@@ -20,12 +25,31 @@ export type BackupKey = z.infer<typeof BackupKeySchema>;
 export const BackupSettingsSchema = z.object({
   recipients: z.array(BackupKeySchema),
   includeAuditEvents: z.boolean(),
+  schedule: BackupScheduleSchema,
+  /** The S3 target; the access key is never returned, only whether one is set (FP38-F-10). */
+  s3: BackupS3TargetSchema.extend({ credentialsSet: z.boolean() }).nullable(),
+  /** Next scheduled run (ISO), if the schedule is on and a target is set. */
+  nextRun: z.string().nullable(),
+  /** FP38-F-13: the last runs to S3, newest first. */
+  runs: z.array(BackupRunSchema),
 });
 export type BackupSettings = z.infer<typeof BackupSettingsSchema>;
 
-/** PUT body of the backup settings: the CRD spec. */
-export const BackupSettingsInputSchema = NavigatorBackupSettingsSpecSchema;
-export type BackupSettingsInput = z.infer<typeof BackupSettingsInputSchema>;
+/** S3 access key, write-only (FP38-F-10). */
+export const BackupS3CredentialsSchema = z.object({
+  accessKeyId: z.string().trim().min(1, 'Enter the access key ID').max(256),
+  secretAccessKey: z.string().trim().min(1, 'Enter the secret access key').max(256),
+});
+export type BackupS3Credentials = z.infer<typeof BackupS3CredentialsSchema>;
+
+/**
+ * PUT body of the backup settings: the CRD spec, plus a new S3 access key. Without `s3Credentials`
+ * the stored key is kept; without `s3` the target and its key are removed.
+ */
+export const BackupSettingsInputSchema = NavigatorBackupSettingsSpecSchema.extend({
+  s3Credentials: BackupS3CredentialsSchema.optional(),
+});
+export type BackupSettingsInput = z.input<typeof BackupSettingsInputSchema>;
 
 /** FP38-F-03: what a backup would contain now, by kind; nothing of the content itself. */
 export const BackupPreviewSchema = z.object({
@@ -50,3 +74,22 @@ export function backupFileName(at: Date): string {
     .replace(/\.\d+Z$/, 'Z');
   return `capi-navigator-home-${stamp}.tar.gz.gpg`;
 }
+
+/** Result of "Test connection" to the S3 target (FP38-F-14). */
+export const BackupS3TestResultSchema = z.object({
+  ok: z.boolean(),
+  message: z.string(),
+  hint: z.string().optional(),
+  details: z.string().optional(),
+});
+export type BackupS3TestResult = z.infer<typeof BackupS3TestResultSchema>;
+
+/** Body of "Test connection": the target as entered, with a new key or the stored one. */
+export const BackupS3TestRequestSchema = z.object({
+  s3: BackupS3TargetSchema,
+  s3Credentials: BackupS3CredentialsSchema.optional(),
+});
+export type BackupS3TestRequest = z.infer<typeof BackupS3TestRequestSchema>;
+
+/** Object names the app writes to S3; retention deletes only these (FP38-F-12). */
+export const BACKUP_OBJECT_PATTERN = /^capi-navigator-home-\d{8}T\d{6}Z\.tar\.gz\.gpg$/;

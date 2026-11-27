@@ -88,6 +88,8 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'PUT /api/backup/settings': 'admin',
     'GET /api/backup/preview': 'admin',
     'POST /api/backup': 'admin',
+    'POST /api/backup/s3/test': 'admin',
+    'POST /api/backup/s3/run': 'admin',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

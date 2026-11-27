@@ -576,6 +576,96 @@
         ]
       }
     },
+    "/api/backup/s3/run": {
+      "post": {
+        "operationId": "Backup_runS3",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Back up to S3 now",
+        "description": "Creates a backup, uploads it to the S3 target and applies the retention (FP38-F-14). The run is recorded in the settings; a failed run answers 502 with the reason.\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupRun"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
+    "/api/backup/s3/test": {
+      "post": {
+        "operationId": "Backup_testS3",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Test the S3 target: write, read, list and delete a test object",
+        "description": "Uses the access key in the body, or the stored one (FP38-F-14).\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupS3TestRequestInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupS3TestResult"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
     "/api/backup/settings": {
       "get": {
         "operationId": "Backup_settings",
@@ -8820,6 +8910,9 @@
         "type": "string",
         "pattern": "^[a-z]{2}(-gov|-iso[a-z]*)?-[a-z]+-\\d$"
       },
+      "BackupCron": {
+        "type": "string"
+      },
       "BackupKey": {
         "type": "object",
         "properties": {
@@ -8915,6 +9008,104 @@
         ],
         "additionalProperties": false
       },
+      "BackupRun": {
+        "type": "object",
+        "properties": {
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string"
+          },
+          "trigger": {
+            "type": "string",
+            "enum": [
+              "schedule",
+              "manual"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ]
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "deleted": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "message": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "startedAt",
+          "finishedAt",
+          "trigger",
+          "outcome"
+        ],
+        "additionalProperties": false
+      },
+      "BackupS3TestResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "details": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "BackupSchedule": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cron": {
+            "default": "0 3 * * *",
+            "$ref": "#/components/schemas/BackupCron"
+          },
+          "keep": {
+            "default": 14,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          }
+        },
+        "required": [
+          "enabled",
+          "cron",
+          "keep"
+        ],
+        "additionalProperties": false
+      },
       "BackupSettings": {
         "type": "object",
         "properties": {
@@ -8926,11 +9117,81 @@
           },
           "includeAuditEvents": {
             "type": "boolean"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/BackupSchedule"
+          },
+          "s3": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "bucket": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+                  },
+                  "prefix": {
+                    "default": "capi-navigator/",
+                    "type": "string",
+                    "maxLength": 200,
+                    "pattern": "^([A-Za-z0-9!_.*'()-]+\\/)*$"
+                  },
+                  "region": {
+                    "default": "us-east-1",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "forcePathStyle": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "caCertificate": {
+                    "type": "string",
+                    "maxLength": 65536
+                  },
+                  "credentialsSet": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "bucket",
+                  "prefix",
+                  "region",
+                  "forcePathStyle",
+                  "credentialsSet"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextRun": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "runs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupRun"
+            }
           }
         },
         "required": [
           "recipients",
-          "includeAuditEvents"
+          "includeAuditEvents",
+          "schedule",
+          "s3",
+          "nextRun",
+          "runs"
         ],
         "additionalProperties": false
       },
@@ -14373,6 +14634,94 @@
         "type": "string",
         "maxLength": 65536
       },
+      "BackupS3CredentialsInput": {
+        "type": "object",
+        "properties": {
+          "accessKeyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "secretAccessKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          }
+        },
+        "required": [
+          "accessKeyId",
+          "secretAccessKey"
+        ]
+      },
+      "BackupS3TargetInput": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$"
+          },
+          "prefix": {
+            "default": "capi-navigator/",
+            "type": "string",
+            "maxLength": 200,
+            "pattern": "^([A-Za-z0-9!_.*'()-]+\\/)*$"
+          },
+          "region": {
+            "default": "us-east-1",
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "endpoint": {
+            "type": "string",
+            "format": "uri"
+          },
+          "forcePathStyle": {
+            "default": false,
+            "type": "boolean"
+          },
+          "caCertificate": {
+            "type": "string",
+            "maxLength": 65536
+          }
+        },
+        "required": [
+          "bucket"
+        ]
+      },
+      "BackupS3TestRequestInput": {
+        "type": "object",
+        "properties": {
+          "s3": {
+            "$ref": "#/components/schemas/BackupS3TargetInput"
+          },
+          "s3Credentials": {
+            "$ref": "#/components/schemas/BackupS3CredentialsInput"
+          }
+        },
+        "required": [
+          "s3"
+        ]
+      },
+      "BackupScheduleInput": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cron": {
+            "default": "0 3 * * *",
+            "$ref": "#/components/schemas/BackupCron"
+          },
+          "keep": {
+            "default": 14,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          }
+        }
+      },
       "BackupSettingsInputInput": {
         "type": "object",
         "properties": {
@@ -14395,6 +14744,20 @@
           "includeAuditEvents": {
             "default": true,
             "type": "boolean"
+          },
+          "schedule": {
+            "default": {
+              "enabled": false,
+              "cron": "0 3 * * *",
+              "keep": 14
+            },
+            "$ref": "#/components/schemas/BackupScheduleInput"
+          },
+          "s3": {
+            "$ref": "#/components/schemas/BackupS3TargetInput"
+          },
+          "s3Credentials": {
+            "$ref": "#/components/schemas/BackupS3CredentialsInput"
           }
         }
       },

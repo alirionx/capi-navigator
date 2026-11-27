@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   Body,
   Controller,
   Get,
@@ -12,9 +13,15 @@ import {
 } from '@nestjs/common';
 import {
   BackupPreviewSchema,
+  BackupRunSchema,
+  BackupS3TestRequestSchema,
+  BackupS3TestResultSchema,
   BackupSettingsInputSchema,
   BackupSettingsSchema,
   type BackupPreview,
+  type BackupRun,
+  type BackupS3TestRequest,
+  type BackupS3TestResult,
   type BackupSettings,
   type BackupSettingsInput,
 } from '@capi-navigator/shared';
@@ -86,5 +93,44 @@ export class BackupController {
     req.auditMessage = backup.summary;
     res.setHeader('Content-Disposition', `attachment; filename="${backup.fileName}"`);
     return new StreamableFile(backup.data);
+  }
+
+  @Api({
+    summary: 'Test the S3 target: write, read, list and delete a test object',
+    description: 'Uses the access key in the body, or the stored one (FP38-F-14).',
+    response: BackupS3TestResultSchema,
+  })
+  @Post('s3/test')
+  @HttpCode(200)
+  @Audit({ action: 'backup.s3.test', skip: true })
+  testS3(
+    @Body(new ZodValidationPipe(BackupS3TestRequestSchema)) body: BackupS3TestRequest,
+  ): Promise<BackupS3TestResult> {
+    return this.backup.testS3(body);
+  }
+
+  @Api({
+    summary: 'Back up to S3 now',
+    description:
+      'Creates a backup, uploads it to the S3 target and applies the retention (FP38-F-14). The run is recorded in the settings; a failed run answers 502 with the reason.',
+    response: BackupRunSchema,
+  })
+  @Post('s3/run')
+  @HttpCode(200)
+  @Audit({ action: 'backup.s3.run', targetKind: 'NavigatorBackupSettings' })
+  async runS3(
+    @CurrentUser() user: Principal,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<BackupRun> {
+    const { run, summary } = await this.backup.runToS3('manual', user.username);
+    if (run.outcome === 'failure') {
+      throw new BadGatewayException({
+        statusCode: 502,
+        message: run.message ?? 'The backup to S3 failed',
+        ...(run.hint ? { hint: run.hint } : {}),
+      });
+    }
+    if (summary) req.auditMessage = summary;
+    return run;
   }
 }

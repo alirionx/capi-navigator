@@ -25,9 +25,20 @@ spec:
         - name: Audit events
           type: boolean
           jsonPath: .spec.includeAuditEvents
+        - name: Schedule
+          type: string
+          jsonPath: .spec.schedule.cron
+        - name: Bucket
+          type: string
+          jsonPath: .spec.s3.bucket
+        - name: Last scheduled
+          type: string
+          jsonPath: .status.lastScheduledAt
         - name: Age
           type: date
           jsonPath: .metadata.creationTimestamp
+      subresources:
+        status: {}
       schema:
         openAPIV3Schema:
           type: object
@@ -58,3 +69,88 @@ spec:
                 includeAuditEvents:
                   default: true
                   type: boolean
+                schedule:
+                  default:
+                    enabled: false
+                    cron: 0 3 * * *
+                    keep: 14
+                  type: object
+                  properties:
+                    enabled:
+                      default: false
+                      type: boolean
+                    cron:
+                      default: 0 3 * * *
+                      type: string
+                    keep:
+                      default: 14
+                      type: integer
+                      minimum: 1
+                      maximum: 365
+                s3:
+                  type: object
+                  properties:
+                    bucket:
+                      type: string
+                      pattern: ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$
+                    prefix:
+                      default: capi-navigator/
+                      type: string
+                      maxLength: 200
+                      pattern: ^([A-Za-z0-9!_.*'()-]+\/)*$
+                    region:
+                      default: us-east-1
+                      type: string
+                      minLength: 1
+                      maxLength: 64
+                    endpoint:
+                      type: string
+                      format: uri
+                    forcePathStyle:
+                      default: false
+                      type: boolean
+                    caCertificate:
+                      type: string
+                      maxLength: 65536
+                  required:
+                    - bucket
+            status:
+              type: object
+              properties:
+                lastScheduledAt:
+                  type: string
+                runs:
+                  maxItems: 10
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      startedAt:
+                        type: string
+                      finishedAt:
+                        type: string
+                      trigger:
+                        type: string
+                        enum:
+                          - schedule
+                          - manual
+                      outcome:
+                        type: string
+                        enum:
+                          - success
+                          - failure
+                      objectKey:
+                        type: string
+                      size:
+                        type: integer
+                      deleted:
+                        type: integer
+                      message:
+                        type: string
+                      hint:
+                        type: string
+                    required:
+                      - startedAt
+                      - finishedAt
+                      - trigger
+                      - outcome

@@ -24,7 +24,9 @@ export function backupStore() {
       return cr(kind, names);
     },
   });
-  let settings: { metadata: { name: string }; spec: NavigatorBackupSettingsSpec } | undefined;
+  let settings:
+    { metadata: { name: string }; spec: NavigatorBackupSettingsSpec; status?: unknown } | undefined;
+  const plainSecrets = new Map<string, Record<string, string>>();
   const secret = (name: string, value: string): V1Secret => ({
     metadata: { name, labels: { 'app.kubernetes.io/part-of': 'capi-navigator' } },
     type: 'Opaque',
@@ -51,11 +53,26 @@ export function backupStore() {
         return settings;
       },
       replaceSpec: async (_current: unknown, spec: NavigatorBackupSettingsSpec) => {
-        settings = { metadata: { name: 'default' }, spec };
+        settings = { ...settings, metadata: { name: 'default' }, spec };
+        return settings;
+      },
+      patchStatus: async (_name: string, status: Record<string, unknown>) => {
+        if (!settings) throw Object.assign(new Error('HTTP 404'), { code: 404 });
+        settings = {
+          ...settings,
+          status: { ...((settings.status as object | undefined) ?? {}), ...status },
+        };
         return settings;
       },
     },
     secrets: {
+      get: async (name: string) => plainSecrets.get(name),
+      put: async (name: string, data: Record<string, string>) => {
+        plainSecrets.set(name, { ...data });
+      },
+      delete: async (name: string) => {
+        plainSecrets.delete(name);
+      },
       getRaw: async (name: string) =>
         [
           secret('management-cluster-aws-credentials', 'KUBECONFIG-OF-AWS'),
@@ -74,5 +91,9 @@ export function backupStore() {
       data: { 'overrides.json': '{}' },
     }),
   };
-  return { store: store as unknown as StoreService, settings: () => settings };
+  return {
+    store: store as unknown as StoreService,
+    settings: () => settings,
+    secrets: plainSecrets,
+  };
 }

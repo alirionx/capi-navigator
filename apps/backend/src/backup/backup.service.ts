@@ -1,17 +1,26 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Optional } from '@nestjs/common';
 import {
+  BACKUP_S3_SECRET_NAME,
   BACKUP_SETTINGS_NAME,
+  BackupSettingsInputSchema,
+  MAX_BACKUP_RUNS,
   NAVIGATOR_API_VERSION,
   NavigatorBackupSettingsSpecSchema,
+  nextBackupRuns,
   OIDC_CLIENT_SECRET_NAME,
   backupFileName,
   connectionSecretName,
   helmRepositorySecretName,
   passwordSecretName,
   type BackupPreview,
+  type BackupRun,
+  type BackupS3Credentials,
+  type BackupS3TestRequest,
+  type BackupS3TestResult,
   type BackupSettings,
   type BackupSettingsInput,
   type NavigatorBackupSettingsSpec,
+  type NavigatorBackupSettingsStatus,
   type NavigatorResource,
 } from '@capi-navigator/shared';
 import type * as openpgp from 'openpgp';
@@ -28,6 +37,7 @@ import {
   type BackupGroup,
   type StoredObject,
 } from './backup-archive.js';
+import { explainS3, sdkS3, testTarget, uploadBackup, type S3Factory } from './backup-s3.js';
 import {
   BackupKeyError,
   describeRecipientKey,
@@ -36,6 +46,9 @@ import {
 } from './backup-keys.js';
 
 const DEFAULT_SPEC: NavigatorBackupSettingsSpec = NavigatorBackupSettingsSpecSchema.parse({});
+
+/** Injection token of the S3 client factory; tests pass a fake. */
+export const BACKUP_S3_FACTORY = 'BACKUP_S3_FACTORY';
 
 /** A finished backup: ciphertext only (FP38-F-05). */
 export interface Backup {
@@ -51,20 +64,49 @@ export interface Backup {
  */
 @Injectable()
 export class BackupService {
-  constructor(private readonly store: StoreService) {}
+  private readonly s3: S3Factory;
+
+  constructor(
+    private readonly store: StoreService,
+    @Optional() @Inject(BACKUP_S3_FACTORY) s3?: S3Factory,
+  ) {
+    this.s3 = s3 ?? sdkS3;
+  }
 
   async settings(now = new Date()): Promise<BackupSettings> {
-    const spec = await this.storedSpec();
+    const stored = await this.stored();
+    const spec = stored?.spec ?? DEFAULT_SPEC;
+    const status = (stored?.status ?? {}) as NavigatorBackupSettingsStatus;
+    const credentials = spec.s3 ? await this.s3Credentials() : undefined;
     return {
       recipients: await Promise.all(
         spec.recipients.map((r) => describeRecipientKey(r.publicKey, now)),
       ),
       includeAuditEvents: spec.includeAuditEvents,
+      schedule: spec.schedule,
+      s3: spec.s3 ? { ...spec.s3, credentialsSet: !!credentials } : null,
+      nextRun:
+        spec.schedule.enabled && spec.s3
+          ? (nextBackupRuns(spec.schedule.cron, now)[0]?.toISOString() ?? null)
+          : null,
+      runs: status.runs ?? [],
     };
   }
 
-  /** FP38-F-02: every key is checked; the same key twice is stored once. */
-  async updateSettings(input: BackupSettingsInput): Promise<BackupSettings> {
+  /**
+   * FP38-F-02, F-10: every key is checked; the same key twice is stored once. A new S3 access key
+   * replaces the stored one; without a target the key is removed.
+   */
+  async updateSettings(body: BackupSettingsInput): Promise<BackupSettings> {
+    const parsed = BackupSettingsInputSchema.safeParse(body);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw new BadRequestException({
+        statusCode: 400,
+        message: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Invalid backup settings',
+      });
+    }
+    const input = parsed.data;
     const seen = new Set<string>();
     const recipients: NavigatorBackupSettingsSpec['recipients'] = [];
     for (const [i, r] of input.recipients.entries()) {
@@ -77,8 +119,29 @@ export class BackupService {
     const spec: NavigatorBackupSettingsSpec = {
       recipients,
       includeAuditEvents: input.includeAuditEvents,
+      schedule: input.schedule,
+      ...(input.s3 ? { s3: input.s3 } : {}),
     };
+    if (input.s3 && !input.s3Credentials && !(await this.s3Credentials())) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'Enter the S3 access key',
+        hint: 'The S3 target needs an access key ID and a secret access key.',
+      });
+    }
+    if (spec.schedule.enabled && (!spec.s3 || recipients.length === 0)) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: 'A schedule needs an S3 target and at least one key',
+        hint: 'Set the S3 target and add a recipient key, or switch the schedule off.',
+      });
+    }
     try {
+      if (input.s3Credentials) {
+        await this.store.secrets.put(BACKUP_S3_SECRET_NAME, input.s3Credentials);
+      } else if (!input.s3) {
+        await this.store.secrets.delete(BACKUP_S3_SECRET_NAME);
+      }
       const current = await this.store.backupSettings.get(BACKUP_SETTINGS_NAME);
       if (current) await this.store.backupSettings.replaceSpec(current, spec);
       else
@@ -93,6 +156,116 @@ export class BackupService {
       throw toHttpException(err, 'Save the backup settings');
     }
     return this.settings();
+  }
+
+  /** FP38-F-14: tests the target as entered, with a new key or the stored one. */
+  async testS3(req: BackupS3TestRequest): Promise<BackupS3TestResult> {
+    const credentials = req.s3Credentials ?? (await this.s3Credentials());
+    if (!credentials) {
+      return {
+        ok: false,
+        message: 'No S3 access key',
+        hint: 'Enter the access key ID and the secret access key.',
+      };
+    }
+    return testTarget(this.s3(req.s3, credentials), req.s3);
+  }
+
+  /**
+   * FP38-F-11 to F-13: creates a backup, uploads it to the stored target, applies the retention
+   * and records the run in the status (newest first). Never throws for S3 errors: the run says
+   * what failed.
+   */
+  async runToS3(
+    trigger: BackupRun['trigger'],
+    actor: string,
+    now = () => new Date(),
+  ): Promise<{ run: BackupRun; summary?: string }> {
+    const startedAt = now().toISOString();
+    const stored = await this.stored();
+    const spec = stored?.spec ?? DEFAULT_SPEC;
+    const finish = async (run: Omit<BackupRun, 'startedAt' | 'finishedAt' | 'trigger'>) => {
+      const full: BackupRun = { startedAt, finishedAt: now().toISOString(), trigger, ...run };
+      await this.recordRun(full);
+      return full;
+    };
+    const credentials = spec.s3 ? await this.s3Credentials() : undefined;
+    if (!spec.s3 || !credentials) {
+      return {
+        run: await finish({
+          outcome: 'failure',
+          message: 'No S3 target set',
+          hint: 'Set the S3 target and its access key on the backup page.',
+        }),
+      };
+    }
+    let backup: Backup;
+    try {
+      backup = await this.create(actor, new Date(startedAt));
+    } catch (err) {
+      const body = (err as { response?: { message?: string; hint?: string } }).response;
+      return {
+        run: await finish({
+          outcome: 'failure',
+          message: body?.message ?? (err instanceof Error ? err.message : String(err)),
+          ...(body?.hint ? { hint: body.hint } : {}),
+        }),
+      };
+    }
+    try {
+      const target = spec.s3;
+      const { key, deleted } = await uploadBackup(
+        this.s3(target, credentials),
+        target,
+        backup.fileName,
+        backup.data,
+        spec.schedule.keep,
+      );
+      return {
+        run: await finish({
+          outcome: 'success',
+          objectKey: key,
+          size: backup.data.length,
+          deleted: deleted.length,
+        }),
+        summary: `${backup.summary}; uploaded to ${target.bucket}/${key}${deleted.length ? `, ${deleted.length} older deleted` : ''}`,
+      };
+    } catch (err) {
+      const { message, hint } = explainS3(err, 'upload');
+      return { run: await finish({ outcome: 'failure', message, ...(hint ? { hint } : {}) }) };
+    }
+  }
+
+  /** The due time of the last scheduled run (FP38-F-11). */
+  async lastScheduledAt(): Promise<string | undefined> {
+    const status = (await this.stored())?.status as NavigatorBackupSettingsStatus | undefined;
+    return status?.lastScheduledAt;
+  }
+
+  async setLastScheduledAt(at: string): Promise<void> {
+    await this.store.backupSettings.patchStatus(BACKUP_SETTINGS_NAME, { lastScheduledAt: at });
+  }
+
+  /** The stored settings, for the scheduler. */
+  async storedSpec(): Promise<NavigatorBackupSettingsSpec> {
+    return (await this.stored())?.spec ?? DEFAULT_SPEC;
+  }
+
+  private async recordRun(run: BackupRun): Promise<void> {
+    const stored = await this.stored();
+    if (!stored) return;
+    const runs = ((stored.status as NavigatorBackupSettingsStatus | undefined)?.runs ?? []).slice(
+      0,
+      MAX_BACKUP_RUNS - 1,
+    );
+    await this.store.backupSettings.patchStatus(BACKUP_SETTINGS_NAME, { runs: [run, ...runs] });
+  }
+
+  private async s3Credentials(): Promise<BackupS3Credentials | undefined> {
+    const data = await this.store.secrets.get(BACKUP_S3_SECRET_NAME);
+    return data?.accessKeyId && data.secretAccessKey
+      ? { accessKeyId: data.accessKeyId, secretAccessKey: data.secretAccessKey }
+      : undefined;
   }
 
   /** FP38-F-03: what a backup would contain now, by kind. */
@@ -143,9 +316,9 @@ export class BackupService {
     };
   }
 
-  private async storedSpec(): Promise<NavigatorBackupSettingsSpec> {
+  private async stored() {
     try {
-      return (await this.store.backupSettings.get(BACKUP_SETTINGS_NAME))?.spec ?? DEFAULT_SPEC;
+      return await this.store.backupSettings.get(BACKUP_SETTINGS_NAME);
     } catch (err) {
       throw toHttpException(err, 'Read the backup settings');
     }
@@ -189,6 +362,7 @@ export class BackupService {
       const secretNames = new Set([
         SESSION_KEY_SECRET,
         OIDC_CLIENT_SECRET_NAME,
+        BACKUP_S3_SECRET_NAME,
         ...connections.map((c) => connectionSecretName(c.metadata.name)),
         ...users.map((u) => passwordSecretName(u.metadata.name)),
         ...repositories.map((r) => helmRepositorySecretName(r.metadata.name)),
