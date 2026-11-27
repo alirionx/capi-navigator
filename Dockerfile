@@ -16,6 +16,7 @@ COPY apps/backend apps/backend
 COPY apps/frontend apps/frontend
 COPY LICENSE NOTICE ./
 COPY scripts/third-party-notices.mjs scripts/
+COPY scripts/licenses scripts/licenses
 # Third-party notices (served at /third-party-notices.txt) and the license gate.
 RUN node scripts/third-party-notices.mjs
 RUN pnpm --filter @capi-navigator/shared build \
