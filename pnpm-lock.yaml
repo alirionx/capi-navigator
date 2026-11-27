@@ -238,6 +238,9 @@ importers:
       openid-client:
         specifier: ^6.9.1
         version: 6.9.1
+      openpgp:
+        specifier: 6.3.3
+        version: 6.3.3
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -247,6 +250,9 @@ importers:
       swagger-ui-dist:
         specifier: 5.35.1
         version: 5.35.1
+      tar-stream:
+        specifier: 3.2.2
+        version: 3.2.2
       ws:
         specifier: ^8.23.0
         version: 8.23.0
@@ -269,6 +275,9 @@ importers:
       '@types/supertest':
         specifier: ^7.2.1
         version: 7.2.1
+      '@types/tar-stream':
+        specifier: 3.1.5
+        version: 3.1.5
       '@types/ws':
         specifier: ^8.18.2
         version: 8.18.2
@@ -1062,6 +1071,9 @@ packages:
   '@types/supertest@7.2.1':
     resolution: {integrity: sha512-4CbBvoYVLHL7+yhbYrZET0vsvuyXTC05aRe7dNQkwMzm56auceoy6Yu3K50uZmwfHna1os3CMSgM/3QVkUtPTw==}
 
+  '@types/tar-stream@3.1.5':
+    resolution: {integrity: sha512-zCUA6CSDw0t2cpQiZixpyzfubpeuVZmBr5wztvuCG4bhy7reX/9wGXdZxEzz2CjMFLQ32UPR/01jzUUSRJeCeQ==}
+
   '@types/trusted-types@2.0.7':
     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
 
@@ -1704,6 +1716,9 @@ packages:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
 
+  eckey-utils@0.7.14:
+    resolution: {integrity: sha512-s/mENS+mMnJjDSydy0muBQQHMTWJ1nPe8EiphANZrf+lv/1u35aP9WvWHTWqCBJ21blNIurGF7UoLjtaOpoCFw==}
+
   editorconfig@3.0.2:
     resolution: {integrity: sha512-T0ix8GhtxyKVfUFEcvdNDt3YGqlwkFHbD4/5bgFUDgFmxhI/cSRAeJ87/Sz//Cq8Eam6JX/e23RkoFO71P7aAA==}
     engines: {node: '>=20'}
@@ -2333,6 +2348,15 @@ packages:
 
   openid-client@6.9.1:
     resolution: {integrity: sha512-wysSRjtNRRpu1S/HCVaQ7LRPSNc42lhS1szB1SihVTcA2kAarpzKyvAd+sjFX41ky7iDblGerORC8ASwpt3zqA==}
+
+  openpgp@6.3.3:
+    resolution: {integrity: sha512-W0foQI+Zb7/TCy7Z50gqZejYe3oJkiZJ9OSV4ImuRT8MmoKOJhtAMvRm6w9STlyYluLiuezG7+0Qdqbcmmx7ig==}
+    engines: {node: '>= 18.0.0', typescript: '>= 5.0.0'}
+    peerDependencies:
+      '@openpgp/web-stream-tools': ~0.3.0
+    peerDependenciesMeta:
+      '@openpgp/web-stream-tools':
+        optional: true
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -3790,6 +3814,10 @@ snapshots:
       '@types/methods': 1.1.4
       '@types/superagent': 8.1.11
 
+  '@types/tar-stream@3.1.5':
+    dependencies:
+      '@types/node': 26.6.6
+
   '@types/trusted-types@2.0.7':
     optional: true
 
@@ -4406,6 +4434,8 @@ snapshots:
       call-bind-apply-helpers: 1.0.2
       es-errors: 1.3.0
       gopd: 1.2.0
+
+  eckey-utils@0.7.14: {}
 
   editorconfig@3.0.2:
     dependencies:
@@ -5024,6 +5054,10 @@ snapshots:
     dependencies:
       jose: 6.2.18
       oauth4webapi: 3.8.9
+
+  openpgp@6.3.3:
+    dependencies:
+      eckey-utils: 0.7.14
 
   optionator@0.9.4:
     dependencies:

@@ -1,0 +1,95 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`backup archive (FP38-F-04) > writes resource files in restore order with a manifest and a restore guide 1`] = `
+{
+  "RESTORE.md": "# Restore a CAPI Navigator backup
+
+Backup of namespace \`capi-navigator-system\`, app version 0.22.0, created
+2026-11-27T10:15:00.000Z by admin. The files in \`resources/\` contain Secrets
+in plain text (base64): keep the decrypted copy only as long as you need it.
+
+1. Install the chart of the same app version (or a newer one with the same CRD version
+   \`v1alpha1\`) into an empty home cluster, with the backend scaled to zero so it does not
+   create an initial admin first:
+
+   \`\`\`sh
+   helm install capi-navigator oci://ghcr.io/alirionx/charts/capi-navigator \\
+     --version <version> -n capi-navigator-system --create-namespace -f <your values> --set replicaCount=0
+   \`\`\`
+
+2. Apply the resources, in the order of their file names. Server-side apply keeps no copy of the
+   Secrets in an annotation:
+
+   \`\`\`sh
+   kubectl apply --server-side -n capi-navigator-system -f resources/
+   \`\`\`
+
+   Another namespace works too: the files name none.
+
+3. Scale the backend up again:
+
+   \`\`\`sh
+   helm upgrade capi-navigator oci://ghcr.io/alirionx/charts/capi-navigator \\
+     --version <version> -n capi-navigator-system --reuse-values --set replicaCount=1
+   \`\`\`
+
+Users, passwords, roles, API tokens, connections, Helm repositories, blueprints and settings work
+as before. Not restored: the status of resources (rebuilt by the app), creation dates (they show the
+time of the restore) and the initial admin password. Management clusters are reached with the
+stored credentials; their own objects (providers, clusters) are not part of this backup.
+",
+  "manifest.json": "{
+  "format": "capi-navigator-home-backup/v1",
+  "appVersion": "0.22.0",
+  "namespace": "capi-navigator-system",
+  "createdAt": "2026-11-27T10:15:00.000Z",
+  "createdBy": "admin",
+  "includesAuditEvents": true,
+  "recipients": [
+    "0123456789ABCDEF0123456789ABCDEF01234567"
+  ],
+  "files": [
+    {
+      "name": "resources/10-secrets.yaml",
+      "kind": "Secret",
+      "objects": 1,
+      "sha256": "8d2211064d0d68fe3f1861c2a61e4c7dadd47dc594c6b4d68106d4f9837a45f9"
+    },
+    {
+      "name": "resources/12-navigatorusers.yaml",
+      "kind": "NavigatorUser",
+      "objects": 2,
+      "sha256": "c240b85ba7fd1f634402e8593a8123fcd7b56a0780bd436896e80952249d9c59"
+    }
+  ]
+}
+",
+  "resources/10-secrets.yaml": "apiVersion: v1
+kind: Secret
+metadata:
+  name: navigator-user-admin-password
+  labels:
+    app.kubernetes.io/part-of: capi-navigator
+    capi-navigator.io/user: admin
+type: Opaque
+data:
+  hash: c2NyeXB0JC4uLg==
+",
+  "resources/12-navigatorusers.yaml": "apiVersion: navigator.capi-navigator.io/v1alpha1
+kind: NavigatorUser
+metadata:
+  name: admin
+spec:
+  bindings:
+    - role: admin
+---
+apiVersion: navigator.capi-navigator.io/v1alpha1
+kind: NavigatorUser
+metadata:
+  name: zoe
+spec:
+  bindings:
+    - role: viewer
+",
+}
+`;

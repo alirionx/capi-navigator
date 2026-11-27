@@ -27,6 +27,26 @@ export class SecretStore {
     }
   }
 
+  /**
+   * The app's Secrets as stored, values base64-encoded, for the backup only (FP38-F-03). The caller
+   * must never log or return them unencrypted.
+   */
+  async listRaw(): Promise<V1Secret[]> {
+    const out: V1Secret[] = [];
+    let token: string | undefined;
+    do {
+      const res = await this.api.listNamespacedSecret({
+        namespace: this.namespace,
+        labelSelector: 'app.kubernetes.io/part-of=capi-navigator',
+        limit: 500,
+        ...(token ? { _continue: token } : {}),
+      });
+      out.push(...res.items);
+      token = res.metadata?._continue || undefined;
+    } while (token);
+    return out;
+  }
+
   async create(
     name: string,
     data: Record<string, string>,

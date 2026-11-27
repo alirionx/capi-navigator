@@ -501,6 +501,164 @@
         "x-permission": "public"
       }
     },
+    "/api/backup": {
+      "post": {
+        "operationId": "Backup_create",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Create a backup and download it, encrypted with OpenPGP",
+        "description": "A tar.gz of all app data in the home cluster, encrypted to every recipient key (FP38-F-04, F-05). Decrypt with gpg -d; see RESTORE.md in the archive. Every backup is audited.\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encrypted archive",
+            "content": {
+              "application/pgp-encrypted": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
+    "/api/backup/preview": {
+      "get": {
+        "operationId": "Backup_preview",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "What a backup would contain now, by kind",
+        "description": "Requires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
+    "/api/backup/settings": {
+      "get": {
+        "operationId": "Backup_settings",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Backup settings: recipient keys and whether audit events are included",
+        "description": "Public keys only, with fingerprint, user IDs and expiry (FP38-F-02).\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      },
+      "put": {
+        "operationId": "Backup_update",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Save the backup settings",
+        "description": "Every key must be an OpenPGP public key that can encrypt. Not with API tokens: whoever sets the keys can read every later backup.\n\nAny signed-in person; no API tokens.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupSettingsInputInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupSettings"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
     "/api/blueprints": {
       "get": {
         "operationId": "Blueprints_list",
@@ -8662,6 +8820,112 @@
         "type": "string",
         "pattern": "^[a-z]{2}(-gov|-iso[a-z]*)?-[a-z]+-\\d$"
       },
+      "BackupKey": {
+        "type": "object",
+        "properties": {
+          "publicKey": {
+            "type": "string"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "userIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiresSoon": {
+            "type": "boolean"
+          },
+          "problem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicKey",
+          "fingerprint",
+          "userIds",
+          "createdAt",
+          "expiresAt",
+          "expiresSoon"
+        ],
+        "additionalProperties": false
+      },
+      "BackupPreview": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "recipients": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "includeAuditEvents": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "recipients",
+          "includeAuditEvents"
+        ],
+        "additionalProperties": false
+      },
+      "BackupSettings": {
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupKey"
+            }
+          },
+          "includeAuditEvents": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "recipients",
+          "includeAuditEvents"
+        ],
+        "additionalProperties": false
+      },
       "Bastion": {
         "type": "object",
         "properties": {
@@ -12962,7 +13226,8 @@
           "helmRepositories.manage",
           "managementNodes.shell",
           "blueprints.manage",
-          "users.manage"
+          "users.manage",
+          "backup.manage"
         ]
       },
       "PermissionCheck": {
@@ -14096,6 +14361,35 @@
           "image"
         ]
       },
+      "BackupPublicKeyInput": {
+        "type": "string",
+        "maxLength": 65536
+      },
+      "BackupSettingsInputInput": {
+        "type": "object",
+        "properties": {
+          "recipients": {
+            "default": [],
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "publicKey": {
+                  "$ref": "#/components/schemas/BackupPublicKeyInput"
+                }
+              },
+              "required": [
+                "publicKey"
+              ]
+            }
+          },
+          "includeAuditEvents": {
+            "default": true,
+            "type": "boolean"
+          }
+        }
+      },
       "BastionInput": {
         "type": "object",
         "properties": {
@@ -14928,7 +15222,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 17,
+            "maxItems": 18,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"
@@ -16800,7 +17094,7 @@
             "maxLength": 300
           },
           "permissions": {
-            "maxItems": 17,
+            "maxItems": 18,
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/Permission"

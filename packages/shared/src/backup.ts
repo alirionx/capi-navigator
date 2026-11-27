@@ -12,6 +12,8 @@ export const BackupKeySchema = z.object({
   expiresAt: z.string().nullable(),
   /** FP38-F-02: the key expires within 30 days. */
   expiresSoon: z.boolean(),
+  /** Why a stored key can no longer encrypt (e.g. expired since it was added); blocks backups. */
+  problem: z.string().optional(),
 });
 export type BackupKey = z.infer<typeof BackupKeySchema>;
 

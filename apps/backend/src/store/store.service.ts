@@ -5,7 +5,7 @@ import {
   type OnApplicationShutdown,
   type OnModuleInit,
 } from '@nestjs/common';
-import { CoreV1Api } from '@kubernetes/client-node';
+import { CoreV1Api, type V1ConfigMap } from '@kubernetes/client-node';
 import {
   ADDON_PRESETS_CONFIGMAP,
   ADDON_PRESETS_CONFIGMAP_KEY,
@@ -15,6 +15,7 @@ import {
   HelmRepositoryCrd,
   ManagementClusterCrd,
   NavigatorAuthSettingsCrd,
+  NavigatorBackupSettingsCrd,
   NavigatorGroupCrd,
   NavigatorRoleCrd,
   NavigatorTokenCrd,
@@ -23,6 +24,7 @@ import {
   isBuiltinRole,
   type Permission,
   type NavigatorAuthSettingsSpecSchema,
+  type NavigatorBackupSettingsSpecSchema,
   type NavigatorGroupSpecSchema,
   type NavigatorRoleSpecSchema,
   type NavigatorTokenSpecSchema,
@@ -66,6 +68,8 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
   readonly authSettings: CustomResourceClient<typeof NavigatorAuthSettingsSpecSchema>;
   readonly authSettingsCache: ResourceCache<typeof NavigatorAuthSettingsSpecSchema>;
   readonly blueprints: CustomResourceClient<typeof ClusterBlueprintStorageSchema>;
+  /** FP38-F-01: read on demand, no cache; only the backup page and backups need it. */
+  readonly backupSettings: CustomResourceClient<typeof NavigatorBackupSettingsSpecSchema>;
   readonly blueprintCache: ResourceCache<typeof ClusterBlueprintStorageSchema>;
   readonly secrets: SecretStore;
   private readonly core: CoreV1Api;
@@ -89,6 +93,7 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
     this.authSettings = new CustomResourceClient(kc, ns, NavigatorAuthSettingsCrd);
     this.authSettingsCache = new ResourceCache(kc, this.authSettings);
     this.blueprints = new CustomResourceClient(kc, ns, ClusterBlueprintCrd);
+    this.backupSettings = new CustomResourceClient(kc, ns, NavigatorBackupSettingsCrd);
     this.blueprintCache = new ResourceCache(kc, this.blueprints);
     this.secrets = new SecretStore(kc, ns);
     this.core = kc.makeApiClient(CoreV1Api);
@@ -126,6 +131,19 @@ export class StoreService implements OnModuleInit, OnApplicationShutdown {
       return parsed.data;
     } catch (err) {
       if (isNotFound(err)) return {};
+      throw err;
+    }
+  }
+
+  /** The ConfigMap of the preset overrides as stored, for the backup (FP38-F-03). */
+  async addonPresetOverridesConfigMap(): Promise<V1ConfigMap | undefined> {
+    try {
+      return await this.core.readNamespacedConfigMap({
+        name: ADDON_PRESETS_CONFIGMAP,
+        namespace: this.namespace,
+      });
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
       throw err;
     }
   }

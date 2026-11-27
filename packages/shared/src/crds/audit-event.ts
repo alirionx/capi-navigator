@@ -29,7 +29,7 @@ export const AuditEventSpecSchema = z.object({
   issuer: z.string().optional(),
   /** Mapped provider groups of an `auth.oidc.login` event (FP14-F-15). */
   groups: z.array(z.string()).optional(),
-  /** Short reason for a failure. Never contains credentials (NF-01). */
+  /** Short reason for a failure, or a summary of a backup (FP38-F-07). Never contains credentials (NF-01). */
   message: z.string().optional(),
 });
 export type AuditEventSpec = z.infer<typeof AuditEventSpecSchema>;

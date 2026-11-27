@@ -17,7 +17,7 @@ export interface PermissionRule {
   anyOf: Permission[];
   /** Any signed-in user (own session and password), no permission needed. */
   signedIn?: boolean;
-  /** With `signedIn`: no API tokens (FP37-F-07). */
+  /** No API tokens (FP37-F-07; FP38: changing the backup keys). */
   peopleOnly?: boolean;
   /**
    * Dotted path of the body field naming the namespace, for endpoints that create something
@@ -38,7 +38,7 @@ export interface PermissionRule {
  */
 export const Requires = (
   permission: Permission | Permission[],
-  opts: { namespaceFromBody?: string; scopeFromBlueprint?: string } = {},
+  opts: { namespaceFromBody?: string; scopeFromBlueprint?: string; peopleOnly?: boolean } = {},
 ) =>
   SetMetadata(PERMISSION_KEY, {
     anyOf: Array.isArray(permission) ? permission : [permission],

@@ -12,6 +12,7 @@ import {
   type NavigatorResource,
 } from '@capi-navigator/shared';
 import type { z } from 'zod';
+import { isNotFound } from '../kube/errors.js';
 
 export const FIELD_MANAGER = 'capi-navigator';
 
@@ -51,6 +52,19 @@ export class CustomResourceClient<TSchema extends z.ZodType> {
       metadata?: { continue?: string };
     };
     return { items: res.items, continue: res.metadata?.continue || undefined };
+  }
+
+  /** One resource, or undefined if it does not exist. */
+  async get(name: string): Promise<NavigatorResource<z.infer<TSchema>> | undefined> {
+    try {
+      return (await this.api.getNamespacedCustomObject({
+        ...this.coords,
+        name,
+      })) as NavigatorResource<z.infer<TSchema>>;
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw err;
+    }
   }
 
   async create(

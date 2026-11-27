@@ -31,6 +31,12 @@ const ALLOWED = new Set([
   'OFL-1.1',
   '(MPL-2.0 OR Apache-2.0)',
 ]);
+/**
+ * Named exceptions: one package with one license, each decided in an ADR. openpgp.js encrypts the
+ * backups (FP-38, ADR-0045); used unmodified from node_modules, so LGPL-3.0 allows shipping it
+ * under Apache-2.0.
+ */
+const ALLOWED_PACKAGES = new Map([['openpgp', 'LGPL-3.0+']]);
 const LICENSE_FILE = /^(licen[sc]e|copying|notice)(\.|-|$)/i;
 
 const tree = JSON.parse(
@@ -72,7 +78,9 @@ const walk = (deps) => {
 };
 for (const project of tree) walk(project.dependencies);
 
-const refused = [...packages.values()].filter((p) => !ALLOWED.has(p.license));
+const refused = [...packages.values()].filter(
+  (p) => !ALLOWED.has(p.license) && ALLOWED_PACKAGES.get(p.name) !== p.license,
+);
 if (refused.length) {
   process.stderr.write('Licenses not on the allow list (scripts/third-party-notices.mjs):\n');
   for (const p of refused) process.stderr.write(`  ${p.name}@${p.version}: ${p.license}\n`);
@@ -117,6 +125,16 @@ for (const [text, members] of groups) {
   for (const p of members)
     parts.push(`- ${p.name}@${p.version} (${p.license})${p.url ? ` ${p.url}` : ''}`);
   parts.push('', text, '', '-'.repeat(100));
+}
+// The LGPL-3.0 adds to the GPL-3.0 and asks for a copy of both (section 4).
+if ([...packages.values()].some((p) => p.license.startsWith('LGPL-3.0'))) {
+  parts.push(
+    '',
+    line,
+    'GNU General Public License, Version 3 (full text; the LGPL-3.0 above adds to it)',
+    line,
+    readFileSync(join(root, 'scripts/licenses/GPL-3.0.txt'), 'utf8').trim(),
+  );
 }
 parts.push(
   '',

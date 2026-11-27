@@ -37,6 +37,7 @@ export class AuditInterceptor implements NestInterceptor {
       const managementCluster = meta?.managementClusterParam
         ? lookup(req, meta.managementClusterParam)
         : undefined;
+      const text = message ?? (outcome === 'success' ? req.auditMessage : undefined);
       return this.audit.record({
         actor: req.principal?.username ?? req.auditActor ?? 'anonymous',
         action: actionOf(meta, req),
@@ -46,7 +47,7 @@ export class AuditInterceptor implements NestInterceptor {
         ...(managementCluster ? { managementCluster } : {}),
         ...(req.principal?.token ? { token: req.principal.token.name } : {}),
         ...(req.principal?.oidc ? { subject: req.principal.oidc.subject } : {}),
-        ...(message ? { message } : {}),
+        ...(text ? { message: text } : {}),
       });
     };
 

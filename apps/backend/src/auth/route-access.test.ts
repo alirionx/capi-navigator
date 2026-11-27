@@ -83,6 +83,11 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
       'viewer',
     'DELETE /api/my/namespaces/:connection/:namespace/:name/:workloadNamespace/tokens/:token':
       'viewer',
+    // FP-38: backups hold every credential of the app, so admin only (FP38-F-06).
+    'GET /api/backup/settings': 'admin',
+    'PUT /api/backup/settings': 'admin',
+    'GET /api/backup/preview': 'admin',
+    'POST /api/backup': 'admin',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 

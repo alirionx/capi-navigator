@@ -24,4 +24,6 @@ export interface AuthenticatedRequest {
   principal?: Principal;
   /** Username of a login attempt, for the audit log of failed logins. */
   auditActor?: string;
+  /** Summary a handler adds to its AuditEvent on success (FP38-F-07); never secrets. */
+  auditMessage?: string;
 }
