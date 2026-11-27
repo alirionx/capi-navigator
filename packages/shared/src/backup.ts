@@ -33,6 +33,9 @@ export const BackupPreviewSchema = z.object({
   total: z.number().int(),
   recipients: z.number().int(),
   includeAuditEvents: z.boolean(),
+  /** For the restore guide on the page (FP38-F-08): where and which version to restore. */
+  namespace: z.string(),
+  appVersion: z.string(),
 });
 export type BackupPreview = z.infer<typeof BackupPreviewSchema>;
 

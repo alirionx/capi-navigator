@@ -153,11 +153,36 @@ const howTo = computed(() => [
     command: `gpg --armor --export-secret-keys ${HOWTO_EMAIL} > capi-navigator-backup-key.asc`,
   },
 ]);
-const copied = ref<number | null>(null);
-async function copy(i: number, text: string): Promise<void> {
+const copied = ref<string | null>(null);
+async function copy(id: string, text: string): Promise<void> {
   await navigator.clipboard?.writeText(text);
-  copied.value = i;
+  copied.value = id;
 }
+
+/**
+ * How to restore (FP38-F-08): the steps of RESTORE.md with namespace, version and file name filled
+ * in. Restoring stays outside the app; it needs gpg, helm and kubectl.
+ */
+const CHART = 'oci://ghcr.io/alirionx/charts/capi-navigator';
+const restoreSteps = computed(() => {
+  const ns = store.preview?.namespace ?? 'capi-navigator-system';
+  const version = store.preview?.appVersion ?? 'VERSION';
+  const file = downloaded.value ?? 'capi-navigator-home-YYYYMMDDTHHMMSSZ.tar.gz.gpg';
+  return [
+    {
+      text: t('backup.restoreInstall'),
+      command: `helm install capi-navigator ${CHART} --version ${version} \\\n  -n ${ns} --create-namespace -f values.yaml --set replicaCount=0`,
+    },
+    {
+      text: t('backup.restoreDecrypt'),
+      command: `mkdir restore && gpg -d ${file} | tar xz -C restore\nkubectl apply --server-side -n ${ns} -f restore/resources/\nrm -rf restore`,
+    },
+    {
+      text: t('backup.restoreScaleUp'),
+      command: `helm upgrade capi-navigator ${CHART} --version ${version} \\\n  -n ${ns} --reuse-values --set replicaCount=1`,
+    },
+  ];
+});
 
 /** Fingerprint in blocks of four, as gpg prints it. */
 function fingerprint(fp: string): string {
@@ -280,11 +305,11 @@ function fingerprint(fp: string): string {
                       step.command
                     }}</pre>
                     <v-btn
-                      :icon="copied === i ? 'mdi-check' : 'mdi-content-copy'"
+                      :icon="copied === `key-${i}` ? 'mdi-check' : 'mdi-content-copy'"
                       size="small"
                       variant="text"
                       :aria-label="t('common.copy')"
-                      @click="copy(i, step.command)"
+                      @click="copy(`key-${i}`, step.command)"
                     />
                   </div>
                 </li>
@@ -346,6 +371,38 @@ function fingerprint(fp: string): string {
           data-testid="backup-downloaded"
           >{{ t('backup.downloaded', { file: downloaded }) }}</v-alert
         >
+        <v-expansion-panels variant="accordion" class="mb-4" data-testid="backup-restore-howto">
+          <v-expansion-panel>
+            <v-expansion-panel-title>
+              <v-icon icon="mdi-help-circle-outline" size="small" class="me-2" />
+              {{ t('backup.restoreTitle') }}
+            </v-expansion-panel-title>
+            <v-expansion-panel-text>
+              <p class="text-body-medium mb-3">{{ t('backup.restoreIntro') }}</p>
+              <ol class="howto">
+                <li v-for="(step, i) in restoreSteps" :key="i" class="mb-3">
+                  <div class="text-body-medium mb-1">{{ step.text }}</div>
+                  <div class="d-flex align-center ga-1">
+                    <pre class="command flex-grow-1" data-testid="backup-restore-command">{{
+                      step.command
+                    }}</pre>
+                    <v-btn
+                      :icon="copied === `restore-${i}` ? 'mdi-check' : 'mdi-content-copy'"
+                      size="small"
+                      variant="text"
+                      :aria-label="t('common.copy')"
+                      @click="copy(`restore-${i}`, step.command)"
+                    />
+                  </div>
+                </li>
+                <li class="mb-1">
+                  <div class="text-body-medium">{{ t('backup.restoreTest') }}</div>
+                </li>
+              </ol>
+              <div class="text-body-small text-medium-emphasis">{{ t('backup.restoreNote') }}</div>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
         <v-btn
           color="primary"
           prepend-icon="mdi-download-lock"

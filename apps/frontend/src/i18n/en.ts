@@ -1615,6 +1615,18 @@ export const en = {
       'The file contains all credentials of the app, encrypted. Store it where only people allowed to restore the app can reach it. Every backup is recorded in the audit log.',
     saveFirst: 'Save or reset the changes to the keys first.',
     downloadButton: 'Download backup',
+    restoreTitle: 'How do I restore a backup?',
+    restoreIntro:
+      'Restoring runs outside the app, into a new or emptied home cluster, with gpg, helm and kubectl. The same steps, with this namespace, are in RESTORE.md inside the archive.',
+    restoreInstall:
+      'Install the chart of the same version into the new home cluster, with your values and the backend scaled to zero, so it does not create an initial admin first. A newer version works too while the CRD version (v1alpha1) is the same.',
+    restoreDecrypt:
+      'Decrypt the backup with the private key of one recipient, apply it and delete the decrypted files: they contain all credentials in plain text.',
+    restoreScaleUp: 'Scale the backend up again.',
+    restoreTest:
+      'Sign in with your usual account and test each connection on the Connections page once: their status is not part of the backup and shows "Unknown" until then.',
+    restoreNote:
+      'The backup holds the app data only. Providers, cloud credentials and workload clusters live in the management clusters and are not restored by it.',
     downloaded: 'Downloaded {file}. Check it with: gpg -d {file} | tar tz',
   },
   authSettings: {

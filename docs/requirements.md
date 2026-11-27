@@ -1382,7 +1382,7 @@ Part 2 (same day and cluster): the dashboard is read by impersonating the assign
 - **FP38-F-06** MUST require a new platform permission `backup.manage` (not scopable) for the settings and for every backup. The built-in admin has it; viewer and operator do not (pinned test, hard rule 9).
 - **FP38-F-07** MUST write an `AuditEvent` for every backup (who, number of objects, fingerprints of the keys; never the content) and for every change of the settings.
 - **FP38-F-08** MUST document the restore and test it: install the chart of the same version into an empty home cluster, scale the backend to zero, decrypt and apply the archive, scale up. Afterwards users, roles, tokens, connections, blueprints and settings work as before. A restore into a newer app version is supported while the CRD version (`v1alpha1`) is the same.
-- **FP38-F-09** MUST offer a page "Backup" for admins (keys, content, "Download backup") and describe the endpoints in the OpenAPI document (FP-23).
+- **FP38-F-09** MUST offer a page "Backup" for admins (keys, content, "Download backup") and describe the endpoints in the OpenAPI document (FP-23). The page explains how to create a fitting key and how to restore, with the commands of the installation filled in; restoring stays outside the app (gpg, helm, kubectl), there is no restore in the web UI.
 
 **Requirements, part 2: scheduled backup to S3**
 

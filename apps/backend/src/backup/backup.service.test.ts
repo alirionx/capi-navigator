@@ -66,6 +66,10 @@ describe('backup of the home cluster (FP-38)', () => {
       AuditEvent: 2,
     });
     expect(preview.total).toBe(18);
+    expect(preview).toMatchObject({
+      namespace: 'capi-navigator-system',
+      appVersion: expect.any(String),
+    });
   });
 
   it('writes an encrypted archive with only the app objects (FP38-F-03 to F-05)', async () => {

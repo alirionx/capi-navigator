@@ -105,6 +105,8 @@ export class BackupService {
       total: items.reduce((n, i) => n + i.count, 0),
       recipients: spec.recipients.length,
       includeAuditEvents: spec.includeAuditEvents,
+      namespace: this.store.namespace,
+      appVersion: APP_VERSION,
     };
   }
 

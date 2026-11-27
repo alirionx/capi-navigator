@@ -8897,13 +8897,21 @@
           },
           "includeAuditEvents": {
             "type": "boolean"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "appVersion": {
+            "type": "string"
           }
         },
         "required": [
           "items",
           "total",
           "recipients",
-          "includeAuditEvents"
+          "includeAuditEvents",
+          "namespace",
+          "appVersion"
         ],
         "additionalProperties": false
       },
