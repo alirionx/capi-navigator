@@ -32,6 +32,7 @@ export const en = {
     users: 'Users',
     roles: 'Roles',
     authentication: 'Authentication',
+    backup: 'Backup',
     addons: 'Add-ons',
     helmRepositories: 'Helm repositories',
     blueprints: 'Blueprints',
@@ -1567,6 +1568,45 @@ export const en = {
       'For scripts, CI pipelines and GitOps: no password and no sign-in; access with API tokens generated here. Default: off.',
     technical: 'technical',
     tokens: 'API tokens',
+  },
+  backup: {
+    title: 'Backup',
+    subtitle:
+      'Backs up all data of the app in the home cluster: users, roles, API tokens, connections to management clusters, Helm repositories, blueprints and settings, including their credentials. The backup is encrypted with OpenPGP to the keys below; the app cannot decrypt it. Restore it with gpg and kubectl, as RESTORE.md in the archive describes. Management clusters (providers, clusters) are not part of it.',
+    keys: 'Recipient keys',
+    keysHint:
+      'OpenPGP public keys; each backup is encrypted to all of them, and every recipient can decrypt it alone. Stored in the NavigatorBackupSettings resource "default" (spec.recipients) in the app namespace. Default: none.',
+    keysIntro:
+      'Whoever holds the private key of one of these keys can read every backup, including all credentials. Add keys only of people allowed to restore the app.',
+    noKeys: 'No key yet. Add at least one public key to create backups.',
+    noUserId: 'Key without user ID',
+    expires: 'Expires {at}',
+    noExpiry: 'Does not expire',
+    expiresSoon: 'Expires within 30 days',
+    newKey: 'New key',
+    newKeyHint: 'Checked when you save.',
+    removeKey: 'Remove key',
+    pasteKey: 'Public key (ASCII-armored)',
+    pasteKeyHint:
+      'Export it with gpg --armor --export KEY-ID. Only public keys that can encrypt are accepted; never paste a private key. At most 10 keys.',
+    addKey: 'Add key',
+    includeAuditEvents: 'Include audit events',
+    includeAuditEventsHint:
+      'The audit log of the retention period (AUDIT_RETENTION_DAYS) goes into the backup. Stored in spec.includeAuditEvents. Default: on.',
+    confirmTitle: 'Save backup settings?',
+    confirmText:
+      'Later backups are encrypted to the keys after this change. Backups made before stay encrypted to the keys they were made with.',
+    keyAdded: 'Key added',
+    keyRemoved: 'Key removed',
+    download: 'Download a backup',
+    downloadIntro:
+      'The backup is created now and downloaded as capi-navigator-home-TIME.tar.gz.gpg. A backup would contain:',
+    total: 'Total',
+    downloadWarning:
+      'The file contains all credentials of the app, encrypted. Store it where only people allowed to restore the app can reach it. Every backup is recorded in the audit log.',
+    saveFirst: 'Save or reset the changes to the keys first.',
+    downloadButton: 'Download backup',
+    downloaded: 'Downloaded {file}. Check it with: gpg -d {file} | tar tz',
   },
   authSettings: {
     title: 'Authentication',

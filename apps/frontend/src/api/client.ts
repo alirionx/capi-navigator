@@ -98,6 +98,23 @@ export async function apiText(path: string): Promise<string> {
   return res.text();
 }
 
+/**
+ * POST an endpoint that answers with a file (e.g. an encrypted backup, FP38-F-05) and hand it to
+ * the browser as download; the name comes from Content-Disposition.
+ */
+export async function apiDownload(path: string, fallbackName: string): Promise<string> {
+  const res = await call('POST', path);
+  const name =
+    /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') ?? '')?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+  return name;
+}
+
 /** Request an endpoint without a response body (204). */
 export async function apiVoid(method: Method, path: string, body?: unknown): Promise<void> {
   await call(method, path, body);

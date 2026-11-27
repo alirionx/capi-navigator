@@ -17,6 +17,7 @@ import LoginView from '../views/LoginView.vue';
 import MyNamespacesView from '../views/MyNamespacesView.vue';
 import ProvidersView from '../views/ProvidersView.vue';
 import AuthSettingsView from '../views/AuthSettingsView.vue';
+import BackupView from '../views/BackupView.vue';
 import RolesView from '../views/RolesView.vue';
 import UsersView from '../views/UsersView.vue';
 
@@ -177,6 +178,17 @@ export const routes: RouteRecordRaw[] = [
       permission: 'users.manage',
       titleKey: 'nav.authentication',
       icon: 'mdi-shield-key',
+      navGroup: 'administration',
+    },
+  },
+  {
+    path: '/backup',
+    name: 'backup',
+    component: BackupView,
+    meta: {
+      permission: 'backup.manage',
+      titleKey: 'nav.backup',
+      icon: 'mdi-backup-restore',
       navGroup: 'administration',
     },
   },
