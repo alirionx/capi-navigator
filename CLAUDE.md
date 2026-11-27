@@ -10,7 +10,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 
 ## Source of truth
 
-- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-34, FP-36, FP-37, outlook FP-11 to FP-21, FP-27, FP-28 and FP-35, non-functional requirements, decisions). Always follow it.
+- **Requirements:** `docs/requirements.md` – the full requirements specification (feature packs FP-0 to FP-10 plus the optional packs FP-14, FP-17 to FP-20, FP-22 to FP-26, FP-29 to FP-34, FP-36 to FP-38, outlook FP-11 to FP-21, FP-27, FP-28, FP-35 and FP-39, non-functional requirements, decisions). Always follow it.
 - **Architecture overview:** `docs/architecture.md` – how the parts work together (explanatory; keep it current when flows change).
 - **Architecture decisions:** `docs/adr/` – one short ADR per decision that deviates from or refines the requirements.
 - If this file and `docs/requirements.md` disagree, `docs/requirements.md` wins. Point out the conflict instead of guessing.
@@ -57,7 +57,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-34 | Cluster blueprints (optional; groundwork for a separate Open Service Broker, ADR-0035) | done (ADR-0035; live acceptance on Proxmox VE with address pool, saving checked on OpenStack, AWS and Google Cloud; node network pool for OpenStack since ADR-0038, live acceptance on a cloud that refuses overlapping subnets pending) |
 | FP-36 | Namespaces and service accounts in workload clusters (optional) | done (ADR-0039, ADR-0040; live acceptance with RKE2, k0s and kubeadm on Proxmox VE) |
 | FP-37 | Self-service for namespace users (optional; needs FP-36) | done (ADR-0041; live acceptance on Proxmox VE with Dex) |
-| FP-38 | Backup of the home cluster: manual download, then scheduled to S3 (optional) | planned (spec in review) |
+| FP-38 | Backup of the home cluster: manual download, then scheduled to S3 (optional) | part 1 done (manual download, ADR-0044, ADR-0045; restore verified on kind); part 2 (S3 schedule) open |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.

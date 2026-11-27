@@ -87,10 +87,12 @@ All distributions use Calico with VXLAN as CNI and run on unmodified cloud image
 - **Cluster blueprints**: admins save a reviewed cluster spec with a few parameters (workers,
   machine sizes, Kubernetes versions); clients such as a service broker create clusters from it
   through the API, and those clusters stay bound to it ([docs/blueprints.md](docs/blueprints.md)).
+- **Backup** of all app data as one OpenPGP-encrypted file, restorable with gpg and kubectl
+  ([docs/backup.md](docs/backup.md)).
 - **Managed namespaces**: divide a workload cluster into namespaces with limits and network
   isolation and give teams time-limited, revocable access to them; assigned people get it
   themselves and see nothing else of the app ([docs/namespaces.md](docs/namespaces.md)).
-- **Users and roles**: built-in roles namespace user, viewer, operator and admin plus custom roles from 16
+- **Users and roles**: built-in roles namespace user, viewer, operator and admin plus custom roles from 17
   permissions; role assignments can be limited to management cluster connections and namespaces
   (e.g. operator only in `team-a`). Enforced in the backend; every change is written
   to an audit log.

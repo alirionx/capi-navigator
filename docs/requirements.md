@@ -365,7 +365,7 @@ Implementation proceeds in eleven core feature packs (FP-0 to FP-10) that build 
 | FP-34 | Cluster blueprints (optional) | FP-7, FP-19, FP-22 |
 | FP-36 | Namespaces and service accounts in workload clusters (optional) | FP-8, FP-19, FP-30 |
 | FP-37 | Self-service for namespace users (optional, planned) | FP-14, FP-36 |
-| FP-38 | Backup of the home cluster (optional, planned) | FP-19, FP-29 |
+| FP-38 | Backup of the home cluster (optional) | FP-19, FP-29 |
 | UX | UI and UX improvements (recurring) | – |
 
 ### FP-0: Project scaffold
@@ -1378,7 +1378,7 @@ Part 2 (same day and cluster): the dashboard is read by impersonating the assign
 - **FP38-F-02** MUST accept only OpenPGP public keys that can encrypt: private keys, expired or revoked keys and keys without an encryption subkey are refused with an understandable message. The settings show fingerprint, user ID and expiry of each key and warn 30 days before a key expires. A backup needs at least one key; it is encrypted to all of them, so each recipient can decrypt it alone.
 - **FP38-F-03** MUST include all resources of the app's CRDs in the app namespace, the app's Secrets (management cluster credentials, password hashes, OIDC client secret, Helm repository credentials, session key) and the ConfigMap of the preset overrides. It MUST leave out Leases, the Secret of the initial admin password, Events and the objects of the Helm chart (they come back with `helm install`). The content is selected by the app's labels and known names, never by "everything in the namespace".
 - **FP38-F-04** MUST write a `tar.gz` archive, encrypted with OpenPGP (`capi-navigator-home-<UTC time>.tar.gz.gpg`), that can be restored without the app: after `gpg -d`, the YAML files can be applied with `kubectl apply`, numbered in restore order (Secrets and ConfigMaps first). They are cleaned of `uid`, `resourceVersion`, `creationTimestamp`, `managedFields`, `generation` and `namespace`, so they can be restored into another namespace. The archive contains a `manifest.json` (app version, namespace, time, who created it, number of objects per kind, SHA-256 of every file) and a `RESTORE.md`.
-- **FP38-F-05** MUST stream the archive and encrypt it in the backend before the first byte leaves it: nothing is written to disk, nothing of the content is logged, and the HTTP response carries only ciphertext. The app never holds a private key (ADR for hard rule 8). The OpenPGP library is openpgp.js (LGPL-3.0+), allowed as a named exception in the license gate (ADR).
+- **FP38-F-05** MUST build the archive and encrypt it in the backend's memory before the first byte leaves it: nothing is written to disk, nothing of the content is logged, and the HTTP response carries only ciphertext (buffered instead of streamed, so a failure ends in an error response, ADR-0044). The app never holds a private key (ADR for hard rule 8). The OpenPGP library is openpgp.js (LGPL-3.0+), allowed as a named exception in the license gate (ADR).
 - **FP38-F-06** MUST require a new platform permission `backup.manage` (not scopable) for the settings and for every backup. The built-in admin has it; viewer and operator do not (pinned test, hard rule 9).
 - **FP38-F-07** MUST write an `AuditEvent` for every backup (who, number of objects, fingerprints of the keys; never the content) and for every change of the settings.
 - **FP38-F-08** MUST document the restore and test it: install the chart of the same version into an empty home cluster, scale the backend to zero, decrypt and apply the archive, scale up. Afterwards users, roles, tokens, connections, blueprints and settings work as before. A restore into a newer app version is supported while the CRD version (`v1alpha1`) is the same.
@@ -1394,11 +1394,13 @@ Part 2 (same day and cluster): the dashboard is read by impersonating the assign
 
 **Acceptance criteria**
 
-- [ ] Part 1: a downloaded backup decrypts with `gpg -d` and the key of every recipient, and contains no plaintext secret before decryption.
-- [ ] Part 1: restored into a new kind cluster, the app signs in local users with their passwords, accepts the existing API tokens, and reaches its management clusters; the archive contains no Lease, no initial admin password and nothing outside the app's objects.
-- [ ] Part 1: viewer and operator get 403 on every backup endpoint; every backup writes an `AuditEvent`.
+- [x] Part 1: a downloaded backup decrypts with `gpg -d` and the key of every recipient, and contains no plaintext secret before decryption.
+- [x] Part 1: restored into a new kind cluster, the app signs in local users with their passwords, accepts the existing API tokens, and reaches its management clusters; the archive contains no Lease, no initial admin password and nothing outside the app's objects.
+- [x] Part 1: viewer and operator get 403 on every backup endpoint; every backup writes an `AuditEvent`.
 - [ ] Part 2: with two backend replicas, a schedule writes exactly one backup per run to MinIO, and the oldest is deleted beyond the retention; other objects in the bucket remain.
 - [ ] Part 2: a failed upload is shown with its reason on the page and in the audit log.
+
+Acceptance of part 1 (2026-11-27, ADR-0044, ADR-0045): a backup of the development app (1115 objects, 1091 of them audit events) decrypted with `gpg -d`, its SHA-256 sums matched, and it was applied with `kubectl apply --server-side` to a new kind cluster. A second backend against it signed in the admin with the old password, refused a wrong one, accepted an existing API token, and reached its connection after a test; no initial admin password was created. Connections show "Unknown" until tested, because status is not restored (RESTORE.md says so). The E2E test downloads a backup through the page and opens it with gpg and tar. API tokens may download, but not change the keys.
 
 ## 7. Non-functional requirements
 

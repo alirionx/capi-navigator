@@ -47,3 +47,5 @@ One short ADR per decision that deviates from or refines `docs/requirements.md`.
 | [0041](0041-namespace-users-without-view.md)                | Namespace users, a role without reading                                          | accepted |
 | [0042](0042-all-traffic-between-aws-nodes.md)               | All traffic between the nodes of an AWS cluster                                  | accepted |
 | [0043](0043-ebs-snapshot-permissions-on-aws.md)             | EBS snapshot permissions on AWS                                                  | accepted |
+| [0044](0044-encrypted-backup-download.md)                   | Encrypted backup of the home cluster                                             | accepted |
+| [0045](0045-openpgp-license-exception.md)                   | openpgp.js as named license exception                                            | accepted |

@@ -33,6 +33,9 @@ in plain text (base64): keep the decrypted copy only as long as you need it.
      --version <version> -n capi-navigator-system --reuse-values --set replicaCount=1
    \`\`\`
 
+4. Open the Connections page and test each connection once: their status is not part of the
+   backup and shows "Unknown" until then.
+
 Users, passwords, roles, API tokens, connections, Helm repositories, blueprints and settings work
 as before. Not restored: the status of resources (rebuilt by the app), creation dates (they show the
 time of the restore) and the initial admin password. Management clusters are reached with the

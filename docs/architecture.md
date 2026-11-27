@@ -69,6 +69,7 @@ One NestJS module per domain:
 | `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client), AWS, Google Cloud and Proxmox VE (API token, CA, machine sizes)                                                                                                                      |
 | `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                                                                                             |
 | `blueprints`       | [blueprints](../apps/backend/src/blueprints)                               | Cluster blueprints (`ClusterBlueprint` CRs): checked saving, creating clusters from a blueprint without a preview (ADR-0035)                                                                                                                                         |
+| `backup`           | [backup](../apps/backend/src/backup)                                       | Backup of the home cluster (FP-38): recipient keys (`NavigatorBackupSettings`), the app's objects as an OpenPGP-encrypted tar.gz, built in memory (ADR-0044)                                                                                                         |
 | `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets and the kube-vip presets for LoadBalancer Services on Proxmox                                                                                           |
 | `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it; workload logs on request with `clusters.logs`, audited (ADR-0036)                                                                                                                          |
 | `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                                                                                    |
@@ -89,6 +90,7 @@ One NestJS module per domain:
 | Preset overrides (CCM, CSI, kured) | ConfigMap                                                                                                                                                                                                                                                                                                                                                                                 | Home cluster            |
 | Cluster blueprints                 | `ClusterBlueprint` CR: base spec (opaque in the CRD, checked by the backend) and parameters                                                                                                                                                                                                                                                                                               | Home cluster            |
 | Audit log                          | `AuditEvent` CRs                                                                                                                                                                                                                                                                                                                                                                          | Home cluster            |
+| Backup keys                        | `NavigatorBackupSettings` CR `default`: OpenPGP public keys of the recipients; backups themselves are not stored by the app                                                                                                                                                                                                                                                               | Home cluster            |
 | Cloud credentials                  | Secret in the provider namespace (`capo-system`, `capa-system`, `capg-system`, `capmox-system`) plus a cluster-scoped identity listing the allowed namespaces ([ADR-0002](adr/0002-cluster-scoped-provider-identities.md)); CAPG has none, the list is an annotation on the Secret; Proxmox clusters get a copy of the token per cluster ([ADR-0027](adr/0027-proxmox-ve-with-capmox.md)) | Management cluster      |
 | A workload cluster                 | **Cluster spec** as annotation `capi-navigator.io/cluster-spec` on the CAPI `Cluster`, plus the generated CAPI resources                                                                                                                                                                                                                                                                  | Management cluster      |
 | Rollout and deletion progress      | Fields in the stored spec (`kubernetes.workerVersion`) and the annotation `capi-navigator.io/deletion`                                                                                                                                                                                                                                                                                    | Management cluster      |
@@ -364,6 +366,16 @@ the blueprint. The transformation writes `blueprint` as annotation on the `Clust
 apply keeps it; the change pipeline refuses changes of such clusters except upgrade and reapply by
 `blueprints.manage`. Details: [blueprints.md](blueprints.md).
 
+### Backup of the home cluster
+
+An admin downloads all app data of the home cluster as one file
+([backup](../apps/backend/src/backup)). The backend lists the app's CRDs, the Secrets by the names
+the app gives them (from its own resources) and the preset ConfigMap; a pure function cleans them
+for `kubectl apply` (no namespace, status or server-set metadata) and adds `manifest.json` and
+`RESTORE.md`. tar-stream and zlib pack them in memory, openpgp.js encrypts the archive to every
+recipient key, and only ciphertext leaves the backend (ADR-0044). Restoring needs no app: `gpg -d`,
+`kubectl apply --server-side`. Details: [backup.md](backup.md).
+
 ### OpenAPI description and Swagger UI
 
 The API description is generated from the code, not written by hand
@@ -426,6 +438,8 @@ Secret that CAPI maintains:
 - Each management cluster is accessed with the credentials of its connection only; the minimal
   access manifest limits what the app can do there.
 - Sessions are signed cookies (Secure, HttpOnly) with a fixed lifetime; sign-in is rate-limited.
+- Backups hold every credential of the app; they leave the backend only encrypted to OpenPGP
+  public keys, and the app holds no private key (ADR-0044).
 - The app sets no owner references or finalizers on CAPI resources and uses only labels and
   annotations under `capi-navigator.io/`, so uninstalling it leaves the clusters intact.
 
