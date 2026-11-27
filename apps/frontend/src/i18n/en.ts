@@ -1755,6 +1755,8 @@ export const en = {
     blueprints_manage:
       'Manage cluster blueprints and upgrade the Kubernetes version of clusters created from them.',
     users_manage: 'Manage users, roles and role assignments (effectively admin).',
+    backup_manage:
+      'Set the backup keys and download backups of all app data, including credentials (effectively admin).',
   },
 };
 

@@ -34,6 +34,7 @@ export const PERMISSIONS = [
   'managementNodes.shell',
   'blueprints.manage',
   'users.manage',
+  'backup.manage',
 ] as const;
 export const PermissionSchema = z.enum(PERMISSIONS);
 export type Permission = z.infer<typeof PermissionSchema>;
@@ -79,7 +80,10 @@ export const PERMISSION_GROUPS: { group: string; permissions: Permission[] }[] =
       'managementNodes.shell',
     ],
   },
-  { group: 'Administration', permissions: ['blueprints.manage', 'users.manage'] },
+  {
+    group: 'Administration',
+    permissions: ['blueprints.manage', 'users.manage', 'backup.manage'],
+  },
 ];
 
 /** Built-in roles: fixed, not changeable; those with a rank have the access of FP-1 (FP19-F-01). */

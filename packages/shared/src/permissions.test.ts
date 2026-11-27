@@ -72,7 +72,7 @@ describe('permissions (FP-19, ADR-0015)', () => {
     expect(allows(limitedAdmin, roles, 'users.manage')).toBe(false);
     expect(allows(limitedAdmin, roles, 'clusters.delete', { namespace: 'team-a' })).toBe(true);
     expect(bindingProblems(limitedAdmin, roles)).toEqual([
-      expect.stringMatching(/Role "admin" contains presets.manage, .*users.manage, which can only/),
+      expect.stringMatching(/Role "admin" contains presets.manage, .*users.manage, backup.manage, which can only/),
     ]);
     expect(bindingProblems([{ role: 'platform', connections: ['home'] }], roles)).toHaveLength(1);
     expect(bindingProblems([{ role: 'operator', namespaces: ['team-a'] }], roles)).toEqual([]);

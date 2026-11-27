@@ -73,6 +73,7 @@ spec:
                       - managementNodes.shell
                       - blueprints.manage
                       - users.manage
+                      - backup.manage
               required:
                 - displayName
                 - permissions

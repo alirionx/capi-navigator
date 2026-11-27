@@ -3,6 +3,7 @@ import { ClusterBlueprintCrd } from './cluster-blueprint.js';
 import { HelmRepositoryCrd } from './helm-repository.js';
 import { ManagementClusterCrd } from './management-cluster.js';
 import { NavigatorAuthSettingsCrd } from './navigator-auth-settings.js';
+import { NavigatorBackupSettingsCrd } from './navigator-backup-settings.js';
 import { NavigatorGroupCrd } from './navigator-group.js';
 import { NavigatorRoleCrd } from './navigator-role.js';
 import { NavigatorTokenCrd } from './navigator-token.js';
@@ -15,6 +16,7 @@ export * from './navigator-role.js';
 export * from './navigator-token.js';
 export * from './navigator-group.js';
 export * from './navigator-auth-settings.js';
+export * from './navigator-backup-settings.js';
 export * from './audit-event.js';
 export * from './management-cluster.js';
 export * from './helm-repository.js';
@@ -32,4 +34,5 @@ export const ALL_CRDS: CrdDefinition[] = [
   NavigatorGroupCrd,
   NavigatorAuthSettingsCrd,
   ClusterBlueprintCrd,
+  NavigatorBackupSettingsCrd,
 ];

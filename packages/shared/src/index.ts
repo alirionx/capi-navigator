@@ -1,6 +1,7 @@
 export * from './health.js';
 export * from './auth.js';
 export * from './oidc.js';
+export * from './backup.js';
 export * from './permissions.js';
 export * from './errors.js';
 export * from './connections.js';
