@@ -36,7 +36,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.1",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.7",
     "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "~10.15.0",
     "eslint-config-prettier": "^10.1.8",
@@ -44,7 +44,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.73.0",
+    "typescript-eslint": "^8.74.0",
     "vue-eslint-parser": "^10.4.2"
   }
 }

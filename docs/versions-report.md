@@ -1,8 +1,8 @@
 # Version report
 
-Generated on 2026-11-26 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
+Generated on 2026-11-28 by `pnpm versions:report` (Renovate 44.133.0, lookups only). How to update a version: [maintenance.md](maintenance.md).
 
-**48 app versions** in [versions.yaml](../versions.yaml): 3 with a newer version (0 major, 0 minor, 3 patch).
+**48 app versions** in [versions.yaml](../versions.yaml): 4 with a newer version (0 major, 1 minor, 3 patch).
 
 npm packages are not part of this report: run `pnpm outdated -r`.
 
@@ -44,9 +44,9 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 | kubernetes.k0s 1.35     | v1.35.10+k0s.1  | –        | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
 | kubernetes.k0s 1.34     | v1.34.13+k0s.0  | –        | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
 | kubernetes.k0s 1.33     | v1.33.13+k0s.1  | –        | up to date                                                        | versions.yaml → kubernetes.k0s.versions     |
-| kubernetes.kubeadm 1.37 | v1.37.2         | v1.37.3  | **patch** (released 1 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.36 | v1.36.6         | v1.36.7  | **patch** (released 1 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
-| kubernetes.kubeadm 1.35 | v1.35.10        | v1.35.11 | **patch** (released 1 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.37 | v1.37.2         | v1.37.3  | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.36 | v1.36.6         | v1.36.7  | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
+| kubernetes.kubeadm 1.35 | v1.35.10        | v1.35.11 | **patch** (released 2 days ago; wait for the minimum release age) | versions.yaml → kubernetes.kubeadm.versions |
 | kubernetes.kubeadm 1.34 | v1.34.13        | –        | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
 | kubernetes.kubeadm 1.33 | v1.33.13        | –        | up to date                                                        | versions.yaml → kubernetes.kubeadm.versions |
 
@@ -66,10 +66,10 @@ npm packages are not part of this report: run `pnpm outdated -r`.
 
 ### kubeadm node runtime
 
-| Entry                     | Current | Newest | Update     | Change in                                 |
-| ------------------------- | ------- | ------ | ---------- | ----------------------------------------- |
-| kubeadmRuntime.containerd | 2.4.2   | –      | up to date | versions.yaml → kubeadmRuntime.containerd |
-| kubeadmRuntime.runc       | 1.5.3   | –      | up to date | versions.yaml → kubeadmRuntime.runc       |
+| Entry                     | Current | Newest | Update                                                       | Change in                                 |
+| ------------------------- | ------- | ------ | ------------------------------------------------------------ | ----------------------------------------- |
+| kubeadmRuntime.containerd | 2.4.2   | –      | up to date                                                   | versions.yaml → kubeadmRuntime.containerd |
+| kubeadmRuntime.runc       | 1.5.3   | 1.6.0  | **minor** (released today; wait for the minimum release age) | versions.yaml → kubeadmRuntime.runc       |
 
 ### CNI
 
