@@ -1,6 +1,6 @@
 # ADR-0047: Backup of the management clusters, restored with `clusterctl move`
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-28
 - Pack: FP-39, refines the outlook entry FP-39
 
