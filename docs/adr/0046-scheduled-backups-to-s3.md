@@ -17,6 +17,11 @@ restart must neither lose nor repeat a run.
   fields in UTC (croner, also used by the UI for the next runs), the number of backups to keep, and
   bucket, prefix, region, optional endpoint, path-style addressing and CA certificate. The access
   key is in the Secret `capi-navigator-backup-s3`, write-only in the API, and part of the backup.
+- For self-signed test setups the certificate check can be switched off (`insecureSkipTLSVerify`,
+  as for OCI Helm repositories), with a warning in the UI. It is acceptable there because the
+  backup is encrypted before it leaves the app and SigV4 never sends the secret access key; a
+  party in the middle could still read the object names, drop uploads or delete backups. The CA
+  certificate keeps the check and is the recommended way; with the check off it is not sent.
 - Every replica checks every 30 seconds. The one holding the Lease `capi-navigator-backup` asks a
   pure function: the last due time of the schedule, compared with `status.lastScheduledAt`. A later
   due time is recorded first and then run, so a replica taking over the Lease does not run it

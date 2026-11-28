@@ -9,6 +9,7 @@ export interface S3Draft {
   endpoint: string;
   forcePathStyle: boolean;
   caCertificate: string;
+  insecureSkipTLSVerify: boolean;
   /** Write-only: empty keeps the stored key. */
   accessKeyId: string;
   secretAccessKey: string;
@@ -24,6 +25,7 @@ export function s3Draft(s: BackupSettings | null): S3Draft {
     endpoint: s?.s3?.endpoint ?? '',
     forcePathStyle: s?.s3?.forcePathStyle ?? false,
     caCertificate: s?.s3?.caCertificate ?? '',
+    insecureSkipTLSVerify: s?.s3?.insecureSkipTLSVerify ?? false,
     accessKeyId: '',
     secretAccessKey: '',
     schedule: { ...(s?.schedule ?? { enabled: false, cron: '0 3 * * *', keep: 14 }) },
@@ -47,8 +49,12 @@ export function s3Target(d: S3Draft) {
     prefix: d.prefix.trim(),
     region: d.region.trim(),
     forcePathStyle: d.forcePathStyle,
+    insecureSkipTLSVerify: d.insecureSkipTLSVerify,
     ...(d.endpoint.trim() ? { endpoint: d.endpoint.trim() } : {}),
-    ...(d.caCertificate.trim() ? { caCertificate: d.caCertificate.trim() } : {}),
+    // The CA is pointless without the check.
+    ...(d.caCertificate.trim() && !d.insecureSkipTLSVerify
+      ? { caCertificate: d.caCertificate.trim() }
+      : {}),
   };
 }
 

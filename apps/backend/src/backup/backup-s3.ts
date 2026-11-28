@@ -26,11 +26,20 @@ const TIMEOUT_MS = 30_000;
 
 /**
  * S3 client for a backup target (FP38-F-10): AWS or S3-compatible storage (endpoint, path-style),
- * an optional CA, and the app's outbound proxy (FP29-F-01, as for the AWS calls).
+ * an optional CA or no certificate check at all, and the app's outbound proxy (FP29-F-01, as for
+ * the AWS calls).
  */
-export const sdkS3: S3Factory = (target, credentials, env = process.env) => {
+export const sdkS3 = (
+  target: BackupS3Target,
+  credentials: BackupS3Credentials,
+  env: NodeJS.ProcessEnv = process.env,
+): S3Client => {
   const proxy = env.NODE_USE_ENV_PROXY === '1' ? { proxyEnv: env } : {};
-  const ca = target.caCertificate ? { ca: [...rootCertificates, target.caCertificate] } : {};
+  const ca = target.insecureSkipTLSVerify
+    ? { rejectUnauthorized: false }
+    : target.caCertificate
+      ? { ca: [...rootCertificates, target.caCertificate] }
+      : {};
   return new S3Client({
     region: target.region,
     ...(target.endpoint ? { endpoint: target.endpoint } : {}),
@@ -168,7 +177,7 @@ export function explainS3(
   if (/certificate|self.signed|unable to verify/i.test(details))
     return {
       message: `${at}: the TLS certificate of the endpoint is not trusted`,
-      hint: 'Paste the CA certificate of the endpoint into the S3 settings.',
+      hint: 'Paste the CA certificate of the endpoint into the S3 settings (or, for a test setup only, skip the TLS verification).',
       details,
     };
   return { message: `${at}`, hint: 'See the details.', details };

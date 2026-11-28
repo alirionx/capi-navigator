@@ -1386,7 +1386,7 @@ Part 2 (same day and cluster): the dashboard is read by impersonating the assign
 
 **Requirements, part 2: scheduled backup to S3**
 
-- **FP38-F-10** MUST add a schedule (cron expression in UTC) and an S3 target to the settings: bucket, prefix, region, optional endpoint and path-style addressing for S3-compatible storage (MinIO, Ceph), optional CA certificate. The access key lives in the Secret `capi-navigator-backup-s3` and is never returned (hard rule 8); this Secret is part of the backup content (FP38-F-03), so a restored app writes to the same target.
+- **FP38-F-10** MUST add a schedule (cron expression in UTC) and an S3 target to the settings: bucket, prefix, region, optional endpoint and path-style addressing for S3-compatible storage (MinIO, Ceph), optional CA certificate, or no certificate check for self-signed test setups (off by default, with a warning). The access key lives in the Secret `capi-navigator-backup-s3` and is never returned (hard rule 8); this Secret is part of the backup content (FP38-F-03), so a restored app writes to the same target.
 - **FP38-F-11** MUST run a scheduled backup in exactly one backend replica (a Lease, as for the audit cleanup). A run missed while the app was down is not repeated; the next one runs on schedule. The upload goes through the app's proxy settings (FP29-F-01).
 - **FP38-F-12** MUST keep the last N backups (default 14) and delete only older objects under the prefix whose names the app wrote; other objects in the bucket are never touched.
 - **FP38-F-13** MUST show the result of the last runs (time, result, object key, size, error with hint) in the status of the settings and on the page, and write an `AuditEvent` for every run.

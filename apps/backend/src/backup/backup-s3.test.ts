@@ -1,11 +1,27 @@
-import { describe, expect, it } from 'vitest';
-import { backupsToDelete, explainS3, testTarget, uploadBackup, type S3Calls } from './backup-s3.js';
+import { ListObjectsV2Command } from '@aws-sdk/client-s3';
+import type { BackupS3Target } from '@capi-navigator/shared';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createServer, type Server } from 'node:https';
+import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  backupsToDelete,
+  explainS3,
+  sdkS3,
+  testTarget,
+  uploadBackup,
+  type S3Calls,
+} from './backup-s3.js';
 
 const target = {
   bucket: 'backups',
   prefix: 'capi-navigator/',
   region: 'us-east-1',
   forcePathStyle: true,
+  insecureSkipTLSVerify: false,
 };
 const name = (d: string) => `capi-navigator/capi-navigator-home-${d}T030000Z.tar.gz.gpg`;
 
@@ -114,5 +130,71 @@ describe('backups on S3 (FP38-F-10 to F-14)', () => {
     expect(explainS3(e('Error', 'self-signed certificate'), 'write').hint).toMatch(
       /CA certificate/,
     );
+  });
+});
+
+describe('TLS of the S3 endpoint (FP38-F-10)', () => {
+  // A local HTTPS endpoint with a self-signed certificate, made by openssl for this run.
+  let dir: string;
+  let cert: string;
+  let server: Server;
+  let endpoint: string;
+  const list = (t: Partial<BackupS3Target>) =>
+    sdkS3(
+      { ...target, ...t, endpoint },
+      { accessKeyId: 'AKIDEXAMPLE', secretAccessKey: 'not-a-secret' },
+      {},
+    ).send(new ListObjectsV2Command({ Bucket: 'backups' }));
+
+  beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), 's3-tls-'));
+    execFileSync(
+      'openssl',
+      [
+        'req',
+        '-x509',
+        '-newkey',
+        'ec',
+        '-pkeyopt',
+        'ec_paramgen_curve:prime256v1',
+        '-nodes',
+        '-days',
+        '1',
+        '-subj',
+        '/CN=127.0.0.1',
+        '-addext',
+        'subjectAltName=IP:127.0.0.1',
+        '-keyout',
+        join(dir, 'key.pem'),
+        '-out',
+        join(dir, 'cert.pem'),
+      ],
+      { stdio: 'ignore' },
+    );
+    cert = readFileSync(join(dir, 'cert.pem'), 'utf8');
+    server = createServer({ key: readFileSync(join(dir, 'key.pem')), cert }, (_req, res) => {
+      res.setHeader('content-type', 'application/xml');
+      res.end('<?xml version="1.0"?><ListBucketResult><KeyCount>0</KeyCount></ListBucketResult>');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    endpoint = `https://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  });
+  afterAll(() => {
+    server?.close();
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('refuses a self-signed certificate by default and explains it', async () => {
+    const err = await list({}).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(explainS3(err, 'test').hint).toMatch(/CA certificate.*skip the TLS verification/);
+  });
+
+  it('accepts it with its CA certificate', async () => {
+    await expect(list({ caCertificate: cert })).resolves.toMatchObject({ KeyCount: 0 });
+  });
+
+  it('accepts it without the check when insecureSkipTLSVerify is set', async () => {
+    await expect(list({ insecureSkipTLSVerify: true })).resolves.toMatchObject({ KeyCount: 0 });
   });
 });

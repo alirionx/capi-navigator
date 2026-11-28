@@ -76,6 +76,12 @@ export const BackupS3TargetSchema = z.object({
     .max(64 * 1024)
     .refine((v) => v.includes('-----BEGIN CERTIFICATE-----'), { error: 'Paste a PEM certificate' })
     .optional(),
+  /**
+   * Skip the certificate check of the endpoint, e.g. for a self-signed test setup (as for OCI
+   * Helm repositories). Not recommended: the CA certificate keeps the check. The backup stays
+   * encrypted either way; the access key signs requests but is never sent.
+   */
+  insecureSkipTLSVerify: z.boolean().default(false),
 });
 export type BackupS3Target = z.infer<typeof BackupS3TargetSchema>;
 

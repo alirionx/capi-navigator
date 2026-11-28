@@ -105,7 +105,9 @@ const changes = computed(() => {
   if (!d3.enabled && before3.enabled)
     rows.push({ change: t('backup.s3.title'), what: t('backup.s3.removed') });
   if (d3.enabled) {
-    const target = `${d3.endpoint || 'AWS'} · ${d3.bucket}/${d3.prefix}`;
+    const target =
+      `${d3.endpoint || 'AWS'} · ${d3.bucket}/${d3.prefix}` +
+      (d3.insecureSkipTLSVerify ? ` · ${t('backup.s3.insecureShort')}` : '');
     const changed = JSON.stringify(s3Target(d3)) !== JSON.stringify(s3Target(before3));
     if (changed || !before3.enabled) rows.push({ change: t('backup.s3.title'), what: target });
     if (d3.accessKeyId || d3.secretAccessKey)

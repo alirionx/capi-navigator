@@ -190,7 +190,13 @@ describe.skipIf(!hasGpg && !process.env.CI)('backup with GnuPG (FP38-F-04)', () 
 });
 
 describe('backups to S3 (FP38-F-10 to F-14)', () => {
-  const s3 = { bucket: 'backups', prefix: 'nav/', region: 'eu-central-1', forcePathStyle: true };
+  const s3 = {
+    bucket: 'backups',
+    prefix: 'nav/',
+    region: 'eu-central-1',
+    forcePathStyle: true,
+    insecureSkipTLSVerify: false,
+  };
   const credentials = { accessKeyId: 'AKIAEXAMPLE', secretAccessKey: 'secret-example-key' };
 
   /** Fake S3 factory: one in-memory bucket, optional failing command. */

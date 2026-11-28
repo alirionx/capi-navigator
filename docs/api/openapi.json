@@ -9154,6 +9154,10 @@
                     "type": "string",
                     "maxLength": 65536
                   },
+                  "insecureSkipTLSVerify": {
+                    "default": false,
+                    "type": "boolean"
+                  },
                   "credentialsSet": {
                     "type": "boolean"
                   }
@@ -9163,6 +9167,7 @@
                   "prefix",
                   "region",
                   "forcePathStyle",
+                  "insecureSkipTLSVerify",
                   "credentialsSet"
                 ],
                 "additionalProperties": false
@@ -14683,6 +14688,10 @@
           "caCertificate": {
             "type": "string",
             "maxLength": 65536
+          },
+          "insecureSkipTLSVerify": {
+            "default": false,
+            "type": "boolean"
           }
         },
         "required": [

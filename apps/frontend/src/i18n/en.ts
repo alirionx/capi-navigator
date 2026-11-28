@@ -1645,6 +1645,12 @@ export const en = {
       caCertificate: 'CA certificate of the endpoint (PEM, optional)',
       caCertificateHint:
         'Only if the endpoint uses a certificate that is not publicly trusted, e.g. an internal CA.',
+      insecure: 'Skip TLS verification (not recommended)',
+      insecureShort: 'TLS not verified',
+      insecureHint:
+        'Accepts any certificate of the endpoint, e.g. a self-signed one in a test setup. Anyone between the app and the storage could then pose as it. The backup stays encrypted; prefer the CA certificate. Default: off.',
+      insecureWarning:
+        'The certificate of the endpoint is not checked. Use this only for a test setup; for real use, paste the CA certificate instead.',
       test: 'Test connection',
       schedule: 'Scheduled backups',
       scheduleHint:

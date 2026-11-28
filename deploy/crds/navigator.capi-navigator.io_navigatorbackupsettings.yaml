@@ -112,6 +112,9 @@ spec:
                     caCertificate:
                       type: string
                       maxLength: 65536
+                    insecureSkipTLSVerify:
+                      default: false
+                      type: boolean
                   required:
                     - bucket
             status:

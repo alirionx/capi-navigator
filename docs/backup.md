@@ -55,8 +55,10 @@ schedule ([ADR-0046](adr/0046-scheduled-backups-to-s3.md)):
 
 - **Target:** bucket (it must exist), prefix (default `capi-navigator/`), region, and for
   S3-compatible storage such as Ceph or SeaweedFS the endpoint and path-style addressing. An
-  internal CA can be added. Calls go through the outbound proxy of the app; put an internal
-  endpoint into `NO_PROXY`.
+  internal CA can be added. For a self-signed test setup, **Skip TLS verification** turns the
+  certificate check off; the backup stays encrypted, but anyone between the app and the storage
+  could pose as it, so prefer the CA certificate. Calls go through the outbound proxy of the app;
+  put an internal endpoint into `NO_PROXY`.
 - **Access key:** stored in the Secret `capi-navigator-backup-s3`, never shown again. It needs
   `s3:PutObject`, `s3:GetObject`, `s3:ListBucket` and `s3:DeleteObject` on the prefix. **Test
   connection** writes, reads, lists and deletes a test object.

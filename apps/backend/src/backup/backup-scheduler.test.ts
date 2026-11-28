@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { decide, MISSED_AFTER_MS } from './backup-scheduler.service.js';
 
-const s3 = { bucket: 'b', prefix: 'p/', region: 'us-east-1', forcePathStyle: false };
+const s3 = {
+  bucket: 'b',
+  prefix: 'p/',
+  region: 'us-east-1',
+  forcePathStyle: false,
+  insecureSkipTLSVerify: false,
+};
 const on = {
   schedule: { enabled: true, cron: '0 3 * * *', keep: 14 },
   s3,

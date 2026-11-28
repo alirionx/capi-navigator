@@ -175,7 +175,28 @@ function size(bytes?: number): string {
           <FieldHelp :text="t('backup.s3.forcePathStyleHint')" />
         </template>
       </v-switch>
+      <v-switch
+        v-model="draft.insecureSkipTLSVerify"
+        color="warning"
+        density="compact"
+        data-testid="backup-s3-insecure"
+      >
+        <template #label>
+          {{ t('backup.s3.insecure') }}
+          <FieldHelp :text="t('backup.s3.insecureHint')" />
+        </template>
+      </v-switch>
+      <v-alert
+        v-if="draft.insecureSkipTLSVerify"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+        data-testid="backup-s3-insecure-warning"
+        >{{ t('backup.s3.insecureWarning') }}</v-alert
+      >
       <v-textarea
+        v-else
         v-model="draft.caCertificate"
         :label="t('backup.s3.caCertificate')"
         :rules="draft.caCertificate ? [zodRule(shape.caCertificate)] : []"
