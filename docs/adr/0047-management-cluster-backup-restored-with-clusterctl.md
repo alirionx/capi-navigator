@@ -86,11 +86,12 @@ CAAPH, ClusterResourceSet):
   settings list the connections to include. A run backs up the home cluster and each listed
   management cluster; S3 objects go to `<prefix>mgmt/<connection>/`, the retention applies per
   folder, and a failing connection is recorded without stopping the others.
-- **Permissions:** the backup needs to read Secrets and ConfigMaps and to list every selected
-  kind. The minimal ClusterRole of the access manifests (FP-2) cannot read Secrets, and adding that
-  for everybody would widen it a lot. The access manifests therefore offer an optional ClusterRole
-  `capi-navigator-backup` (read only), the connection test checks it as an optional permission, and
-  the backup page shows per connection what is missing. A cluster-admin binding needs nothing.
+- **Permissions:** the backup reads Secrets and ConfigMaps and lists every selected kind with the
+  connection's permissions. The minimal ClusterRole of the access manifests (NF-03) can already read
+  Secrets and ConfigMaps; it gets read access to the further API groups whose CRDs carry the
+  clusterctl label (`ipam.cluster.x-k8s.io`, `k0smotron.io`, `openstack.k-orc.cloud`). A kind the
+  connection cannot read is named in the preview, and the backup of that connection is refused:
+  a backup without some objects could lose whole parts of the graph on restore.
 
 ## Consequences
 
