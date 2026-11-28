@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import type { ManagementBackupNotice } from '@capi-navigator/shared';
 import { stringify } from 'yaml';
-import type { BackupEntry } from './backup-archive.js';
+import { YAML_OPTIONS, type BackupEntry } from './backup-archive.js';
 
 /**
  * Backup of a management cluster (FP-39, ADR-0047). Pure functions: the backend reads the objects,
@@ -434,7 +434,7 @@ export interface ManagementBackupMeta {
 }
 
 const yamlOf = (objects: KubeObject[]) =>
-  objects.map((o) => stringify(o, { lineWidth: 0, sortMapEntries: true })).join('---\n');
+  objects.map((o) => stringify(o, { ...YAML_OPTIONS, sortMapEntries: true })).join('---\n');
 
 /** Name of the CAPI file of cluster-scoped objects; `_` cannot start a namespace name. */
 const CLUSTER_SCOPED_FILE = 'capi/_cluster-scoped.yaml';

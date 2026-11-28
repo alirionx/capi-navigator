@@ -460,6 +460,30 @@ describe('backup of a management cluster (FP-39)', () => {
     ).toMatchSnapshot();
   });
 
+  it('quotes strings a YAML 1.1 parser would read as booleans (kubectl, clusterctl)', () => {
+    const input = fixture();
+    input.objects.find((o) => o.metadata.name === 'wl1')!.metadata.labels = {
+      'capi-navigator.io/volume-topology': 'off',
+      other: 'yes',
+    };
+    const entries = buildManagementEntries(selectManagementBackup(input), {
+      connection: 'prod',
+      createdAt: new Date('2026-11-28T03:00:00Z'),
+      createdBy: 'admin',
+      appVersion: '0.23.0',
+      recipients: [],
+      versions: [],
+    });
+    const file = entries.find((e) => e.name === 'capi/team-a.yaml')!.content.toString();
+    expect(file).toContain('capi-navigator.io/volume-topology: "off"');
+    expect(file).toContain('other: "yes"');
+    // A YAML 1.1 reader gets the strings back.
+    const cluster = parseAllDocuments(file, { version: '1.1' })
+      .map((d) => d.toJS() as KubeObject)
+      .find((o) => o.kind === 'Cluster')!;
+    expect(cluster.metadata.labels?.['capi-navigator.io/volume-topology']).toBe('off');
+  });
+
   it('gives byte-identical archives for the same input (hard rule 3)', () => {
     const meta = {
       connection: 'prod',

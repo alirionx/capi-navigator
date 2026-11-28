@@ -3,6 +3,13 @@ import { gzipSync } from 'node:zlib';
 import { pack } from 'tar-stream';
 import { stringify } from 'yaml';
 
+/**
+ * YAML for kubectl and clusterctl: their parser (sigs.k8s.io/yaml) follows YAML 1.1, where an
+ * unquoted `off`, `on`, `yes` or `no` is a boolean. Written as 1.1, such strings are quoted, so a
+ * label value "off" stays a string (found in the FP-39 live test: clusterctl refused the Cluster).
+ */
+export const YAML_OPTIONS = { lineWidth: 0, sortMapEntries: false, version: '1.1' } as const;
+
 /** Format of the archive's manifest.json; a restore tool can check it (FP38-F-04). */
 export const BACKUP_FORMAT = 'capi-navigator-home-backup/v1';
 
@@ -88,9 +95,7 @@ export function buildBackupEntries(input: BackupInput): BackupEntry[] {
     const objects = [...group.objects].sort((a, b) =>
       (a.metadata?.name ?? '').localeCompare(b.metadata?.name ?? ''),
     );
-    const yaml = objects
-      .map((o) => stringify(o, { lineWidth: 0, sortMapEntries: false }))
-      .join('---\n');
+    const yaml = objects.map((o) => stringify(o, YAML_OPTIONS)).join('---\n');
     files.push({
       name: `resources/${String(10 + i).padStart(2, '0')}-${group.file}.yaml`,
       content: Buffer.from(yaml, 'utf8'),
