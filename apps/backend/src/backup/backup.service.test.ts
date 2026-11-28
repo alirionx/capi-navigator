@@ -7,7 +7,9 @@ import * as openpgp from 'openpgp';
 import { describe, expect, it } from 'vitest';
 import { readFromChartArchive } from '../helm/chart-archive.js';
 import { backupStore } from './backup.fixtures.js';
+import { managementBackupFileName } from '@capi-navigator/shared';
 import { BackupService } from './backup.service.js';
+import type { ManagementBackupService } from './management-backup.service.js';
 
 async function recipient() {
   return openpgp.generateKey({
@@ -315,6 +317,117 @@ describe('backups to S3 (FP38-F-10 to F-14)', () => {
     const settings = await svc.settings();
     expect(settings.runs[0]).toMatchObject({ trigger: 'schedule', outcome: 'failure' });
     expect(fake.settings()).toBeDefined();
+  });
+
+  /** Fake management backups: "in-cluster" cannot be reached. */
+  function fakeManagement() {
+    const created: string[] = [];
+    const management = {
+      create: async (connection: string, _actor: string, keys: unknown[], at: Date) => {
+        created.push(`${connection} (${keys.length} key)`);
+        if (connection === 'in-cluster')
+          throw Object.assign(new Error('unreachable'), {
+            response: {
+              message: 'Read the management cluster "in-cluster": the cluster is not reachable',
+              hint: 'Check the network connection to the cluster API server.',
+            },
+          });
+        return {
+          fileName: managementBackupFileName(connection, at),
+          data: new Uint8Array([1, 2, 3]),
+          summary: `Management cluster ${connection}: 5 objects`,
+        };
+      },
+    };
+    return { management: management as unknown as ManagementBackupService, created };
+  }
+
+  it('backs up the listed management clusters each to its folder, failing alone (FP39-F-11 to F-13)', async () => {
+    const fake = backupStore();
+    const bucket = fakeS3();
+    for (const d of ['20261101', '20261102'])
+      bucket.keys.add(`nav/mgmt/aws/capi-navigator-mgmt-aws-${d}T030000Z.tar.gz.gpg`);
+    bucket.keys.add('nav/mgmt/aws/notes.txt');
+    const { management, created } = fakeManagement();
+    const svc = new BackupService(fake.store, bucket.factory, management);
+    const a = await recipient();
+    await expect(
+      svc.updateSettings({
+        recipients: [{ publicKey: a.publicKey }],
+        includeAuditEvents: false,
+        s3,
+        s3Credentials: credentials,
+        managementClusters: ['aws', 'gone'],
+      }),
+    ).rejects.toMatchObject({
+      response: { message: 'Unknown management cluster connection: gone' },
+    });
+    const saved = await svc.updateSettings({
+      recipients: [{ publicKey: a.publicKey }],
+      includeAuditEvents: false,
+      schedule: { enabled: true, cron: '0 3 * * *', keep: 2 },
+      s3,
+      s3Credentials: credentials,
+      managementClusters: ['aws', 'in-cluster'],
+    });
+    expect(saved.managementClusters).toEqual(['aws', 'in-cluster']);
+
+    const { run, summary } = await svc.runToS3('schedule', 'scheduler');
+    expect(created).toEqual(['aws (1 key)', 'in-cluster (1 key)']);
+    expect(run).toMatchObject({
+      outcome: 'failure',
+      objectKey: expect.stringMatching(/^nav\/capi-navigator-home-/),
+      message: '1 of 2 management clusters failed: in-cluster',
+      targets: [
+        {
+          connection: 'aws',
+          outcome: 'success',
+          objectKey: expect.stringMatching(
+            /^nav\/mgmt\/aws\/capi-navigator-mgmt-aws-\d{8}T\d{6}Z\.tar\.gz\.gpg$/,
+          ),
+          size: 3,
+          deleted: 1,
+        },
+        {
+          connection: 'in-cluster',
+          outcome: 'failure',
+          message: 'Read the management cluster "in-cluster": the cluster is not reachable',
+          hint: 'Check the network connection to the cluster API server.',
+        },
+      ],
+    });
+    expect(summary).toMatch(
+      /Management cluster aws: 5 objects; uploaded to backups\/nav\/mgmt\/aws\//,
+    );
+    // Retention per folder: the home backups and the foreign file stay untouched by aws's.
+    const gpg = [...bucket.keys].filter((k) => k.startsWith('nav/mgmt/aws/') && k.endsWith('.gpg'));
+    expect(gpg).toHaveLength(2);
+    expect(gpg).not.toContain('nav/mgmt/aws/capi-navigator-mgmt-aws-20261101T030000Z.tar.gz.gpg');
+    expect([...bucket.keys]).toContain('nav/mgmt/aws/notes.txt');
+    expect([...bucket.keys].filter((k) => /^nav\/capi-navigator-home-/.test(k))).toHaveLength(2);
+  });
+
+  it('fails every management cluster with the key problem, not silently', async () => {
+    const fake = backupStore();
+    const { management, created } = fakeManagement();
+    const svc = new BackupService(fake.store, fakeS3().factory, management);
+    const a = await recipient();
+    await svc.updateSettings({
+      recipients: [{ publicKey: a.publicKey }],
+      includeAuditEvents: false,
+      s3,
+      s3Credentials: credentials,
+      managementClusters: ['aws'],
+    });
+    const settings = fake.settings()!;
+    settings.spec.recipients = [];
+    const { run } = await svc.runToS3('manual', 'admin');
+    expect(created).toEqual([]);
+    expect(run).toMatchObject({
+      outcome: 'failure',
+      message: 'No backup key is set',
+      targets: [{ connection: 'aws', outcome: 'failure', message: 'No backup key is set' }],
+    });
   });
 
   it('tests a target with the stored key when none is entered (FP38-F-14)', async () => {

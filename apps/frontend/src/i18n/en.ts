@@ -1692,6 +1692,9 @@ export const en = {
       insecureWarning:
         'The certificate of the endpoint is not checked. Use this only for a test setup; for real use, paste the CA certificate instead.',
       test: 'Test connection',
+      managementClusters: 'Management clusters in every run',
+      managementClustersHint:
+        'Each S3 run, scheduled or "Back up now", also backs up these management clusters, each to PREFIX/mgmt/CONNECTION/ with the same keys and retention. A cluster that cannot be reached fails alone; the others are written. Stored in spec.managementClusters. Default: none.',
       schedule: 'Scheduled backups',
       scheduleHint:
         'One replica of the app runs the backup at the given times (a Lease decides which). A time missed while the app was not running is not repeated. Default: off.',

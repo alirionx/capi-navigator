@@ -35,6 +35,10 @@ export function backupStore() {
   const store = {
     namespace: 'capi-navigator-system',
     connections: list('ManagementCluster', ['in-cluster', 'aws']),
+    connectionCache: {
+      get: (name: string) =>
+        ['in-cluster', 'aws'].includes(name) ? { metadata: { name }, spec: {} } : undefined,
+    },
     helmRepositories: list('HelmRepository', ['bitnami']),
     roles: list('NavigatorRole', ['day2']),
     groups: list('NavigatorGroup', []),

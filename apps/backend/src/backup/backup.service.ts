@@ -11,9 +11,12 @@ import {
   backupFileName,
   connectionSecretName,
   helmRepositorySecretName,
+  managementBackupObjectPattern,
+  managementBackupPrefix,
   passwordSecretName,
   type BackupPreview,
   type BackupRun,
+  type BackupRunTarget,
   type BackupS3Credentials,
   type BackupS3TestRequest,
   type BackupS3TestResult,
@@ -38,6 +41,7 @@ import {
   type StoredObject,
 } from './backup-archive.js';
 import { explainS3, sdkS3, testTarget, uploadBackup, type S3Factory } from './backup-s3.js';
+import { ManagementBackupService } from './management-backup.service.js';
 import {
   BackupKeyError,
   describeRecipientKey,
@@ -69,6 +73,7 @@ export class BackupService {
   constructor(
     private readonly store: StoreService,
     @Optional() @Inject(BACKUP_S3_FACTORY) s3?: S3Factory,
+    @Optional() private readonly management?: ManagementBackupService,
   ) {
     this.s3 = s3 ?? sdkS3;
   }
@@ -90,6 +95,7 @@ export class BackupService {
           ? (nextBackupRuns(spec.schedule.cron, now)[0]?.toISOString() ?? null)
           : null,
       runs: status.runs ?? [],
+      managementClusters: spec.managementClusters,
     };
   }
 
@@ -121,7 +127,16 @@ export class BackupService {
       includeAuditEvents: input.includeAuditEvents,
       schedule: input.schedule,
       ...(input.s3 ? { s3: input.s3 } : {}),
+      managementClusters: input.managementClusters,
     };
+    const unknown = spec.managementClusters.filter((c) => !this.store.connectionCache.get(c));
+    if (unknown.length) {
+      throw new BadRequestException({
+        statusCode: 400,
+        message: `Unknown management cluster connection: ${unknown.join(', ')}`,
+        hint: 'Choose connections from the Connections page.',
+      });
+    }
     if (input.s3 && !input.s3Credentials && !(await this.s3Credentials())) {
       throw new BadRequestException({
         statusCode: 400,
@@ -172,9 +187,10 @@ export class BackupService {
   }
 
   /**
-   * FP38-F-11 to F-13: creates a backup, uploads it to the stored target, applies the retention
-   * and records the run in the status (newest first). Never throws for S3 errors: the run says
-   * what failed.
+   * FP38-F-11 to F-13, FP39-F-11 to F-13: backs up the home cluster and every listed management
+   * cluster, uploads each to its folder, applies the retention per folder and records the run in
+   * the status (newest first). Every target succeeds or fails on its own; S3 errors never throw:
+   * the run says what failed.
    */
   async runToS3(
     trigger: BackupRun['trigger'],
@@ -199,41 +215,75 @@ export class BackupService {
         }),
       };
     }
-    let backup: Backup;
-    try {
-      backup = await this.create(actor, new Date(startedAt));
-    } catch (err) {
-      const body = (err as { response?: { message?: string; hint?: string } }).response;
-      return {
-        run: await finish({
-          outcome: 'failure',
-          message: body?.message ?? (err instanceof Error ? err.message : String(err)),
-          ...(body?.hint ? { hint: body.hint } : {}),
-        }),
-      };
-    }
-    try {
-      const target = spec.s3;
+    const target = spec.s3;
+    const s3 = this.s3(target, credentials);
+    const at = new Date(startedAt);
+    const summaries: string[] = [];
+    const uploaded = (summary: string, key: string, deleted: string[]) =>
+      summaries.push(
+        `${summary}; uploaded to ${target.bucket}/${key}${deleted.length ? `, ${deleted.length} older deleted` : ''}`,
+      );
+
+    const home = await attempt(async () => {
+      const backup = await this.create(actor, at);
       const { key, deleted } = await uploadBackup(
-        this.s3(target, credentials),
+        s3,
         target,
         backup.fileName,
         backup.data,
         spec.schedule.keep,
       );
-      return {
-        run: await finish({
-          outcome: 'success',
-          objectKey: key,
-          size: backup.data.length,
-          deleted: deleted.length,
-        }),
-        summary: `${backup.summary}; uploaded to ${target.bucket}/${key}${deleted.length ? `, ${deleted.length} older deleted` : ''}`,
-      };
-    } catch (err) {
-      const { message, hint } = explainS3(err, 'upload');
-      return { run: await finish({ outcome: 'failure', message, ...(hint ? { hint } : {}) }) };
+      uploaded(backup.summary, key, deleted);
+      return { objectKey: key, size: backup.data.length, deleted: deleted.length };
+    });
+
+    const targets: BackupRunTarget[] = [];
+    const management = this.management;
+    if (management && spec.managementClusters.length) {
+      // Without usable keys every management cluster fails with the same reason.
+      let keys: openpgp.Key[] = [];
+      let keyFailure: Failure | undefined;
+      try {
+        keys = await this.recipientKeys();
+      } catch (err) {
+        keyFailure = failureOf(err);
+      }
+      for (const connection of spec.managementClusters) {
+        const result =
+          keyFailure ??
+          (await attempt(async () => {
+            const backup = await management.create(connection, actor, keys, at);
+            const { key, deleted } = await uploadBackup(
+              s3,
+              target,
+              backup.fileName,
+              backup.data,
+              spec.schedule.keep,
+              {
+                prefix: managementBackupPrefix(target.prefix, connection),
+                pattern: managementBackupObjectPattern(connection),
+              },
+            );
+            uploaded(backup.summary, key, deleted);
+            return { objectKey: key, size: backup.data.length, deleted: deleted.length };
+          }));
+        targets.push({ connection, ...result });
+      }
     }
+
+    const failed = targets.filter((t) => t.outcome === 'failure');
+    const run = await finish({
+      ...home,
+      outcome: home.outcome === 'failure' || failed.length ? 'failure' : 'success',
+      ...(home.outcome === 'success' && failed.length
+        ? {
+            message: `${failed.length} of ${targets.length} management ${targets.length === 1 ? 'cluster' : 'clusters'} failed: ${failed.map((f) => f.connection).join(', ')}`,
+            hint: 'The home cluster was backed up; see the management clusters of this run.',
+          }
+        : {}),
+      ...(targets.length ? { targets } : {}),
+    });
+    return { run, ...(summaries.length ? { summary: summaries.join(' | ') } : {}) };
   }
 
   /** The due time of the last scheduled run (FP38-F-11). */
@@ -430,4 +480,37 @@ async function listAll<S extends z.ZodType>(
     token = page.continue;
   } while (token);
   return out;
+}
+
+interface Failure {
+  outcome: 'failure';
+  message: string;
+  hint?: string;
+}
+type Attempt<T> = ({ outcome: 'success' } & T) | Failure;
+
+/**
+ * An error as the failure of one part of an S3 run: the app's own (HTTP) errors keep their message
+ * and hint, S3 errors are explained (NF-06).
+ */
+function failureOf(err: unknown): Failure {
+  const body = (err as { response?: { message?: unknown; hint?: unknown } }).response;
+  if (body && typeof body.message === 'string') {
+    return {
+      outcome: 'failure',
+      message: body.message,
+      ...(typeof body.hint === 'string' ? { hint: body.hint } : {}),
+    };
+  }
+  const { message, hint } = explainS3(err, 'upload');
+  return { outcome: 'failure', message, ...(hint ? { hint } : {}) };
+}
+
+/** Runs one part of an S3 run; an error becomes its failure. */
+async function attempt<T extends object>(fn: () => Promise<T>): Promise<Attempt<T>> {
+  try {
+    return { outcome: 'success', ...(await fn()) };
+  } catch (err) {
+    return failureOf(err);
+  }
 }

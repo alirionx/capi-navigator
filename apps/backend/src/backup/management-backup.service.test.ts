@@ -8,7 +8,6 @@ import * as openpgp from 'openpgp';
 import { describe, expect, it } from 'vitest';
 import type { ManagementClusterClients } from '../connections/management-cluster-clients.js';
 import { readFromChartArchive } from '../helm/chart-archive.js';
-import type { BackupService } from './backup.service.js';
 import { hostedControlPlaneKinds, ManagementBackupService } from './management-backup.service.js';
 
 const forbidden = () =>
@@ -147,7 +146,7 @@ function fakeCluster(opts: { forbidIpam?: boolean } = {}) {
   return { kc, calls };
 }
 
-async function setup(opts: { forbidIpam?: boolean; noKey?: boolean } = {}) {
+async function setup(opts: { forbidIpam?: boolean } = {}) {
   const key = await openpgp.generateKey({
     type: 'curve25519',
     userIDs: [{ name: 'Ops', email: 'ops@example.com' }],
@@ -155,14 +154,8 @@ async function setup(opts: { forbidIpam?: boolean; noKey?: boolean } = {}) {
   });
   const cluster = fakeCluster(opts);
   const clients = { forConnection: async () => cluster.kc } as unknown as ManagementClusterClients;
-  const backup = {
-    storedSpec: async () => ({ recipients: opts.noKey ? [] : [{ publicKey: key.publicKey }] }),
-    recipientKeys: async () => {
-      if (opts.noKey) throw Object.assign(new Error('No backup key is set'), { status: 400 });
-      return [await openpgp.readKey({ armoredKey: key.publicKey })];
-    },
-  } as unknown as BackupService;
-  return { svc: new ManagementBackupService(clients, backup), key, calls: cluster.calls };
+  const keys = [await openpgp.readKey({ armoredKey: key.publicKey })];
+  return { svc: new ManagementBackupService(clients), key, keys, calls: cluster.calls };
 }
 
 describe('backup of a management cluster through its connection (FP-39)', () => {
@@ -172,7 +165,7 @@ describe('backup of a management cluster through its connection (FP-39)', () => 
 
   it('previews the content and reads only what it needs (FP39-F-09)', async () => {
     const { svc, calls } = await setup();
-    const preview = await svc.preview('prod');
+    const preview = await svc.preview('prod', 1);
     expect(preview).toMatchObject({
       connection: 'prod',
       namespaces: ['team-a'],
@@ -198,8 +191,8 @@ describe('backup of a management cluster through its connection (FP-39)', () => 
   });
 
   it('names kinds it cannot read and refuses an incomplete backup (FP39-F-10)', async () => {
-    const { svc } = await setup({ forbidIpam: true });
-    const preview = await svc.preview('prod');
+    const { svc, keys } = await setup({ forbidIpam: true });
+    const preview = await svc.preview('prod', 1);
     expect(preview.unreadable).toEqual([
       {
         kind: 'IPAddress',
@@ -207,15 +200,15 @@ describe('backup of a management cluster through its connection (FP-39)', () => 
         message: 'ipaddresses is forbidden',
       },
     ]);
-    await expect(svc.create('prod', 'admin')).rejects.toMatchObject({
+    await expect(svc.create('prod', 'admin', keys)).rejects.toMatchObject({
       status: 409,
       response: { message: 'The connection cannot read IPAddress' },
     });
   });
 
   it('writes an encrypted archive with the provider and the CAPI part (FP39-F-01, F-05)', async () => {
-    const { svc, key } = await setup();
-    const backup = await svc.create('prod', 'admin', new Date('2026-11-28T03:00:00Z'));
+    const { svc, key, keys } = await setup();
+    const backup = await svc.create('prod', 'admin', keys, new Date('2026-11-28T03:00:00Z'));
     expect(backup.fileName).toBe('capi-navigator-mgmt-prod-20261128T030000Z.tar.gz.gpg');
     expect(backup.summary).toMatch(/^Management cluster prod: 7 objects, encrypted to [0-9A-F]+$/);
     expect(Buffer.from(backup.data).includes(Buffer.from('wl1-ca'))).toBe(false);
@@ -234,11 +227,5 @@ describe('backup of a management cluster through its connection (FP-39)', () => 
       connection: 'prod',
       createdBy: 'admin',
     });
-  });
-
-  it('refuses without a recipient key before reading the cluster', async () => {
-    const { svc, calls } = await setup({ noKey: true });
-    await expect(svc.create('prod', 'admin')).rejects.toThrow('No backup key is set');
-    expect(calls).toEqual([]);
   });
 });

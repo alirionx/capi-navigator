@@ -32,6 +32,8 @@ export const BackupSettingsSchema = z.object({
   nextRun: z.string().nullable(),
   /** FP38-F-13: the last runs to S3, newest first. */
   runs: z.array(BackupRunSchema),
+  /** FP39-F-11: management connections every S3 run backs up too. */
+  managementClusters: z.array(z.string()),
 });
 export type BackupSettings = z.infer<typeof BackupSettingsSchema>;
 
@@ -135,3 +137,14 @@ export type BackupS3TestRequest = z.infer<typeof BackupS3TestRequestSchema>;
 
 /** Object names the app writes to S3; retention deletes only these (FP38-F-12). */
 export const BACKUP_OBJECT_PATTERN = /^capi-navigator-home-\d{8}T\d{6}Z\.tar\.gz\.gpg$/;
+
+/** Folder of a management cluster's backups below the S3 prefix (FP39-F-12). */
+export function managementBackupPrefix(prefix: string, connection: string): string {
+  return `${prefix}mgmt/${connection}/`;
+}
+
+/** Object names the app writes for a management cluster; retention deletes only these (FP39-F-12). */
+export function managementBackupObjectPattern(connection: string): RegExp {
+  const name = connection.replace(/[^a-z0-9-]/g, '');
+  return new RegExp(`^capi-navigator-mgmt-${name}-\\d{8}T\\d{6}Z\\.tar\\.gz\\.gpg$`);
+}

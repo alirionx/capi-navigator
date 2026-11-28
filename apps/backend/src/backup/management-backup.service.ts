@@ -17,7 +17,8 @@ import { listProviders } from '../operator/providers.js';
 import { APP_VERSION } from '../version.js';
 import { packArchive } from './backup-archive.js';
 import { encryptTo } from './backup-keys.js';
-import { BackupService, type Backup } from './backup.service.js';
+import type * as openpgp from 'openpgp';
+import type { Backup } from './backup.service.js';
 import {
   backupCrds,
   buildManagementEntries,
@@ -52,17 +53,11 @@ interface Collected {
  */
 @Injectable()
 export class ManagementBackupService {
-  constructor(
-    private readonly clients: ManagementClusterClients,
-    private readonly backup: BackupService,
-  ) {}
+  constructor(private readonly clients: ManagementClusterClients) {}
 
   /** FP39-F-09, F-10: what a backup of this connection would contain now. */
-  async preview(connection: string): Promise<ManagementBackupPreview> {
-    const [collected, recipients] = await Promise.all([
-      this.collect(connection),
-      this.backup.storedSpec().then((s) => s.recipients.length),
-    ]);
+  async preview(connection: string, recipients: number): Promise<ManagementBackupPreview> {
+    const collected = await this.collect(connection);
     const s = selectManagementBackup(collected.input);
     const capi = countByKind(s.capi);
     const providers = countByKind([
@@ -86,8 +81,12 @@ export class ManagementBackupService {
   }
 
   /** FP39-F-01, F-05: the encrypted archive of one management cluster. */
-  async create(connection: string, createdBy: string, now = new Date()): Promise<Backup> {
-    const keys = await this.backup.recipientKeys();
+  async create(
+    connection: string,
+    createdBy: string,
+    keys: openpgp.Key[],
+    now = new Date(),
+  ): Promise<Backup> {
     const collected = await this.collect(connection);
     if (collected.unreadable.length) {
       throw new ConflictException({

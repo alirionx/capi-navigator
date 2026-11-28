@@ -63,9 +63,14 @@ export const sdkS3 = (
  * objects under the prefix (and anything outside it) are never touched. The UTC time in the name
  * sorts like the time itself.
  */
-export function backupsToDelete(keys: string[], prefix: string, keep: number): string[] {
+export function backupsToDelete(
+  keys: string[],
+  prefix: string,
+  keep: number,
+  pattern: RegExp = BACKUP_OBJECT_PATTERN,
+): string[] {
   const ours = keys
-    .filter((k) => k.startsWith(prefix) && BACKUP_OBJECT_PATTERN.test(k.slice(prefix.length)))
+    .filter((k) => k.startsWith(prefix) && pattern.test(k.slice(prefix.length)))
     .sort()
     .reverse();
   return ours.slice(keep);
@@ -78,8 +83,13 @@ export async function uploadBackup(
   fileName: string,
   data: Uint8Array,
   keep: number,
+  /** FP39-F-12: a management cluster's folder and names; default: the home backups. */
+  folder: { prefix: string; pattern: RegExp } = {
+    prefix: target.prefix,
+    pattern: BACKUP_OBJECT_PATTERN,
+  },
 ): Promise<{ key: string; deleted: string[] }> {
-  const key = `${target.prefix}${fileName}`;
+  const key = `${folder.prefix}${fileName}`;
   await s3.send(
     new PutObjectCommand({
       Bucket: target.bucket,
@@ -94,14 +104,14 @@ export async function uploadBackup(
     const page = (await s3.send(
       new ListObjectsV2Command({
         Bucket: target.bucket,
-        Prefix: target.prefix,
+        Prefix: folder.prefix,
         ...(token ? { ContinuationToken: token } : {}),
       }),
     )) as { Contents?: { Key?: string }[]; NextContinuationToken?: string };
     keys.push(...(page.Contents ?? []).flatMap((o) => (o.Key ? [o.Key] : [])));
     token = page.NextContinuationToken;
   } while (token);
-  const deleted = backupsToDelete(keys, target.prefix, keep);
+  const deleted = backupsToDelete(keys, folder.prefix, keep, folder.pattern);
   for (const k of deleted) {
     await s3.send(new DeleteObjectCommand({ Bucket: target.bucket, Key: k }));
   }

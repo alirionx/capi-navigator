@@ -9142,12 +9142,57 @@
           },
           "hint": {
             "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupRunTarget"
+            }
           }
         },
         "required": [
           "startedAt",
           "finishedAt",
           "trigger",
+          "outcome"
+        ],
+        "additionalProperties": false
+      },
+      "BackupRunTarget": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failure"
+            ]
+          },
+          "objectKey": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "deleted": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "message": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "connection",
           "outcome"
         ],
         "additionalProperties": false
@@ -9281,6 +9326,12 @@
             "items": {
               "$ref": "#/components/schemas/BackupRun"
             }
+          },
+          "managementClusters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -9289,7 +9340,8 @@
           "schedule",
           "s3",
           "nextRun",
-          "runs"
+          "runs",
+          "managementClusters"
         ],
         "additionalProperties": false
       },
@@ -15013,6 +15065,14 @@
           },
           "s3": {
             "$ref": "#/components/schemas/BackupS3TargetInput"
+          },
+          "managementClusters": {
+            "default": [],
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionName"
+            }
           },
           "s3Credentials": {
             "$ref": "#/components/schemas/BackupS3CredentialsInput"

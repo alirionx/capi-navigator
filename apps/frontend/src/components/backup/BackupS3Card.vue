@@ -13,6 +13,7 @@ import ErrorAlert from '../ErrorAlert.vue';
 import FieldHelp from '../FieldHelp.vue';
 import { zodRule } from '../../forms/zod-rules.js';
 import { useBackupStore } from '../../stores/backup.js';
+import { useConnectionsStore } from '../../stores/connections.js';
 import { s3Target, type S3Draft } from './s3-draft.js';
 
 /**
@@ -25,6 +26,11 @@ const draft = defineModel<S3Draft>({ required: true });
 const emit = defineEmits<{ save: [] }>();
 const { t, d } = useI18n();
 const store = useBackupStore();
+const connections = useConnectionsStore();
+/** FP39-F-11: connections to choose from, plus stored ones that no longer exist. */
+const connectionItems = computed(() => [
+  ...new Set([...connections.connections.map((c) => c.name), ...draft.value.managementClusters]),
+]);
 
 const testing = ref(false);
 const testResult = ref<BackupS3TestResult | null>(null);
@@ -235,6 +241,21 @@ function size(bytes?: number): string {
         </details>
       </v-alert>
 
+      <v-select
+        v-model="draft.managementClusters"
+        :items="connectionItems"
+        :label="t('backup.s3.managementClusters')"
+        multiple
+        chips
+        closable-chips
+        class="mt-2"
+        data-testid="backup-s3-mgmt"
+      >
+        <template #append-inner
+          ><FieldHelp :text="t('backup.s3.managementClustersHint')"
+        /></template>
+      </v-select>
+
       <v-divider class="my-4" />
       <v-switch v-model="draft.schedule.enabled" color="primary" data-testid="backup-schedule">
         <template #label>
@@ -320,6 +341,32 @@ function size(bytes?: number): string {
                 {{ run.message }}
                 <div v-if="run.hint" class="text-medium-emphasis">{{ run.hint }}</div>
               </template>
+              <div
+                v-for="target in run.targets ?? []"
+                :key="target.connection"
+                class="d-flex align-start ga-1 mt-1"
+                data-testid="backup-s3-run-target"
+              >
+                <v-icon
+                  :icon="target.outcome === 'success' ? 'mdi-check' : 'mdi-close'"
+                  :color="target.outcome === 'success' ? 'success' : 'error'"
+                  size="x-small"
+                  class="mt-1"
+                />
+                <div>
+                  <span class="font-weight-medium">{{ target.connection }}</span>
+                  <template v-if="target.outcome === 'success'">
+                    · <code>{{ target.objectKey }}</code> · {{ size(target.size) }}
+                    <span v-if="target.deleted">
+                      · {{ t('backup.s3.deleted', { n: target.deleted }) }}</span
+                    >
+                  </template>
+                  <template v-else>
+                    · {{ target.message }}
+                    <div v-if="target.hint" class="text-medium-emphasis">{{ target.hint }}</div>
+                  </template>
+                </div>
+              </div>
             </td>
           </tr>
         </tbody>

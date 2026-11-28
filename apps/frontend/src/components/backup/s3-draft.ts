@@ -14,6 +14,8 @@ export interface S3Draft {
   accessKeyId: string;
   secretAccessKey: string;
   schedule: { enabled: boolean; cron: string; keep: number };
+  /** FP39-F-11: management connections every S3 run backs up too. */
+  managementClusters: string[];
 }
 
 export function s3Draft(s: BackupSettings | null): S3Draft {
@@ -29,13 +31,17 @@ export function s3Draft(s: BackupSettings | null): S3Draft {
     accessKeyId: '',
     secretAccessKey: '',
     schedule: { ...(s?.schedule ?? { enabled: false, cron: '0 3 * * *', keep: 14 }) },
+    managementClusters: [...(s?.managementClusters ?? [])],
   };
 }
 
 /** The S3 part of the PUT body; optional fields left out when empty. */
-export function s3Body(d: S3Draft): Pick<BackupSettingsInput, 's3' | 's3Credentials' | 'schedule'> {
+export function s3Body(
+  d: S3Draft,
+): Pick<BackupSettingsInput, 's3' | 's3Credentials' | 'schedule' | 'managementClusters'> {
   return {
     schedule: { ...d.schedule, cron: d.schedule.cron.trim() },
+    managementClusters: d.managementClusters,
     ...(d.enabled ? { s3: s3Target(d) } : {}),
     ...(d.enabled && d.accessKeyId && d.secretAccessKey
       ? { s3Credentials: { accessKeyId: d.accessKeyId, secretAccessKey: d.secretAccessKey } }

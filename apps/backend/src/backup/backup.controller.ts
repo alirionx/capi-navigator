@@ -154,8 +154,11 @@ export class BackupController {
     response: ManagementBackupPreviewSchema,
   })
   @Get('management/:connection/preview')
-  managementPreview(@Param('connection') connection: string): Promise<ManagementBackupPreview> {
-    return this.management.preview(connection);
+  async managementPreview(
+    @Param('connection') connection: string,
+  ): Promise<ManagementBackupPreview> {
+    const recipients = (await this.backup.storedSpec()).recipients.length;
+    return this.management.preview(connection, recipients);
   }
 
   @Api({
@@ -175,7 +178,8 @@ export class BackupController {
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<StreamableFile> {
-    const backup = await this.management.create(connection, user.username);
+    const keys = await this.backup.recipientKeys();
+    const backup = await this.management.create(connection, user.username, keys);
     req.auditMessage = backup.summary;
     res.setHeader('Content-Disposition', `attachment; filename="${backup.fileName}"`);
     return new StreamableFile(backup.data);

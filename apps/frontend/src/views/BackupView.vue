@@ -113,6 +113,11 @@ const changes = computed(() => {
     if (changed || !before3.enabled) rows.push({ change: t('backup.s3.title'), what: target });
     if (d3.accessKeyId || d3.secretAccessKey)
       rows.push({ change: t('backup.s3.accessKeyId'), what: t('backup.s3.keyReplaced') });
+    if (JSON.stringify(d3.managementClusters) !== JSON.stringify(before3.managementClusters))
+      rows.push({
+        change: t('backup.s3.managementClusters'),
+        what: d3.managementClusters.join(', ') || t('common.no'),
+      });
     if (JSON.stringify(d3.schedule) !== JSON.stringify(before3.schedule))
       rows.push({
         change: t('backup.s3.schedule'),

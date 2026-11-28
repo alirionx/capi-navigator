@@ -1,5 +1,6 @@
 import { Cron } from 'croner';
 import { z } from 'zod';
+import { ConnectionNameSchema } from '../connections.js';
 import type { CrdDefinition } from './types.js';
 
 /** The only NavigatorBackupSettings resource (FP38-F-01). */
@@ -94,10 +95,34 @@ export const NavigatorBackupSettingsSpecSchema = z.object({
   includeAuditEvents: z.boolean().default(true),
   schedule: BackupScheduleSchema.default({ enabled: false, cron: '0 3 * * *', keep: 14 }),
   s3: BackupS3TargetSchema.optional(),
+  /**
+   * FP39-F-11: management connections whose clusters every S3 run backs up too, each to
+   * `<prefix>mgmt/<connection>/`. Default: none.
+   */
+  managementClusters: z
+    .array(ConnectionNameSchema)
+    .max(50)
+    .refine((l) => new Set(l).size === l.length, { error: 'Each connection only once' })
+    .default([]),
 });
 export type NavigatorBackupSettingsSpec = z.infer<typeof NavigatorBackupSettingsSpecSchema>;
 
-/** One backup to S3 (FP38-F-13). */
+/** FP39-F-13: the result of one management cluster in an S3 run. */
+export const BackupRunTargetSchema = z.object({
+  connection: z.string(),
+  outcome: z.enum(['success', 'failure']),
+  objectKey: z.string().optional(),
+  size: z.number().int().optional(),
+  deleted: z.number().int().optional(),
+  message: z.string().optional(),
+  hint: z.string().optional(),
+});
+export type BackupRunTarget = z.infer<typeof BackupRunTargetSchema>;
+
+/**
+ * One backup to S3 (FP38-F-13). The top-level result is that of the home cluster; `targets` holds
+ * the management clusters (FP39-F-13). `outcome` is a failure if any of them failed.
+ */
 export const BackupRunSchema = z.object({
   startedAt: z.string(),
   finishedAt: z.string(),
@@ -109,6 +134,7 @@ export const BackupRunSchema = z.object({
   deleted: z.number().int().optional(),
   message: z.string().optional(),
   hint: z.string().optional(),
+  targets: z.array(BackupRunTargetSchema).optional(),
 });
 export type BackupRun = z.infer<typeof BackupRunSchema>;
 
