@@ -7,6 +7,7 @@ import {
   type BackupKey,
 } from '@capi-navigator/shared';
 import BackupS3Card from '../components/backup/BackupS3Card.vue';
+import ManagementBackupCard from '../components/backup/ManagementBackupCard.vue';
 import { s3Body, s3Dirty, s3Draft, s3Target, type S3Draft } from '../components/backup/s3-draft.js';
 import ErrorAlert from '../components/ErrorAlert.vue';
 import FieldHelp from '../components/FieldHelp.vue';
@@ -375,7 +376,7 @@ function fingerprint(fp: string): string {
         @save="confirmOpen = true"
       />
 
-      <v-card border class="pa-6" data-testid="backup-download">
+      <v-card border class="pa-6 mb-6" data-testid="backup-download">
         <h2 class="text-title-large mb-1">{{ t('backup.download') }}</h2>
         <p class="text-body-medium text-medium-emphasis mb-4">{{ t('backup.downloadIntro') }}</p>
         <v-table v-if="store.preview" density="compact" class="mb-4" data-testid="backup-preview">
@@ -448,6 +449,8 @@ function fingerprint(fp: string): string {
           >{{ t('backup.downloadButton') }}</v-btn
         >
       </v-card>
+
+      <ManagementBackupCard :can-download="canDownload" />
     </template>
 
     <v-dialog v-model="confirmOpen" max-width="640">

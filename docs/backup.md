@@ -1,9 +1,10 @@
-# Backup of the home cluster
+# Backup
 
 CAPI Navigator keeps all its data in the home cluster (no database). The backup page saves this
 data as one encrypted file and restores it into a new home cluster, for example after losing the
 cluster or when moving the app (FP-38,
-[ADR-0044](adr/0044-encrypted-backup-download.md)).
+[ADR-0044](adr/0044-encrypted-backup-download.md)). The management clusters are backed up
+separately, one archive each ([below](#backup-of-a-management-cluster), FP-39).
 
 ## What a backup contains
 
@@ -92,3 +93,73 @@ A restored app writes to the same target, because the access key is part of the 
 
 Creation dates show the time of the restore. A connection of type "in-cluster" points to the
 cluster the app now runs in.
+
+## Backup of a management cluster
+
+The workload clusters are managed from their management cluster: the Cluster API objects, the
+certificate authorities CAPI generated (`<cluster>-ca`, `-etcd`, `-sa`, `-proxy`), the credentials
+and the add-ons live there. Without the CAs, a new management cluster would create new ones and
+could not manage the running clusters anymore. The section **Management clusters** of the backup
+page backs up one management cluster per archive
+([ADR-0047](adr/0047-management-cluster-backup-restored-with-clusterctl.md)):
+
+- **The app only reads** the management cluster with the permissions of its connection; it changes
+  nothing there, pauses nothing and runs no `clusterctl`. The minimal ClusterRole of the access
+  manifests is enough. A kind the connection cannot read is named on the page, and the backup is
+  refused: a backup without some objects could lose parts of the clusters on restore.
+- **Encrypted** like the home backup, to the same recipient keys:
+  `capi-navigator-mgmt-<connection>-<UTC time>.tar.gz.gpg`.
+- **Left out:** clusters with a hosted control plane (FP-24). Their etcd lives in a volume of the
+  host cluster that the backup cannot restore; the page lists them. Also not in it: cert-manager,
+  the Cluster API Operator and ORC (the archive names their versions), status, Events, and the
+  access objects of CAPI Navigator.
+- **Warnings:** clusters in the middle of a change (not provisioned, a machine without node, an
+  object being deleted) are backed up as they are and listed.
+
+The archive has three parts:
+
+| Folder        | Content                                                                                                                                                                                       | Restored with                         |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `providers/`  | Provider namespaces, the CAPI Operator's provider resources with their configuration Secrets, the credential Secrets of the app (they live in the namespace of the infrastructure provider)   | `kubectl apply --server-side`, first  |
+| `identities/` | Cluster-scoped identities of the credentials (`OpenStackClusterIdentity`, `AWSClusterStaticIdentity`)                                                                                         | `kubectl apply --server-side`, second |
+| `capi/`       | One file per workload namespace: clusters with all their objects, the CA and kubeconfig Secrets, Secrets the app placed there, ClusterResourceSets, Helm add-ons (`HelmChartProxy`), IP pools | `clusterctl move --from-directory`    |
+
+The files in `capi/` keep `uid` and owner references, because clusterctl rebuilds the object graph
+from them; every Cluster is paused in the file. `manifest.json` lists the versions of CAPI, the
+providers, cert-manager and the CAPI Operator, the objects per file with their SHA-256, the
+left-out clusters and the warnings.
+
+### Restore a management cluster
+
+`RESTORE.md` in the archive has the steps with the clusterctl version filled in. In short:
+
+1. **The old management cluster must be gone**, or its clusters paused: two management clusters
+   must never manage the same machines. The new one must not contain these clusters yet;
+   clusterctl skips objects that exist instead of updating them.
+2. Install cert-manager and the Cluster API Operator in the new management cluster.
+3. Decrypt, then apply the provider part and wait until every provider is ready:
+
+   ```sh
+   mkdir restore && gpg -d capi-navigator-mgmt-<connection>-<time>.tar.gz.gpg | tar xz -C restore
+   cd restore
+   kubectl apply --server-side -f providers/
+   kubectl get coreproviders,bootstrapproviders,controlplaneproviders,infrastructureproviders -A -w
+   kubectl apply --server-side -f identities/   # if the folder exists
+   ```
+
+4. Restore the Cluster API objects with `clusterctl` of the CAPI minor version in the archive. It
+   creates the namespaces, restores the objects in order and unpauses the clusters at the end.
+   `--dry-run` does nothing in this mode: the command really restores.
+
+   ```sh
+   clusterctl move --from-directory capi/ --to-kubeconfig <new-management-cluster.kubeconfig>
+   ```
+
+5. Point the connection in CAPI Navigator to the new management cluster (Connections page) and
+   test it. An in-cluster connection of an all-in-one installation needs nothing; there, restore
+   the home backup first.
+
+The controllers take the running machines over: no machine is replaced and the CAs stay the same.
+Status is rebuilt within minutes. Upstream notes that `clusterctl move` was not designed as a
+backup tool; CAPI Navigator uses its `--from-directory` mode knowingly, and the restore was
+verified on kind with the Cluster API Operator (see ADR-0047).

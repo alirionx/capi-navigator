@@ -302,7 +302,8 @@ function summaryOf(
     s.providers.secrets.length +
     s.providers.providers.length +
     s.identities.length;
-  const excluded = s.excluded.length ? `, ${s.excluded.length} hosted clusters left out` : '';
+  const n = s.excluded.length;
+  const excluded = n ? `, ${n} hosted ${n === 1 ? 'cluster' : 'clusters'} left out` : '';
   return `Management cluster ${connection}: ${objects} objects${excluded}, encrypted to ${fingerprints.join(', ')}`;
 }
 

@@ -265,9 +265,11 @@ export function selectManagementBackup(input: ManagementBackupInput): Management
     .filter((o) => !o.metadata.namespace && o.metadata.labels?.[CREDENTIAL_LABEL] !== undefined)
     .map(cleanForKubectl);
 
+  // A namespace that held only hosted clusters has nothing left to restore.
+  const keptObjects = [...capi, ...extras];
   return {
-    namespaces,
-    capi: sortObjects([...capi, ...extras].map(cleanForClusterctl)),
+    namespaces: namespaces.filter((ns) => keptObjects.some((o) => o.metadata.namespace === ns)),
+    capi: sortObjects(keptObjects.map(cleanForClusterctl)),
     providers: {
       namespaces: sortObjects(
         input.providerNamespaces.map((n) => ({

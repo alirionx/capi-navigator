@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 
-// Backup of the home cluster (FP-38, part 1): add a key, download, decrypt with gpg. Needs an
-// active admin account and gpg on the PATH:
+// Backup of the home cluster (FP-38, part 1) and of the active management cluster (FP-39): add a
+// key, download, decrypt with gpg. Needs an active admin account and gpg on the PATH:
 //   E2E_ADMIN_PASSWORD=... pnpm test:e2e backup
 const adminUser = process.env.E2E_ADMIN_USER ?? 'admin';
 const adminPassword = process.env.E2E_ADMIN_PASSWORD;
@@ -78,6 +78,26 @@ test.describe('backup of the home cluster (FP-38)', () => {
       expect(listing).toContain('manifest.json');
       expect(listing).toContain('RESTORE.md');
       expect(listing).toMatch(/resources\/\d\d-navigatorusers\.yaml/);
+
+      // FP-39: the backup of the active management cluster, restorable with clusterctl.
+      await expect(page.getByTestId('backup-mgmt-capi')).toBeVisible({ timeout: 30_000 });
+      const [mgmt] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByTestId('backup-mgmt-download').click(),
+      ]);
+      expect(mgmt.suggestedFilename()).toMatch(
+        /^capi-navigator-mgmt-[a-z0-9-]+-\d{8}T\d{6}Z\.tar\.gz\.gpg$/,
+      );
+      const mgmtFile = join(work, mgmt.suggestedFilename());
+      await mgmt.saveAs(mgmtFile);
+      await expect(page.getByTestId('backup-mgmt-downloaded')).toBeVisible();
+      const mgmtListing = execFileSync('sh', [
+        '-c',
+        `gpg --homedir "${home}" --batch --pinentry-mode loopback --passphrase '' -d "${mgmtFile}" 2>/dev/null | tar tz`,
+      ]).toString();
+      expect(mgmtListing).toContain('manifest.json');
+      expect(mgmtListing).toContain('RESTORE.md');
+      expect(mgmtListing).toMatch(/providers\/30-providers\.yaml/);
 
       // Leave the settings as they were.
       await page.getByTestId('backup-key-remove').nth(keysBefore).click();

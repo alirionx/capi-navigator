@@ -308,6 +308,19 @@ describe('backup of a management cluster (FP-39)', () => {
     expect(cc.metadata.annotations).toEqual({ 'cluster.x-k8s.io/paused': '' });
   });
 
+  it('drops a namespace that held only hosted clusters (FP39-F-06)', () => {
+    const input = fixture();
+    input.objects.push({
+      apiVersion: 'cluster.x-k8s.io/v1beta2',
+      kind: 'Cluster',
+      metadata: { name: 'only-hosted', namespace: 'team-c', uid: 'uid-c' },
+      spec: { controlPlaneRef: { kind: 'K0smotronControlPlane', name: 'x' } },
+    });
+    const s = selectManagementBackup(input);
+    expect(s.namespaces).toEqual(['team-a', 'team-b']);
+    expect(s.excluded.map((e) => e.name)).toEqual(['tenant', 'only-hosted']);
+  });
+
   it('never changes the objects it was given (FP39-F-01)', () => {
     const input = fixture();
     const before = JSON.stringify(input);

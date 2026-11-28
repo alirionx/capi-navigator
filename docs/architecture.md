@@ -69,7 +69,7 @@ One NestJS module per domain:
 | `infra-providers`  | [infra-providers](../apps/backend/src/infra-providers)                     | Credential plugins for OpenStack (`clouds.yaml`, Keystone/Nova/Neutron client), AWS, Google Cloud and Proxmox VE (API token, CA, machine sizes)                                                                                                                      |
 | `clusters`         | [clusters](../apps/backend/src/clusters)                                   | Create, change, scale, label and delete workload clusters; status and resource tree; rollout controller; Calico manifest                                                                                                                                             |
 | `blueprints`       | [blueprints](../apps/backend/src/blueprints)                               | Cluster blueprints (`ClusterBlueprint` CRs): checked saving, creating clusters from a blueprint without a preview (ADR-0035)                                                                                                                                         |
-| `backup`           | [backup](../apps/backend/src/backup)                                       | Backup of the home cluster (FP-38): recipient keys (`NavigatorBackupSettings`), the app's objects as an OpenPGP-encrypted tar.gz, built in memory (ADR-0044)                                                                                                         |
+| `backup`           | [backup](../apps/backend/src/backup)                                       | Backup of the home cluster (FP-38): recipient keys (`NavigatorBackupSettings`), the app's objects as an OpenPGP-encrypted tar.gz, built in memory (ADR-0044); backup of a management cluster for `clusterctl move --from-directory` (FP-39, ADR-0047)                |
 | `helm`             | [helm](../apps/backend/src/helm)                                           | Helm repositories (`HelmRepository` CRs), chart browsing, add-ons as `HelmChartProxy`, CCM/CSI/kured presets and the kube-vip presets for LoadBalancer Services on Proxmox                                                                                           |
 | `dashboard`        | [dashboard](../apps/backend/src/dashboard)                                 | Read-only view into a workload cluster, polled while someone looks at it; workload logs on request with `clusters.logs`, audited (ADR-0036)                                                                                                                          |
 | `node-shell`       | [node-shell](../apps/backend/src/node-shell)                               | Root shell on a node through a temporary privileged pod, relayed over a WebSocket                                                                                                                                                                                    |
@@ -378,6 +378,20 @@ recipient key, and only ciphertext leaves the backend (ADR-0044). Restoring need
 30 seconds, the one holding the Lease `capi-navigator-backup` runs a due time once it is later than
 `status.lastScheduledAt` and records it first, then uploads and deletes beyond the retention
 (ADR-0046). Details: [backup.md](backup.md).
+
+### Backup of a management cluster
+
+The backup of a management cluster reads it with the connection's permissions and changes nothing
+there (FP-39, ADR-0047). The backend lists the CRDs with the clusterctl label and all their objects,
+finds the workload namespaces by their roots (Cluster, ClusterClass, ClusterResourceSet,
+move-hierarchy kinds), reads the Secrets and ConfigMaps there, and the provider resources of the
+CAPI Operator with the app's Secrets in the provider namespaces. A pure function
+([management-backup.ts](../apps/backend/src/backup/management-backup.ts)) selects and cleans:
+the CAPI part keeps `uid` and owner references and pauses every Cluster in the file, so a person
+restores it with `clusterctl move --from-directory`; the provider part is cleaned for `kubectl
+apply`; clusters with a hosted control plane (named by the bootstrap flavor plugin) are left out
+with their whole hierarchy. Packing and encryption are those of the home backup. A kind the
+connection cannot read stops the backup instead of leaving objects out.
 
 ### OpenAPI description and Swagger UI
 

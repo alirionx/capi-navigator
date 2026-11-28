@@ -5,12 +5,14 @@ import {
   BackupRunSchema,
   BackupS3TestResultSchema,
   BackupSettingsSchema,
+  ManagementBackupPreviewSchema,
   type BackupPreview,
   type BackupRun,
   type BackupS3TestRequest,
   type BackupS3TestResult,
   type BackupSettings,
   type BackupSettingsInput,
+  type ManagementBackupPreview,
 } from '@capi-navigator/shared';
 import { api, apiDownload } from '../api/client.js';
 
@@ -52,5 +54,32 @@ export const useBackupStore = defineStore('backup', () => {
     }
   }
 
-  return { settings, preview, load, save, download, testS3, runS3 };
+  /** FP39-F-09: what a backup of a management cluster would contain now. */
+  function managementPreview(connection: string): Promise<ManagementBackupPreview> {
+    return api(
+      'GET',
+      `/api/backup/management/${encodeURIComponent(connection)}/preview`,
+      ManagementBackupPreviewSchema,
+    );
+  }
+
+  /** FP39-F-01: downloads the encrypted backup of a management cluster; returns the file name. */
+  function downloadManagement(connection: string): Promise<string> {
+    return apiDownload(
+      `/api/backup/management/${encodeURIComponent(connection)}`,
+      `capi-navigator-mgmt-${connection}.tar.gz.gpg`,
+    );
+  }
+
+  return {
+    settings,
+    preview,
+    load,
+    save,
+    download,
+    testS3,
+    runS3,
+    managementPreview,
+    downloadManagement,
+  };
 });

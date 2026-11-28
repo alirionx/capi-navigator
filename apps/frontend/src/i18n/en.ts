@@ -1572,7 +1572,7 @@ export const en = {
   backup: {
     title: 'Backup',
     subtitle:
-      'Backs up all data of the app in the home cluster: users, roles, API tokens, connections to management clusters, Helm repositories, blueprints and settings, including their credentials. The backup is encrypted with OpenPGP to the keys below; the app cannot decrypt it. Restore it with gpg and kubectl, as RESTORE.md in the archive describes. Management clusters (providers, clusters) are not part of it.',
+      'Backs up all data of the app in the home cluster: users, roles, API tokens, connections to management clusters, Helm repositories, blueprints and settings, including their credentials. The backup is encrypted with OpenPGP to the keys below; the app cannot decrypt it. Restore it with gpg and kubectl, as RESTORE.md in the archive describes. Management clusters (providers, clusters, their CAs) are backed up separately, at the bottom of this page.',
     keys: 'Recipient keys',
     keysHint:
       'OpenPGP public keys; each backup is encrypted to all of them, and every recipient can decrypt it alone. Stored in the NavigatorBackupSettings resource "default" (spec.recipients) in the app namespace. Default: none.',
@@ -1615,6 +1615,46 @@ export const en = {
       'The file contains all credentials of the app, encrypted. Store it where only people allowed to restore the app can reach it. Every backup is recorded in the audit log.',
     saveFirst: 'Save or reset the changes to the keys first.',
     downloadButton: 'Download backup',
+    mgmt: {
+      title: 'Management clusters',
+      titleHint:
+        'One archive per management cluster (FP-39): what the workload clusters need there. The app only reads the cluster with the permissions of its connection and changes nothing.',
+      intro:
+        'After losing a management cluster, a new one takes the workload clusters over from this backup: the same machines, the same certificate authorities. It contains the Cluster API objects with their CA Secrets, the credentials, the provider installations and the add-ons. It is restored with kubectl and clusterctl move, without the app.',
+      noConnections: 'No management cluster is connected.',
+      connection: 'Management cluster',
+      unreadable:
+        'The connection cannot read these resources, so no backup is possible: a backup without them could lose parts of the clusters on restore. Allow the connection to read them; the minimal ClusterRole of the access manifests does.',
+      excluded:
+        'Left out: clusters with a hosted control plane. Their etcd lives in a volume the backup cannot restore.',
+      warnings: 'In the middle of a change; backed up as they are now:',
+      capiPart: 'Cluster API objects',
+      capiPartHint:
+        'Folder capi/ of the archive, restored with clusterctl move --from-directory: clusters with all their objects, the CA and kubeconfig Secrets, the credentials the app copied into the namespace, add-ons. uid and owner references stay; clusterctl rebuilds them.',
+      providerPart: 'Providers and credentials',
+      providerPartHint:
+        'Folders providers/ and identities/, applied with kubectl first: provider namespaces and installations of the CAPI Operator with their configuration, the credential Secrets and identities.',
+      empty: 'Nothing',
+      summary: '{total} objects; namespaces: {namespaces}',
+      downloadWarning:
+        'The file contains the certificate authorities of the workload clusters and cloud credentials, encrypted. Whoever can decrypt it can take over the clusters. Every backup is recorded in the audit log.',
+      keysFirst: 'Add a key above and save all changes first.',
+      downloadButton: 'Download management cluster backup',
+      restoreTitle: 'How do I restore a management cluster?',
+      restoreBefore:
+        'Make sure the old management cluster is gone or its clusters are paused: two management clusters must never manage the same machines. The new management cluster must not contain these clusters yet.',
+      restoreDecrypt: 'Decrypt and unpack the backup on your machine:',
+      restorePrerequisites:
+        'Install cert-manager and the Cluster API Operator in the new management cluster; manifest.json lists the versions of the old one.',
+      restoreProviders:
+        'Apply the provider part, wait until every provider is ready, then apply the identities:',
+      restoreCapi:
+        'Restore the Cluster API objects with clusterctl {version}. It creates the namespaces, restores the objects in order and unpauses the clusters at the end; --dry-run does nothing here.',
+      restoreConnection:
+        'Point the connection "{connection}" to the new management cluster on the Connections page and test it.',
+      restoreNote:
+        'The controllers take the running machines over: no machine is replaced. Status is rebuilt within minutes. RESTORE.md in the archive has the same steps for this backup.',
+    },
     s3: {
       title: 'Scheduled backups to S3',
       titleHint:
