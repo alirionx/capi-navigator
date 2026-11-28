@@ -283,8 +283,11 @@ export class BackupService {
     };
   }
 
-  /** FP38-F-04, F-05: the encrypted archive. */
-  async create(createdBy: string, now = new Date()): Promise<Backup> {
+  /**
+   * The recipient keys, each checked again (FP38-F-02); also for the management cluster backups
+   * (FP39-F-01). Refuses without a key.
+   */
+  async recipientKeys(): Promise<openpgp.Key[]> {
     const spec = await this.storedSpec();
     if (spec.recipients.length === 0) {
       throw new BadRequestException({
@@ -296,6 +299,13 @@ export class BackupService {
     const keys: openpgp.Key[] = [];
     for (const [i, r] of spec.recipients.entries())
       keys.push(await this.checkedKey(r.publicKey, i));
+    return keys;
+  }
+
+  /** FP38-F-04, F-05: the encrypted archive. */
+  async create(createdBy: string, now = new Date()): Promise<Backup> {
+    const spec = await this.storedSpec();
+    const keys = await this.recipientKeys();
     const fingerprints = keys.map((k) => k.getFingerprint().toUpperCase());
     const groups = await this.collect(spec.includeAuditEvents);
     const entries = buildBackupEntries({

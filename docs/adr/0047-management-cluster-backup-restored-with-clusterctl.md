@@ -89,7 +89,8 @@ CAAPH, ClusterResourceSet):
 - **Permissions:** the backup reads Secrets and ConfigMaps and lists every selected kind with the
   connection's permissions. The minimal ClusterRole of the access manifests (NF-03) can already read
   Secrets and ConfigMaps; it gets read access to the further API groups whose CRDs carry the
-  clusterctl label (`ipam.cluster.x-k8s.io`, `k0smotron.io`, `openstack.k-orc.cloud`). A kind the
+  clusterctl label (`ipam.cluster.x-k8s.io`, `runtime.cluster.x-k8s.io`, `k0smotron.io`,
+  `openstack.k-orc.cloud`). A kind the
   connection cannot read is named in the preview, and the backup of that connection is refused:
   a backup without some objects could lose whole parts of the graph on restore.
 

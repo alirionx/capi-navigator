@@ -1,0 +1,419 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`backup of a management cluster (FP-39) > writes capi/ with one file per namespace, providers/, identities/ and the guide (snapshot) 1`] = `
+{
+  "RESTORE.md": "# Restore a management cluster backup
+
+Backup of the management cluster of connection \`prod\`, CAPI Navigator
+0.23.0, created 2026-11-28T03:00:00.000Z by admin. The files contain
+Secrets in plain text (base64), among them the CAs of the workload clusters and cloud credentials:
+keep the decrypted copy only as long as you need it.
+
+Versions in the old management cluster:
+
+- cluster-api: v1.14.4
+- aws: v2.13.1
+
+**Not in this backup** (hosted control planes, their etcd cannot be restored):
+
+- team-a/tenant
+
+**Backed up in the middle of a change** (restored as they were):
+
+- Machine team-a/wl1-cp-new: Machine without a node yet.
+
+## Before you start
+
+- **The old management cluster must be gone**, or its Clusters paused
+  (\`kubectl patch cluster <name> --type merge -p '{"spec":{"paused":true}}'\`). Two management
+  clusters must never manage the same machines.
+- **The new management cluster must not contain these objects yet.** clusterctl skips objects that
+  exist instead of updating them.
+- You need \`kubectl\` and clusterctl v1.14.x (the CAPI version of the backup is v1.14.4). \`--dry-run\` does nothing with \`--from-directory\`: the
+  command really restores.
+
+## Steps
+
+1. Install cert-manager and the Cluster API Operator in the new management cluster, in the versions
+   listed above (or the ones CAPI Navigator installs). If ORC is listed, install it too, e.g. on
+   the Providers page of CAPI Navigator once its connection points to the new cluster (step 5).
+
+2. Apply the provider part and wait until every provider is ready:
+
+   \`\`\`sh
+   kubectl apply --server-side -f providers/
+   kubectl get coreproviders,bootstrapproviders,controlplaneproviders,infrastructureproviders,addonproviders,ipamproviders -A -w
+   \`\`\`
+
+3. Apply the identities (cloud credentials of the clusters), if the folder exists:
+
+   \`\`\`sh
+   kubectl apply --server-side -f identities/
+   \`\`\`
+
+4. Restore the Cluster API objects. clusterctl creates the namespaces, restores the objects in the
+   right order with new owner references and unpauses the clusters at the end:
+
+   \`\`\`sh
+   clusterctl move --from-directory capi/ --to-kubeconfig <kubeconfig of the new management cluster>
+   \`\`\`
+
+   The controllers take the running machines over: no machine is replaced, the CAs stay the same.
+   Status is rebuilt by the controllers within a few minutes.
+
+5. Point the connection \`prod\` in CAPI Navigator to the new management cluster (new
+   kubeconfig or token on the Connections page) and test it. An in-cluster connection of an
+   all-in-one installation needs nothing.
+
+Not restored: status (rebuilt by the controllers), creation dates, Events, and the access objects of
+CAPI Navigator (\`capi-navigator-access\`), which a new management cluster gets when it is connected.
+",
+  "capi/_cluster-scoped.yaml": "apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSClusterStaticIdentity
+metadata:
+  labels:
+    capi-navigator.io/credential: aws-prod
+  name: aws-prod
+  uid: uid-10
+",
+  "capi/team-a.yaml": "apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  name: wl1-ca
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: KubeadmControlPlane
+      name: wl1-cp
+      uid: uid-2
+  uid: uid-13
+type: Opaque
+---
+apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  name: wl1-etcd
+  namespace: team-a
+  uid: uid-15
+type: Opaque
+---
+apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  name: wl1-kubeconfig
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: KubeadmControlPlane
+      name: wl1-cp
+      uid: uid-2
+  uid: uid-14
+type: Opaque
+---
+apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+    cluster.x-k8s.io/cluster-name: wl1
+    clusterctl.cluster.x-k8s.io/move: ""
+  name: wl1-proxmox-credentials
+  namespace: team-a
+  uid: uid-18
+type: Opaque
+---
+apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: capi-navigator-ccm
+  namespace: team-a
+  uid: uid-8
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Cluster
+metadata:
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  name: wl1
+  namespace: team-a
+  uid: uid-1
+spec:
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    name: wl1-cp
+  paused: true
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Machine
+metadata:
+  name: wl1-cp-abc
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: KubeadmControlPlane
+      name: wl1-cp
+      uid: uid-2
+  uid: uid-3
+---
+apiVersion: cluster.x-k8s.io/v1beta2
+kind: Machine
+metadata:
+  name: wl1-cp-new
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: KubeadmControlPlane
+      name: wl1-cp
+      uid: uid-2
+  uid: uid-4
+---
+apiVersion: controlplane.cluster.x-k8s.io/v1beta2
+kind: KubeadmControlPlane
+metadata:
+  name: wl1-cp
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: Cluster
+      name: wl1
+      uid: uid-1
+  uid: uid-2
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: DockerCluster
+metadata:
+  name: wl1
+  namespace: team-a
+  ownerReferences:
+    - apiVersion: cluster.x-k8s.io/v1beta2
+      controller: true
+      kind: Cluster
+      name: wl1
+      uid: uid-1
+  uid: uid-5
+",
+  "capi/team-b.yaml": "apiVersion: addons.cluster.x-k8s.io/v1alpha1
+kind: HelmChartProxy
+metadata:
+  name: ns-dev
+  namespace: team-b
+  uid: uid-9
+",
+  "identities/identities.yaml": "apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: AWSClusterStaticIdentity
+metadata:
+  labels:
+    capi-navigator.io/credential: aws-prod
+  name: aws-prod
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta2
+kind: OpenStackClusterIdentity
+metadata:
+  labels:
+    capi-navigator.io/credential: os-prod
+  name: os-prod
+",
+  "manifest.json": "{
+  "format": "capi-navigator-management-backup/v1",
+  "appVersion": "0.23.0",
+  "connection": "prod",
+  "createdAt": "2026-11-28T03:00:00.000Z",
+  "createdBy": "admin",
+  "recipients": [
+    "ABCDEF"
+  ],
+  "versions": [
+    {
+      "name": "cluster-api",
+      "version": "v1.14.4"
+    },
+    {
+      "name": "aws",
+      "version": "v2.13.1"
+    }
+  ],
+  "namespaces": [
+    "team-a",
+    "team-b"
+  ],
+  "excluded": [
+    {
+      "kind": "Cluster",
+      "namespace": "team-a",
+      "name": "tenant",
+      "message": "Hosted control plane: its etcd is not part of the backup, so the cluster is left out."
+    }
+  ],
+  "warnings": [
+    {
+      "kind": "Machine",
+      "namespace": "team-a",
+      "name": "wl1-cp-new",
+      "message": "Machine without a node yet."
+    }
+  ],
+  "files": [
+    {
+      "name": "providers/10-namespaces.yaml",
+      "objects": [
+        {
+          "kind": "Namespace",
+          "count": 2
+        }
+      ],
+      "sha256": "3f2a8f791241e36bc213b8dece921168a1492b1fb6f42d271a50937959da025e"
+    },
+    {
+      "name": "providers/20-secrets.yaml",
+      "objects": [
+        {
+          "kind": "Secret",
+          "count": 2
+        }
+      ],
+      "sha256": "9285dc18ff24f7e5bf971ac0642ad6d4ccb7948d1035ccaa8a9dc35bfe5c9558"
+    },
+    {
+      "name": "providers/30-providers.yaml",
+      "objects": [
+        {
+          "kind": "CoreProvider",
+          "count": 1
+        },
+        {
+          "kind": "InfrastructureProvider",
+          "count": 1
+        }
+      ],
+      "sha256": "d17bd1aaa131b243a517eb24726752a3dbc59ad450a74661189ec2d7c941366b"
+    },
+    {
+      "name": "identities/identities.yaml",
+      "objects": [
+        {
+          "kind": "AWSClusterStaticIdentity",
+          "count": 1
+        },
+        {
+          "kind": "OpenStackClusterIdentity",
+          "count": 1
+        }
+      ],
+      "sha256": "06c38d32aaf936d68a468ac5509f00197d57a4c5d5e9812e68c08e3cee16de10"
+    },
+    {
+      "name": "capi/_cluster-scoped.yaml",
+      "objects": [
+        {
+          "kind": "AWSClusterStaticIdentity",
+          "count": 1
+        }
+      ],
+      "sha256": "0de6f587d0fafe72286fb8deef1b1f8b34297104f6cca0e05ad084f33da1ff33"
+    },
+    {
+      "name": "capi/team-a.yaml",
+      "objects": [
+        {
+          "kind": "Cluster",
+          "count": 1
+        },
+        {
+          "kind": "DockerCluster",
+          "count": 1
+        },
+        {
+          "kind": "HelmChartProxy",
+          "count": 1
+        },
+        {
+          "kind": "KubeadmControlPlane",
+          "count": 1
+        },
+        {
+          "kind": "Machine",
+          "count": 2
+        },
+        {
+          "kind": "Secret",
+          "count": 4
+        }
+      ],
+      "sha256": "0e389d21a8182bfa676ef8a47a34b80d6bbb7fce3b3491d74c16bf0b6b265d08"
+    },
+    {
+      "name": "capi/team-b.yaml",
+      "objects": [
+        {
+          "kind": "HelmChartProxy",
+          "count": 1
+        }
+      ],
+      "sha256": "cf130ede7717085abbba9235c619bec26720dc4cc103df71a67c5d0000685e01"
+    }
+  ]
+}
+",
+  "providers/10-namespaces.yaml": "apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    capi-navigator.io/managed-by: capi-navigator
+  name: capa-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: capi-system
+",
+  "providers/20-secrets.yaml": "apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  name: aws-infrastructure-variables
+  namespace: capa-system
+type: Opaque
+---
+apiVersion: v1
+data:
+  value: c2VjcmV0
+kind: Secret
+metadata:
+  name: capi-navigator-credential-aws-prod
+  namespace: capa-system
+type: Opaque
+",
+  "providers/30-providers.yaml": "apiVersion: operator.cluster.x-k8s.io/v1alpha2
+kind: CoreProvider
+metadata:
+  name: cluster-api
+  namespace: capi-system
+spec:
+  version: v1.14.4
+---
+apiVersion: operator.cluster.x-k8s.io/v1alpha2
+kind: InfrastructureProvider
+metadata:
+  name: aws
+  namespace: capa-system
+spec:
+  configSecret:
+    name: aws-infrastructure-variables
+  version: v2.13.1
+",
+}
+`;

@@ -66,14 +66,56 @@ export type BackupPreview = z.infer<typeof BackupPreviewSchema>;
 /** Days before expiry from which a recipient key is flagged (FP38-F-02). */
 export const BACKUP_KEY_WARN_DAYS = 30;
 
-/** File name of a backup (FP38-F-04), e.g. capi-navigator-home-20261127T101500Z.tar.gz.gpg. */
-export function backupFileName(at: Date): string {
-  const stamp = at
+function backupStamp(at: Date): string {
+  return at
     .toISOString()
     .replace(/[-:]/g, '')
     .replace(/\.\d+Z$/, 'Z');
-  return `capi-navigator-home-${stamp}.tar.gz.gpg`;
 }
+
+/** File name of a backup (FP38-F-04), e.g. capi-navigator-home-20261127T101500Z.tar.gz.gpg. */
+export function backupFileName(at: Date): string {
+  return `capi-navigator-home-${backupStamp(at)}.tar.gz.gpg`;
+}
+
+/**
+ * File name of a management cluster backup (FP39-F-01), e.g.
+ * capi-navigator-mgmt-prod-20261127T101500Z.tar.gz.gpg.
+ */
+export function managementBackupFileName(connection: string, at: Date): string {
+  return `capi-navigator-mgmt-${connection}-${backupStamp(at)}.tar.gz.gpg`;
+}
+
+/** A cluster the management backup leaves out (FP39-F-06), or one it warns about (FP39-F-07). */
+export const ManagementBackupNoticeSchema = z.object({
+  kind: z.string(),
+  namespace: z.string().optional(),
+  name: z.string(),
+  message: z.string(),
+});
+export type ManagementBackupNotice = z.infer<typeof ManagementBackupNoticeSchema>;
+
+/** FP39-F-09, F-10: what a backup of one management cluster would contain now. */
+export const ManagementBackupPreviewSchema = z.object({
+  connection: z.string(),
+  /** Objects per kind in the CAPI part (restored with clusterctl). */
+  capi: z.array(z.object({ kind: z.string(), count: z.number().int() })),
+  /** Objects per kind in the provider part (restored with kubectl first). */
+  providers: z.array(z.object({ kind: z.string(), count: z.number().int() })),
+  total: z.number().int(),
+  /** Workload namespaces in the backup. */
+  namespaces: z.array(z.string()),
+  /** FP39-F-06: clusters left out, e.g. with a hosted control plane. */
+  excluded: z.array(ManagementBackupNoticeSchema),
+  /** FP39-F-07: clusters in the middle of a change, backed up as they are. */
+  warnings: z.array(ManagementBackupNoticeSchema),
+  /** FP39-F-10: kinds the connection cannot read; the backup is refused while any are listed. */
+  unreadable: z.array(z.object({ kind: z.string(), resource: z.string(), message: z.string() })),
+  /** Versions of CAPI and the providers, for clusterctl and the restore guide (FP39-F-08). */
+  versions: z.array(z.object({ name: z.string(), version: z.string() })),
+  recipients: z.number().int(),
+});
+export type ManagementBackupPreview = z.infer<typeof ManagementBackupPreviewSchema>;
 
 /** Result of "Test connection" to the S3 target (FP38-F-14). */
 export const BackupS3TestResultSchema = z.object({

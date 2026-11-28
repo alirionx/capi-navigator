@@ -541,6 +541,99 @@
         ]
       }
     },
+    "/api/backup/management/{connection}": {
+      "post": {
+        "operationId": "Backup_createManagement",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "Back up a management cluster and download it, encrypted with OpenPGP",
+        "description": "A tar.gz with the provider part (kubectl) and the CAPI part (clusterctl move --from-directory) of one management cluster, encrypted to every recipient key (FP39-F-01 to F-05). Nothing is changed in the management cluster. Refused with 409 while the connection cannot read a selected kind. See RESTORE.md in the archive.\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Csrf"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Encrypted archive",
+            "content": {
+              "application/pgp-encrypted": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
+    "/api/backup/management/{connection}/preview": {
+      "get": {
+        "operationId": "Backup_managementPreview",
+        "tags": [
+          "Backup"
+        ],
+        "summary": "What a backup of a management cluster would contain now",
+        "description": "Objects per kind of the CAPI part and the provider part, left-out hosted clusters, clusters in the middle of a change, and kinds the connection cannot read (FP39-F-09, F-10).\n\nRequires permission `backup.manage`. This permission needs an unlimited role assignment.",
+        "parameters": [
+          {
+            "name": "connection",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManagementBackupPreview"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error with message and hint (400 invalid input, 401, 403, 404, 409, 502).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorBody"
+                }
+              }
+            }
+          }
+        },
+        "x-permission": [
+          "backup.manage"
+        ]
+      }
+    },
     "/api/backup/preview": {
       "get": {
         "operationId": "Backup_preview",
@@ -12332,6 +12425,162 @@
         },
         "required": [
           "namespaces"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementBackupNotice": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "namespace": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementBackupPreview": {
+        "type": "object",
+        "properties": {
+          "connection": {
+            "type": "string"
+          },
+          "capi": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "providers": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "kind",
+                "count"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "namespaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementBackupNotice"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ManagementBackupNotice"
+            }
+          },
+          "unreadable": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string"
+                },
+                "resource": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "kind",
+                "resource",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "version"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "recipients": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "connection",
+          "capi",
+          "providers",
+          "total",
+          "namespaces",
+          "excluded",
+          "warnings",
+          "unreadable",
+          "versions",
+          "recipients"
         ],
         "additionalProperties": false
       },

@@ -5,6 +5,7 @@ import {
   Get,
   Header,
   HttpCode,
+  Param,
   Post,
   Put,
   Req,
@@ -18,12 +19,14 @@ import {
   BackupS3TestResultSchema,
   BackupSettingsInputSchema,
   BackupSettingsSchema,
+  ManagementBackupPreviewSchema,
   type BackupPreview,
   type BackupRun,
   type BackupS3TestRequest,
   type BackupS3TestResult,
   type BackupSettings,
   type BackupSettingsInput,
+  type ManagementBackupPreview,
 } from '@capi-navigator/shared';
 import type { Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
@@ -31,12 +34,22 @@ import { Api } from '../openapi/api.decorator.js';
 import { Audit, CurrentUser, Requires } from '../auth/decorators.js';
 import type { AuthenticatedRequest, Principal } from '../auth/principal.js';
 import { BackupService } from './backup.service.js';
+import { ManagementBackupService } from './management-backup.service.js';
+
+const MANAGEMENT_AUDIT = {
+  managementClusterParam: 'connection',
+  targetKind: 'ManagementCluster',
+  targetParam: 'connection',
+};
 
 /** Backup of the home cluster (FP-38); every endpoint needs backup.manage (FP38-F-06). */
 @Controller('api/backup')
 @Requires('backup.manage')
 export class BackupController {
-  constructor(private readonly backup: BackupService) {}
+  constructor(
+    private readonly backup: BackupService,
+    private readonly management: ManagementBackupService,
+  ) {}
 
   @Api({
     summary: 'Backup settings: recipient keys and whether audit events are included',
@@ -132,5 +145,39 @@ export class BackupController {
     }
     if (summary) req.auditMessage = summary;
     return run;
+  }
+
+  @Api({
+    summary: 'What a backup of a management cluster would contain now',
+    description:
+      'Objects per kind of the CAPI part and the provider part, left-out hosted clusters, clusters in the middle of a change, and kinds the connection cannot read (FP39-F-09, F-10).',
+    response: ManagementBackupPreviewSchema,
+  })
+  @Get('management/:connection/preview')
+  managementPreview(@Param('connection') connection: string): Promise<ManagementBackupPreview> {
+    return this.management.preview(connection);
+  }
+
+  @Api({
+    summary: 'Back up a management cluster and download it, encrypted with OpenPGP',
+    description:
+      'A tar.gz with the provider part (kubectl) and the CAPI part (clusterctl move --from-directory) of one management cluster, encrypted to every recipient key (FP39-F-01 to F-05). Nothing is changed in the management cluster. Refused with 409 while the connection cannot read a selected kind. See RESTORE.md in the archive.',
+    response: { contentType: 'application/pgp-encrypted', description: 'Encrypted archive' },
+  })
+  @Post('management/:connection')
+  @HttpCode(200)
+  @Header('Content-Type', 'application/pgp-encrypted')
+  @Header('Cache-Control', 'no-store')
+  @Audit({ action: 'backup.management.create', ...MANAGEMENT_AUDIT })
+  async createManagement(
+    @Param('connection') connection: string,
+    @CurrentUser() user: Principal,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const backup = await this.management.create(connection, user.username);
+    req.auditMessage = backup.summary;
+    res.setHeader('Content-Disposition', `attachment; filename="${backup.fileName}"`);
+    return new StreamableFile(backup.data);
   }
 }

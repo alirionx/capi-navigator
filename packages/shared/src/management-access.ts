@@ -199,6 +199,15 @@ rules:
       - addons.cluster.x-k8s.io
     resources: ['*']
     verbs: [get, list, watch, create, update, patch, delete]
+  # Backup of the management cluster (FP39-F-10): read the further groups whose CRDs carry the
+  # clusterctl label.
+  - apiGroups:
+      - ipam.cluster.x-k8s.io
+      - runtime.cluster.x-k8s.io
+      - k0smotron.io
+      - openstack.k-orc.cloud
+    resources: ['*']
+    verbs: [get, list]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

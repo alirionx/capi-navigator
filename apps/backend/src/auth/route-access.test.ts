@@ -90,6 +90,9 @@ describe('endpoint permissions (FP19-F-01, FP19-F-05)', async () => {
     'POST /api/backup': 'admin',
     'POST /api/backup/s3/test': 'admin',
     'POST /api/backup/s3/run': 'admin',
+    // FP-39: management cluster backups hold their CAs and cloud credentials (FP39-F-09).
+    'GET /api/backup/management/:connection/preview': 'admin',
+    'POST /api/backup/management/:connection': 'admin',
   };
   const expected = { ...(baseline as Record<string, string>), ...added };
 
