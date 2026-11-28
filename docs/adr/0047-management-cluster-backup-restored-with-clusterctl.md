@@ -67,6 +67,13 @@ CAAPH, ClusterResourceSet):
   - Not in the backup: cert-manager, the CAPI Operator and ORC (the app only detects or applies
     them; the archive names their versions), the connection's access objects
     (`capi-navigator-access`, which a new management cluster gets anew), node shell pods, Events.
+- **Bootstrap data the provider writes again stays out.** k0smotron v2.3.1 re-applies a worker's
+  bootstrap data Secret server-side without force; after a restore that conflicts with the field
+  manager `clusterctl`, and the machine stays not ready although its node works (seen live on
+  Proxmox VE). The bootstrap flavor plugin names such config kinds (`regeneratedBootstrapData`,
+  for k0s `K0sWorkerConfig`); their data Secrets are left out, and k0smotron writes them again.
+  The data was only needed at the machine's first boot. A Secret labelled with the name of a
+  backed-up cluster but owned by nothing also gets the move label.
 - **Format of the CAPI part:** YAML, one file per namespace plus one for cluster-scoped objects, in
   a folder that holds nothing else (clusterctl reads every file). `uid` and `ownerReferences` stay,
   because clusterctl builds the graph from them. `managedFields`, `resourceVersion`, `generation`,

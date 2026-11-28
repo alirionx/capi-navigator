@@ -325,6 +325,10 @@ export const k0sPlugin: BootstrapFlavorPlugin = {
     plural: 'k0scontrolplanes',
   },
 
+  // k0smotron v2.3.1 re-applies a worker's data Secret server-side without force; after a
+  // restore by clusterctl that conflicts with the field manager "clusterctl" and the machine stays
+  // not ready (FP-39 live test on Proxmox VE). Left out of the backup, it is simply written again.
+  regeneratedBootstrapData: ['K0sWorkerConfig'],
   bootstrapResources: {
     group: 'bootstrap.cluster.x-k8s.io',
     version: 'v1beta2',

@@ -276,6 +276,9 @@ export class ManagementBackupService {
         providerNamespaces,
         providerSecrets,
         hostedControlPlaneKinds: hostedControlPlaneKinds(),
+        regeneratedBootstrapData: Object.values(FLAVOR_PLUGINS).flatMap(
+          (p) => p?.regeneratedBootstrapData ?? [],
+        ),
       },
       unreadable,
       versions,

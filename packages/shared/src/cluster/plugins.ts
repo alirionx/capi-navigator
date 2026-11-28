@@ -272,6 +272,12 @@ export interface BootstrapFlavorPlugin {
   extraObjects?(spec: ClusterSpec, labels: Record<string, string>): ManifestObject[];
   /** Control plane resource for reading and watching (FP-6). */
   controlPlaneResource: { group: string; version: string; kind: string; plural: string };
+  /**
+   * FP39-F-03, ADR-0047: bootstrap config kinds whose data Secrets the management cluster backup
+   * leaves out, because their provider writes them again after a restore and would conflict with
+   * the copy clusterctl restored.
+   */
+  regeneratedBootstrapData?: string[];
   /** Bootstrap templates and per-machine configs, for the resources tab (FP7-F-01). */
   bootstrapResources: {
     group: string;

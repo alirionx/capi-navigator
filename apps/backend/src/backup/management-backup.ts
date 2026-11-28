@@ -162,6 +162,8 @@ export interface ManagementBackupInput {
   providerSecrets: KubeObject[];
   /** Control plane kinds that run hosted (FP39-F-06), from the bootstrap flavor plugins. */
   hostedControlPlaneKinds: string[];
+  /** Bootstrap config kinds whose data Secrets are written again after a restore (FP39-F-03). */
+  regeneratedBootstrapData?: string[];
 }
 
 export interface ManagementBackupSelection {
@@ -247,12 +249,24 @@ export function selectManagementBackup(input: ManagementBackupInput): Management
         CLUSTER_SECRET_SUFFIXES.some((s) => o.metadata.name === `${c.metadata.name}-${s}`),
     );
   const extras: KubeObject[] = [];
+  const regenerated = new Set(input.regeneratedBootstrapData ?? []);
   for (const o of [...input.secrets, ...input.configMaps]) {
     if (!inScope.has(o.metadata.namespace ?? '') || !kept(o)) continue;
+    if (
+      o.kind === 'Secret' &&
+      (o.metadata.ownerReferences ?? []).some((r) => regenerated.has(r.kind))
+    )
+      continue;
     const owned = (o.metadata.ownerReferences ?? []).some((r) => uids.has(r.uid));
     const app = o.metadata.labels?.[MANAGED_BY_LABEL] === 'capi-navigator';
+    // A provider that labels a cluster's Secret but sets no owner (none seen so far).
+    const labelled = clusters.some(
+      (c) =>
+        c.metadata.namespace === o.metadata.namespace &&
+        o.metadata.labels?.[CLUSTER_NAME_LABEL] === c.metadata.name,
+    );
     if (owned || capiName(o)) extras.push(o);
-    else if (app) {
+    else if (app || (o.kind === 'Secret' && labelled)) {
       // Nothing owns it, so clusterctl restores it only with the move label.
       extras.push({
         ...o,

@@ -58,7 +58,7 @@ Everything the app creates for workload clusters is standard upstream Cluster AP
 | FP-36 | Namespaces and service accounts in workload clusters (optional) | done (ADR-0039, ADR-0040; live acceptance with RKE2, k0s and kubeadm on Proxmox VE) |
 | FP-37 | Self-service for namespace users (optional; needs FP-36) | done (ADR-0041; live acceptance on Proxmox VE with Dex) |
 | FP-38 | Backup of the home cluster: manual download, then scheduled to S3 (optional) | done (ADR-0044 to ADR-0046; restore verified on kind; S3 schedule verified with two replicas and SeaweedFS) |
-| FP-39 | Backup of the management clusters, restored with `clusterctl move` (optional; needs FP-38) | in progress (parts 1 and 2 implemented and accepted on kind with the CAPI Operator; live acceptance on Proxmox VE, OpenStack and AWS open) |
+| FP-39 | Backup of the management clusters, restored with `clusterctl move` (optional; needs FP-38) | in progress (parts 1 and 2 implemented and accepted on kind; live restore on Proxmox VE with RKE2 and k0s verified; live acceptance on OpenStack and AWS open) |
 | UX | UI and UX improvements (recurring; review before every minor or major release) | collecting |
 
 MVP = FP-0 to FP-5. Recommended order after that: FP-7 before FP-8.

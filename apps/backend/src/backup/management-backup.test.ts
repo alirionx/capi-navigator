@@ -308,6 +308,50 @@ describe('backup of a management cluster (FP-39)', () => {
     expect(cc.metadata.annotations).toEqual({ 'cluster.x-k8s.io/paused': '' });
   });
 
+  it('leaves out bootstrap data the provider writes again after a restore (FP39-F-03)', () => {
+    const input = fixture();
+    const kcp = input.objects.find((o) => o.kind === 'KubeadmControlPlane')!;
+    input.secrets.push({
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: 'wl1-md-0-abc',
+        namespace: 'team-a',
+        uid: 'uid-data',
+        ownerReferences: [
+          {
+            apiVersion: 'bootstrap.cluster.x-k8s.io/v1beta2',
+            kind: 'K0sWorkerConfig',
+            name: 'wl1-md-0-abc',
+            uid: kcp.metadata.uid!,
+          },
+        ],
+      },
+    });
+    const names = (s: ReturnType<typeof selectManagementBackup>) =>
+      s.capi.map((o) => o.metadata.name);
+    expect(names(selectManagementBackup(input))).toContain('wl1-md-0-abc');
+    expect(
+      names(selectManagementBackup({ ...input, regeneratedBootstrapData: ['K0sWorkerConfig'] })),
+    ).not.toContain('wl1-md-0-abc');
+  });
+
+  it("keeps a cluster's labelled Secret without owner, with the move label (FP39-F-03)", () => {
+    const input = fixture();
+    input.secrets.push({
+      apiVersion: 'v1',
+      kind: 'Secret',
+      metadata: {
+        name: 'wl1-extra',
+        namespace: 'team-a',
+        uid: 'uid-extra',
+        labels: { 'cluster.x-k8s.io/cluster-name': 'wl1' },
+      },
+    });
+    const extra = selectManagementBackup(input).capi.find((o) => o.metadata.name === 'wl1-extra');
+    expect(extra?.metadata.labels).toMatchObject({ 'clusterctl.cluster.x-k8s.io/move': '' });
+  });
+
   it('drops a namespace that held only hosted clusters (FP39-F-06)', () => {
     const input = fixture();
     input.objects.push({
