@@ -333,14 +333,15 @@ function size(bytes?: number): string {
             <td class="text-body-small text-no-wrap">{{ d(new Date(run.startedAt), 'short') }}</td>
             <td class="text-body-small">{{ t(`backup.s3.trigger.${run.trigger}`) }}</td>
             <td class="text-body-small">
-              <template v-if="run.outcome === 'success'">
+              <!-- The home backup; also uploaded when only a management cluster failed. -->
+              <div v-if="run.objectKey">
                 <code>{{ run.objectKey }}</code> · {{ size(run.size) }}
                 <span v-if="run.deleted"> · {{ t('backup.s3.deleted', { n: run.deleted }) }}</span>
-              </template>
-              <template v-else>
+              </div>
+              <div v-if="run.outcome === 'failure' && run.message">
                 {{ run.message }}
                 <div v-if="run.hint" class="text-medium-emphasis">{{ run.hint }}</div>
-              </template>
+              </div>
               <div
                 v-for="target in run.targets ?? []"
                 :key="target.connection"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decide, MISSED_AFTER_MS } from './backup-scheduler.service.js';
+import { auditText, decide, MISSED_AFTER_MS } from './backup-scheduler.service.js';
 
 const s3 = {
   bucket: 'b',
@@ -114,5 +114,33 @@ describe('two replicas (FP38-F-11)', () => {
     expect(await b.tick(t2)).toBe('run');
     expect(await b.tick(at('2026-11-28T03:00:40Z'))).toBe('none');
     expect(runs).toEqual(['2026-11-27T03:00:00.000Z', '2026-11-28T03:00:00.000Z']);
+  });
+});
+
+describe('audit message of a scheduled run (FP39-F-13)', () => {
+  const base = { startedAt: 'a', finishedAt: 'b', trigger: 'schedule' as const };
+  it('names what was uploaded and every failed management cluster', () => {
+    expect(
+      auditText(
+        {
+          ...base,
+          outcome: 'failure',
+          objectKey: 'nav/home.gpg',
+          message: '1 of 2 management clusters failed: gone',
+          targets: [
+            { connection: 'prod', outcome: 'success', objectKey: 'nav/mgmt/prod/x.gpg' },
+            { connection: 'gone', outcome: 'failure', message: 'not reachable' },
+          ],
+        },
+        'home: 29 objects | prod: 40 objects',
+      ),
+    ).toBe('home: 29 objects | prod: 40 objects | gone: not reachable');
+  });
+
+  it('keeps the reason of a failed home backup', () => {
+    expect(auditText({ ...base, outcome: 'failure', message: 'S3 upload failed' })).toBe(
+      'S3 upload failed',
+    );
+    expect(auditText({ ...base, outcome: 'success', objectKey: 'k' })).toBeUndefined();
   });
 });

@@ -68,6 +68,11 @@ schedule ([ADR-0046](adr/0046-scheduled-backups-to-s3.md)):
   not running is not repeated.
 - **Retention:** after each upload the app keeps the newest backups (default 14) and deletes older
   ones, but only objects named `capi-navigator-home-<time>.tar.gz.gpg` directly below the prefix.
+- **Management clusters in every run** (FP-39): each run also backs up the chosen management
+  clusters, each to `<prefix>mgmt/<connection>/` with the same keys and retention (only objects
+  named `capi-navigator-mgmt-<connection>-<time>.tar.gz.gpg` in that folder count). A management
+  cluster that cannot be reached fails alone; the home backup and the other clusters are still
+  written, and the run lists the result per cluster.
 - **Back up to S3 now** runs one at once. The last ten runs are listed with their result; every
   run is in the audit log.
 

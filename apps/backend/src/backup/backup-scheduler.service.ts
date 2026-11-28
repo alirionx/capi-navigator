@@ -6,7 +6,11 @@ import {
   type OnApplicationShutdown,
 } from '@nestjs/common';
 import { CoordinationV1Api } from '@kubernetes/client-node';
-import { lastBackupDue, type NavigatorBackupSettingsSpec } from '@capi-navigator/shared';
+import {
+  lastBackupDue,
+  type BackupRun,
+  type NavigatorBackupSettingsSpec,
+} from '@capi-navigator/shared';
 import { AuditService } from '../audit/audit.service.js';
 import { APP_CONFIG, type AppConfig } from '../config/config.js';
 import { acquireLease } from '../kube/lease.js';
@@ -108,7 +112,8 @@ export class BackupSchedulerService implements OnApplicationBootstrap, OnApplica
         action: 'backup.s3.scheduled',
         outcome: run.outcome,
         target: { kind: 'NavigatorBackupSettings', name: 'default' },
-        ...((summary ?? run.message) ? { message: summary ?? run.message } : {}),
+        // FP39-F-13: what was written and, for a partial failure, what failed.
+        ...(auditText(run, summary) ? { message: auditText(run, summary) } : {}),
       });
       if (run.outcome === 'failure')
         this.logger.warn(`Scheduled backup failed: ${run.message ?? 'unknown error'}`);
@@ -120,4 +125,17 @@ export class BackupSchedulerService implements OnApplicationBootstrap, OnApplica
       this.running = false;
     }
   }
+}
+
+/**
+ * The audit message of a run (FP39-F-13): what was uploaded, why the home backup failed if it did,
+ * and the reason of every failed management cluster.
+ */
+export function auditText(run: BackupRun, summary?: string): string | undefined {
+  const parts: string[] = [];
+  if (summary) parts.push(summary);
+  if (!run.objectKey && run.message) parts.push(run.message);
+  for (const t of run.targets ?? [])
+    if (t.outcome === 'failure') parts.push(`${t.connection}: ${t.message ?? 'failed'}`);
+  return parts.length ? parts.join(' | ') : undefined;
 }
