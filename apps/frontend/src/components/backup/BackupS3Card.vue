@@ -104,9 +104,27 @@ function size(bytes?: number): string {
     </div>
     <p class="text-body-medium text-medium-emphasis mb-4">{{ t('backup.s3.intro') }}</p>
 
-    <v-switch v-model="draft.enabled" color="primary" data-testid="backup-s3-enabled">
-      <template #label>{{ t('backup.s3.enabled') }}</template>
-    </v-switch>
+    <!-- Switched off, the switch and Save share one row; switched on, Save follows the fields. -->
+    <div class="d-flex flex-wrap align-center ga-2" :class="draft.enabled ? 'mb-2' : ''">
+      <v-switch
+        v-model="draft.enabled"
+        color="primary"
+        hide-details
+        class="flex-grow-0 me-4"
+        data-testid="backup-s3-enabled"
+      >
+        <template #label>{{ t('backup.s3.enabled') }}</template>
+      </v-switch>
+      <v-btn
+        v-if="!draft.enabled"
+        color="primary"
+        :disabled="!dirty"
+        :loading="saving"
+        data-testid="backup-s3-save"
+        @click="emit('save')"
+        >{{ t('common.save') }}</v-btn
+      >
+    </div>
 
     <template v-if="draft.enabled">
       <v-row dense>
@@ -293,7 +311,7 @@ function size(bytes?: number): string {
       </v-row>
     </template>
 
-    <div class="d-flex flex-wrap ga-2 mt-2">
+    <div v-if="draft.enabled" class="d-flex flex-wrap ga-2 mt-2">
       <v-btn
         color="primary"
         :disabled="!dirty"

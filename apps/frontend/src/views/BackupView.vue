@@ -352,15 +352,21 @@ function fingerprint(fp: string): string {
           </v-expansion-panel>
         </v-expansion-panels>
 
-        <v-switch v-model="includeAuditEvents" color="primary" data-testid="backup-audit">
-          <template #label>
-            {{ t('backup.includeAuditEvents') }}
-            <FieldHelp :text="t('backup.includeAuditEventsHint')" />
-          </template>
-        </v-switch>
-
         <ErrorAlert v-if="saveError" :error="saveError" class="mb-4" />
-        <div class="d-flex ga-2">
+        <!-- Switch and buttons in one row. -->
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-switch
+            v-model="includeAuditEvents"
+            color="primary"
+            hide-details
+            class="flex-grow-0 me-4"
+            data-testid="backup-audit"
+          >
+            <template #label>
+              {{ t('backup.includeAuditEvents') }}
+              <FieldHelp :text="t('backup.includeAuditEventsHint')" />
+            </template>
+          </v-switch>
           <v-btn
             color="primary"
             :disabled="!dirty"
