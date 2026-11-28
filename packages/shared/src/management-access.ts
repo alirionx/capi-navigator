@@ -169,9 +169,10 @@ kind: ClusterRole
 metadata:
   name: capi-navigator-operate
 rules:
+  # patch: the app applies the namespace of a new cluster server-side, with its label.
   - apiGroups: ['']
     resources: [namespaces]
-    verbs: [get, list, watch, create]
+    verbs: [get, list, watch, create, patch]
   - apiGroups: ['']
     resources: [secrets, configmaps]
     verbs: [get, list, watch, create, update, patch, delete]
